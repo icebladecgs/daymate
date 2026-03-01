@@ -1173,7 +1173,8 @@ function Stats({ plans }) {
       </div>
 
       <div style={S.sectionTitle}>이달 완벽한 날</div>
-      <div style={S.card}>
+      {/* make these cards occupy full content width by removing horizontal margins */}
+      <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 42, fontWeight: 900, color: perfectRate >= 80 ? "#4ADE80" : perfectRate >= 50 ? "#FCD34D" : "#F87171", marginBottom: 8 }}>
             {perfectDays}
@@ -1202,7 +1203,8 @@ function Stats({ plans }) {
       </div>
 
       <div style={S.sectionTitle}>연간 월별 진행도</div>
-      <div style={S.card}>
+      {/* remove horizontal margins so grid stretches full width */}
+      <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px,1fr))", gap: 10 }}>
           {monthStats.map((m) => (
             <div key={m.month} style={{
