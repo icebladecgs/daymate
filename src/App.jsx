@@ -218,6 +218,7 @@ const S = {
     background: "#181C27",
     display: "flex",
     flexDirection: "column",
+    overflow: "hidden",
   },
   content: {
     flex: 1,
@@ -241,11 +242,11 @@ const S = {
     border: "1px solid #2D344A",
     borderRadius: 14,
     padding: "14px 14px",
-    margin: "0 18px 10px",
+    margin: "0 16px 10px",
     boxSizing: "border-box",
   },
   sectionTitle: {
-    padding: "14px 18px 8px",
+    padding: "14px 16px 8px",
     fontSize: 11,
     letterSpacing: "0.1em",
     color: "#5C6480",
