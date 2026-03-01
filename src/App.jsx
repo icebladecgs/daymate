@@ -222,8 +222,9 @@ const S = {
   },
   content: {
     flex: 1,
+    width: "100%",
     overflowY: "auto",
-    overflowX: "hidden",
+    overflowX: "auto",
     paddingBottom: 90,
     boxSizing: "border-box",
   },
