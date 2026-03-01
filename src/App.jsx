@@ -210,6 +210,7 @@ const S = {
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
+    width: "100vw",   // make container span full viewport regardless of parent flex
   },
   phone: {
     width: "100%",
