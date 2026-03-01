@@ -1484,7 +1484,15 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
 // ---------- App ----------
 export default function App() {
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState(() => {
+    // deep link from query/hash
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get('screen') || window.location.hash.replace('#','');
+      if (s) return s;
+    } catch {}
+    return "home";
+  });
   const [toast, setToast] = useState("");
 
   // responsive width
@@ -1569,6 +1577,7 @@ export default function App() {
   const openDetail = (ds) => {
     setOpenDate(ds);
     setScreen("detail");
+    window.history.replaceState(null,'',`?screen=detail&date=${ds}`);
   };
 
   // Onboarding-lite: first run ask name quickly
@@ -1627,7 +1636,7 @@ export default function App() {
     );
   }
 
-  const render = () => {
+  const render = (changeScreen) => {
     if (screen === "home") {
       return (
         <Home
@@ -1635,8 +1644,8 @@ export default function App() {
           goals={goals}
           todayData={todayData}
           plans={plans}
-          onGoToday={() => setScreen("today")}
-          onGoHistory={() => setScreen("history")}
+          onGoToday={() => changeScreen("today")}
+          onGoHistory={() => changeScreen("history")}
         />
       );
     }
@@ -1664,7 +1673,7 @@ export default function App() {
         return (
           <div style={S.content}>
             <div style={S.topbar}>
-              <button onClick={() => setScreen("history")} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
+              <button onClick={() => changeScreen("history")} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
                 ←
               </button>
               <div style={{ flex: 1 }}>
@@ -1680,7 +1689,7 @@ export default function App() {
         <DayDetail
           dateStr={openDate}
           data={d}
-          onBack={() => setScreen("history")}
+          onBack={() => changeScreen("history")}
         />
       );
     }
@@ -1701,11 +1710,16 @@ export default function App() {
     return null;
   };
 
+  const changeScreen = (s) => {
+    setScreen(s);
+    window.history.replaceState(null,'',`?screen=${s}`);
+  };
+
   return (
     <div style={S.app}>
       <div style={{...S.phone, ...phoneStyleOverride}}>
-        {render()}
-        {screen !== "detail" && <BottomNav screen={screen} setScreen={setScreen} />}
+        {render(changeScreen)}
+        {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
       </div>
     </div>
   );
