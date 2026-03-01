@@ -830,39 +830,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>체크 (07:30 / 12:00 / 18:00 / 22:00)</div>
-      <div style={{ display: "flex", gap: 8, padding: "0 18px 10px", overflowX: "auto" }}>
-        {CHECK_TIMES.map((t) => (
-          <div
-            key={t}
-            style={S.pill(activeTime === t)}
-            onClick={() => setActiveTime(t)}
-          >
-            {data.checks[t] ? "✅ " : "⏱️ "}
-            {t}
-          </div>
-        ))}
-      </div>
-
-      <div style={S.card}>
-        <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>
-          {activeTime} 체크
-        </div>
-        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.6 }}>
-          {activeTime === "07:30" && "오늘 할 일 3가지가 맞는지 확인하고 시작!"}
-          {activeTime === "12:00" && "점심 전에 진행 상황 점검."}
-          {activeTime === "18:00" && "퇴근 전/후 남은 것 정리."}
-          {activeTime === "22:00" && "마지막 체크 후 일기 작성!"}
-        </div>
-        <button
-          style={S.btn}
-          onClick={() => markCheck(activeTime)}
-          disabled={data.checks[activeTime]}
-        >
-          {data.checks[activeTime] ? "이미 체크됨 ✅" : "체크 완료하기"}
-        </button>
-      </div>
-
+      {/* 시간 기반 체크 UI는 제거 - 할 일을 앞의 숫자를 눌러 직접 완료 표시 */}
       <div style={S.sectionTitle}>일기 (22:00 이후 추천)</div>
       <div style={S.card}>
         <textarea
