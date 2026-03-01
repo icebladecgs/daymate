@@ -24,12 +24,16 @@ const store = {
   set(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-    } catch {}
+    } catch {
+      // ignore
+    }
   },
   remove(key) {
     try {
       localStorage.removeItem(key);
-    } catch {}
+    } catch {
+      // ignore
+    }
   },
 };
 
@@ -90,22 +94,53 @@ const sendNotification = (title, body, iconEmoji = "✅") => {
     n.onclick = () => {
       try {
         window.focus();
-      } catch {}
+      } catch {
+        // ignore
+      }
       try {
         n.close();
-      } catch {}
+      } catch {
+        // ignore
+      }
     };
     return n;
   } catch {
+    // ignore
     return null;
   }
 };
+
+// ---------- Sound helpers ----------
+const playSound = (frequency = 800, duration = 200) => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = "sine";
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration / 1000);
+  } catch {
+    // ignore
+  }
+};
+
+const playSuccessSound = () => playSound(800, 150);
 
 // setTimeout 기반 (탭 열려있을 때만 동작)
 class NotifScheduler {
   constructor() {
     this.timers = {};
   }
+  
   cancelAll() {
     Object.keys(this.timers).forEach((k) => {
       clearTimeout(this.timers[k]);
@@ -318,6 +353,7 @@ function BottomNav({ screen, setScreen }) {
     { id: "home", icon: "🏠", label: "홈" },
     { id: "today", icon: "✅", label: "오늘" },
     { id: "history", icon: "📅", label: "기록" },
+    { id: "stats", icon: "📊", label: "통계" },
     { id: "settings", icon: "⚙️", label: "설정" },
   ];
   return (
@@ -389,8 +425,89 @@ function listAllDays() {
   }
 }
 
+// ---------- Streak & Stats ----------
+const isPerfectDay = (dayData) => {
+  if (!dayData || !dayData.tasks) return false;
+  const filledTasks = dayData.tasks.filter((t) => t.title.trim()).length;
+  const doneTasks = dayData.tasks.filter((t) => t.done && t.title.trim()).length;
+  const hasJournal = !!dayData.journal?.body?.trim();
+  return filledTasks === 3 && doneTasks === 3 && hasJournal;
+};
+
+const calcStreak = (plans) => {
+  let streak = 0;
+  let current = new Date();
+  while (streak < 365) {
+    const dateStr = toDateStr(current);
+    const day = plans[dateStr];
+    if (!isPerfectDay(day)) break;
+    streak++;
+    current.setDate(current.getDate() - 1);
+  }
+  return streak;
+};
+
+const calcWeeklyStats = (plans) => {
+  const days = [];
+  let current = new Date();
+  for (let i = 0; i < 7; i++) {
+    const dateStr = toDateStr(current);
+    const day = plans[dateStr];
+    const filledTasks = (day?.tasks || []).filter((t) => t.title.trim()).length;
+    const doneTasks = (day?.tasks || []).filter((t) => t.done && t.title.trim()).length;
+    days.push({
+      date: dateStr,
+      rate: filledTasks === 0 ? 0 : Math.round((doneTasks / 3) * 100),
+      isPerfect: isPerfectDay(day),
+    });
+    current.setDate(current.getDate() - 1);
+  }
+  return days.reverse();
+};
+
+// ---------- Goal progress ----------
+const calcGoalProgress = (plans) => {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  let perfectDaysThisMonth = 0;
+  let daysInMonth = 0;
+  
+  let checkDate = new Date(currentYear, currentMonth, 1);
+  while (checkDate.getMonth() === currentMonth) {
+    daysInMonth++;
+    const dateStr = toDateStr(checkDate);
+    if (isPerfectDay(plans[dateStr])) {
+      perfectDaysThisMonth++;
+    }
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+  
+  const monthProgress = Math.round((perfectDaysThisMonth / daysInMonth) * 100);
+  
+  // 연간 진행도: 1월 1일부터 오늘까지
+  let perfectDaysThisYear = 0;
+  let daysInYear = 0;
+  
+  checkDate = new Date(currentYear, 0, 1);
+  const endDate = new Date();
+  while (checkDate <= endDate) {
+    daysInYear++;
+    const dateStr = toDateStr(checkDate);
+    if (isPerfectDay(plans[dateStr])) {
+      perfectDaysThisYear++;
+    }
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+  
+  const yearProgress = Math.round((perfectDaysThisYear / daysInYear) * 100);
+  
+  return { monthProgress, yearProgress, perfectDaysThisMonth, daysInMonth };
+};
+
 // ---------- Screens ----------
-function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
+function Home({ user, goals, todayData, plans, onGoToday, onGoHistory }) {
   const today = toDateStr();
   const hasTasks = todayData?.tasks?.some((t) => t.title.trim());
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
@@ -400,6 +517,14 @@ function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
   const statusText = !hasTasks
     ? "오늘 할 일 3가지를 정해보세요"
     : `${filledCount}개 중 ${doneCount}개 완료`;
+
+  const streak = useMemo(() => calcStreak(plans), [plans]);
+  const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
+  const weeklyAvg = useMemo(() => 
+    Math.round(weeklyStats.reduce((a, d) => a + d.rate, 0) / 7),
+    [weeklyStats]
+  );
+  const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
 
   return (
     <div style={S.content}>
@@ -413,12 +538,64 @@ function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
         </div>
       </div>
 
+      <div style={S.sectionTitle}>🔥 연속 기록</div>
+      <div style={S.card}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "#5C6480" }}>
+            {streak}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#F0F2F8" }}>
+              {streak > 0 ? `${streak}일 연속` : "연속 기록 없음"}
+            </div>
+            <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4 }}>
+              완벽한 하루 (3개 완료 + 일기)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={S.sectionTitle}>📊 이번 주</div>
+      <div style={S.card}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>평균 완료율</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>
+            {weeklyAvg}%
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 4, justifyContent: "space-between" }}>
+          {weeklyStats.map((d, i) => {
+            const dow = "일월화수목금토"[new Date(d.date).getDay()];
+            return (
+              <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{
+                  height: 32,
+                  borderRadius: 6,
+                  background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "#252B3E",
+                  border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "#1E2336"}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  color: d.isPerfect ? "#4ADE80" : "#A8AFCA",
+                  marginBottom: 6,
+                }}>
+                  {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
+                </div>
+                <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 800 }}>{dow}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={S.sectionTitle}>목표</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
           👑 연간 목표
         </div>
-        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6, marginBottom: 12 }}>
           {(goals.year || []).length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {goals.year.map((g, i) => (
@@ -429,13 +606,30 @@ function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
             <span style={{ color: "#5C6480" }}>설정에서 입력하세요</span>
           )}
         </div>
+        <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 800, marginBottom: 4 }}>
+          진행도: {goalProgress.yearProgress}%
+        </div>
+        <div style={{
+          height: 8,
+          background: "#252B3E",
+          borderRadius: 4,
+          overflow: "hidden",
+          marginBottom: 12,
+        }}>
+          <div style={{
+            height: "100%",
+            background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
+            width: `${goalProgress.yearProgress}%`,
+            transition: "width 0.3s",
+          }} />
+        </div>
 
         <div style={{ height: 12 }} />
 
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
           📅 이달 목표
         </div>
-        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6, marginBottom: 12 }}>
           {(goals.month || []).length ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {goals.month.map((g, i) => (
@@ -445,6 +639,22 @@ function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
           ) : (
             <span style={{ color: "#5C6480" }}>설정에서 입력하세요</span>
           )}
+        </div>
+        <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 800, marginBottom: 4 }}>
+          진행도: {goalProgress.monthProgress}% ({goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth})
+        </div>
+        <div style={{
+          height: 8,
+          background: "#252B3E",
+          borderRadius: 4,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
+            width: `${goalProgress.monthProgress}%`,
+            transition: "width 0.3s",
+          }} />
         </div>
       </div>
 
@@ -472,21 +682,19 @@ function Home({ user, goals, todayData, onGoToday, onGoHistory }) {
 }
 
 function Today({ dateStr, data, setData, toast, setToast }) {
-  const [activeTime, setActiveTime] = useState("07:30");
-
-  useEffect(() => {
-    // 현재 시간에 맞게 기본 체크 시간 선택
+  const getDefaultTime = () => {
     const now = new Date();
     const hm = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-    const pick =
-      CHECK_TIMES.slice()
-        .reverse()
-        .find((t) => t <= hm) || "07:30";
-    setActiveTime(pick);
-  }, [dateStr]);
+    return CHECK_TIMES.slice()
+      .reverse()
+      .find((t) => t <= hm) || "07:30";
+  };
+
+  const [activeTime, setActiveTime] = useState(getDefaultTime());
 
   const tasksFilled = data.tasks.filter((t) => t.title.trim()).length;
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
+  const isPerfect = tasksFilled === 3 && doneCount === 3 && !!data.journal?.body?.trim();
 
   const toggleDone = (id) => {
     setData((prev) => {
@@ -496,6 +704,9 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           ? { ...t, done: !t.done, checkedAt: new Date().toISOString() }
           : t
       );
+      if (next.tasks.find(t => t.id === id).done) {
+        playSuccessSound();
+      }
       return next;
     });
   };
@@ -531,6 +742,22 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/3 완료</div>
         </div>
       </div>
+
+      {isPerfect && (
+        <div style={{
+          ...S.card,
+          background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))",
+          border: "1.5px solid rgba(74,222,128,.35)",
+        }}>
+          <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>🎉</div>
+          <div style={{ fontSize: 14, fontWeight: 900, textAlign: "center", color: "#4ADE80" }}>
+            완벽한 하루!
+          </div>
+          <div style={{ fontSize: 12, textAlign: "center", color: "#A8AFCA", marginTop: 6 }}>
+            3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥
+          </div>
+        </div>
+      )}
 
       <div style={S.sectionTitle}>오늘 할 일 3가지</div>
       <div style={S.card}>
@@ -653,7 +880,8 @@ function History({ plans, onOpenDate }) {
     return Math.round((done / 3) * 100);
   };
 
-  const styleOf = (r, isToday) => {
+  const styleOf = (r, isToday, isPerfect) => {
+    if (isPerfect) return { background: "rgba(74,222,128,.20)", color: "#4ADE80", fontWeight: 900, border: "1.5px solid #4ADE80" };
     if (isToday) return { background: "#6C8EFF", color: "#fff", fontWeight: 900 };
     if (r === null) return { background: "transparent", color: "#5C6480" };
     if (r >= 80) return { background: "rgba(74,222,128,.18)", color: "#4ADE80", fontWeight: 900 };
@@ -716,7 +944,8 @@ function History({ plans, onOpenDate }) {
             const ds = `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
             const r = rateOf(ds);
             const isToday = ds === today;
-            const st = styleOf(r, isToday);
+            const perfect = isPerfectDay(plans[ds]);
+            const st = styleOf(r, isToday, perfect);
             const clickable = r !== null;
             return (
               <div
@@ -731,9 +960,9 @@ function History({ plans, onOpenDate }) {
                   cursor: clickable ? "pointer" : "default",
                   ...st,
                 }}
-                title={clickable ? `${r}%` : ""}
+                title={clickable ? (perfect ? "완벽한 하루 ✓" : `${r}%`) : ""}
               >
-                {day}
+                {perfect ? "✓" : day}
               </div>
             );
           })}
@@ -844,6 +1073,137 @@ function DayDetail({ dateStr, data, onBack }) {
   );
 }
 
+function Stats({ plans }) {
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  let perfectDays = 0;
+  let filledDays = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${viewYear}-${pad2(viewMonth + 1)}-${pad2(day)}`;
+    const dayData = plans[dateStr];
+    if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
+      filledDays++;
+      if (isPerfectDay(dayData)) {
+        perfectDays++;
+      }
+    }
+  }
+
+  const perfectRate = filledDays === 0 ? 0 : Math.round((perfectDays / filledDays) * 100);
+
+  // 월별 데이터
+  const monthStats = [];
+  for (let m = 0; m < 12; m++) {
+    const mStr = pad2(m + 1);
+    const daysInM = new Date(viewYear, m + 1, 0).getDate();
+    let perfect = 0;
+    let filled = 0;
+    for (let day = 1; day <= daysInM; day++) {
+      const dateStr = `${viewYear}-${mStr}-${pad2(day)}`;
+      const dayData = plans[dateStr];
+      if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
+        filled++;
+        if (isPerfectDay(dayData)) {
+          perfect++;
+        }
+      }
+    }
+    monthStats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
+  }
+
+  const prev = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(y => y - 1);
+    } else {
+      setViewMonth(m => m - 1);
+    }
+  };
+
+  const next = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(y => y + 1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
+  };
+
+  return (
+    <div style={S.content}>
+      <div style={S.topbar}>
+        <div>
+          <div style={S.title}>통계</div>
+          <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
+          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
+        </div>
+      </div>
+
+      <div style={S.sectionTitle}>이달 완벽한 날</div>
+      <div style={S.card}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 42, fontWeight: 900, color: perfectRate >= 80 ? "#4ADE80" : perfectRate >= 50 ? "#FCD34D" : "#F87171", marginBottom: 8 }}>
+            {perfectDays}
+          </div>
+          <div style={{ fontSize: 13, color: "#A8AFCA", marginBottom: 12 }}>
+            {filledDays}일 중 {perfectDays}일 완벽함
+          </div>
+          <div style={{
+            height: 12,
+            background: "#252B3E",
+            borderRadius: 6,
+            overflow: "hidden",
+            marginBottom: 8,
+          }}>
+            <div style={{
+              height: "100%",
+              background: perfectRate >= 80 ? "#4ADE80" : perfectRate >= 50 ? "#FCD34D" : "#F87171",
+              width: `${perfectRate}%`,
+              transition: "width 0.3s",
+            }} />
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>
+            {perfectRate}% 완성도
+          </div>
+        </div>
+      </div>
+
+      <div style={S.sectionTitle}>연간 월별 진행도</div>
+      <div style={S.card}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          {monthStats.map((m) => (
+            <div key={m.month} style={{
+              textAlign: "center",
+              padding: 12,
+              background: "#252B3E",
+              borderRadius: 10,
+              border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid #2D344A",
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#A8AFCA", marginBottom: 8 }}>
+                {pad2(m.month + 1)}월
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: m.rate >= 80 ? "#4ADE80" : m.rate >= 50 ? "#FCD34D" : m.filled > 0 ? "#F87171" : "#5C6480" }}>
+                {m.filled === 0 ? "-" : m.rate + "%"}
+              </div>
+              <div style={{ fontSize: 10, color: "#5C6480", marginTop: 4 }}>
+                {m.perfect}/{m.filled}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: 12 }} />
+    </div>
+  );
+}
+
 function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled, toast, setToast }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
@@ -886,7 +1246,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         .forEach((k) => {
           data[k] = store.get(k);
         });
-    } catch {}
+    } catch {
+      // ignore export error
+    }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1076,7 +1438,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               Object.keys(localStorage)
                 .filter((k) => k.startsWith("dm_"))
                 .forEach((k) => localStorage.removeItem(k));
-            } catch {}
+            } catch {
+              // ignore delete error
+            }
             window.location.reload();
           }}
         >
@@ -1232,6 +1596,7 @@ export default function App() {
           user={user}
           goals={goals}
           todayData={todayData}
+          plans={plans}
           onGoToday={() => setScreen("today")}
           onGoHistory={() => setScreen("history")}
         />
@@ -1251,6 +1616,9 @@ export default function App() {
     }
     if (screen === "history") {
       return <History plans={plans} onOpenDate={openDetail} />;
+    }
+    if (screen === "stats") {
+      return <Stats plans={plans} />;
     }
     if (screen === "detail") {
       const d = plans[openDate];
