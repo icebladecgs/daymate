@@ -694,7 +694,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 
   const tasksFilled = data.tasks.filter((t) => t.title.trim()).length;
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
-  const isPerfect = tasksFilled === 3 && doneCount === 3 && !!data.journal?.body?.trim();
+  const isPerfect = tasksFilled >= 3 && doneCount === tasksFilled && !!data.journal?.body?.trim();
 
   const toggleDone = (id) => {
     setData((prev) => {
@@ -759,10 +759,10 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         </div>
       )}
 
-      <div style={S.sectionTitle}>오늘 할 일 3가지</div>
+      <div style={S.sectionTitle}>{`오늘 할 일 (${data.tasks.length}개)`}</div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
-          <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < 2 ? 10 : 0 }}>
+          <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
             <button
               onClick={() => toggleDone(t.id)}
               style={{
@@ -786,8 +786,34 @@ function Today({ dateStr, data, setData, toast, setToast }) {
               placeholder={`할 일 ${idx + 1}`}
               maxLength={60}
             />
+            <button
+              style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer" }}
+              onClick={() => {
+                setData(prev => {
+                  const next = { ...prev };
+                  next.tasks = next.tasks.filter(x => x.id !== t.id);
+                  return next;
+                });
+              }}
+              title="삭제"
+            >
+              ✕
+            </button>
           </div>
         ))}
+        <button
+          style={{ ...S.btn, marginTop: 8 }}
+          onClick={() => {
+            setData(prev => {
+              const next = { ...prev };
+              const id = `t${Date.now()}`;
+              next.tasks = [...next.tasks, { id, title: "", done: false, checkedAt: null }];
+              return next;
+            });
+          }}
+        >
+          ➕ 할 일 추가
+        </button>
         <div style={{ marginTop: 10, fontSize: 12, color: allSet ? "#4ADE80" : "#FCD34D", fontWeight: 900 }}>
           {allSet ? "좋아요! 3가지가 정해졌어요." : "3가지를 모두 입력하면 루틴이 더 선명해져요."}
         </div>
