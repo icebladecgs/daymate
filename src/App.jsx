@@ -223,6 +223,7 @@ const S = {
   content: {
     flex: 1,
     width: "100%",
+    minWidth: 0,
     overflowY: "auto",
     overflowX: "auto",
     paddingBottom: 90,
@@ -1213,7 +1214,7 @@ function Stats({ plans }) {
       <div style={S.sectionTitle}>연간 월별 진행도</div>
       {/* remove horizontal margins so grid stretches full width */}
       <div style={{ ...S.card, margin: "0 0 10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px,1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(80px,1fr))", gap: 10 }}>
           {monthStats.map((m) => (
             <div key={m.month} style={{
               textAlign: "center",
