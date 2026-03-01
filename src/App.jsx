@@ -219,7 +219,13 @@ const S = {
     display: "flex",
     flexDirection: "column",
   },
-  content: { flex: 1, overflowY: "auto", paddingBottom: 90 },
+  content: {
+    flex: 1,
+    overflowY: "auto",
+    overflowX: "hidden",
+    paddingBottom: 90,
+    boxSizing: "border-box",
+  },
   topbar: {
     padding: "18px 20px 12px",
     borderBottom: "1px solid #2D344A",
