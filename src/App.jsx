@@ -1213,8 +1213,8 @@ function Stats({ plans }) {
 
       <div style={S.sectionTitle}>연간 월별 진행도</div>
       {/* remove horizontal margins so grid stretches full width */}
-      <div style={{ ...S.card, margin: "0 0 10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(80px,1fr))", gap: 10 }}>
+      <div style={{ ...S.card, margin: "0 0 10px", padding: "10px 10px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(50px,1fr))", gap: 6 }}>
           {monthStats.map((m) => (
             <div key={m.month} style={{
               textAlign: "center",
