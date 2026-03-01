@@ -213,7 +213,7 @@ const S = {
   },
   phone: {
     width: "100%",
-    maxWidth: 430,
+    maxWidth: 430, // will override in App render when desktop
     minHeight: "100vh",
     background: "#181C27",
     display: "flex",
@@ -1487,6 +1487,18 @@ export default function App() {
   const [screen, setScreen] = useState("home");
   const [toast, setToast] = useState("");
 
+  // responsive width
+  const [winW, setWinW] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+  useEffect(() => {
+    const onResize = () => setWinW(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const phoneStyleOverride = {
+    maxWidth: winW < 480 ? 430 : '100%',
+  };
+
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
@@ -1691,7 +1703,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <div style={S.phone}>
+      <div style={{...S.phone, ...phoneStyleOverride}}>
         {render()}
         {screen !== "detail" && <BottomNav screen={screen} setScreen={setScreen} />}
       </div>
