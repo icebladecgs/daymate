@@ -213,7 +213,7 @@ const S = {
   },
   phone: {
     width: "100%",
-    maxWidth: 430, // will override in App render when desktop
+    maxWidth: "100%",
     minHeight: "100vh",
     background: "#181C27",
     display: "flex",
@@ -236,6 +236,7 @@ const S = {
     borderRadius: 14,
     padding: "14px 14px",
     margin: "0 18px 10px",
+    boxSizing: "border-box",
   },
   sectionTitle: {
     padding: "14px 18px 8px",
@@ -1202,7 +1203,7 @@ function Stats({ plans }) {
 
       <div style={S.sectionTitle}>연간 월별 진행도</div>
       <div style={S.card}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px,1fr))", gap: 10 }}>
           {monthStats.map((m) => (
             <div key={m.month} style={{
               textAlign: "center",
@@ -1495,17 +1496,8 @@ export default function App() {
   });
   const [toast, setToast] = useState("");
 
-  // responsive width
-  const [winW, setWinW] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
-  useEffect(() => {
-    const onResize = () => setWinW(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const phoneStyleOverride = {
-    maxWidth: winW < 480 ? 430 : '100%',
-  };
+  // no width limit - let container fill viewport
+  const phoneStyleOverride = { maxWidth: '100%' };
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
