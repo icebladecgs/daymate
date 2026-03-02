@@ -1443,18 +1443,6 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     setToast("저장 완료 ✅");
   };
 
-  const askPermission = async () => {
-    const r = await requestPermission();
-    setPermission(r);
-    if (r === "granted") {
-      setNotifEnabled(true);
-      store.set("dm_notif_enabled", true);
-      setToast("알림 권한 허용 ✅");
-      sendNotification("DayMate Lite", "알림이 켜졌어요!", "🔔");
-    } else if (r === "denied") {
-      setToast("알림이 차단됨 🚫");
-    }
-  };
 
   // Backup export (all dm_ keys)
   const exportData = () => {
@@ -1605,20 +1593,30 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           </div>
         </div>
 
-        {permission !== "granted" && permission !== "unsupported" && (
-          <button style={S.btn} onClick={askPermission}>
-            🔔 알림 권한 허용하기
-          </button>
-        )}
+
 
         <button
           style={S.btnGhost}
-          onClick={() => {
-            sendNotification("DayMate Lite", "테스트 알림입니다.", "🔔");
-            setToast("테스트 발송(권한 필요) 🔔");
+          onClick={async () => {
+            if (permission === "granted") {
+              sendNotification("DayMate Lite", "테스트 알림입니다. ✅", "🔔");
+              setToast("테스트 알림 발송 ✅");
+            } else if (permission === "denied") {
+              setToast("알림이 차단됨 — 브라우저 설정 → 알림 → 허용으로 변경해주세요");
+            } else {
+              const r = await requestPermission();
+              setPermission(r);
+              if (r === "granted") {
+                setNotifEnabled(true);
+                sendNotification("DayMate Lite", "알림이 활성화됐어요! ✅", "🔔");
+                setToast("알림 권한 허용됨 ✅");
+              } else {
+                setToast("알림 권한 거부됨 — 브라우저 설정에서 허용해주세요");
+              }
+            }
           }}
         >
-          테스트 알림 보내기
+          🔔 알림 권한 허용 / 테스트
         </button>
       </div>
 
