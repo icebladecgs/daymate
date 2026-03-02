@@ -1750,7 +1750,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v5 · 2026-03-02
+        DayMate Lite v6 · 2026-03-02
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -1775,6 +1775,7 @@ export default function App() {
 
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
+  const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
@@ -1819,6 +1820,7 @@ export default function App() {
       if (!firebaseUser) return;
 
       setSyncStatus('syncing');
+      syncReadyRef.current = false;
       try {
         const remote = await loadAllFromFirestore(firebaseUser.uid);
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
@@ -1853,8 +1855,10 @@ export default function App() {
             days: localDays,
           });
         }
+        syncReadyRef.current = true;
         setSyncStatus('synced');
       } catch {
+        syncReadyRef.current = true;
         setSyncStatus('idle');
       }
     });
@@ -1864,11 +1868,11 @@ export default function App() {
   // Persist user/goals when updated elsewhere
   useEffect(() => {
     store.set("dm_user", user);
-    if (authUser) saveSettings(authUser.uid, { name: user.name }).catch(() => {});
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { name: user.name }).catch(() => {});
   }, [user, authUser]);
   useEffect(() => {
     store.set("dm_goals", goals);
-    if (authUser) saveGoals(authUser.uid, goals).catch(() => {});
+    if (authUser && syncReadyRef.current) saveGoals(authUser.uid, goals).catch(() => {});
   }, [goals, authUser]);
 
   // Persist notifEnabled
@@ -1896,7 +1900,7 @@ export default function App() {
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
       const next = { ...prev, [todayStr]: nextDay };
       saveDay(todayStr, nextDay);
-      if (authUser) fsaveDay(authUser.uid, todayStr, nextDay).catch(() => {});
+      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, todayStr, nextDay).catch(() => {});
       return next;
     });
   };
