@@ -153,32 +153,39 @@ async function sendTelegramMessage(botToken, chatId, text) {
   }
 }
 
-async function fetchMarketData(finnhubKey) {
+const ASSET_META = {
+  BTC:  { label: '비트코인',     src: 'coingecko' },
+  ETH:  { label: '이더리움',     src: 'coingecko' },
+  TSLA: { label: '테슬라',       src: 'finnhub' },
+  GOOGL:{ label: '구글',         src: 'finnhub' },
+  IVR:  { label: 'IVR',          src: 'finnhub' },
+  QQQ:  { label: '나스닥100(QQQ)', src: 'finnhub' },
+};
+
+async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META)) {
   const data = {};
-  // 코인 - CoinGecko (API 키 불필요)
-  try {
-    const r = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true'
-    );
-    const j = await r.json();
-    data.BTC = { label: '비트코인', price: j.bitcoin?.usd, chgPct: j.bitcoin?.usd_24h_change };
-    data.ETH = { label: '이더리움', price: j.ethereum?.usd, chgPct: j.ethereum?.usd_24h_change };
-  } catch {}
-  // 주식 - Finnhub (무료 API 키 필요)
+  const assetSet = new Set(assets);
+
+  // 코인 - CoinGecko
+  const needBTC = assetSet.has('BTC'), needETH = assetSet.has('ETH');
+  if (needBTC || needETH) {
+    try {
+      const ids = [needBTC && 'bitcoin', needETH && 'ethereum'].filter(Boolean).join(',');
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+      const j = await r.json();
+      if (needBTC) data.BTC = { label: '비트코인', price: j.bitcoin?.usd, chgPct: j.bitcoin?.usd_24h_change };
+      if (needETH) data.ETH = { label: '이더리움', price: j.ethereum?.usd, chgPct: j.ethereum?.usd_24h_change };
+    } catch {}
+  }
+
+  // 주식 - Finnhub
   if (finnhubKey) {
-    const stocks = [
-      { sym: 'TSLA', label: '테슬라' },
-      { sym: 'GOOGL', label: '구글' },
-      { sym: 'IVR', label: 'IVR' },
-      { sym: 'QQQ', label: '나스닥100 (QQQ)' },
-    ];
-    for (const { sym, label } of stocks) {
+    const finnhubAssets = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => assetSet.has(s));
+    for (const sym of finnhubAssets) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
         const j = await r.json();
-        if (j && j.c > 0) {
-          data[sym] = { label, price: j.c, change: j.d, chgPct: j.dp };
-        }
+        if (j && j.c > 0) data[sym] = { label: ASSET_META[sym].label, price: j.c, change: j.d, chgPct: j.dp };
       } catch {}
     }
   }
@@ -210,10 +217,11 @@ function buildBriefingText(marketData, userName) {
       text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
     }
   }
-  text += `━━━━━━━━━━━━━━━\n`;
-  for (const sym of ['TSLA', 'GOOGL', 'IVR', 'QQQ']) {
-    const d = marketData[sym];
-    if (d) {
+  const stockSyms = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => marketData[s]);
+  if (stockSyms.length > 0) {
+    text += `━━━━━━━━━━━━━━━\n`;
+    for (const sym of stockSyms) {
+      const d = marketData[sym];
       text += `📈 <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
     }
   }
@@ -259,28 +267,29 @@ class NotifScheduler {
     this.cancelAll();
     if (!enabled) return;
 
-    const { botToken = '', chatId = '', finnhubKey = '' } = telegramCfg;
+    const { botToken = '', chatId = '', finnhubKey = '', briefingTime = '07:00', todoTime = '07:05', assets } = telegramCfg;
+    const selectedAssets = assets && assets.length > 0 ? assets : Object.keys(ASSET_META);
     const noonTime = alarmTimes.noon || '12:00';
     const eveningTime = alarmTimes.evening || '18:00';
     const nightTime = alarmTimes.night || '23:00';
     const hasTg = !!(botToken && chatId);
 
-    // 07:00 자산 브리핑 (Telegram)
+    // 자산 브리핑 (Telegram)
     if (hasTg) {
       this.schedule(
-        'tg_market', '07:00',
+        'tg_market', briefingTime,
         'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
         '📊',
         async () => {
-          const marketData = await fetchMarketData(finnhubKey);
+          const marketData = await fetchMarketData(finnhubKey, selectedAssets);
           const text = buildBriefingText(marketData, userName);
           await sendTelegramMessage(botToken, chatId, text);
         }
       );
 
-      // 07:05 할일 질문 (Telegram)
+      // 할일 알림 (Telegram)
       this.schedule(
-        'tg_todo', '07:05',
+        'tg_todo', todoTime,
         'DayMate ✅', '오늘 할 일을 텔레그램으로 전송',
         '✅',
         async () => {
@@ -1374,12 +1383,26 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
   const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
   const [finnhubKey, setFinnhubKey] = useState(telegramCfg.finnhubKey || '');
+  const [briefingTime, setBriefingTime] = useState(telegramCfg.briefingTime || '07:00');
+  const [todoTime, setTodoTime] = useState(telegramCfg.todoTime || '07:05');
+  const [selectedAssets, setSelectedAssets] = useState(
+    telegramCfg.assets || Object.keys(ASSET_META)
+  );
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
 
+  const toggleAsset = (sym) => {
+    setSelectedAssets(prev =>
+      prev.includes(sym) ? prev.filter(s => s !== sym) : [...prev, sym]
+    );
+  };
+
   const saveTelegram = () => {
-    const cfg = { botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim() };
+    const cfg = {
+      botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim(),
+      briefingTime, todoTime, assets: selectedAssets,
+    };
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
     if (authUser) saveSettings(authUser.uid, { telegram: cfg }).catch(() => {});
@@ -1401,7 +1424,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const testBriefing = async () => {
     setToast('브리핑 생성 중...');
-    const marketData = await fetchMarketData(finnhubKey.trim());
+    const marketData = await fetchMarketData(finnhubKey.trim(), selectedAssets);
     const text = buildBriefingText(marketData, user.name);
     const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
     setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
@@ -1624,50 +1647,60 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>텔레그램 자동화</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
-          매일 <b style={{ color: "#F0F2F8" }}>7시 자산 브리핑</b>, <b style={{ color: "#F0F2F8" }}>7:05 할일</b>, 체크인·마감 알림을 텔레그램으로 받아요.<br />
-          @BotFather에서 봇 생성 → 토큰 입력 → /start 후 Chat ID 확인
-        </div>
-
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>봇 토큰 (Bot Token)</div>
-        <input
-          style={S.input}
-          value={tgToken}
-          onChange={(e) => setTgToken(e.target.value)}
-          placeholder="123456789:ABCdef..."
-          type="password"
-        />
+        <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
 
         <div style={{ height: 10 }} />
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>채팅 ID (Chat ID)</div>
-        <input
-          style={S.input}
-          value={tgChatId}
-          onChange={(e) => setTgChatId(e.target.value)}
-          placeholder="123456789"
-        />
+        <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
 
         <div style={{ height: 10 }} />
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 4 }}>
           Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(주식 데이터용)</span>
         </div>
-        <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 6 }}>
-          finnhub.io 무료 가입 후 발급 · 없으면 코인(BTC/ETH)만 표시
-        </div>
-        <input
-          style={S.input}
-          value={finnhubKey}
-          onChange={(e) => setFinnhubKey(e.target.value)}
-          placeholder="API Key 입력"
-          type="password"
-        />
+        <input style={S.input} value={finnhubKey} onChange={(e) => setFinnhubKey(e.target.value)} placeholder="API Key 입력" type="password" />
 
+        <div style={{ height: 14 }} />
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>자산 브리핑</div>
+            <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>할일 알림</div>
+            <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
+          </div>
+        </div>
+
+        <div style={{ height: 14 }} />
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {Object.entries(ASSET_META).map(([sym, meta]) => {
+            const on = selectedAssets.includes(sym);
+            return (
+              <button
+                key={sym}
+                onClick={() => toggleAsset(sym)}
+                style={{
+                  padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  background: on ? "#4B6FFF" : "#1E2235",
+                  color: on ? "#fff" : "#5C6480",
+                }}
+              >
+                {sym} <span style={{ fontWeight: 400 }}>{meta.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ height: 14 }} />
         <button style={S.btn} onClick={saveTelegram}>저장</button>
         <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
         <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
 
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 10, lineHeight: 1.7 }}>
-          ⚠️ 탭이 열려 있을 때만 동작해요. 확실한 수신을 위해 PC에서 탭을 열어두세요.
+          ⚠️ 탭이 열려 있을 때만 동작해요.
         </div>
       </div>
 
@@ -1750,7 +1783,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v6 · 2026-03-02
+        DayMate Lite v7 · 2026-03-02
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -1780,9 +1813,15 @@ export default function App() {
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
-  const [telegramCfg, setTelegramCfg] = useState(() =>
-    store.get("dm_telegram", { botToken: "", chatId: "", finnhubKey: "" })
-  );
+  const [telegramCfg, setTelegramCfg] = useState(() => {
+    const saved = store.get("dm_telegram", {});
+    return {
+      botToken: "", chatId: "", finnhubKey: "",
+      briefingTime: "07:00", todoTime: "07:05",
+      assets: ["BTC", "ETH", "TSLA", "GOOGL", "IVR", "QQQ"],
+      ...saved,
+    };
+  });
   const [alarmTimes, setAlarmTimes] = useState(() =>
     store.get("dm_alarm_times", { noon: "12:00", evening: "18:00", night: "23:00" })
   );
