@@ -135,6 +135,89 @@ const playSound = (frequency = 800, duration = 200) => {
 
 const playSuccessSound = () => playSound(800, 150);
 
+// ---------- Telegram helpers ----------
+async function sendTelegramMessage(botToken, chatId, text) {
+  if (!botToken || !chatId) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchMarketData(finnhubKey) {
+  const data = {};
+  // 코인 - CoinGecko (API 키 불필요)
+  try {
+    const r = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true'
+    );
+    const j = await r.json();
+    data.BTC = { label: '비트코인', price: j.bitcoin?.usd, chgPct: j.bitcoin?.usd_24h_change };
+    data.ETH = { label: '이더리움', price: j.ethereum?.usd, chgPct: j.ethereum?.usd_24h_change };
+  } catch {}
+  // 주식 - Finnhub (무료 API 키 필요)
+  if (finnhubKey) {
+    const stocks = [
+      { sym: 'TSLA', label: '테슬라' },
+      { sym: 'GOOGL', label: '구글' },
+      { sym: 'IVR', label: 'IVR' },
+      { sym: 'QQQ', label: '나스닥100 (QQQ)' },
+    ];
+    for (const { sym, label } of stocks) {
+      try {
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
+        const j = await r.json();
+        if (j && j.c > 0) {
+          data[sym] = { label, price: j.c, change: j.d, chgPct: j.dp };
+        }
+      } catch {}
+    }
+  }
+  return data;
+}
+
+function buildBriefingText(marketData, userName) {
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
+  let text = `📊 <b>${userName}님의 아침 자산 브리핑</b> (${dateStr})\n`;
+  text += `━━━━━━━━━━━━━━━\n`;
+
+  const fmtPrice = (n) =>
+    n == null ? 'N/A' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtChg = (chgPct, change) => {
+    if (chgPct == null) return '';
+    const arrow = chgPct >= 0 ? '▲' : '▼';
+    const pct = `${chgPct >= 0 ? '+' : ''}${Number(chgPct).toFixed(2)}%`;
+    const chgStr = change != null
+      ? ` (${change >= 0 ? '+' : ''}$${Math.abs(Number(change)).toFixed(2)})`
+      : '';
+    return ` ${arrow} ${pct}${chgStr}`;
+  };
+
+  for (const sym of ['BTC', 'ETH']) {
+    const d = marketData[sym];
+    if (d) {
+      const icon = sym === 'BTC' ? '₿' : 'Ξ';
+      text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
+    }
+  }
+  text += `━━━━━━━━━━━━━━━\n`;
+  for (const sym of ['TSLA', 'GOOGL', 'IVR', 'QQQ']) {
+    const d = marketData[sym];
+    if (d) {
+      text += `📈 <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
+    }
+  }
+  text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅`;
+  return text;
+}
+
 // setTimeout 기반 (탭 열려있을 때만 동작)
 class NotifScheduler {
   constructor() {
@@ -147,6 +230,7 @@ class NotifScheduler {
       delete this.timers[k];
     });
   }
+
   msUntil(timeStr) {
     const [hh, mm] = timeStr.split(":").map(Number);
     const now = new Date();
@@ -155,47 +239,111 @@ class NotifScheduler {
     if (t <= now) t.setDate(t.getDate() + 1);
     return t.getTime() - now.getTime();
   }
-  schedule(id, timeStr, title, body, iconEmoji = "🔔") {
+
+  schedule(id, timeStr, title, body, iconEmoji = "🔔", onFire = null) {
     clearTimeout(this.timers[id]);
-    const fire = () => {
+    const fire = async () => {
       sendNotification(title, body, iconEmoji);
-      // next day
+      if (onFire) {
+        try { await onFire(); } catch {}
+      }
       this.timers[id] = setTimeout(fire, 24 * 60 * 60 * 1000);
     };
     this.timers[id] = setTimeout(fire, this.msUntil(timeStr));
   }
-  apply(enabled, userName) {
+
+  apply(enabled, userName, telegramCfg = {}, alarmTimes = {}) {
     this.cancelAll();
     if (!enabled) return;
+
+    const { botToken = '', chatId = '', finnhubKey = '' } = telegramCfg;
+    const noonTime = alarmTimes.noon || '12:00';
+    const eveningTime = alarmTimes.evening || '18:00';
+    const nightTime = alarmTimes.night || '23:00';
+    const hasTg = !!(botToken && chatId);
+
+    // 07:00 자산 브리핑 (Telegram)
+    if (hasTg) {
+      this.schedule(
+        'tg_market', '07:00',
+        'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
+        '📊',
+        async () => {
+          const marketData = await fetchMarketData(finnhubKey);
+          const text = buildBriefingText(marketData, userName);
+          await sendTelegramMessage(botToken, chatId, text);
+        }
+      );
+
+      // 07:05 할일 질문 (Telegram)
+      this.schedule(
+        'tg_todo', '07:05',
+        'DayMate ✅', '오늘 할 일을 텔레그램으로 전송',
+        '✅',
+        async () => {
+          const today = toDateStr();
+          const todayDayData = store.get(dayKey(today));
+          const tasks = (todayDayData?.tasks || []).filter(t => t.title.trim());
+          let text = `✅ <b>${userName}님, 오늘 할 일!</b>\n\n`;
+          if (tasks.length > 0) {
+            tasks.forEach((t, i) => { text += `${i + 1}. ${t.title}\n`; });
+            text += `\n총 ${tasks.length}개 예정 · 화이팅! 💪`;
+          } else {
+            text += `아직 오늘 할 일을 입력하지 않았어요.\nDayMate에서 입력해주세요 📝`;
+          }
+          await sendTelegramMessage(botToken, chatId, text);
+        }
+      );
+    }
+
+    // 브라우저 알림 (권한 필요)
     if (getPermission() !== "granted") return;
 
+    this.schedule('m0730', '07:30', 'DayMate 🌅', `${userName}님, 오늘 할 일을 정해볼까요?`, '🌅');
+
     this.schedule(
-      "m0730",
-      "07:30",
-      "DayMate Lite 🌅",
-      `${userName}님, 오늘 할 일 3가지를 정해볼까요?`,
-      "🌅"
+      'm_noon', noonTime,
+      'DayMate 🕛', `${userName}님, 점심 체크인!`, '🕛',
+      hasTg ? async () => {
+        const d = store.get(dayKey(toDateStr()));
+        const tasks = d?.tasks || [];
+        const done = tasks.filter(t => t.done && t.title.trim()).length;
+        const total = tasks.filter(t => t.title.trim()).length;
+        await sendTelegramMessage(botToken, chatId,
+          `🕛 <b>${userName}님 점심 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n오후도 화이팅! 💪`
+        );
+      } : null
     );
+
     this.schedule(
-      "m1200",
-      "12:00",
-      "DayMate Lite 🕛",
-      `${userName}님, 1차 체크 시간이에요. 진행 상황 확인!`,
-      "🕛"
+      'm_eve', eveningTime,
+      'DayMate 🌆', `${userName}님, 저녁 체크인!`, '🌆',
+      hasTg ? async () => {
+        const d = store.get(dayKey(toDateStr()));
+        const tasks = d?.tasks || [];
+        const done = tasks.filter(t => t.done && t.title.trim()).length;
+        const total = tasks.filter(t => t.title.trim()).length;
+        await sendTelegramMessage(botToken, chatId,
+          `🌆 <b>${userName}님 저녁 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n마무리 잘 해요! 🎯`
+        );
+      } : null
     );
+
     this.schedule(
-      "m1800",
-      "18:00",
-      "DayMate Lite 🌆",
-      `${userName}님, 2차 체크 시간이에요. 남은 3가지 점검!`,
-      "🌆"
-    );
-    this.schedule(
-      "m2200",
-      "22:00",
-      "DayMate Lite 🌙",
-      `${userName}님, 마지막 체크 + 일기 작성하고 마무리해요.`,
-      "🌙"
+      'm_night', nightTime,
+      'DayMate 🌙', `${userName}님, 마지막 체크 + 일기 작성하고 마무리해요.`, '🌙',
+      hasTg ? async () => {
+        const d = store.get(dayKey(toDateStr()));
+        const tasks = d?.tasks || [];
+        const done = tasks.filter(t => t.done && t.title.trim()).length;
+        const total = tasks.filter(t => t.title.trim()).length;
+        const hasJournal = !!d?.journal?.body?.trim();
+        let text = `🌙 <b>${userName}님, 하루 마무리할 시간이에요!</b>\n\n`;
+        text += `✅ 완료: ${done}/${total}\n`;
+        text += hasJournal ? `📖 일기: 작성 완료 ✓\n` : `📖 일기: 아직 작성 전 ✏️\n`;
+        text += `\n오늘도 수고했어요! 🌟`;
+        await sendTelegramMessage(botToken, chatId, text);
+      } : null
     );
   }
 }
@@ -1211,12 +1359,47 @@ function Stats({ plans }) {
   );
 }
 
-function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled, toast, setToast }) {
+function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
+                    telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [monthText, setMonthText] = useState((goals.month || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
   const fileInputRef = useRef(null);
+
+  const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
+  const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
+  const [finnhubKey, setFinnhubKey] = useState(telegramCfg.finnhubKey || '');
+  const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
+  const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
+  const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
+
+  const saveTelegram = () => {
+    const cfg = { botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim() };
+    setTelegramCfg(cfg);
+    store.set('dm_telegram', cfg);
+    setToast('텔레그램 설정 저장 ✅');
+  };
+
+  const saveAlarmTimes = () => {
+    const times = { noon: noonTime, evening: eveningTime, night: nightTime };
+    setAlarmTimes(times);
+    store.set('dm_alarm_times', times);
+    setToast('알림 시간 저장 ✅');
+  };
+
+  const testTelegramMsg = async () => {
+    const ok = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '✅ <b>DayMate 연결 테스트 성공!</b>\n\n텔레그램 알림이 정상 작동해요.');
+    setToast(ok ? '텔레그램 전송 성공 ✅' : '전송 실패 - 설정을 확인하세요 🚫');
+  };
+
+  const testBriefing = async () => {
+    setToast('브리핑 생성 중...');
+    const marketData = await fetchMarketData(finnhubKey.trim());
+    const text = buildBriefingText(marketData, user.name);
+    const ok = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
+    setToast(ok ? '브리핑 전송 성공 ✅' : '전송 실패 🚫');
+  };
 
   const save = () => {
     const nextUser = { name: (name || "").trim() || "사용자" };
@@ -1410,6 +1593,78 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         </button>
       </div>
 
+      <div style={S.sectionTitle}>알림 시간 설정</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
+          점심·저녁·밤 알림 시간을 조정할 수 있어요.
+        </div>
+        {[
+          { label: "점심 체크인", value: noonTime, set: setNoonTime },
+          { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
+          { label: "밤 마감 알람", value: nightTime, set: setNightTime },
+        ].map(({ label, value, set }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <div style={{ flex: 1, fontSize: 13, color: "#F0F2F8", fontWeight: 800 }}>{label}</div>
+            <input
+              type="time"
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              style={{ ...S.input, width: 110, padding: "8px 10px", marginBottom: 0 }}
+            />
+          </div>
+        ))}
+        <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
+      </div>
+
+      <div style={S.sectionTitle}>텔레그램 자동화</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
+          매일 <b style={{ color: "#F0F2F8" }}>7시 자산 브리핑</b>, <b style={{ color: "#F0F2F8" }}>7:05 할일</b>, 체크인·마감 알림을 텔레그램으로 받아요.<br />
+          @BotFather에서 봇 생성 → 토큰 입력 → /start 후 Chat ID 확인
+        </div>
+
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>봇 토큰 (Bot Token)</div>
+        <input
+          style={S.input}
+          value={tgToken}
+          onChange={(e) => setTgToken(e.target.value)}
+          placeholder="123456789:ABCdef..."
+          type="password"
+        />
+
+        <div style={{ height: 10 }} />
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>채팅 ID (Chat ID)</div>
+        <input
+          style={S.input}
+          value={tgChatId}
+          onChange={(e) => setTgChatId(e.target.value)}
+          placeholder="123456789"
+        />
+
+        <div style={{ height: 10 }} />
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 4 }}>
+          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(주식 데이터용)</span>
+        </div>
+        <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 6 }}>
+          finnhub.io 무료 가입 후 발급 · 없으면 코인(BTC/ETH)만 표시
+        </div>
+        <input
+          style={S.input}
+          value={finnhubKey}
+          onChange={(e) => setFinnhubKey(e.target.value)}
+          placeholder="API Key 입력"
+          type="password"
+        />
+
+        <button style={S.btn} onClick={saveTelegram}>저장</button>
+        <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
+        <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
+
+        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 10, lineHeight: 1.7 }}>
+          ⚠️ 탭이 열려 있을 때만 동작해요. 확실한 수신을 위해 PC에서 탭을 열어두세요.
+        </div>
+      </div>
+
       <div style={S.sectionTitle}>백업</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7 }}>
@@ -1482,6 +1737,12 @@ export default function App() {
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
+  const [telegramCfg, setTelegramCfg] = useState(() =>
+    store.get("dm_telegram", { botToken: "", chatId: "", finnhubKey: "" })
+  );
+  const [alarmTimes, setAlarmTimes] = useState(() =>
+    store.get("dm_alarm_times", { noon: "12:00", evening: "18:00", night: "23:00" })
+  );
 
   const todayStr = toDateStr();
 
@@ -1524,10 +1785,10 @@ export default function App() {
 
   // Apply notifications (GUARDED)
   useEffect(() => {
-    scheduler.apply(notifEnabled, user.name || "사용자");
+    scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
     return () => scheduler.cancelAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifEnabled, user.name]);
+  }, [notifEnabled, user.name, telegramCfg, alarmTimes]);
 
   // Auto-create today when opening today screen
   useEffect(() => {
@@ -1674,6 +1935,10 @@ export default function App() {
           setGoals={setGoals}
           notifEnabled={notifEnabled}
           setNotifEnabled={setNotifEnabled}
+          telegramCfg={telegramCfg}
+          setTelegramCfg={setTelegramCfg}
+          alarmTimes={alarmTimes}
+          setAlarmTimes={setAlarmTimes}
           toast={toast}
           setToast={setToast}
         />
