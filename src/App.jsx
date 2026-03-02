@@ -137,16 +137,18 @@ const playSuccessSound = () => playSound(800, 150);
 
 // ---------- Telegram helpers ----------
 async function sendTelegramMessage(botToken, chatId, text) {
-  if (!botToken || !chatId) return false;
+  if (!botToken || !chatId) return { ok: false, error: '토큰 또는 챗 ID가 비어 있어요' };
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
     });
-    return res.ok;
-  } catch {
-    return false;
+    const json = await res.json();
+    if (res.ok) return { ok: true };
+    return { ok: false, error: json.description || `HTTP ${res.status}` };
+  } catch (e) {
+    return { ok: false, error: e.message || '네트워크 오류' };
   }
 }
 
@@ -1389,16 +1391,16 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   };
 
   const testTelegramMsg = async () => {
-    const ok = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '✅ <b>DayMate 연결 테스트 성공!</b>\n\n텔레그램 알림이 정상 작동해요.');
-    setToast(ok ? '텔레그램 전송 성공 ✅' : '전송 실패 - 설정을 확인하세요 🚫');
+    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '✅ <b>DayMate 연결 테스트 성공!</b>\n\n텔레그램 알림이 정상 작동해요.');
+    setToast(res.ok ? '텔레그램 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
   };
 
   const testBriefing = async () => {
     setToast('브리핑 생성 중...');
     const marketData = await fetchMarketData(finnhubKey.trim());
     const text = buildBriefingText(marketData, user.name);
-    const ok = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
-    setToast(ok ? '브리핑 전송 성공 ✅' : '전송 실패 🚫');
+    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
+    setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
   };
 
   const save = () => {
@@ -1711,7 +1713,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v3 · 2026-03-02
+        DayMate Lite v4 · 2026-03-02
       </div>
       <div style={{ height: 12 }} />
     </div>
