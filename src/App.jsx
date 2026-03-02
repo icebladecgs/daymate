@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore } from "./firebase.js";
 
 /* =========================================================
    DayMate Lite (safe, mobile-friendly)
@@ -1362,7 +1363,8 @@ function Stats({ plans }) {
 }
 
 function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
-                    telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast }) {
+                    telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
+                    authUser, syncStatus, onGoogleSignIn, onGoogleSignOut }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [monthText, setMonthText] = useState((goals.month || []).join("\n"));
@@ -1380,6 +1382,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     const cfg = { botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim() };
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
+    if (authUser) saveSettings(authUser.uid, { telegram: cfg }).catch(() => {});
     setToast('텔레그램 설정 저장 ✅');
   };
 
@@ -1387,6 +1390,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     const times = { noon: noonTime, evening: eveningTime, night: nightTime };
     setAlarmTimes(times);
     store.set('dm_alarm_times', times);
+    if (authUser) saveSettings(authUser.uid, { alarmTimes: times }).catch(() => {});
     setToast('알림 시간 저장 ✅');
   };
 
@@ -1712,8 +1716,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         </button>
       </div>
 
+      <div style={S.sectionTitle}>계정 동기화</div>
+      <div style={S.card}>
+        {authUser ? (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              {authUser.photoURL && (
+                <img src={authUser.photoURL} alt="" style={{ width: 40, height: 40, borderRadius: "50%" }} />
+              )}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{authUser.displayName}</div>
+                <div style={{ fontSize: 12, color: "#A8AFCA" }}>{authUser.email}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : '#A8AFCA', marginBottom: 12 }}>
+              {syncStatus === 'syncing' ? '동기화 중...' : syncStatus === 'synced' ? '✓ 동기화 완료' : '대기 중'}
+            </div>
+            <button style={S.btnGhost} onClick={() => onGoogleSignOut().catch(() => {})}>로그아웃</button>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
+              Google 계정으로 로그인하면 데스크탑↔모바일 데이터가 자동으로 동기화돼요.
+            </div>
+            <button
+              style={{ ...S.btn, background: "#fff", color: "#333", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              onClick={() => onGoogleSignIn().catch(() => {})}
+            >
+              <span style={{ fontSize: 16 }}>G</span> Google로 로그인
+            </button>
+          </div>
+        )}
+      </div>
+
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v4 · 2026-03-02
+        DayMate Lite v5 · 2026-03-02
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -1735,6 +1772,9 @@ export default function App() {
 
   // no width limit - let container fill viewport
   const phoneStyleOverride = { maxWidth: '100%' };
+
+  const [authUser, setAuthUser] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
@@ -1772,13 +1812,64 @@ export default function App() {
     });
   };
 
+  // Firebase auth listener
+  useEffect(() => {
+    return onAuth(async (firebaseUser) => {
+      setAuthUser(firebaseUser);
+      if (!firebaseUser) return;
+
+      setSyncStatus('syncing');
+      try {
+        const remote = await loadAllFromFirestore(firebaseUser.uid);
+        const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
+
+        if (hasRemote) {
+          // Firestore 데이터를 로컬로 덮어쓰기
+          if (remote.settings) {
+            const s = remote.settings;
+            if (s.name) { setUser({ name: s.name }); store.set("dm_user", { name: s.name }); }
+            if (s.notifEnabled !== undefined) { setNotifEnabled(s.notifEnabled); store.set("dm_notif_enabled", s.notifEnabled); }
+            if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
+            if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
+          }
+          if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
+          if (Object.keys(remote.days).length > 0) {
+            const merged = { ...remote.days };
+            Object.entries(remote.days).forEach(([ds, d]) => { saveDay(ds, d); });
+            setPlans(merged);
+          }
+        } else {
+          // 최초 로그인: 로컬 데이터를 Firestore로 업로드
+          const localDays = {};
+          listAllDays().forEach((ds) => { const d = loadDay(ds); if (d) localDays[ds] = d; });
+          await uploadLocalToFirestore(firebaseUser.uid, {
+            settings: {
+              name: user.name,
+              notifEnabled,
+              alarmTimes,
+              telegram: telegramCfg,
+            },
+            goals,
+            days: localDays,
+          });
+        }
+        setSyncStatus('synced');
+      } catch {
+        setSyncStatus('idle');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Persist user/goals when updated elsewhere
   useEffect(() => {
     store.set("dm_user", user);
-  }, [user]);
+    if (authUser) saveSettings(authUser.uid, { name: user.name }).catch(() => {});
+  }, [user, authUser]);
   useEffect(() => {
     store.set("dm_goals", goals);
-  }, [goals]);
+    if (authUser) saveGoals(authUser.uid, goals).catch(() => {});
+  }, [goals, authUser]);
 
   // Persist notifEnabled
   useEffect(() => {
@@ -1805,6 +1896,7 @@ export default function App() {
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
       const next = { ...prev, [todayStr]: nextDay };
       saveDay(todayStr, nextDay);
+      if (authUser) fsaveDay(authUser.uid, todayStr, nextDay).catch(() => {});
       return next;
     });
   };
@@ -1943,6 +2035,10 @@ export default function App() {
           setAlarmTimes={setAlarmTimes}
           toast={toast}
           setToast={setToast}
+          authUser={authUser}
+          syncStatus={syncStatus}
+          onGoogleSignIn={googleSignIn}
+          onGoogleSignOut={googleSignOut}
         />
       );
     }
