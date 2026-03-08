@@ -914,6 +914,18 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         </div>
       </div>
 
+      {(todayData?.memo || '').trim() && (
+        <>
+          <div style={S.sectionTitle}>📝 오늘 메모</div>
+          <div style={{ ...S.card, cursor: "pointer" }} onClick={onGoToday}>
+            <div style={{ fontSize: 13, color: "#A8AFCA", whiteSpace: "pre-wrap", lineHeight: 1.6, maxHeight: 64, overflow: "hidden" }}>
+              {(todayData.memo || '').trim().split('\n').slice(0, 3).join('\n')}
+            </div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6 }}>✏️ 탭해서 편집</div>
+          </div>
+        </>
+      )}
+
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>📅 이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
@@ -1139,6 +1151,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 function History({ plans, onOpenDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
+  const [searchQ, setSearchQ] = useState('');
 
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -1184,6 +1197,17 @@ function History({ plans, onOpenDate }) {
   } catch { return []; }
 }, [plans]);
 
+  const searchResults = useMemo(() => {
+    if (!searchQ.trim()) return [];
+    const q = searchQ.toLowerCase();
+    return Object.keys(plans)
+      .filter(ds => {
+        const d = plans[ds];
+        return (d?.memo || '').toLowerCase().includes(q) || (d?.journal?.body || '').toLowerCase().includes(q);
+      })
+      .sort((a, b) => b.localeCompare(a));
+  }, [searchQ, plans]);
+
 
   return (
     <div style={S.content}>
@@ -1220,6 +1244,7 @@ function History({ plans, onOpenDate }) {
             const perfect = isPerfectDay(plans[ds]);
             const st = styleOf(r, isToday, perfect);
             const clickable = r !== null;
+            const hasMemo = !!(plans[ds]?.memo?.trim());
             return (
               <div
                 key={ds}
@@ -1230,12 +1255,20 @@ function History({ plans, onOpenDate }) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  position: "relative",
                   cursor: clickable ? "pointer" : "default",
                   ...st,
                 }}
                 title={clickable ? (perfect ? "완벽한 하루 ✓" : `${r}%`) : ""}
               >
                 {perfect ? "✓" : day}
+                {hasMemo && (
+                  <span style={{
+                    position: "absolute", bottom: 3, right: 3,
+                    width: 5, height: 5, borderRadius: 999,
+                    background: "#6C8EFF",
+                  }} />
+                )}
               </div>
             );
           })}
@@ -1253,6 +1286,9 @@ function History({ plans, onOpenDate }) {
         const done = d.tasks.filter((t) => t.done && t.title.trim()).length;
         const filled = d.tasks.filter((t) => t.title.trim()).length;
         const hasJournal = !!d.journal?.body?.trim();
+        const hasMemo = !!d.memo?.trim();
+        const journalPreview = (d.journal?.body || '').trim().split('\n')[0].slice(0, 50);
+        const memoPreview = (d.memo || '').trim().split('\n')[0].slice(0, 50);
         return (
           <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
             <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>
@@ -1261,9 +1297,48 @@ function History({ plans, onOpenDate }) {
             <div style={{ fontSize: 13, marginTop: 8, color: "#F0F2F8" }}>
               ✅ {done}/{Math.max(3, filled || 3)} · {hasJournal ? "📖 일기 있음" : "📖 일기 없음"}
             </div>
+            {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {memoPreview}</div>}
+            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
           </div>
         );
       })}
+
+      <div style={S.sectionTitle}>🔍 메모 / 일기 검색</div>
+      <div style={{ padding: "0 16px 10px" }}>
+        <input
+          style={{ ...S.input, width: "100%", boxSizing: "border-box" }}
+          value={searchQ}
+          onChange={(e) => setSearchQ(e.target.value)}
+          placeholder="키워드로 검색..."
+        />
+      </div>
+      {searchQ.trim() && searchResults.length === 0 && (
+        <div style={{ padding: "12px 18px", color: "#5C6480", fontSize: 13 }}>검색 결과 없음</div>
+      )}
+      {searchResults.map((ds) => {
+        const d = plans[ds];
+        const q = searchQ.toLowerCase();
+        const memoSnippet = (d?.memo || '').trim();
+        const journalSnippet = (d?.journal?.body || '').trim();
+        const highlight = (text) => {
+          const idx = text.toLowerCase().indexOf(q);
+          if (idx < 0) return text.slice(0, 60);
+          const start = Math.max(0, idx - 15);
+          return (start > 0 ? '…' : '') + text.slice(start, idx + q.length + 30);
+        };
+        return (
+          <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
+            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>{formatKoreanDate(ds)}</div>
+            {memoSnippet.toLowerCase().includes(q) && (
+              <div style={{ fontSize: 12, color: "#6C8EFF", marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {highlight(memoSnippet)}</div>
+            )}
+            {journalSnippet.toLowerCase().includes(q) && (
+              <div style={{ fontSize: 12, color: "#A8AFCA", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {highlight(journalSnippet)}</div>
+            )}
+          </div>
+        );
+      })}
+
       <div style={{ height: 12 }} />
     </div>
   );
