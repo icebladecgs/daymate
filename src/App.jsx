@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore } from "./firebase.js";
 
 /* =========================================================
@@ -419,8 +419,8 @@ const scheduler = new NotifScheduler();
 // ---------- Styles ----------
 const S = {
   app: {
-    background: "#0F1117",
-    color: "#F0F2F8",
+    background: "var(--dm-bg)",
+    color: "var(--dm-text)",
     fontFamily: "'Pretendard','Apple SD Gothic Neo',sans-serif",
     minHeight: "100vh",
     display: "flex",
@@ -431,7 +431,7 @@ const S = {
     width: "100%",
     maxWidth: "100%",
     minHeight: "100vh",
-    background: "#181C27",
+    background: "var(--dm-phone)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -447,17 +447,17 @@ const S = {
   },
   topbar: {
     padding: "18px 20px 12px",
-    borderBottom: "1px solid #2D344A",
+    borderBottom: "1px solid var(--dm-border)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
   title: { fontSize: 18, fontWeight: 900 },
-  sub: { fontSize: 12, color: "#A8AFCA", marginTop: 2 },
+  sub: { fontSize: 12, color: "var(--dm-sub)", marginTop: 2 },
   card: {
-    background: "#1E2336",
-    border: "1px solid #2D344A",
+    background: "var(--dm-card)",
+    border: "1px solid var(--dm-border)",
     borderRadius: 14,
     padding: "14px 14px",
     margin: "0 16px 10px",
@@ -467,7 +467,7 @@ const S = {
     padding: "14px 16px 8px",
     fontSize: 11,
     letterSpacing: "0.1em",
-    color: "#5C6480",
+    color: "var(--dm-muted)",
     fontWeight: 800,
     textTransform: "uppercase",
   },
@@ -475,9 +475,9 @@ const S = {
     width: "100%",
     padding: "12px 12px",
     borderRadius: 10,
-    background: "#252B3E",
-    border: "1.5px solid #2D344A",
-    color: "#F0F2F8",
+    background: "var(--dm-input)",
+    border: "1.5px solid var(--dm-border)",
+    color: "var(--dm-text)",
     fontSize: 14,
     fontFamily: "inherit",
     outline: "none",
@@ -502,9 +502,9 @@ const S = {
     marginTop: 10,
     padding: "12px 14px",
     borderRadius: 12,
-    border: "1.5px solid #363D54",
+    border: "1.5px solid var(--dm-border2)",
     background: "transparent",
-    color: "#A8AFCA",
+    color: "var(--dm-sub)",
     fontSize: 14,
     fontWeight: 800,
     cursor: "pointer",
@@ -513,9 +513,9 @@ const S = {
   pill: (on) => ({
     padding: "7px 12px",
     borderRadius: 999,
-    border: `1.5px solid ${on ? "#6C8EFF" : "#2D344A"}`,
-    background: on ? "rgba(108,142,255,.12)" : "#1E2336",
-    color: on ? "#6C8EFF" : "#A8AFCA",
+    border: `1.5px solid ${on ? "#6C8EFF" : "var(--dm-border)"}`,
+    background: on ? "rgba(108,142,255,.12)" : "var(--dm-pill-off)",
+    color: on ? "#6C8EFF" : "var(--dm-sub)",
     fontSize: 12,
     fontWeight: 800,
     cursor: "pointer",
@@ -528,8 +528,8 @@ const S = {
     transform: "translateX(-50%)",
     width: "100%",
     maxWidth: 430,
-    background: "#181C27",
-    borderTop: "1px solid #2D344A",
+    background: "var(--dm-nav)",
+    borderTop: "1px solid var(--dm-border)",
     padding: "10px 0 26px",
     display: "flex",
     justifyContent: "space-around",
@@ -541,7 +541,7 @@ const S = {
     alignItems: "center",
     gap: 3,
     fontSize: 11,
-    color: active ? "#6C8EFF" : "#5C6480",
+    color: active ? "#6C8EFF" : "var(--dm-muted)",
     cursor: "pointer",
     padding: "4px 10px",
     border: "none",
@@ -553,8 +553,8 @@ const S = {
     bottom: 105,
     left: "50%",
     transform: "translateX(-50%)",
-    background: "#1A2E20",
-    border: "1px solid #2E7D52",
+    background: "var(--dm-toast-bg)",
+    border: "1px solid var(--dm-toast-bd)",
     color: "#4ADE80",
     padding: "10px 18px",
     borderRadius: 999,
@@ -777,7 +777,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)}</div>
         </div>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 800 }}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
           {getPermission() === "granted" ? "🔔" : "🔕"}
         </div>
       </div>
@@ -785,11 +785,11 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>✅ 오늘 할일</span>
         <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
-          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
           {editingTasks ? "완료 ✓" : "✏️ 편집"}
         </button>
       </div>
-      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid #2D344A" }}>
+      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
         {editingTasks ? (
           <>
             {draftTasks.map((t, idx) => (
@@ -812,7 +812,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           </>
         ) : filledCount === 0 ? (
           <>
-            <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 14 }}>
+            <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 14 }}>
               오늘 할 일을 아직 입력하지 않았어요
             </div>
             <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
@@ -820,10 +820,10 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
               {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
             </div>
-            <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+            <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
               <div style={{
                 height: "100%", borderRadius: 3, transition: "width 0.3s",
                 background: allDone ? "#4ADE80" : "#4B6FFF",
@@ -835,7 +835,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
               return (
                 <div key={task.id} onClick={() => onToggleTask(task.id)}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                    borderBottom: i < (todayData.tasks.length - 1) ? "1px solid #1E2235" : "none",
+                    borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none",
                     cursor: "pointer" }}>
                   <div style={{
                     width: 22, height: 22, borderRadius: 6, flexShrink: 0,
@@ -847,7 +847,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   </div>
                   <div style={{
                     fontSize: 14, fontWeight: 700, flex: 1,
-                    color: task.done ? "#5C6480" : "#F0F2F8",
+                    color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
                     textDecoration: task.done ? "line-through" : "none",
                   }}>{task.title}</div>
                 </div>
@@ -861,10 +861,10 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         <>
           <div style={S.sectionTitle}>📝 오늘 메모</div>
           <div style={{ ...S.card, cursor: "pointer" }} onClick={onGoToday}>
-            <div style={{ fontSize: 13, color: "#A8AFCA", whiteSpace: "pre-wrap", lineHeight: 1.6, maxHeight: 64, overflow: "hidden" }}>
+            <div style={{ fontSize: 13, color: "var(--dm-sub)", whiteSpace: "pre-wrap", lineHeight: 1.6, maxHeight: 64, overflow: "hidden" }}>
               {(todayData.memo || '').trim().split('\n').slice(0, 3).join('\n')}
             </div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6 }}>✏️ 탭해서 편집</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6 }}>✏️ 탭해서 편집</div>
           </div>
         </>
       )}
@@ -872,7 +872,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>📅 이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
-          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
           {editingGoals ? "완료 ✓" : "✏️ 편집"}
         </button>
       </div>
@@ -922,10 +922,10 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
+                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
                 {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
               </div>
-              <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
                 <div style={{
                   height: "100%", borderRadius: 3, transition: "width 0.3s",
                   background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
@@ -937,7 +937,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                 return (
                   <div key={i} onClick={() => onToggleGoal(i)}
                     style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      borderBottom: i < monthGoals.length - 1 ? "1px solid #1E2235" : "none",
+                      borderBottom: i < monthGoals.length - 1 ? `1px solid var(--dm-row)` : "none",
                       cursor: "pointer" }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0,
@@ -949,7 +949,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                     </div>
                     <div style={{
                       fontSize: 14, fontWeight: 700, flex: 1,
-                      color: done ? "#5C6480" : "#F0F2F8",
+                      color: done ? "var(--dm-muted)" : "var(--dm-text)",
                       textDecoration: done ? "line-through" : "none",
                     }}>{g}</div>
                   </div>
@@ -958,33 +958,33 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
             </>
           );
         })() : (
-          <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 4 }}>
+          <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 4 }}>
             이달 목표가 없어요.{" "}
             <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
           </div>
         )}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235" }}>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>📆 완벽한 날</div>
-            <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>📆 완벽한 날</div>
+            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 2,
                 background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
                 width: `${goalProgress.monthProgress}%`,
               }} />
             </div>
-            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
+            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>👑 연간</div>
-            <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>👑 연간</div>
+            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 2,
                 background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
                 width: `${goalProgress.yearProgress}%`,
               }} />
             </div>
-            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
+            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
           </div>
         </div>
       </div>
@@ -1019,7 +1019,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           <div style={{ fontSize: 14, fontWeight: 900, textAlign: "center", color: "#4ADE80" }}>
             완벽한 하루!
           </div>
-          <div style={{ fontSize: 12, textAlign: "center", color: "#A8AFCA", marginTop: 6 }}>
+          <div style={{ fontSize: 12, textAlign: "center", color: "var(--dm-sub)", marginTop: 6 }}>
             3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥
           </div>
         </div>
@@ -1027,7 +1027,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 
       <div style={{ ...S.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: 16 }}>
         <span>📝 오늘 메모</span>
-        <span style={{ fontSize: 11, color: "#5C6480", fontWeight: 400 }}>수시로 기록해요</span>
+        <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>수시로 기록해요</span>
       </div>
       <div style={S.card}>
         <textarea
@@ -1049,7 +1049,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         >
           메모 저장
         </button>
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6, textAlign: "right" }}>
           {(data.memo ?? "").length} / 1200
         </div>
       </div>
@@ -1081,7 +1081,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         >
           일기 저장
         </button>
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, textAlign: "right" }}>
           {data.journal.body.length} / 1200
         </div>
       </div>
@@ -1112,7 +1112,7 @@ function History({ plans, onOpenDate }) {
   const styleOf = (r, isToday, isPerfect) => {
     if (isPerfect) return { background: "rgba(74,222,128,.20)", color: "#4ADE80", fontWeight: 900, border: "1.5px solid #4ADE80" };
     if (isToday) return { background: "#6C8EFF", color: "#fff", fontWeight: 900 };
-    if (r === null) return { background: "transparent", color: "#5C6480" };
+    if (r === null) return { background: "transparent", color: "var(--dm-muted)" };
     if (r >= 80) return { background: "rgba(74,222,128,.18)", color: "#4ADE80", fontWeight: 900 };
     if (r >= 50) return { background: "rgba(252,211,77,.14)", color: "#FCD34D", fontWeight: 900 };
     return { background: "rgba(248,113,113,.10)", color: "#F87171", fontWeight: 900 };
@@ -1172,7 +1172,7 @@ function History({ plans, onOpenDate }) {
       <div style={{ padding: "0 18px 12px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-            <div key={d} style={{ textAlign: "center", fontSize: 11, color: "#5C6480", fontWeight: 900 }}>
+            <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>
               {d}
             </div>
           ))}
@@ -1220,7 +1220,7 @@ function History({ plans, onOpenDate }) {
 
       <div style={S.sectionTitle}>최근 기록</div>
       {recent.length === 0 && (
-        <div style={{ padding: "20px 18px", color: "#5C6480", textAlign: "center" }}>
+        <div style={{ padding: "20px 18px", color: "var(--dm-muted)", textAlign: "center" }}>
           아직 기록이 없어요 🌱
         </div>
       )}
@@ -1234,14 +1234,14 @@ function History({ plans, onOpenDate }) {
         const memoPreview = (d.memo || '').trim().split('\n')[0].slice(0, 50);
         return (
           <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
-            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>
               {formatKoreanDate(ds)}
             </div>
-            <div style={{ fontSize: 13, marginTop: 8, color: "#F0F2F8" }}>
+            <div style={{ fontSize: 13, marginTop: 8, color: "var(--dm-text)" }}>
               ✅ {done}/{Math.max(3, filled || 3)} · {hasJournal ? "📖 일기 있음" : "📖 일기 없음"}
             </div>
             {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {memoPreview}</div>}
-            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
+            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
           </div>
         );
       })}
@@ -1256,7 +1256,7 @@ function History({ plans, onOpenDate }) {
         />
       </div>
       {searchQ.trim() && searchResults.length === 0 && (
-        <div style={{ padding: "12px 18px", color: "#5C6480", fontSize: 13 }}>검색 결과 없음</div>
+        <div style={{ padding: "12px 18px", color: "var(--dm-muted)", fontSize: 13 }}>검색 결과 없음</div>
       )}
       {searchResults.map((ds) => {
         const d = plans[ds];
@@ -1271,12 +1271,12 @@ function History({ plans, onOpenDate }) {
         };
         return (
           <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
-            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>{formatKoreanDate(ds)}</div>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>{formatKoreanDate(ds)}</div>
             {memoSnippet.toLowerCase().includes(q) && (
               <div style={{ fontSize: 12, color: "#6C8EFF", marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {highlight(memoSnippet)}</div>
             )}
             {journalSnippet.toLowerCase().includes(q) && (
-              <div style={{ fontSize: 12, color: "#A8AFCA", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {highlight(journalSnippet)}</div>
+              <div style={{ fontSize: 12, color: "var(--dm-sub)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {highlight(journalSnippet)}</div>
             )}
           </div>
         );
@@ -1357,9 +1357,9 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
               onClick={() => toggleDone(t.id)}
               style={{
                 width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-                border: `1.5px solid ${t.done ? "#4ADE80" : "#2D344A"}`,
-                background: t.done ? "rgba(74,222,128,.12)" : "#252B3E",
-                color: t.done ? "#4ADE80" : "#A8AFCA",
+                border: `1.5px solid ${t.done ? "#4ADE80" : "var(--dm-border)"}`,
+                background: t.done ? "rgba(74,222,128,.12)" : "var(--dm-input)",
+                color: t.done ? "#4ADE80" : "var(--dm-sub)",
                 fontSize: 18, cursor: "pointer",
               }}
             >
@@ -1383,7 +1383,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
         ))}
         <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>
         {!isToday && (
-          <div style={{ marginTop: 8, fontSize: 11, color: "#5C6480" }}>
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--dm-muted)" }}>
             ✏️ 과거 날짜 기록을 편집 중이에요
           </div>
         )}
@@ -1396,9 +1396,9 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
             <div
               key={t}
               style={{
-                padding: "7px 10px", borderRadius: 999, border: "1.5px solid #2D344A",
-                background: data.checks[t] ? "rgba(108,142,255,.12)" : "#252B3E",
-                color: data.checks[t] ? "#6C8EFF" : "#A8AFCA",
+                padding: "7px 10px", borderRadius: 999, border: "1.5px solid var(--dm-border)",
+                background: data.checks[t] ? "rgba(108,142,255,.12)" : "var(--dm-input)",
+                color: data.checks[t] ? "#6C8EFF" : "var(--dm-sub)",
                 fontSize: 12, fontWeight: 900,
               }}
             >
@@ -1429,7 +1429,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
         >
           메모 저장
         </button>
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6, textAlign: "right" }}>
           {(data.memo ?? "").length} / 1200
         </div>
       </div>
@@ -1450,7 +1450,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
           maxLength={1200}
         />
         <button style={S.btn} onClick={saveJournal}>일기 저장</button>
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, textAlign: "right" }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, textAlign: "right" }}>
           {(data.journal?.body || "").length} / 1200
         </div>
       </div>
@@ -1530,7 +1530,7 @@ function Stats({ plans }) {
   const heatTotalFilled = heatmapCells.filter(c => c && c.filled).length;
 
   const cellColor = (cell) => {
-    if (!cell || !cell.filled) return '#1A1F2E';
+    if (!cell || !cell.filled) return 'var(--dm-deep)';
     if (cell.perfect) return '#4ADE80';
     if (cell.done === 0) return 'rgba(248,113,113,.25)';
     if (cell.done === cell.total) return 'rgba(74,222,128,.4)';
@@ -1565,14 +1565,14 @@ function Stats({ plans }) {
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
           <div style={{ textAlign: "center", minWidth: 56 }}>
-            <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "#5C6480", lineHeight: 1 }}>{streak}</div>
-            <div style={{ fontSize: 11, color: "#A8AFCA", marginTop: 4 }}>일 연속</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "var(--dm-muted)", lineHeight: 1 }}>{streak}</div>
+            <div style={{ fontSize: 11, color: "var(--dm-sub)", marginTop: 4 }}>일 연속</div>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: streak > 0 ? "#F0F2F8" : "#5C6480", marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: streak > 0 ? "var(--dm-text)" : "var(--dm-muted)", marginBottom: 4 }}>
               {streak > 0 ? `🔥 ${streak}일 연속 중!` : "연속 기록 없음"}
             </div>
-            <div style={{ fontSize: 12, color: "#5C6480" }}>이번주 평균 완료율 
+            <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>이번주 평균 완료율 
               <b style={{ color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>{weeklyAvg}%</b>
             </div>
           </div>
@@ -1584,14 +1584,14 @@ function Stats({ plans }) {
               <div key={i} style={{ flex: 1, textAlign: "center" }}>
                 <div style={{
                   height: 28, borderRadius: 6,
-                  background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "#252B3E",
-                  border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "#1E2336"}`,
+                  background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "var(--dm-input)",
+                  border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "var(--dm-card)"}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 900, color: d.isPerfect ? "#4ADE80" : "#A8AFCA", marginBottom: 4,
+                  fontSize: 11, fontWeight: 900, color: d.isPerfect ? "#4ADE80" : "var(--dm-sub)", marginBottom: 4,
                 }}>
                   {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
                 </div>
-                <div style={{ fontSize: 10, color: "#5C6480", fontWeight: 800 }}>{dow}</div>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 800 }}>{dow}</div>
               </div>
             );
           })}
@@ -1605,12 +1605,12 @@ function Stats({ plans }) {
           <div style={{ fontSize: 42, fontWeight: 900, color: perfectRate >= 80 ? "#4ADE80" : perfectRate >= 50 ? "#FCD34D" : "#F87171", marginBottom: 8 }}>
             {perfectDays}
           </div>
-          <div style={{ fontSize: 13, color: "#A8AFCA", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: "var(--dm-sub)", marginBottom: 12 }}>
             {filledDays}일 중 {perfectDays}일 완벽함
           </div>
           <div style={{
             height: 12,
-            background: "#252B3E",
+            background: "var(--dm-input)",
             borderRadius: 6,
             overflow: "hidden",
             marginBottom: 8,
@@ -1636,17 +1636,17 @@ function Stats({ plans }) {
             <div key={m.month} style={{
               textAlign: "center",
               padding: 12,
-              background: "#252B3E",
+              background: "var(--dm-input)",
               borderRadius: 10,
-              border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid #2D344A",
+              border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid var(--dm-border)",
             }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: "#A8AFCA", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>
                 {pad2(m.month + 1)}월
               </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: m.rate >= 80 ? "#4ADE80" : m.rate >= 50 ? "#FCD34D" : m.filled > 0 ? "#F87171" : "#5C6480" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: m.rate >= 80 ? "#4ADE80" : m.rate >= 50 ? "#FCD34D" : m.filled > 0 ? "#F87171" : "var(--dm-muted)" }}>
                 {m.filled === 0 ? "-" : m.rate + "%"}
               </div>
-              <div style={{ fontSize: 10, color: "#5C6480", marginTop: 4 }}>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>
                 {m.perfect}/{m.filled}
               </div>
             </div>
@@ -1659,15 +1659,15 @@ function Stats({ plans }) {
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => setHeatmapYear(y => y - 1)}
             style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>‹</button>
-          <span style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, alignSelf: "center" }}>{heatmapYear}</span>
+          <span style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, alignSelf: "center" }}>{heatmapYear}</span>
           <button onClick={() => setHeatmapYear(y => y + 1)}
             style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>›</button>
         </div>
       </div>
       <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 10px", overflowX: "auto" }}>
-        <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
           <span>완벽한 날 <b style={{ color: "#4ADE80" }}>{heatTotalPerfect}</b>일</span>
-          <span>기록한 날 <b style={{ color: "#A8AFCA" }}>{heatTotalFilled}</b>일</span>
+          <span>기록한 날 <b style={{ color: "var(--dm-sub)" }}>{heatTotalFilled}</b>일</span>
         </div>
         {/* 요일 헤더 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4, minWidth: 200 }}>
@@ -1693,15 +1693,15 @@ function Stats({ plans }) {
           ))}
         </div>
         {tooltip && (
-          <div style={{ marginTop: 10, padding: "8px 12px", background: "#252B3E", borderRadius: 8, fontSize: 12, color: "#F0F2F8" }}>
+          <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--dm-input)", borderRadius: 8, fontSize: 12, color: "var(--dm-text)" }}>
             <b>{formatKoreanDate(tooltip.ds)}</b>
             {tooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
             {!tooltip.perfect && tooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{tooltip.done}/{tooltip.total} 완료</span>}
           </div>
         )}
-        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "#5C6480" }}>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "var(--dm-muted)" }}>
           <span>적음</span>
-          {["#1A1F2E", "rgba(248,113,113,.25)", "rgba(252,211,77,.35)", "rgba(74,222,128,.4)", "#4ADE80"].map((c, i) => (
+          {["var(--dm-deep)", "rgba(248,113,113,.25)", "rgba(252,211,77,.35)", "rgba(74,222,128,.4)", "#4ADE80"].map((c, i) => (
             <div key={i} style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
           ))}
           <span>완벽</span>
@@ -1877,14 +1877,14 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>프로필</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>이름</div>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>이름</div>
         <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
         <button style={S.btn} onClick={save}>저장</button>
       </div>
 
       <div style={S.sectionTitle}>목표</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
           👑 연간 목표 (최대 5개)
         </div>
         <textarea
@@ -1894,7 +1894,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           onChange={(e) => setYearText(e.target.value)}
           placeholder="한 줄에 하나씩 입력"
         />
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
           💡 이달 목표는 홈 화면에서 직접 추가/편집할 수 있어요
         </div>
         <button style={S.btn} onClick={save}>저장</button>
@@ -1905,7 +1905,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 900 }}>알림 ON/OFF</div>
-            <div style={{ fontSize: 12, color: "#5C6480", marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>
               07:30 / 12:00 / 18:00 / 22:00 (탭이 열려 있을 때 동작)
             </div>
             {permission === "denied" && (
@@ -1939,7 +1939,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               width: 52,
               height: 28,
               borderRadius: 999,
-              background: notifEnabled && permission === "granted" ? "#6C8EFF" : "#2D344A",
+              background: notifEnabled && permission === "granted" ? "#6C8EFF" : "var(--dm-border)",
               cursor: permission === "granted" ? "pointer" : "not-allowed",
               position: "relative",
               opacity: permission === "granted" ? 1 : 0.5,
@@ -1990,7 +1990,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>알림 시간 설정</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           아침·점심·저녁·밤 알림 시간을 조정할 수 있어요.
         </div>
         {[
@@ -2000,7 +2000,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           { label: "밤 마감 알람", value: nightTime, set: setNightTime },
         ].map(({ label, value, set }) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <div style={{ flex: 1, fontSize: 13, color: "#F0F2F8", fontWeight: 800 }}>{label}</div>
+            <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>{label}</div>
             <input
               type="time"
               value={value}
@@ -2015,65 +2015,65 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       <div style={S.sectionTitle}>텔레그램 자동화</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
           <button onClick={() => setShowBotHelp(v => !v)}
             style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
             {showBotHelp ? "▲ 닫기" : "❓ 얻는 방법"}
           </button>
         </div>
         {showBotHelp && (
-          <div style={{ fontSize: 12, color: "#A8AFCA", background: "#1A1F2E", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid #2D344A" }}>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
             <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 <b>@BotFather</b> 검색 후 시작<br />
-            <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
+            <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
             <b style={{ color: "#6C8EFF" }}>3.</b> 봇 이름 지정 → 사용자명(봇ID) 지정<br />
             <b style={{ color: "#6C8EFF" }}>4.</b> BotFather가 전송한 <b>HTTP API token</b> 복사<br />
-            <span style={{ color: "#5C6480" }}>예) <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
+            <span style={{ color: "var(--dm-muted)" }}>예) <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
           </div>
         )}
         <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
 
         <div style={{ height: 10 }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
           <button onClick={() => setShowChatHelp(v => !v)}
             style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
             {showChatHelp ? "▲ 닫기" : "❓ 얻는 방법"}
           </button>
         </div>
         {showChatHelp && (
-          <div style={{ fontSize: 12, color: "#A8AFCA", background: "#1A1F2E", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid #2D344A" }}>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
             <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 내가 만든 봇을 찾아 메시지 전송<br />
             <b style={{ color: "#6C8EFF" }}>2.</b> 브라우저에서 아래 URL 접속:<br />
-            <code style={{ background: "#252B3E", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
-            <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>"chat":{'{'}"id": <b>숫자</b>{'}'}</code> 확인<br />
-            <span style={{ color: "#5C6480" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
+            <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
+            <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>"chat":{'{'}"id": <b>숫자</b>{'}'}</code> 확인<br />
+            <span style={{ color: "var(--dm-muted)" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
           </div>
         )}
         <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
 
         <div style={{ height: 10 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 4 }}>
-          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
+          Finnhub API Key <span style={{ color: "var(--dm-muted)", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
         </div>
-        <div style={{ fontSize: 12, color: "#5C6480", padding: "10px 12px", background: "#1A1F2E", borderRadius: 8, border: "1px solid #2D344A" }}>
+        <div style={{ fontSize: 12, color: "var(--dm-muted)", padding: "10px 12px", background: "var(--dm-deep)", borderRadius: 8, border: "1px solid var(--dm-border)" }}>
           🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
         </div>
 
         <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>자산 브리핑</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>자산 브리핑</div>
             <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>할일 알림</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
             <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
           </div>
         </div>
 
         <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {Object.entries(ASSET_META).map(([sym, meta]) => {
             const on = selectedAssets.includes(sym);
@@ -2083,8 +2083,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                 onClick={() => toggleAsset(sym)}
                 style={{
                   padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: on ? "#4B6FFF" : "#1E2235",
-                  color: on ? "#fff" : "#5C6480",
+                  background: on ? "#4B6FFF" : "var(--dm-row)",
+                  color: on ? "#fff" : "var(--dm-muted)",
                 }}
               >
                 {sym} <span style={{ fontWeight: 400 }}>{meta.label}</span>
@@ -2099,8 +2099,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               <div key={a.sym} style={{
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "#1E2235",
-                color: selectedAssets.includes(a.sym) ? "#fff" : "#5C6480",
+                background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "var(--dm-row)",
+                color: selectedAssets.includes(a.sym) ? "#fff" : "var(--dm-muted)",
               }}>
                 <span onClick={() => toggleAsset(a.sym)} style={{ cursor: "pointer" }}>
                   {a.sym} <span style={{ fontWeight: 400 }}>{a.label}</span>
@@ -2115,7 +2115,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             {['stock', 'crypto'].map(mode => (
               <button
@@ -2123,8 +2123,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                 onClick={() => { setSearchMode(mode); setSearchResults([]); setAssetSearch(''); }}
                 style={{
                   padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: searchMode === mode ? "#4B6FFF" : "#1E2235",
-                  color: searchMode === mode ? "#fff" : "#5C6480",
+                  background: searchMode === mode ? "#4B6FFF" : "var(--dm-row)",
+                  color: searchMode === mode ? "#fff" : "var(--dm-muted)",
                 }}
               >{mode === 'stock' ? '주식/ETF' : '코인'}</button>
             ))}
@@ -2136,11 +2136,11 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               value={assetSearch}
               onChange={e => doAssetSearch(e.target.value)}
             />
-            {searching && <span style={{ color: "#A8AFCA", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
+            {searching && <span style={{ color: "var(--dm-sub)", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
           </div>
           {searchResults.length > 0 && (
             <div style={{
-              marginTop: 8, background: "#131720", border: "1px solid #2D344A",
+              marginTop: 8, background: "var(--dm-deep)", border: "1px solid var(--dm-border)",
               borderRadius: 10, overflow: "hidden",
             }}>
               {searchResults.map(item => (
@@ -2148,13 +2148,13 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                   key={item.sym + item.src}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "8px 12px", borderBottom: "1px solid #1E2336", cursor: "pointer",
+                    padding: "8px 12px", borderBottom: "1px solid var(--dm-card)", cursor: "pointer",
                   }}
                   onClick={() => addCustomAsset(item)}
                 >
                   <div>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "#F0F2F8" }}>{item.sym}</span>
-                    <span style={{ fontSize: 12, color: "#A8AFCA", marginLeft: 8 }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: "var(--dm-text)" }}>{item.sym}</span>
+                    <span style={{ fontSize: 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
                   </div>
                   <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
                 </div>
@@ -2168,14 +2168,14 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
         <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
 
-        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 10, lineHeight: 1.7 }}>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
           ⚠️ 탭이 열려 있을 때만 동작해요.
         </div>
       </div>
 
       <div style={S.sectionTitle}>백업</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7 }}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
           • 이 앱 데이터는 각 기기 브라우저에 저장됩니다.<br />
           • JSON으로 백업하면 다른 기기에서 복구할 수 있어요.
         </div>
@@ -2228,17 +2228,17 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               )}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{authUser.displayName}</div>
-                <div style={{ fontSize: 12, color: "#A8AFCA" }}>{authUser.email}</div>
+                <div style={{ fontSize: 12, color: "var(--dm-sub)" }}>{authUser.email}</div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : '#A8AFCA', marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : 'var(--dm-sub)', marginBottom: 12 }}>
               {syncStatus === 'syncing' ? '동기화 중...' : syncStatus === 'synced' ? '✓ 동기화 완료' : '대기 중'}
             </div>
             <button style={S.btnGhost} onClick={() => onGoogleSignOut().catch(() => {})}>로그아웃</button>
           </div>
         ) : (
           <div>
-            <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
               Google 계정으로 로그인하면 데스크탑↔모바일 데이터가 자동으로 동기화돼요.
             </div>
             <button
@@ -2251,7 +2251,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
-      <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
+      <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
         DayMate Lite v10 · 2026-03-08
       </div>
       <div style={{ height: 12 }} />
@@ -2278,6 +2278,16 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
   const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
+
+  // 다크/라이트 모드
+  const [isDark, setIsDark] = useState(() => store.get('dm_theme', 'dark') === 'dark');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    store.set('dm_theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }, []);
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
@@ -2472,13 +2482,13 @@ export default function App() {
               fontSize: 34, boxShadow: "0 8px 28px rgba(108,142,255,.35)"
             }}>✅</div>
             <div style={{ fontSize: 26, fontWeight: 900 }}>DayMate Lite</div>
-            <div style={{ fontSize: 13, color: "#A8AFCA", lineHeight: 1.7, marginTop: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7, marginTop: 10 }}>
               매일 “할 일 3가지”만 정하고<br/>체크하고, 일기 한 줄로 마무리.
             </div>
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>이름</div>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>이름</div>
             <input
               style={S.input}
               value={nameInput}
@@ -2501,7 +2511,7 @@ export default function App() {
             </button>
           </div>
 
-          <div style={{ padding: "0 22px", color: "#5C6480", fontSize: 12, lineHeight: 1.7 }}>
+          <div style={{ padding: "0 22px", color: "var(--dm-muted)", fontSize: 12, lineHeight: 1.7 }}>
             • 데이터는 기기 브라우저에 저장됩니다<br/>
             • 백업은 설정에서 JSON으로 내보내기 가능
           </div>
@@ -2614,6 +2624,14 @@ export default function App() {
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {render(changeScreen)}
         {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
+        <button
+          onClick={() => setIsDark(v => !v)}
+          style={{ position:"fixed", bottom:90, right:16, width:38, height:38, borderRadius:999,
+            border:"1.5px solid var(--dm-border)", background:"var(--dm-card)", fontSize:18,
+            cursor:"pointer", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center",
+            boxShadow:"0 2px 12px rgba(0,0,0,.25)" }}>
+          {isDark ? "☀️" : "🌙"}
+        </button>
       </div>
     </div>
   );

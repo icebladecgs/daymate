@@ -13,6 +13,43 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== DayMate theme variables ===== */
+[data-theme="dark"] {
+  --dm-bg:        #0F1117;
+  --dm-phone:     #181C27;
+  --dm-card:      #1E2336;
+  --dm-border:    #2D344A;
+  --dm-border2:   #363D54;
+  --dm-input:     #252B3E;
+  --dm-text:      #F0F2F8;
+  --dm-sub:       #A8AFCA;
+  --dm-muted:     #5C6480;
+  --dm-row:       #1E2235;
+  --dm-nav:       #181C27;
+  --dm-toast-bg:  #1A2E20;
+  --dm-toast-bd:  #2E7D52;
+  --dm-pill-off:  #1E2336;
+  --dm-deep:      #1A1F2E;
+}
+
+[data-theme="light"] {
+  --dm-bg:        #F0F2F8;
+  --dm-phone:     #FFFFFF;
+  --dm-card:      #FFFFFF;
+  --dm-border:    #D8DDEF;
+  --dm-border2:   #C8CCDC;
+  --dm-input:     #F4F5FA;
+  --dm-text:      #1A1F2E;
+  --dm-sub:       #5C6480;
+  --dm-muted:     #9CA3BC;
+  --dm-row:       #F0F2F8;
+  --dm-nav:       #FFFFFF;
+  --dm-toast-bg:  #F0FFF4;
+  --dm-toast-bd:  #4ADE80;
+  --dm-pill-off:  #F0F2F8;
+  --dm-deep:      #F4F5FA;
+}
+
 a {
   font-weight: 500;
   color: #646cff;
