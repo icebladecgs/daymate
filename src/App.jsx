@@ -623,6 +623,7 @@ const newDay = (date) => ({
   ],
   checks: { "07:30": false, "12:00": false, "18:00": false, "22:00": false },
   journal: { body: "", savedAt: null },
+  memo: "",
 });
 
 function dayKey(dateStr) {
@@ -1068,6 +1069,26 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           </div>
         </div>
       )}
+
+      <div style={{ ...S.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: 16 }}>
+        <span>📝 오늘 메모</span>
+        <span style={{ fontSize: 11, color: "#5C6480", fontWeight: 400 }}>수시로 기록해요</span>
+      </div>
+      <div style={S.card}>
+        <textarea
+          rows={4}
+          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
+          value={data.memo ?? ""}
+          onChange={(e) =>
+            setData((prev) => ({ ...prev, memo: e.target.value }))
+          }
+          placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
+          maxLength={600}
+        />
+        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
+          {(data.memo ?? "").length} / 600
+        </div>
+      </div>
 
       <div style={S.sectionTitle}>일기 (22:00 이후 추천)</div>
       <div style={S.card}>
