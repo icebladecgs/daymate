@@ -269,6 +269,7 @@ class NotifScheduler {
 
     const { botToken = '', chatId = '', finnhubKey = '', briefingTime = '07:00', todoTime = '07:05', assets } = telegramCfg;
     const selectedAssets = assets && assets.length > 0 ? assets : Object.keys(ASSET_META);
+    const morningTime = alarmTimes.morning || '07:30';
     const noonTime = alarmTimes.noon || '12:00';
     const eveningTime = alarmTimes.evening || '18:00';
     const nightTime = alarmTimes.night || '23:00';
@@ -311,7 +312,23 @@ class NotifScheduler {
     // 브라우저 알림 (권한 필요)
     if (getPermission() !== "granted") return;
 
-    this.schedule('m0730', '07:30', 'DayMate 🌅', `${userName}님, 오늘 할 일을 정해볼까요?`, '🌅');
+    this.schedule(
+      'm_morning', morningTime,
+      'DayMate 🌅', `${userName}님, 좋은 아침! 오늘 할 일을 정해볼까요?`, '🌅',
+      hasTg ? async () => {
+        const d = store.get(dayKey(toDateStr()));
+        const tasks = (d?.tasks || []).filter(t => t.title.trim());
+        let text = `🌅 <b>${userName}님, 좋은 아침이에요!</b>\n\n`;
+        if (tasks.length > 0) {
+          text += `📋 오늘의 할일\n`;
+          tasks.forEach((t, i) => { text += `  ${i + 1}. ${t.title}\n`; });
+        } else {
+          text += `오늘 할 일을 아직 입력하지 않았어요.\nDayMate에서 하루를 계획해보세요 📝`;
+        }
+        text += `\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
+        await sendTelegramMessage(botToken, chatId, text);
+      } : null
+    );
 
     this.schedule(
       'm_noon', noonTime,
@@ -1388,6 +1405,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const [selectedAssets, setSelectedAssets] = useState(
     telegramCfg.assets || Object.keys(ASSET_META)
   );
+  const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
@@ -1410,7 +1428,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   };
 
   const saveAlarmTimes = () => {
-    const times = { noon: noonTime, evening: eveningTime, night: nightTime };
+    const times = { morning: morningTime, noon: noonTime, evening: eveningTime, night: nightTime };
     setAlarmTimes(times);
     store.set('dm_alarm_times', times);
     if (authUser) saveSettings(authUser.uid, { alarmTimes: times }).catch(() => {});
@@ -1623,9 +1641,10 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       <div style={S.sectionTitle}>알림 시간 설정</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
-          점심·저녁·밤 알림 시간을 조정할 수 있어요.
+          아침·점심·저녁·밤 알림 시간을 조정할 수 있어요.
         </div>
         {[
+          { label: "아침 기상 알람", value: morningTime, set: setMorningTime },
           { label: "점심 체크인", value: noonTime, set: setNoonTime },
           { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
           { label: "밤 마감 알람", value: nightTime, set: setNightTime },
@@ -1821,7 +1840,7 @@ export default function App() {
     };
   });
   const [alarmTimes, setAlarmTimes] = useState(() =>
-    store.get("dm_alarm_times", { noon: "12:00", evening: "18:00", night: "23:00" })
+    store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
 
   const todayStr = toDateStr();
