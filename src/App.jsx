@@ -464,12 +464,12 @@ const S = {
     boxSizing: "border-box",
   },
   sectionTitle: {
-    padding: "14px 16px 8px",
-    fontSize: 11,
-    letterSpacing: "0.1em",
-    color: "var(--dm-muted)",
-    fontWeight: 800,
-    textTransform: "uppercase",
+    padding: "18px 16px 8px",
+    fontSize: 14,
+    letterSpacing: "0.02em",
+    color: "var(--dm-text)",
+    fontWeight: 900,
+    textTransform: "none",
   },
   input: {
     width: "100%",
