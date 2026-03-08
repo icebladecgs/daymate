@@ -146,7 +146,7 @@ export default async function handler(req, res) {
         if (tg) {
           if (tg.botToken) botToken = tg.botToken;
           if (tg.chatId) chatId = tg.chatId;
-          if (tg.finnhubKey) finnhubKey = tg.finnhubKey;
+          // finnhubKey는 서버 환경변수(FINNHUB_KEY)만 사용 — Firestore에서 읽지 않음
           if (tg.assets?.length) selectedAssets = tg.assets;
           if (tg.customAssets?.length) {
             customRegistry = Object.fromEntries(tg.customAssets.map(a => [a.sym, a]));

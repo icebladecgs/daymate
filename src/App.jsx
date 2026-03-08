@@ -241,9 +241,9 @@ function buildBriefingText(marketData, userName) {
   return text;
 }
 
-async function searchFinnhub(finnhubKey, query) {
+async function searchFinnhub(_key, query) {
   try {
-    const r = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${finnhubKey}`);
+    const r = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
     const j = await r.json();
     return (j.result || [])
       .filter(item => item.type === 'Common Stock' || item.type === 'ETP')
@@ -303,7 +303,7 @@ class NotifScheduler {
     this.cancelAll();
     if (!enabled) return;
 
-    const { botToken = '', chatId = '', finnhubKey = '', briefingTime = '07:00', todoTime = '07:05', assets, customAssets: rawCustomAssets } = telegramCfg;
+    const { botToken = '', chatId = '', briefingTime = '07:00', todoTime = '07:05', assets, customAssets: rawCustomAssets } = telegramCfg;
     const selectedAssets = assets && assets.length > 0 ? assets : Object.keys(ASSET_META);
     const customAssetsArr = rawCustomAssets || [];
     const customRegistry = Object.fromEntries(customAssetsArr.map(a => [a.sym, a]));
@@ -320,7 +320,7 @@ class NotifScheduler {
         'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
         '📊',
         async () => {
-          const marketData = await fetchMarketData(finnhubKey, selectedAssets, customRegistry);
+          const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
           const text = buildBriefingText(marketData, userName);
           await sendTelegramMessage(botToken, chatId, text);
         }
@@ -1723,7 +1723,6 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
   const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
-  const [finnhubKey, setFinnhubKey] = useState(telegramCfg.finnhubKey || '');
   const [briefingTime, setBriefingTime] = useState(telegramCfg.briefingTime || '07:00');
   const [todoTime, setTodoTime] = useState(telegramCfg.todoTime || '07:05');
   const [selectedAssets, setSelectedAssets] = useState(
@@ -1747,7 +1746,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const saveTelegram = () => {
     const cfg = {
-      botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim(),
+      botToken: tgToken.trim(), chatId: tgChatId.trim(),
       briefingTime, todoTime, assets: selectedAssets, customAssets,
     };
     setTelegramCfg(cfg);
@@ -1761,7 +1760,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     if (!query.trim()) { setSearchResults([]); return; }
     setSearching(true);
     const results = searchMode === 'stock'
-      ? await searchFinnhub(finnhubKey.trim(), query)
+      ? await searchFinnhub('', query)
       : await searchCoinGecko(query);
     setSearchResults(results);
     setSearching(false);
@@ -1798,7 +1797,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const testBriefing = async () => {
     setToast('브리핑 생성 중...');
     const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
-    const marketData = await fetchMarketData(finnhubKey.trim(), selectedAssets, customRegistry);
+    const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
     const text = buildBriefingText(marketData, user.name);
     const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
     setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
@@ -2022,9 +2021,11 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
         <div style={{ height: 10 }} />
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 4 }}>
-          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(주식 데이터용)</span>
+          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
         </div>
-        <input style={S.input} value={finnhubKey} onChange={(e) => setFinnhubKey(e.target.value)} placeholder="API Key 입력" type="password" />
+        <div style={{ fontSize: 12, color: "#5C6480", padding: "10px 12px", background: "#1A1F2E", borderRadius: 8, border: "1px solid #2D344A" }}>
+          🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
+        </div>
 
         <div style={{ height: 14 }} />
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
@@ -2252,7 +2253,7 @@ export default function App() {
   const [telegramCfg, setTelegramCfg] = useState(() => {
     const saved = store.get("dm_telegram", {});
     return {
-      botToken: "", chatId: "", finnhubKey: "",
+      botToken: "", chatId: "",
       briefingTime: "07:00", todoTime: "07:05",
       assets: ["BTC", "ETH", "TSLA", "GOOGL", "IVR", "QQQ"],
       ...saved,
