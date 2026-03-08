@@ -733,7 +733,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onToggleTask }) {
+function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -863,43 +863,74 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask }) {
 
       <div style={S.sectionTitle}>📅 이달 목표</div>
       <div style={S.card}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>
-            완벽한 날 {goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 900, color: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171" }}>
-            {goalProgress.monthProgress}%
-          </div>
-        </div>
-        <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
-          <div style={{
-            height: "100%", borderRadius: 3, transition: "width 0.3s",
-            background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
-            width: `${goalProgress.monthProgress}%`,
-          }} />
-        </div>
-        {(goals.month || []).length ? (
-          goals.month.map((g, i) => (
-            <div key={i} style={{
-              display: "flex", gap: 8, padding: "8px 0", fontSize: 13, color: "#F0F2F8",
-              borderBottom: i < goals.month.length - 1 ? "1px solid #1E2235" : "none",
-            }}>
-              <span style={{ color: "#4B6FFF", fontWeight: 900 }}>•</span> {g}
-            </div>
-          ))
-        ) : (
+        {(goals.month || []).length ? (() => {
+          const monthGoals = goals.month;
+          const doneGoals = monthGoals.filter((_, i) => goalChecks[i]).length;
+          const allGoalsDone = doneGoals === monthGoals.length;
+          return (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
+                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
+              </div>
+              <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+                <div style={{
+                  height: "100%", borderRadius: 3, transition: "width 0.3s",
+                  background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
+                  width: `${(doneGoals / monthGoals.length) * 100}%`,
+                }} />
+              </div>
+              {monthGoals.map((g, i) => {
+                const done = !!goalChecks[i];
+                return (
+                  <div key={i} onClick={() => onToggleGoal(i)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      borderBottom: i < monthGoals.length - 1 ? "1px solid #1E2235" : "none",
+                      cursor: "pointer" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: done ? "none" : "2px solid #3A4260",
+                      background: done ? "#4B6FFF" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: done ? "#5C6480" : "#F0F2F8",
+                      textDecoration: done ? "line-through" : "none",
+                    }}>{g}</div>
+                  </div>
+                );
+              })}
+            </>
+          );
+        })() : (
           <div style={{ color: "#5C6480", fontSize: 13 }}>설정에서 이달 목표를 입력하세요</div>
         )}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>👑 연간</div>
-          <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 2,
-              background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
-              width: `${goalProgress.yearProgress}%`,
-            }} />
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>📆 완벽한 날</div>
+            <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
+                width: `${goalProgress.monthProgress}%`,
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
           </div>
-          <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>👑 연간</div>
+            <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
+                width: `${goalProgress.yearProgress}%`,
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
+          </div>
         </div>
       </div>
       <div style={{ height: 12 }} />
@@ -2009,7 +2040,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v8 · 2026-03-08
+        DayMate Lite v9 · 2026-03-08
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2065,6 +2096,19 @@ export default function App() {
   });
 
   const [openDate, setOpenDate] = useState(null);
+
+  const [goalChecks, setGoalChecks] = useState(() =>
+    store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
+  );
+
+  const onToggleGoal = (idx) => {
+    const monthKey = `dm_goal_checks_${todayStr.slice(0, 7)}`;
+    setGoalChecks((prev) => {
+      const next = { ...prev, [idx]: !prev[idx] };
+      store.set(monthKey, next);
+      return next;
+    });
+  };
 
   const todayData = plans[todayStr] || null;
 
@@ -2258,6 +2302,8 @@ export default function App() {
             ...prev,
             tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t),
           }))}
+          goalChecks={goalChecks}
+          onToggleGoal={onToggleGoal}
         />
       );
     }
