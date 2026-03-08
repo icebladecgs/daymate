@@ -624,6 +624,7 @@ const newDay = (date) => ({
   checks: { "07:30": false, "12:00": false, "18:00": false, "22:00": false },
   journal: { body: "", savedAt: null },
   memo: "",
+  habitChecks: {},
 });
 
 function dayKey(dateStr) {
@@ -734,7 +735,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals }) {
+function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -856,6 +857,53 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           </>
         )}
       </div>
+
+      {habits.length > 0 && (() => {
+        const habitChecks = todayData?.habitChecks || {};
+        const doneHabits = habits.filter(h => habitChecks[h.id]).length;
+        const allHabitsDone = doneHabits === habits.length;
+        return (
+          <>
+            <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+              <span>🎯 오늘 습관</span>
+              <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>
+            </div>
+            <div style={{ ...S.card, border: allHabitsDone ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
+              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
+                <div style={{
+                  height: "100%", borderRadius: 3, transition: "width 0.3s",
+                  background: allHabitsDone ? "#4ADE80" : "#A78BFA",
+                  width: habits.length === 0 ? "0%" : `${(doneHabits / habits.length) * 100}%`,
+                }} />
+              </div>
+              {habits.map((h, i) => {
+                const checked = !!habitChecks[h.id];
+                return (
+                  <div key={h.id} onClick={() => onToggleHabit(h.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
+                      cursor: "pointer" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: checked ? "none" : "2px solid #3A4260",
+                      background: checked ? "#A78BFA" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{h.icon}</span>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: checked ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: checked ? "line-through" : "none",
+                    }}>{h.name || "(이름 없음)"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
 
       {(todayData?.memo || '').trim() && (
         <>
@@ -1459,7 +1507,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
   );
 }
 
-function Stats({ plans }) {
+function Stats({ plans, habits }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
@@ -1708,6 +1756,43 @@ function Stats({ plans }) {
         </div>
       </div>
 
+      {(habits || []).length > 0 && (
+        <>
+          <div style={S.sectionTitle}>🎯 습관 달성률</div>
+          <div style={{ ...S.card, margin: "0 0 10px" }}>
+            {(habits || []).map(h => {
+              let done = 0, total = 0;
+              for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${viewYear}-${pad2(viewMonth + 1)}-${pad2(day)}`;
+                const dayData = plans[dateStr];
+                if (dayData) { total++; if (dayData.habitChecks?.[h.id]) done++; }
+              }
+              const rate = total === 0 ? 0 : Math.round((done / total) * 100);
+              return (
+                <div key={h.id} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 18 }}>{h.icon}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{h.name}</span>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 900, color: rate >= 80 ? "#4ADE80" : rate >= 50 ? "#FCD34D" : "#F87171" }}>
+                      {total === 0 ? "-" : `${done}/${total}일 · ${rate}%`}
+                    </div>
+                  </div>
+                  <div style={{ height: 8, background: "var(--dm-input)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 4, transition: "width 0.3s",
+                      background: rate >= 80 ? "#A78BFA" : rate >= 50 ? "#FCD34D" : "#F87171",
+                      width: `${rate}%`,
+                    }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <div style={{ height: 12 }} />
     </div>
   );
@@ -1715,7 +1800,8 @@ function Stats({ plans }) {
 
 function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
                     telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
-                    authUser, syncStatus, onGoogleSignIn, onGoogleSignOut }) {
+                    authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
+                    habits, setHabits }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -2251,8 +2337,44 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
+      <div style={S.sectionTitle}>🎯 습관 관리</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          매일 반복할 습관을 등록하면 홈 화면에서 체크할 수 있어요. (최대 10개)
+        </div>
+        {(habits || []).map((h) => (
+          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <input
+              style={{ ...S.input, width: 48, textAlign: "center", marginBottom: 0, padding: "8px 4px" }}
+              value={h.icon}
+              maxLength={2}
+              placeholder="🎯"
+              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
+            />
+            <input
+              style={{ ...S.input, flex: 1, marginBottom: 0 }}
+              value={h.name}
+              maxLength={20}
+              placeholder="습관 이름 (예: 운동, 독서)"
+              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
+            />
+            <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
+              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0, lineHeight: 1 }}>✕</button>
+          </div>
+        ))}
+        {(habits || []).length < 10 && (
+          <button style={{ ...S.btn, marginTop: (habits || []).length > 0 ? 4 : 0 }}
+            onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: "", icon: "🎯" }])}>
+            ➕ 습관 추가
+          </button>
+        )}
+        {(habits || []).length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>아직 등록된 습관이 없어요.</div>
+        )}
+      </div>
+
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v10 · 2026-03-08
+        DayMate Lite v15 · 2026-03-08
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2304,6 +2426,7 @@ export default function App() {
   const [alarmTimes, setAlarmTimes] = useState(() =>
     store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
+  const [habits, setHabits] = useState(() => store.get("dm_habits", []));
 
   const todayStr = toDateStr();
 
@@ -2364,6 +2487,7 @@ export default function App() {
             if (s.notifEnabled !== undefined) { setNotifEnabled(s.notifEnabled); store.set("dm_notif_enabled", s.notifEnabled); }
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
+          if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
           }
           if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
           if (Object.keys(remote.days).length > 0) {
@@ -2410,6 +2534,12 @@ export default function App() {
   useEffect(() => {
     store.set("dm_notif_enabled", notifEnabled);
   }, [notifEnabled]);
+
+  // Persist habits
+  useEffect(() => {
+    store.set("dm_habits", habits);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { habits }).catch(() => {});
+  }, [habits, authUser]);
 
   // Apply notifications (GUARDED)
   useEffect(() => {
@@ -2463,6 +2593,13 @@ export default function App() {
     setGoals(nextGoals);
     store.set("dm_goals", nextGoals);
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
+  };
+
+  const onToggleHabit = (habitId) => {
+    setTodayData(prev => {
+      const cur = prev.habitChecks || {};
+      return { ...prev, habitChecks: { ...cur, [habitId]: !cur[habitId] } };
+    });
   };
 
   // Onboarding-lite: first run ask name quickly
@@ -2539,6 +2676,8 @@ export default function App() {
           onToggleGoal={onToggleGoal}
           onSetTodayTasks={onSetTodayTasks}
           onSaveMonthGoals={onSaveMonthGoals}
+          habits={habits}
+          onToggleHabit={onToggleHabit}
         />
       );
     }
@@ -2558,7 +2697,7 @@ export default function App() {
       return <History plans={plans} onOpenDate={openDetail} />;
     }
     if (screen === "stats") {
-      return <Stats plans={plans} />;
+      return <Stats plans={plans} habits={habits} />;
     }
     if (screen === "detail") {
       const d = plans[openDate];
@@ -2608,6 +2747,8 @@ export default function App() {
           syncStatus={syncStatus}
           onGoogleSignIn={googleSignIn}
           onGoogleSignOut={googleSignOut}
+          habits={habits}
+          setHabits={setHabits}
         />
       );
     }
