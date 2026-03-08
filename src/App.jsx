@@ -742,11 +742,6 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
   const allDone = filledCount > 0 && doneCount === filledCount;
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
-  const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
-  const weeklyAvg = useMemo(() => 
-    Math.round(weeklyStats.reduce((a, d) => a + d.rate, 0) / 7),
-    [weeklyStats]
-  );
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
 
   const [editingTasks, setEditingTasks] = useState(false);
@@ -860,58 +855,6 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
             })}
           </>
         )}
-      </div>
-
-      <div style={S.sectionTitle}>🔥 연속 기록</div>
-      <div style={S.card}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "#5C6480" }}>
-            {streak}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: "#F0F2F8" }}>
-              {streak > 0 ? `${streak}일 연속` : "연속 기록 없음"}
-            </div>
-            <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4 }}>
-              완벽한 하루 (3개 완료 + 일기)
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={S.sectionTitle}>📊 이번 주</div>
-      <div style={S.card}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>평균 완료율</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>
-            {weeklyAvg}%
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 4, justifyContent: "space-between" }}>
-          {weeklyStats.map((d, i) => {
-            const dow = "일월화수목금토"[new Date(d.date).getDay()];
-            return (
-              <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                <div style={{
-                  height: 32,
-                  borderRadius: 6,
-                  background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "#252B3E",
-                  border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "#1E2336"}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 900,
-                  color: d.isPerfect ? "#4ADE80" : "#A8AFCA",
-                  marginBottom: 6,
-                }}>
-                  {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
-                </div>
-                <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 800 }}>{dow}</div>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {(todayData?.memo || '').trim() && (
@@ -1521,6 +1464,13 @@ function Stats({ plans }) {
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
 
+  const streak = useMemo(() => calcStreak(plans), [plans]);
+  const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
+  const weeklyAvg = useMemo(() =>
+    Math.round(weeklyStats.reduce((a, d) => a + d.rate, 0) / 7),
+    [weeklyStats]
+  );
+
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   let perfectDays = 0;
   let filledDays = 0;
@@ -1608,6 +1558,43 @@ function Stats({ plans }) {
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
+        </div>
+      </div>
+
+      <div style={S.sectionTitle}>🔥 연속기록 · 이번주</div>
+      <div style={{ ...S.card, margin: "0 0 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+          <div style={{ textAlign: "center", minWidth: 56 }}>
+            <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "#5C6480", lineHeight: 1 }}>{streak}</div>
+            <div style={{ fontSize: 11, color: "#A8AFCA", marginTop: 4 }}>일 연속</div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: streak > 0 ? "#F0F2F8" : "#5C6480", marginBottom: 4 }}>
+              {streak > 0 ? `🔥 ${streak}일 연속 중!` : "연속 기록 없음"}
+            </div>
+            <div style={{ fontSize: 12, color: "#5C6480" }}>이번주 평균 완료율 
+              <b style={{ color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>{weeklyAvg}%</b>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 4, justifyContent: "space-between" }}>
+          {weeklyStats.map((d, i) => {
+            const dow = "일월화수목금토"[new Date(d.date).getDay()];
+            return (
+              <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{
+                  height: 28, borderRadius: 6,
+                  background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "#252B3E",
+                  border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "#1E2336"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, fontWeight: 900, color: d.isPerfect ? "#4ADE80" : "#A8AFCA", marginBottom: 4,
+                }}>
+                  {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
+                </div>
+                <div style={{ fontSize: 10, color: "#5C6480", fontWeight: 800 }}>{dow}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
