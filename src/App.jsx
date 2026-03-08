@@ -1139,7 +1139,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
   );
 }
 
-function History({ plans, onOpenDate }) {
+function History({ plans, onOpenDate, habits }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [searchQ, setSearchQ] = useState('');
@@ -1236,6 +1236,10 @@ function History({ plans, onOpenDate }) {
             const st = styleOf(r, isToday, perfect);
             const clickable = r !== null;
             const hasMemo = !!(plans[ds]?.memo?.trim());
+            const dayHabits = (habits || []);
+            const habitChecks = plans[ds]?.habitChecks || {};
+            const habitDots = dayHabits.slice(0, 6);
+            const hasHabitData = dayHabits.length > 0 && plans[ds];
             return (
               <div
                 key={ds}
@@ -1244,19 +1248,32 @@ function History({ plans, onOpenDate }) {
                   aspectRatio: 1,
                   borderRadius: 10,
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 2,
                   position: "relative",
                   cursor: clickable ? "pointer" : "default",
+                  paddingBottom: hasHabitData ? 4 : 0,
                   ...st,
                 }}
                 title={clickable ? (perfect ? "완벽한 하루 ✓" : `${r}%`) : ""}
               >
-                {perfect ? "✓" : day}
+                <span>{perfect ? "✓" : day}</span>
+                {hasHabitData && (
+                  <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", maxWidth: "90%" }}>
+                    {habitDots.map(h => (
+                      <span key={h.id} style={{
+                        width: 4, height: 4, borderRadius: 999, flexShrink: 0,
+                        background: habitChecks[h.id] ? "#A78BFA" : "rgba(167,139,250,.22)",
+                      }} />
+                    ))}
+                  </div>
+                )}
                 {hasMemo && (
                   <span style={{
-                    position: "absolute", bottom: 3, right: 3,
-                    width: 5, height: 5, borderRadius: 999,
+                    position: "absolute", top: 3, right: 3,
+                    width: 4, height: 4, borderRadius: 999,
                     background: "#6C8EFF",
                   }} />
                 )}
@@ -1285,8 +1302,14 @@ function History({ plans, onOpenDate }) {
             <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>
               {formatKoreanDate(ds)}
             </div>
-            <div style={{ fontSize: 13, marginTop: 8, color: "var(--dm-text)" }}>
-              ✅ {done}/{Math.max(3, filled || 3)} · {hasJournal ? "📖 일기 있음" : "📖 일기 없음"}
+            <div style={{ fontSize: 13, marginTop: 8, color: "var(--dm-text)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <span>✅ {done}/{Math.max(3, filled || 3)}</span>
+              {(habits || []).length > 0 && (() => {
+                const hc = d.habitChecks || {};
+                const hDone = (habits || []).filter(h => hc[h.id]).length;
+                return <span style={{ color: hDone === (habits||[]).length && (habits||[]).length > 0 ? "#A78BFA" : "var(--dm-sub)" }}>🎯 {hDone}/{(habits||[]).length}</span>;
+              })()}
+              <span>{hasJournal ? "📖 일기 있음" : "📖 일기 없음"}</span>
             </div>
             {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {memoPreview}</div>}
             {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
@@ -2694,7 +2717,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} />;
+      return <History plans={plans} onOpenDate={openDetail} habits={habits} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} />;
