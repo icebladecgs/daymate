@@ -733,17 +733,12 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onGoHistory, onToggleTask }) {
+function Home({ user, goals, todayData, plans, onGoToday, onToggleTask }) {
   const today = toDateStr();
-  const hasTasks = todayData?.tasks?.some((t) => t.title.trim());
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
   const allDone = filledCount > 0 && doneCount === filledCount;
-
-  const statusText = !hasTasks
-    ? "오늘 할 일 3가지를 정해보세요"
-    : `${filledCount}개 중 ${doneCount}개 완료`;
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
@@ -866,91 +861,46 @@ function Home({ user, goals, todayData, plans, onGoToday, onGoHistory, onToggleT
         </div>
       </div>
 
-      <div style={S.sectionTitle}>목표</div>
+      <div style={S.sectionTitle}>📅 이달 목표</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
-          👑 연간 목표
-        </div>
-        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6, marginBottom: 12 }}>
-          {(goals.year || []).length ? (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {goals.year.map((g, i) => (
-                <li key={i}>{g}</li>
-              ))}
-            </ul>
-          ) : (
-            <span style={{ color: "#5C6480" }}>설정에서 입력하세요</span>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 800, marginBottom: 4 }}>
-          진행도: {goalProgress.yearProgress}%
-        </div>
-        <div style={{
-          height: 8,
-          background: "#252B3E",
-          borderRadius: 4,
-          overflow: "hidden",
-          marginBottom: 12,
-        }}>
-          <div style={{
-            height: "100%",
-            background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
-            width: `${goalProgress.yearProgress}%`,
-            transition: "width 0.3s",
-          }} />
-        </div>
-
-        <div style={{ height: 12 }} />
-
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
-          📅 이달 목표
-        </div>
-        <div style={{ fontSize: 13, color: "#F0F2F8", lineHeight: 1.6, marginBottom: 12 }}>
-          {(goals.month || []).length ? (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {goals.month.map((g, i) => (
-                <li key={i}>{g}</li>
-              ))}
-            </ul>
-          ) : (
-            <span style={{ color: "#5C6480" }}>설정에서 입력하세요</span>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 800, marginBottom: 4 }}>
-          진행도: {goalProgress.monthProgress}% ({goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth})
-        </div>
-        <div style={{
-          height: 8,
-          background: "#252B3E",
-          borderRadius: 4,
-          overflow: "hidden",
-        }}>
-          <div style={{
-            height: "100%",
-            background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
-            width: `${goalProgress.monthProgress}%`,
-            transition: "width 0.3s",
-          }} />
-        </div>
-      </div>
-
-      <div style={S.sectionTitle}>오늘</div>
-      <div style={S.card}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 22 }}>✅</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900 }}>{statusText}</div>
-            <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4 }}>
-              체크: 07:30 / 12:00 / 18:00 / 22:00
-            </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>
+            완벽한 날 {goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171" }}>
+            {goalProgress.monthProgress}%
           </div>
         </div>
-        <button style={S.btn} onClick={onGoToday}>
-          오늘 화면으로 가기 →
-        </button>
-        <button style={S.btnGhost} onClick={onGoHistory}>
-          기록(달력) 보기 →
-        </button>
+        <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+          <div style={{
+            height: "100%", borderRadius: 3, transition: "width 0.3s",
+            background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
+            width: `${goalProgress.monthProgress}%`,
+          }} />
+        </div>
+        {(goals.month || []).length ? (
+          goals.month.map((g, i) => (
+            <div key={i} style={{
+              display: "flex", gap: 8, padding: "8px 0", fontSize: 13, color: "#F0F2F8",
+              borderBottom: i < goals.month.length - 1 ? "1px solid #1E2235" : "none",
+            }}>
+              <span style={{ color: "#4B6FFF", fontWeight: 900 }}>•</span> {g}
+            </div>
+          ))
+        ) : (
+          <div style={{ color: "#5C6480", fontSize: 13 }}>설정에서 이달 목표를 입력하세요</div>
+        )}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>👑 연간</div>
+          <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", borderRadius: 2,
+              background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
+              width: `${goalProgress.yearProgress}%`,
+            }} />
+          </div>
+          <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
+        </div>
       </div>
       <div style={{ height: 12 }} />
     </div>
