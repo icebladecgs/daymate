@@ -1216,44 +1216,106 @@ function History({ plans, onOpenDate }) {
   );
 }
 
-function DayDetail({ dateStr, data, onBack }) {
-  const done = data.tasks.filter((t) => t.done && t.title.trim()).length;
-  const lines = data.tasks.map((t, idx) => ({
-    idx,
-    title: t.title.trim() || `할 일 ${idx + 1} (미입력)`,
-    done: !!t.done && !!t.title.trim(),
-  }));
+function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
+  const isToday = dateStr === toDateStr();
+  const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
+  const filledCount = data.tasks.filter((t) => t.title.trim()).length;
+
+  const toggleDone = (id) => {
+    setData((prev) => {
+      const next = { ...prev };
+      const wasUndone = !prev.tasks.find(t => t.id === id)?.done;
+      next.tasks = next.tasks.map((t) =>
+        t.id === id ? { ...t, done: !t.done, checkedAt: new Date().toISOString() } : t
+      );
+      if (wasUndone) playSuccessSound();
+      return next;
+    });
+  };
+
+  const setTitle = (id, title) => {
+    setData((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => t.id === id ? { ...t, title } : t),
+    }));
+  };
+
+  const addTask = () => {
+    setData((prev) => ({
+      ...prev,
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null }],
+    }));
+  };
+
+  const removeTask = (id) => {
+    setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
+  };
+
+  const saveJournal = () => {
+    setData((prev) => ({
+      ...prev,
+      journal: { ...prev.journal, savedAt: new Date().toISOString() },
+    }));
+    setToast("일기 저장 ✅");
+  };
+
+  const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
 
   return (
     <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
           ←
         </button>
         <div style={{ flex: 1 }}>
           <div style={S.title}>{formatKoreanDate(dateStr)}</div>
-          <div style={S.sub}>완료 {done}/3</div>
+          <div style={S.sub}>
+            {doneCount}/{filledCount} 완료
+            {isPerfect && " · 🎉 완벽한 하루"}
+          </div>
         </div>
         <div />
       </div>
 
-      <div style={S.sectionTitle}>오늘의 3가지</div>
+      <div style={S.sectionTitle}>할 일 ({data.tasks.length}개)</div>
       <div style={S.card}>
-        {lines.map((l) => (
-          <div key={l.idx} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{
-              width: 26, height: 26, borderRadius: 8,
-              background: l.done ? "rgba(74,222,128,.16)" : "#252B3E",
-              border: `1.5px solid ${l.done ? "#4ADE80" : "#2D344A"}`,
-              color: l.done ? "#4ADE80" : "#A8AFCA",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 900
-            }}>
-              {l.done ? "✓" : l.idx + 1}
-            </div>
-            <div style={{ fontSize: 14, color: "#F0F2F8", flex: 1 }}>{l.title}</div>
+        {data.tasks.map((t, idx) => (
+          <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
+            <button
+              onClick={() => toggleDone(t.id)}
+              style={{
+                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                border: `1.5px solid ${t.done ? "#4ADE80" : "#2D344A"}`,
+                background: t.done ? "rgba(74,222,128,.12)" : "#252B3E",
+                color: t.done ? "#4ADE80" : "#A8AFCA",
+                fontSize: 18, cursor: "pointer",
+              }}
+            >
+              {t.done ? "✓" : idx + 1}
+            </button>
+            <input
+              style={S.input}
+              value={t.title}
+              onChange={(e) => setTitle(t.id, e.target.value)}
+              placeholder={`할 일 ${idx + 1}`}
+              maxLength={60}
+            />
+            <button
+              style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
+              onClick={() => removeTask(t.id)}
+              title="삭제"
+            >
+              ✕
+            </button>
           </div>
         ))}
+        <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>
+        {!isToday && (
+          <div style={{ marginTop: 8, fontSize: 11, color: "#5C6480" }}>
+            ✏️ 과거 날짜 기록을 편집 중이에요
+          </div>
+        )}
       </div>
 
       <div style={S.sectionTitle}>체크</div>
@@ -1263,13 +1325,10 @@ function DayDetail({ dateStr, data, onBack }) {
             <div
               key={t}
               style={{
-                padding: "7px 10px",
-                borderRadius: 999,
-                border: "1.5px solid #2D344A",
+                padding: "7px 10px", borderRadius: 999, border: "1.5px solid #2D344A",
                 background: data.checks[t] ? "rgba(108,142,255,.12)" : "#252B3E",
                 color: data.checks[t] ? "#6C8EFF" : "#A8AFCA",
-                fontSize: 12,
-                fontWeight: 900,
+                fontSize: 12, fontWeight: 900,
               }}
             >
               {data.checks[t] ? "✅" : "⏱️"} {t}
@@ -1280,13 +1339,23 @@ function DayDetail({ dateStr, data, onBack }) {
 
       <div style={S.sectionTitle}>일기</div>
       <div style={S.card}>
-        {data.journal?.body?.trim() ? (
-          <div style={{ fontSize: 14, color: "#F0F2F8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-            {data.journal.body}
-          </div>
-        ) : (
-          <div style={{ color: "#5C6480" }}>일기 없음</div>
-        )}
+        <textarea
+          rows={6}
+          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
+          value={data.journal?.body || ""}
+          onChange={(e) =>
+            setData((prev) => ({
+              ...prev,
+              journal: { ...prev.journal, body: e.target.value },
+            }))
+          }
+          placeholder="이 날의 기록을 남겨보세요."
+          maxLength={1200}
+        />
+        <button style={S.btn} onClick={saveJournal}>일기 저장</button>
+        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, textAlign: "right" }}>
+          {(data.journal?.body || "").length} / 1200
+        </div>
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -1940,7 +2009,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v7 · 2026-03-02
+        DayMate Lite v8 · 2026-03-08
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2107,6 +2176,18 @@ export default function App() {
     window.history.replaceState(null,'',`?screen=detail&date=${ds}`);
   };
 
+  const setDetailData = (updater) => {
+    if (!openDate) return;
+    setPlans((prev) => {
+      const cur = prev[openDate] || newDay(openDate);
+      const nextDay = typeof updater === "function" ? updater(cur) : updater;
+      const next = { ...prev, [openDate]: nextDay };
+      saveDay(openDate, nextDay);
+      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, openDate, nextDay).catch(() => {});
+      return next;
+    });
+  };
+
   // Onboarding-lite: first run ask name quickly
   const [firstRunDone, setFirstRunDone] = useState(() => !!store.get("dm_first_run_done", false));
   const [nameInput, setNameInput] = useState("");
@@ -2220,7 +2301,10 @@ export default function App() {
         <DayDetail
           dateStr={openDate}
           data={d}
+          setData={setDetailData}
           onBack={() => changeScreen("history")}
+          toast={toast}
+          setToast={setToast}
         />
       );
     }
