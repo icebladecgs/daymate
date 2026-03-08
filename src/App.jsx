@@ -733,12 +733,13 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onGoHistory }) {
+function Home({ user, goals, todayData, plans, onGoToday, onGoHistory, onToggleTask }) {
   const today = toDateStr();
   const hasTasks = todayData?.tasks?.some((t) => t.title.trim());
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
+  const allDone = filledCount > 0 && doneCount === filledCount;
 
   const statusText = !hasTasks
     ? "오늘 할 일 3가지를 정해보세요"
@@ -762,6 +763,55 @@ function Home({ user, goals, todayData, plans, onGoToday, onGoHistory }) {
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 800 }}>
           {getPermission() === "granted" ? "🔔" : "🔕"}
         </div>
+      </div>
+
+      <div style={S.sectionTitle}>✅ 오늘 할일</div>
+      <div style={{ ...S.card, border: allDone ? "1.5px solid #4ADE80" : filledCount > 0 ? "1.5px solid #2D344A" : "1.5px solid #2D344A" }}>
+        {filledCount === 0 ? (
+          <>
+            <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 14 }}>
+              오늘 할 일을 아직 입력하지 않았어요
+            </div>
+            <button style={S.btn} onClick={onGoToday}>할일 입력하기 →</button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
+              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
+            </div>
+            <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{
+                height: "100%", borderRadius: 3, transition: "width 0.3s",
+                background: allDone ? "#4ADE80" : "#4B6FFF",
+                width: `${(doneCount / filledCount) * 100}%`,
+              }} />
+            </div>
+            {(todayData?.tasks || []).map((task, i) => {
+              if (!task.title.trim()) return null;
+              return (
+                <div key={task.id} onClick={() => onToggleTask(task.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                    borderBottom: i < (todayData.tasks.length - 1) ? "1px solid #1E2235" : "none",
+                    cursor: "pointer" }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                    border: task.done ? "none" : "2px solid #3A4260",
+                    background: task.done ? "#4B6FFF" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 700, flex: 1,
+                    color: task.done ? "#5C6480" : "#F0F2F8",
+                    textDecoration: task.done ? "line-through" : "none",
+                  }}>{task.title}</div>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       <div style={S.sectionTitle}>🔥 연속 기록</div>
@@ -2173,6 +2223,10 @@ export default function App() {
           plans={plans}
           onGoToday={() => changeScreen("today")}
           onGoHistory={() => changeScreen("history")}
+          onToggleTask={(id) => setTodayData(prev => ({
+            ...prev,
+            tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t),
+          }))}
         />
       );
     }
