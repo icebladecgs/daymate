@@ -1085,6 +1085,15 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
           maxLength={600}
         />
+        <button
+          style={S.btn}
+          onClick={() => {
+            setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
+            setToast("메모 저장 ✅");
+          }}
+        >
+          메모 저장
+        </button>
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
           {(data.memo ?? "").length} / 600
         </div>
@@ -1378,6 +1387,32 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
               {data.checks[t] ? "✅" : "⏱️"} {t}
             </div>
           ))}
+        </div>
+      </div>
+
+      <div style={S.sectionTitle}>📝 메모</div>
+      <div style={S.card}>
+        <textarea
+          rows={3}
+          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
+          value={data.memo ?? ""}
+          onChange={(e) =>
+            setData((prev) => ({ ...prev, memo: e.target.value }))
+          }
+          placeholder="메모를 남겨보세요."
+          maxLength={600}
+        />
+        <button
+          style={S.btn}
+          onClick={() => {
+            setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
+            setToast("메모 저장 ✅");
+          }}
+        >
+          메모 저장
+        </button>
+        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
+          {(data.memo ?? "").length} / 600
         </div>
       </div>
 
