@@ -733,7 +733,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal }) {
+function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -748,6 +748,32 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
   );
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
 
+  const [editingTasks, setEditingTasks] = useState(false);
+  const [draftTasks, setDraftTasks] = useState([]);
+  const [editingGoals, setEditingGoals] = useState(false);
+  const [draftGoals, setDraftGoals] = useState([]);
+  const [newGoalInput, setNewGoalInput] = useState('');
+
+  const startEditTasks = () => {
+    setDraftTasks((todayData?.tasks || []).map(t => ({ ...t })));
+    setEditingTasks(true);
+  };
+  const saveTaskEdits = () => {
+    onSetTodayTasks(draftTasks);
+    setEditingTasks(false);
+  };
+  const startEditGoals = () => {
+    setDraftGoals([...(goals.month || [])]);
+    setNewGoalInput('');
+    setEditingGoals(true);
+  };
+  const saveGoalEdits = () => {
+    const final = [...draftGoals, ...(newGoalInput.trim() ? [newGoalInput.trim()] : [])].filter(g => g.trim());
+    onSaveMonthGoals(final);
+    setNewGoalInput('');
+    setEditingGoals(false);
+  };
+
   return (
     <div style={S.content}>
       <div style={S.topbar}>
@@ -760,14 +786,40 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         </div>
       </div>
 
-      <div style={S.sectionTitle}>✅ 오늘 할일</div>
-      <div style={{ ...S.card, border: allDone ? "1.5px solid #4ADE80" : filledCount > 0 ? "1.5px solid #2D344A" : "1.5px solid #2D344A" }}>
-        {filledCount === 0 ? (
+      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+        <span>✅ 오늘 할일</span>
+        <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
+          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          {editingTasks ? "완료 ✓" : "✏️ 편집"}
+        </button>
+      </div>
+      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid #2D344A" }}>
+        {editingTasks ? (
+          <>
+            {draftTasks.map((t, idx) => (
+              <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={t.title}
+                  onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
+                  placeholder={`할 일 ${idx + 1}`}
+                  maxLength={60}
+                />
+                <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+            <button style={{ ...S.btn, marginTop: 4 }}
+              onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null }])}>
+              ➕ 할 일 추가
+            </button>
+          </>
+        ) : filledCount === 0 ? (
           <>
             <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 14 }}>
               오늘 할 일을 아직 입력하지 않았어요
             </div>
-            <button style={S.btn} onClick={onGoToday}>할일 입력하기 →</button>
+            <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
           </>
         ) : (
           <>
@@ -861,9 +913,53 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         </div>
       </div>
 
-      <div style={S.sectionTitle}>📅 이달 목표</div>
+      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+        <span>📅 이달 목표</span>
+        <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
+          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          {editingGoals ? "완료 ✓" : "✏️ 편집"}
+        </button>
+      </div>
       <div style={S.card}>
-        {(goals.month || []).length ? (() => {
+        {editingGoals ? (
+          <>
+            {draftGoals.map((g, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={g}
+                  onChange={(e) => setDraftGoals(prev => prev.map((x, j) => j === i ? e.target.value : x))}
+                  placeholder={`목표 ${i + 1}`}
+                  maxLength={40}
+                />
+                <button onClick={() => setDraftGoals(prev => prev.filter((_, j) => j !== i))}
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+            {draftGoals.length < 5 && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={newGoalInput}
+                  onChange={(e) => setNewGoalInput(e.target.value)}
+                  placeholder="새 목표 입력 후 Enter 또는 ➕"
+                  maxLength={40}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newGoalInput.trim()) {
+                      setDraftGoals(prev => [...prev, newGoalInput.trim()]);
+                      setNewGoalInput('');
+                    }
+                  }}
+                />
+                <button onClick={() => {
+                  if (!newGoalInput.trim()) return;
+                  setDraftGoals(prev => [...prev, newGoalInput.trim()]);
+                  setNewGoalInput('');
+                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>➕</button>
+              </div>
+            )}
+          </>
+        ) : (goals.month || []).length ? (() => {
           const monthGoals = goals.month;
           const doneGoals = monthGoals.filter((_, i) => goalChecks[i]).length;
           const allGoalsDone = doneGoals === monthGoals.length;
@@ -906,7 +1002,10 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
             </>
           );
         })() : (
-          <div style={{ color: "#5C6480", fontSize: 13 }}>설정에서 이달 목표를 입력하세요</div>
+          <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 4 }}>
+            이달 목표가 없어요.{" "}
+            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
+          </div>
         )}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -939,55 +1038,9 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
 }
 
 function Today({ dateStr, data, setData, toast, setToast }) {
-  const getDefaultTime = () => {
-    const now = new Date();
-    const hm = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-    return CHECK_TIMES.slice()
-      .reverse()
-      .find((t) => t <= hm) || "07:30";
-  };
-
-  const [activeTime, setActiveTime] = useState(getDefaultTime());
-
-  const tasksFilled = data.tasks.filter((t) => t.title.trim()).length;
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
-  const isPerfect = tasksFilled >= 3 && doneCount === tasksFilled && !!data.journal?.body?.trim();
-
-  const toggleDone = (id) => {
-    setData((prev) => {
-      const next = { ...prev };
-      next.tasks = next.tasks.map((t) =>
-        t.id === id
-          ? { ...t, done: !t.done, checkedAt: new Date().toISOString() }
-          : t
-      );
-      if (next.tasks.find(t => t.id === id).done) {
-        playSuccessSound();
-      }
-      return next;
-    });
-  };
-
-  const setTitle = (id, title) => {
-    setData((prev) => {
-      const next = { ...prev };
-      next.tasks = next.tasks.map((t) =>
-        t.id === id ? { ...t, title } : t
-      );
-      return next;
-    });
-  };
-
-  const markCheck = (timeStr) => {
-    setData((prev) => {
-      const next = { ...prev };
-      next.checks = { ...next.checks, [timeStr]: true };
-      return next;
-    });
-    setToast(`체크 완료 (${timeStr}) ✅`);
-  };
-
-  const allSet = tasksFilled === 3;
+  const filledCount = data.tasks.filter((t) => t.title.trim()).length;
+  const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
 
   return (
     <div style={S.content}>
@@ -995,8 +1048,8 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>오늘</div>
-          <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/3 완료</div>
+          <div style={S.title}>오늘 일기</div>
+          <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
       </div>
 
@@ -1016,71 +1069,10 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         </div>
       )}
 
-      <div style={S.sectionTitle}>{`오늘 할 일 (${data.tasks.length}개)`}</div>
-      <div style={S.card}>
-        {data.tasks.map((t, idx) => (
-          <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
-            <button
-              onClick={() => toggleDone(t.id)}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                border: `1.5px solid ${t.done ? "#4ADE80" : "#2D344A"}`,
-                background: t.done ? "rgba(74,222,128,.12)" : "#252B3E",
-                color: t.done ? "#4ADE80" : "#A8AFCA",
-                fontSize: 18,
-                cursor: "pointer",
-              }}
-              title="완료 체크"
-            >
-              {t.done ? "✓" : idx + 1}
-            </button>
-            <input
-              style={S.input}
-              value={t.title}
-              onChange={(e) => setTitle(t.id, e.target.value)}
-              placeholder={`할 일 ${idx + 1}`}
-              maxLength={60}
-            />
-            <button
-              style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer" }}
-              onClick={() => {
-                setData(prev => {
-                  const next = { ...prev };
-                  next.tasks = next.tasks.filter(x => x.id !== t.id);
-                  return next;
-                });
-              }}
-              title="삭제"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <button
-          style={{ ...S.btn, marginTop: 8 }}
-          onClick={() => {
-            setData(prev => {
-              const next = { ...prev };
-              const id = `t${Date.now()}`;
-              next.tasks = [...next.tasks, { id, title: "", done: false, checkedAt: null }];
-              return next;
-            });
-          }}
-        >
-          ➕ 할 일 추가
-        </button>
-        <div style={{ marginTop: 10, fontSize: 12, color: allSet ? "#4ADE80" : "#FCD34D", fontWeight: 900 }}>
-          {allSet ? "좋아요! 3가지가 정해졌어요." : "3가지를 모두 입력하면 루틴이 더 선명해져요."}
-        </div>
-      </div>
-
-      {/* 시간 기반 체크 UI는 제거 - 할 일을 앞의 숫자를 눌러 직접 완료 표시 */}
       <div style={S.sectionTitle}>일기 (22:00 이후 추천)</div>
       <div style={S.card}>
         <textarea
-          rows={6}
+          rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
           value={data.journal.body}
           onChange={(e) =>
@@ -1531,7 +1523,6 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
-  const [monthText, setMonthText] = useState((goals.month || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
   const fileInputRef = useRef(null);
 
@@ -1622,12 +1613,13 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     const nextUser = { name: (name || "").trim() || "사용자" };
     const nextGoals = {
       year: clampList(parseLines(yearText), 5),
-      month: clampList(parseLines(monthText), 3),
+      month: goals.month || [],
     };
     setUser(nextUser);
     setGoals(nextGoals);
     store.set("dm_user", nextUser);
     store.set("dm_goals", nextGoals);
+    if (authUser) saveSettings(authUser.uid, { name: nextUser.name }).catch(() => {});
     setToast("저장 완료 ✅");
   };
 
@@ -1706,17 +1698,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           onChange={(e) => setYearText(e.target.value)}
           placeholder="한 줄에 하나씩 입력"
         />
-        <div style={{ height: 12 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
-          📅 이달 목표 (최대 3개)
+        <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, lineHeight: 1.6 }}>
+          💡 이달 목표는 홈 화면에서 직접 추가/편집할 수 있어요
         </div>
-        <textarea
-          rows={3}
-          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
-          value={monthText}
-          onChange={(e) => setMonthText(e.target.value)}
-          placeholder="한 줄에 하나씩 입력"
-        />
         <button style={S.btn} onClick={save}>저장</button>
       </div>
 
@@ -2040,7 +2024,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "#5C6480", fontSize: 12 }}>
-        DayMate Lite v9 · 2026-03-08
+        DayMate Lite v10 · 2026-03-08
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2232,6 +2216,17 @@ export default function App() {
     });
   };
 
+  const onSetTodayTasks = (tasks) => {
+    setTodayData(prev => ({ ...prev, tasks }));
+  };
+
+  const onSaveMonthGoals = (monthGoals) => {
+    const nextGoals = { ...goals, month: monthGoals };
+    setGoals(nextGoals);
+    store.set("dm_goals", nextGoals);
+    if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
+  };
+
   // Onboarding-lite: first run ask name quickly
   const [firstRunDone, setFirstRunDone] = useState(() => !!store.get("dm_first_run_done", false));
   const [nameInput, setNameInput] = useState("");
@@ -2304,6 +2299,8 @@ export default function App() {
           }))}
           goalChecks={goalChecks}
           onToggleGoal={onToggleGoal}
+          onSetTodayTasks={onSetTodayTasks}
+          onSaveMonthGoals={onSaveMonthGoals}
         />
       );
     }
