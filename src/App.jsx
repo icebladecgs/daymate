@@ -2624,14 +2624,16 @@ export default function App() {
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {render(changeScreen)}
         {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
-        <button
-          onClick={() => setIsDark(v => !v)}
-          style={{ position:"fixed", top:14, right:16, width:38, height:38, borderRadius:999,
-            border:"1.5px solid var(--dm-border)", background:"var(--dm-card)", fontSize:18,
-            cursor:"pointer", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center",
-            boxShadow:"0 2px 12px rgba(0,0,0,.25)" }}>
-          {isDark ? "☀️" : "🌙"}
-        </button>
+        {screen === "home" && (
+          <button
+            onClick={() => setIsDark(v => !v)}
+            style={{ position:"fixed", top:14, right:16, width:38, height:38, borderRadius:999,
+              border:"1.5px solid var(--dm-border)", background:"var(--dm-card)", fontSize:18,
+              cursor:"pointer", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:"0 2px 12px rgba(0,0,0,.25)" }}>
+            {isDark ? "☀️" : "🌙"}
+          </button>
+        )}
       </div>
     </div>
   );
