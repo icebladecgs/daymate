@@ -1723,6 +1723,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
   const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
+  const [showBotHelp, setShowBotHelp] = useState(false);
+  const [showChatHelp, setShowChatHelp] = useState(false);
   const [briefingTime, setBriefingTime] = useState(telegramCfg.briefingTime || '07:00');
   const [todoTime, setTodoTime] = useState(telegramCfg.todoTime || '07:05');
   const [selectedAssets, setSelectedAssets] = useState(
@@ -2012,11 +2014,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>텔레그램 자동화</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>봇 토큰 (Bot Token)</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
+          <button onClick={() => setShowBotHelp(v => !v)}
+            style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
+            {showBotHelp ? "▲ 닫기" : "❓ 얻는 방법"}
+          </button>
+        </div>
+        {showBotHelp && (
+          <div style={{ fontSize: 12, color: "#A8AFCA", background: "#1A1F2E", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid #2D344A" }}>
+            <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 <b>@BotFather</b> 검색 후 시작<br />
+            <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
+            <b style={{ color: "#6C8EFF" }}>3.</b> 봇 이름 지정 → 사용자명(봇ID) 지정<br />
+            <b style={{ color: "#6C8EFF" }}>4.</b> BotFather가 전송한 <b>HTTP API token</b> 복사<br />
+            <span style={{ color: "#5C6480" }}>예) <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
+          </div>
+        )}
         <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
 
         <div style={{ height: 10 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>채팅 ID (Chat ID)</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
+          <button onClick={() => setShowChatHelp(v => !v)}
+            style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
+            {showChatHelp ? "▲ 닫기" : "❓ 얻는 방법"}
+          </button>
+        </div>
+        {showChatHelp && (
+          <div style={{ fontSize: 12, color: "#A8AFCA", background: "#1A1F2E", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid #2D344A" }}>
+            <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 내가 만든 봇을 찾아 메시지 전송<br />
+            <b style={{ color: "#6C8EFF" }}>2.</b> 브라우저에서 아래 URL 접속:<br />
+            <code style={{ background: "#252B3E", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
+            <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "#252B3E", padding: "1px 5px", borderRadius: 4 }}>"chat":{'{'}"id": <b>숫자</b>{'}'}</code> 확인<br />
+            <span style={{ color: "#5C6480" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
+          </div>
+        )}
         <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
 
         <div style={{ height: 10 }} />
