@@ -577,7 +577,7 @@ function Toast({ msg, onDone }) {
 function BottomNav({ screen, setScreen }) {
   const items = [
     { id: "home", icon: "🏠", label: "홈" },
-    { id: "today", icon: "✅", label: "오늘" },
+    { id: "today", icon: "📖", label: "일기" },
     { id: "history", icon: "📅", label: "기록" },
     { id: "stats", icon: "📊", label: "통계" },
     { id: "settings", icon: "⚙️", label: "설정" },
@@ -1388,6 +1388,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
 function Stats({ plans }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   let perfectDays = 0;
@@ -1398,9 +1399,7 @@ function Stats({ plans }) {
     const dayData = plans[dateStr];
     if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
       filledDays++;
-      if (isPerfectDay(dayData)) {
-        perfectDays++;
-      }
+      if (isPerfectDay(dayData)) perfectDays++;
     }
   }
 
@@ -1418,30 +1417,54 @@ function Stats({ plans }) {
       const dayData = plans[dateStr];
       if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
         filled++;
-        if (isPerfectDay(dayData)) {
-          perfect++;
-        }
+        if (isPerfectDay(dayData)) perfect++;
       }
     }
     monthStats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
   }
 
-  const prev = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(y => y - 1);
-    } else {
-      setViewMonth(m => m - 1);
+  // 연간 히트맵 데이터 (해당 연도 1월1일 ~ 12월31일)
+  const buildHeatmap = (year) => {
+    const jan1 = new Date(year, 0, 1);
+    const startOffset = jan1.getDay(); // 0=일
+    const totalDays = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+    const cells = [];
+    // 앞쪽 빈칸
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(year, 0, i + 1);
+      const ds = toDateStr(d);
+      const day = plans[ds];
+      const filled = day && (day.tasks || []).some(t => t.title.trim());
+      const perfect = isPerfectDay(day);
+      const done = day ? (day.tasks || []).filter(t => t.done && t.title.trim()).length : 0;
+      const total = day ? (day.tasks || []).filter(t => t.title.trim()).length : 0;
+      cells.push({ ds, filled, perfect, done, total, month: d.getMonth(), date: d.getDate() });
     }
+    return cells;
   };
 
+  const heatmapCells = useMemo(() => buildHeatmap(heatmapYear), [heatmapYear, plans]);
+  const heatTotalPerfect = heatmapCells.filter(c => c && c.perfect).length;
+  const heatTotalFilled = heatmapCells.filter(c => c && c.filled).length;
+
+  const cellColor = (cell) => {
+    if (!cell || !cell.filled) return '#1A1F2E';
+    if (cell.perfect) return '#4ADE80';
+    if (cell.done === 0) return 'rgba(248,113,113,.25)';
+    if (cell.done === cell.total) return 'rgba(74,222,128,.4)';
+    return 'rgba(252,211,77,.35)';
+  };
+
+  const [tooltip, setTooltip] = useState(null);
+
+  const prev = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
   const next = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(y => y + 1);
-    } else {
-      setViewMonth(m => m + 1);
-    }
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
   };
 
   return (
@@ -1510,6 +1533,60 @@ function Stats({ plans }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+        <span>🌱 연간 잔디</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => setHeatmapYear(y => y - 1)}
+            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>‹</button>
+          <span style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, alignSelf: "center" }}>{heatmapYear}</span>
+          <button onClick={() => setHeatmapYear(y => y + 1)}
+            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>›</button>
+        </div>
+      </div>
+      <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 10px", overflowX: "auto" }}>
+        <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <span>완벽한 날 <b style={{ color: "#4ADE80" }}>{heatTotalPerfect}</b>일</span>
+          <span>기록한 날 <b style={{ color: "#A8AFCA" }}>{heatTotalFilled}</b>일</span>
+        </div>
+        {/* 요일 헤더 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4, minWidth: 200 }}>
+          {["일","월","화","수","목","금","토"].map(d => (
+            <div key={d} style={{ textAlign: "center", fontSize: 9, color: "#3A4260", fontWeight: 900 }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, minWidth: 200 }}>
+          {heatmapCells.map((cell, i) => (
+            <div
+              key={i}
+              title={cell ? `${cell.ds} ${cell.perfect ? "🌟 완벽" : cell.filled ? `${cell.done}/${cell.total}` : ""}` : ""}
+              onClick={() => cell && setTooltip(tooltip?.ds === cell.ds ? null : cell)}
+              style={{
+                aspectRatio: "1",
+                borderRadius: 3,
+                background: cellColor(cell),
+                cursor: cell && cell.filled ? "pointer" : "default",
+                border: tooltip && cell && tooltip.ds === cell.ds ? "1.5px solid #6C8EFF" : "1.5px solid transparent",
+                transition: "transform 0.1s",
+              }}
+            />
+          ))}
+        </div>
+        {tooltip && (
+          <div style={{ marginTop: 10, padding: "8px 12px", background: "#252B3E", borderRadius: 8, fontSize: 12, color: "#F0F2F8" }}>
+            <b>{formatKoreanDate(tooltip.ds)}</b>
+            {tooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
+            {!tooltip.perfect && tooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{tooltip.done}/{tooltip.total} 완료</span>}
+          </div>
+        )}
+        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "#5C6480" }}>
+          <span>적음</span>
+          {["#1A1F2E", "rgba(248,113,113,.25)", "rgba(252,211,77,.35)", "rgba(74,222,128,.4)", "#4ADE80"].map((c, i) => (
+            <div key={i} style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
+          ))}
+          <span>완벽</span>
         </div>
       </div>
 
