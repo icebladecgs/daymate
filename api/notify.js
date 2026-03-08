@@ -1,5 +1,9 @@
 // Vercel Serverless Function — DayMate Telegram 알림
 // 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, FINNHUB_KEY, USER_NAME, SELECTED_ASSETS, NOTIFY_TYPE
+// Firebase Admin 연동: FIREBASE_SERVICE_ACCOUNT (JSON), FIREBASE_USER_UID
+
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const ASSET_META = {
   BTC:  { label: '비트코인',      src: 'coingecko' },
@@ -9,6 +13,14 @@ const ASSET_META = {
   IVR:  { label: 'IVR',           src: 'finnhub' },
   QQQ:  { label: '나스닥100(QQQ)', src: 'finnhub' },
 };
+
+function getDb() {
+  if (!getApps().length) {
+    const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+    initializeApp({ credential: cert(sa) });
+  }
+  return getFirestore();
+}
 
 async function sendTelegramMessage(botToken, chatId, text) {
   const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -21,30 +33,40 @@ async function sendTelegramMessage(botToken, chatId, text) {
   return json;
 }
 
-async function fetchMarketData(finnhubKey, assets) {
+async function fetchMarketData(finnhubKey, assets, customRegistry = {}) {
   const data = {};
-  const assetSet = new Set(assets);
+  const registry = { ...ASSET_META, ...customRegistry }; // 통합 레지스트리
 
-  // CoinGecko (BTC, ETH)
-  const needBTC = assetSet.has('BTC'), needETH = assetSet.has('ETH');
-  if (needBTC || needETH) {
+  // CoinGecko (preset BTC/ETH + custom crypto)
+  const geckoCoins = assets
+    .filter(sym => registry[sym]?.src === 'coingecko')
+    .map(sym => ({
+      sym,
+      coinId: registry[sym].coinId || (sym === 'BTC' ? 'bitcoin' : sym === 'ETH' ? 'ethereum' : null),
+      label: registry[sym].label,
+    }))
+    .filter(c => c.coinId);
+
+  if (geckoCoins.length > 0) {
     try {
-      const ids = [needBTC && 'bitcoin', needETH && 'ethereum'].filter(Boolean).join(',');
+      const ids = geckoCoins.map(c => c.coinId).join(',');
       const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
       const j = await r.json();
-      if (needBTC) data.BTC = { label: '비트코인', price: j.bitcoin?.usd, chgPct: j.bitcoin?.usd_24h_change };
-      if (needETH) data.ETH = { label: '이더리움', price: j.ethereum?.usd, chgPct: j.ethereum?.usd_24h_change };
+      for (const { sym, coinId, label } of geckoCoins) {
+        const coin = j[coinId];
+        if (coin) data[sym] = { label, price: coin.usd, chgPct: coin.usd_24h_change, src: 'coingecko' };
+      }
     } catch {}
   }
 
-  // Finnhub (TSLA, GOOGL, IVR, QQQ)
+  // Finnhub (preset + custom stocks)
   if (finnhubKey) {
-    const stocks = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => assetSet.has(s));
-    for (const sym of stocks) {
+    const finnhubAssets = assets.filter(sym => registry[sym]?.src === 'finnhub');
+    for (const sym of finnhubAssets) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
         const j = await r.json();
-        if (j && j.c > 0) data[sym] = { label: ASSET_META[sym].label, price: j.c, change: j.d, chgPct: j.dp };
+        if (j && j.c > 0) data[sym] = { label: registry[sym].label, price: j.c, change: j.d, chgPct: j.dp, src: 'finnhub' };
       } catch {}
     }
   }
@@ -68,14 +90,16 @@ function buildBriefingText(marketData, userName) {
     return ` ${arrow} ${pct}${chgStr}`;
   };
 
-  for (const sym of ['BTC', 'ETH']) {
+  // crypto (src='coingecko') 먼저
+  const cryptoSyms = Object.keys(marketData).filter(s => marketData[s].src === 'coingecko');
+  for (const sym of cryptoSyms) {
     const d = marketData[sym];
-    if (d) {
-      const icon = sym === 'BTC' ? '₿' : 'Ξ';
-      text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
-    }
+    const icon = sym === 'BTC' ? '₿' : sym === 'ETH' ? 'Ξ' : '🪙';
+    text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
   }
-  const stockSyms = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => marketData[s]);
+
+  // 주식 (src='finnhub') 나중
+  const stockSyms = Object.keys(marketData).filter(s => marketData[s].src === 'finnhub');
   if (stockSyms.length > 0) {
     text += `━━━━━━━━━━━━━━━\n`;
     for (const sym of stockSyms) {
@@ -100,13 +124,42 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId   = process.env.TELEGRAM_CHAT_ID;
-  const finnhubKey = process.env.FINNHUB_KEY || '';
-  const userName = process.env.USER_NAME || '사용자';
-  const assetsRaw = process.env.SELECTED_ASSETS || Object.keys(ASSET_META).join(',');
-  const selectedAssets = assetsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  let botToken = process.env.TELEGRAM_BOT_TOKEN;
+  let chatId   = process.env.TELEGRAM_CHAT_ID;
+  let finnhubKey = process.env.FINNHUB_KEY || '';
+  let userName = process.env.USER_NAME || '사용자';
+  let selectedAssets = (process.env.SELECTED_ASSETS || Object.keys(ASSET_META).join(',')).split(',').map(s => s.trim()).filter(Boolean);
+  let customRegistry = {};
   const notifyType = process.env.NOTIFY_TYPE || req.query.type || 'briefing';
+
+  // Firebase Admin으로 Firestore에서 유저 텔레그램 설정 읽기
+  // Vercel env vars에 추가 필요:
+  //   FIREBASE_SERVICE_ACCOUNT — Firebase Console → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성 → JSON 내용 전체
+  //   FIREBASE_USER_UID       — Firebase Auth에서 본인 UID
+  const uid = process.env.FIREBASE_USER_UID;
+  if (uid && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const db = getDb();
+      const doc = await db.collection('users').doc(uid).collection('data').doc('settings').get();
+      if (doc.exists) {
+        const tg = doc.data()?.telegram;
+        if (tg) {
+          if (tg.botToken) botToken = tg.botToken;
+          if (tg.chatId) chatId = tg.chatId;
+          if (tg.finnhubKey) finnhubKey = tg.finnhubKey;
+          if (tg.assets?.length) selectedAssets = tg.assets;
+          if (tg.customAssets?.length) {
+            customRegistry = Object.fromEntries(tg.customAssets.map(a => [a.sym, a]));
+            // 선택된 자산에 커스텀 자산도 포함
+            selectedAssets = [...new Set([...selectedAssets, ...tg.customAssets.map(a => a.sym)])];
+          }
+        }
+      }
+    } catch (e) {
+      // Firestore 실패 시 env var 값 사용
+      console.error('Firestore read failed:', e.message);
+    }
+  }
 
   if (!botToken || !chatId) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID 환경변수 없음' });
@@ -117,7 +170,7 @@ export default async function handler(req, res) {
     if (notifyType === 'todo') {
       text = buildTodoReminderText(userName);
     } else {
-      const marketData = await fetchMarketData(finnhubKey, selectedAssets);
+      const marketData = await fetchMarketData(finnhubKey, selectedAssets, customRegistry);
       text = buildBriefingText(marketData, userName);
     }
 

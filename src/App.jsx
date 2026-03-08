@@ -162,30 +162,40 @@ const ASSET_META = {
   QQQ:  { label: '나스닥100(QQQ)', src: 'finnhub' },
 };
 
-async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META)) {
+async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META), customRegistry = {}) {
   const data = {};
-  const assetSet = new Set(assets);
+  const registry = { ...ASSET_META, ...customRegistry }; // 통합 레지스트리
 
-  // 코인 - CoinGecko
-  const needBTC = assetSet.has('BTC'), needETH = assetSet.has('ETH');
-  if (needBTC || needETH) {
+  // CoinGecko (preset BTC/ETH + custom crypto)
+  const geckoCoins = assets
+    .filter(sym => registry[sym]?.src === 'coingecko')
+    .map(sym => ({
+      sym,
+      coinId: registry[sym].coinId || (sym === 'BTC' ? 'bitcoin' : sym === 'ETH' ? 'ethereum' : null),
+      label: registry[sym].label
+    }))
+    .filter(c => c.coinId);
+
+  if (geckoCoins.length > 0) {
     try {
-      const ids = [needBTC && 'bitcoin', needETH && 'ethereum'].filter(Boolean).join(',');
+      const ids = geckoCoins.map(c => c.coinId).join(',');
       const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
       const j = await r.json();
-      if (needBTC) data.BTC = { label: '비트코인', price: j.bitcoin?.usd, chgPct: j.bitcoin?.usd_24h_change };
-      if (needETH) data.ETH = { label: '이더리움', price: j.ethereum?.usd, chgPct: j.ethereum?.usd_24h_change };
+      for (const { sym, coinId, label } of geckoCoins) {
+        const coin = j[coinId];
+        if (coin) data[sym] = { label, price: coin.usd, chgPct: coin.usd_24h_change, src: 'coingecko' };
+      }
     } catch {}
   }
 
-  // 주식 - Finnhub
+  // Finnhub (preset + custom stocks)
   if (finnhubKey) {
-    const finnhubAssets = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => assetSet.has(s));
+    const finnhubAssets = assets.filter(sym => registry[sym]?.src === 'finnhub');
     for (const sym of finnhubAssets) {
       try {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
         const j = await r.json();
-        if (j && j.c > 0) data[sym] = { label: ASSET_META[sym].label, price: j.c, change: j.d, chgPct: j.dp };
+        if (j && j.c > 0) data[sym] = { label: registry[sym].label, price: j.c, change: j.d, chgPct: j.dp, src: 'finnhub' };
       } catch {}
     }
   }
@@ -210,14 +220,16 @@ function buildBriefingText(marketData, userName) {
     return ` ${arrow} ${pct}${chgStr}`;
   };
 
-  for (const sym of ['BTC', 'ETH']) {
+  // crypto (src='coingecko') 먼저
+  const cryptoSyms = Object.keys(marketData).filter(s => marketData[s].src === 'coingecko');
+  for (const sym of cryptoSyms) {
     const d = marketData[sym];
-    if (d) {
-      const icon = sym === 'BTC' ? '₿' : 'Ξ';
-      text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
-    }
+    const icon = sym === 'BTC' ? '₿' : sym === 'ETH' ? 'Ξ' : '🪙';
+    text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
   }
-  const stockSyms = ['TSLA', 'GOOGL', 'IVR', 'QQQ'].filter(s => marketData[s]);
+
+  // 주식 (src='finnhub') 나중
+  const stockSyms = Object.keys(marketData).filter(s => marketData[s].src === 'finnhub');
   if (stockSyms.length > 0) {
     text += `━━━━━━━━━━━━━━━\n`;
     for (const sym of stockSyms) {
@@ -227,6 +239,30 @@ function buildBriefingText(marketData, userName) {
   }
   text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅`;
   return text;
+}
+
+async function searchFinnhub(finnhubKey, query) {
+  try {
+    const r = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${finnhubKey}`);
+    const j = await r.json();
+    return (j.result || [])
+      .filter(item => item.type === 'Common Stock' || item.type === 'ETP')
+      .slice(0, 6)
+      .map(item => ({ sym: item.symbol, label: item.description, src: 'finnhub' }));
+  } catch { return []; }
+}
+
+async function searchCoinGecko(query) {
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
+    const j = await r.json();
+    return (j.coins || []).slice(0, 6).map(coin => ({
+      sym: coin.symbol.toUpperCase(),
+      label: coin.name,
+      src: 'coingecko',
+      coinId: coin.id,
+    }));
+  } catch { return []; }
 }
 
 // setTimeout 기반 (탭 열려있을 때만 동작)
@@ -267,8 +303,10 @@ class NotifScheduler {
     this.cancelAll();
     if (!enabled) return;
 
-    const { botToken = '', chatId = '', finnhubKey = '', briefingTime = '07:00', todoTime = '07:05', assets } = telegramCfg;
+    const { botToken = '', chatId = '', finnhubKey = '', briefingTime = '07:00', todoTime = '07:05', assets, customAssets: rawCustomAssets } = telegramCfg;
     const selectedAssets = assets && assets.length > 0 ? assets : Object.keys(ASSET_META);
+    const customAssetsArr = rawCustomAssets || [];
+    const customRegistry = Object.fromEntries(customAssetsArr.map(a => [a.sym, a]));
     const morningTime = alarmTimes.morning || '07:30';
     const noonTime = alarmTimes.noon || '12:00';
     const eveningTime = alarmTimes.evening || '18:00';
@@ -282,7 +320,7 @@ class NotifScheduler {
         'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
         '📊',
         async () => {
-          const marketData = await fetchMarketData(finnhubKey, selectedAssets);
+          const marketData = await fetchMarketData(finnhubKey, selectedAssets, customRegistry);
           const text = buildBriefingText(marketData, userName);
           await sendTelegramMessage(botToken, chatId, text);
         }
@@ -1405,6 +1443,11 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const [selectedAssets, setSelectedAssets] = useState(
     telegramCfg.assets || Object.keys(ASSET_META)
   );
+  const [customAssets, setCustomAssets] = useState(telegramCfg.customAssets || []);
+  const [assetSearch, setAssetSearch] = useState('');
+  const [searchMode, setSearchMode] = useState('stock');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
@@ -1419,12 +1462,38 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const saveTelegram = () => {
     const cfg = {
       botToken: tgToken.trim(), chatId: tgChatId.trim(), finnhubKey: finnhubKey.trim(),
-      briefingTime, todoTime, assets: selectedAssets,
+      briefingTime, todoTime, assets: selectedAssets, customAssets,
     };
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
     if (authUser) saveSettings(authUser.uid, { telegram: cfg }).catch(() => {});
     setToast('텔레그램 설정 저장 ✅');
+  };
+
+  const doAssetSearch = async (query) => {
+    setAssetSearch(query);
+    if (!query.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    const results = searchMode === 'stock'
+      ? await searchFinnhub(finnhubKey.trim(), query)
+      : await searchCoinGecko(query);
+    setSearchResults(results);
+    setSearching(false);
+  };
+
+  const addCustomAsset = (asset) => {
+    const allSyms = [...Object.keys(ASSET_META), ...customAssets.map(a => a.sym)];
+    if (allSyms.includes(asset.sym)) { setToast(`${asset.sym} 이미 있어요`); return; }
+    const next = [...customAssets, asset];
+    setCustomAssets(next);
+    setSelectedAssets(prev => [...prev, asset.sym]);
+    setSearchResults([]);
+    setAssetSearch('');
+  };
+
+  const removeCustomAsset = (sym) => {
+    setCustomAssets(prev => prev.filter(a => a.sym !== sym));
+    setSelectedAssets(prev => prev.filter(s => s !== sym));
   };
 
   const saveAlarmTimes = () => {
@@ -1442,7 +1511,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const testBriefing = async () => {
     setToast('브리핑 생성 중...');
-    const marketData = await fetchMarketData(finnhubKey.trim(), selectedAssets);
+    const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
+    const marketData = await fetchMarketData(finnhubKey.trim(), selectedAssets, customRegistry);
     const text = buildBriefingText(marketData, user.name);
     const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
     setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
@@ -1709,6 +1779,76 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               </button>
             );
           })}
+        </div>
+
+        {customAssets.length > 0 && (
+          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {customAssets.map(a => (
+              <div key={a.sym} style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "#1E2235",
+                color: selectedAssets.includes(a.sym) ? "#fff" : "#5C6480",
+              }}>
+                <span onClick={() => toggleAsset(a.sym)} style={{ cursor: "pointer" }}>
+                  {a.sym} <span style={{ fontWeight: 400 }}>{a.label}</span>
+                </span>
+                <span
+                  onClick={() => removeCustomAsset(a.sym)}
+                  style={{ cursor: "pointer", color: "#F87171", fontWeight: 900, marginLeft: 2 }}
+                >×</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {['stock', 'crypto'].map(mode => (
+              <button
+                key={mode}
+                onClick={() => { setSearchMode(mode); setSearchResults([]); setAssetSearch(''); }}
+                style={{
+                  padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  background: searchMode === mode ? "#4B6FFF" : "#1E2235",
+                  color: searchMode === mode ? "#fff" : "#5C6480",
+                }}
+              >{mode === 'stock' ? '주식/ETF' : '코인'}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              style={{ ...S.input, flex: 1, marginBottom: 0 }}
+              placeholder={searchMode === 'stock' ? 'AAPL, NVDA, SPY...' : 'SOL, XRP, DOGE...'}
+              value={assetSearch}
+              onChange={e => doAssetSearch(e.target.value)}
+            />
+            {searching && <span style={{ color: "#A8AFCA", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
+          </div>
+          {searchResults.length > 0 && (
+            <div style={{
+              marginTop: 8, background: "#131720", border: "1px solid #2D344A",
+              borderRadius: 10, overflow: "hidden",
+            }}>
+              {searchResults.map(item => (
+                <div
+                  key={item.sym + item.src}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "8px 12px", borderBottom: "1px solid #1E2336", cursor: "pointer",
+                  }}
+                  onClick={() => addCustomAsset(item)}
+                >
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: "#F0F2F8" }}>{item.sym}</span>
+                    <span style={{ fontSize: 12, color: "#A8AFCA", marginLeft: 8 }}>{item.label}</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ height: 14 }} />
