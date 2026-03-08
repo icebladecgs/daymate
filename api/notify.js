@@ -83,14 +83,14 @@ function buildBriefingText(marketData, userName) {
       text += `📈 <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
     }
   }
-  text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅`;
+  text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
   return text;
 }
 
 function buildTodoReminderText(userName) {
   const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
-  return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪`;
+  return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
 }
 
 export default async function handler(req, res) {
