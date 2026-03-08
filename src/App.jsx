@@ -44,10 +44,10 @@ const toDateStr = (d = new Date()) =>
   `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const formatKoreanDate = (dateStr) => {
   const d = new Date(dateStr + "T00:00:00");
-  const dow = "?�월?�수목금??[d.getDay()];
-  return `${d.getMonth() + 1}??${d.getDate()}??${dow}?�일`;
+  const dow = "일월화수목금토"[d.getDay()];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
 };
-const monthLabel = (y, m0) => `${y}??${m0 + 1}??;
+const monthLabel = (y, m0) => `${y}년 ${m0 + 1}월`;
 
 // ---------- Text helpers ----------
 const parseLines = (text) =>
@@ -76,7 +76,7 @@ const requestPermission = async () => {
   }
 };
 
-const sendNotification = (title, body, iconEmoji = "??) => {
+const sendNotification = (title, body, iconEmoji = "✅") => {
   if (!hasNotification()) return null;
   if (Notification.permission !== "granted") return null;
   try {
@@ -138,7 +138,7 @@ const playSuccessSound = () => playSound(800, 150);
 
 // ---------- Telegram helpers ----------
 async function sendTelegramMessage(botToken, chatId, text) {
-  if (!botToken || !chatId) return { ok: false, error: '?�큰 ?�는 �?ID가 비어 ?�어?? };
+  if (!botToken || !chatId) return { ok: false, error: '토큰 또는 챗 ID가 비어 있어요' };
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
@@ -149,22 +149,22 @@ async function sendTelegramMessage(botToken, chatId, text) {
     if (res.ok) return { ok: true };
     return { ok: false, error: json.description || `HTTP ${res.status}` };
   } catch (e) {
-    return { ok: false, error: e.message || '?�트?�크 ?�류' };
+    return { ok: false, error: e.message || '네트워크 오류' };
   }
 }
 
 const ASSET_META = {
   BTC:  { label: '비트코인',     src: 'coingecko' },
-  ETH:  { label: '?�더리�?',     src: 'coingecko' },
-  TSLA: { label: '?�슬??,       src: 'finnhub' },
-  GOOGL:{ label: '구�?',         src: 'finnhub' },
+  ETH:  { label: '이더리움',     src: 'coingecko' },
+  TSLA: { label: '테슬라',       src: 'finnhub' },
+  GOOGL:{ label: '구글',         src: 'finnhub' },
   IVR:  { label: 'IVR',          src: 'finnhub' },
-  QQQ:  { label: '?�스??00(QQQ)', src: 'finnhub' },
+  QQQ:  { label: '나스닥100(QQQ)', src: 'finnhub' },
 };
 
 async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META), customRegistry = {}) {
   const data = {};
-  const registry = { ...ASSET_META, ...customRegistry }; // ?�합 ?��??�트�?
+  const registry = { ...ASSET_META, ...customRegistry }; // 통합 레지스트리
 
   // CoinGecko (preset BTC/ETH + custom crypto)
   const geckoCoins = assets
@@ -204,15 +204,15 @@ async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META), cus
 
 function buildBriefingText(marketData, userName) {
   const today = new Date();
-  const dateStr = `${today.getMonth() + 1}??${today.getDate()}??;
-  let text = `?�� <b>${userName}?�의 ?�침 ?�산 브리??/b> (${dateStr})\n`;
-  text += `?�━?�━?�━?�━?�━?�━?�━??n`;
+  const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
+  let text = `📊 <b>${userName}님의 아침 자산 브리핑</b> (${dateStr})\n`;
+  text += `━━━━━━━━━━━━━━━\n`;
 
   const fmtPrice = (n) =>
     n == null ? 'N/A' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtChg = (chgPct, change) => {
     if (chgPct == null) return '';
-    const arrow = chgPct >= 0 ? '?? : '??;
+    const arrow = chgPct >= 0 ? '▲' : '▼';
     const pct = `${chgPct >= 0 ? '+' : ''}${Number(chgPct).toFixed(2)}%`;
     const chgStr = change != null
       ? ` (${change >= 0 ? '+' : ''}$${Math.abs(Number(change)).toFixed(2)})`
@@ -220,24 +220,24 @@ function buildBriefingText(marketData, userName) {
     return ` ${arrow} ${pct}${chgStr}`;
   };
 
-  // crypto (src='coingecko') 먼�?
+  // crypto (src='coingecko') 먼저
   const cryptoSyms = Object.keys(marketData).filter(s => marketData[s].src === 'coingecko');
   for (const sym of cryptoSyms) {
     const d = marketData[sym];
-    const icon = sym === 'BTC' ? '?? : sym === 'ETH' ? '?' : '?��';
+    const icon = sym === 'BTC' ? '₿' : sym === 'ETH' ? 'Ξ' : '🪙';
     text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
   }
 
-  // 주식 (src='finnhub') ?�중
+  // 주식 (src='finnhub') 나중
   const stockSyms = Object.keys(marketData).filter(s => marketData[s].src === 'finnhub');
   if (stockSyms.length > 0) {
-    text += `?�━?�━?�━?�━?�━?�━?�━??n`;
+    text += `━━━━━━━━━━━━━━━\n`;
     for (const sym of stockSyms) {
       const d = marketData[sym];
-      text += `?�� <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
+      text += `📈 <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
     }
   }
-  text += `?�━?�━?�━?�━?�━?�━?�━??n좋�? ?�루 ?�세?? ?��`;
+  text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅`;
   return text;
 }
 
@@ -265,7 +265,7 @@ async function searchCoinGecko(query) {
   } catch { return []; }
 }
 
-// setTimeout 기반 (???�려?�을 ?�만 ?�작)
+// setTimeout 기반 (탭 열려있을 때만 동작)
 class NotifScheduler {
   constructor() {
     this.timers = {};
@@ -287,7 +287,7 @@ class NotifScheduler {
     return t.getTime() - now.getTime();
   }
 
-  schedule(id, timeStr, title, body, iconEmoji = "?��", onFire = null) {
+  schedule(id, timeStr, title, body, iconEmoji = "🔔", onFire = null) {
     clearTimeout(this.timers[id]);
     const fire = async () => {
       sendNotification(title, body, iconEmoji);
@@ -313,12 +313,12 @@ class NotifScheduler {
     const nightTime = alarmTimes.night || '23:00';
     const hasTg = !!(botToken && chatId);
 
-    // ?�산 브리??(Telegram)
+    // 자산 브리핑 (Telegram)
     if (hasTg) {
       this.schedule(
         'tg_market', briefingTime,
-        'DayMate ?��', '?�침 ?�산 브리?�을 ?�레그램?�로 ?�송 �?..',
-        '?��',
+        'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
+        '📊',
         async () => {
           const marketData = await fetchMarketData(finnhubKey, selectedAssets, customRegistry);
           const text = buildBriefingText(marketData, userName);
@@ -326,89 +326,89 @@ class NotifScheduler {
         }
       );
 
-      // ?�일 ?�림 (Telegram)
+      // 할일 알림 (Telegram)
       this.schedule(
         'tg_todo', todoTime,
-        'DayMate ??, '?�늘 ???�을 ?�레그램?�로 ?�송',
-        '??,
+        'DayMate ✅', '오늘 할 일을 텔레그램으로 전송',
+        '✅',
         async () => {
           const today = toDateStr();
           const todayDayData = store.get(dayKey(today));
           const tasks = (todayDayData?.tasks || []).filter(t => t.title.trim());
-          let text = `??<b>${userName}?? ?�늘 ????</b>\n\n`;
+          let text = `✅ <b>${userName}님, 오늘 할 일!</b>\n\n`;
           if (tasks.length > 0) {
             tasks.forEach((t, i) => { text += `${i + 1}. ${t.title}\n`; });
-            text += `\n�?${tasks.length}�??�정 · ?�이?? ?��`;
+            text += `\n총 ${tasks.length}개 예정 · 화이팅! 💪`;
           } else {
-            text += `?�직 ?�늘 ???�을 ?�력?��? ?�았?�요.\nDayMate?�서 ?�력?�주?�요 ?��`;
+            text += `아직 오늘 할 일을 입력하지 않았어요.\nDayMate에서 입력해주세요 📝`;
           }
           await sendTelegramMessage(botToken, chatId, text);
         }
       );
     }
 
-    // 브라?��? ?�림 (권한 ?�요)
+    // 브라우저 알림 (권한 필요)
     if (getPermission() !== "granted") return;
 
     this.schedule(
       'm_morning', morningTime,
-      'DayMate ?��', `${userName}?? 좋�? ?�침! ?�늘 ???�을 ?�해볼까??`, '?��',
+      'DayMate 🌅', `${userName}님, 좋은 아침! 오늘 할 일을 정해볼까요?`, '🌅',
       hasTg ? async () => {
         const d = store.get(dayKey(toDateStr()));
         const tasks = (d?.tasks || []).filter(t => t.title.trim());
-        let text = `?�� <b>${userName}?? 좋�? ?�침?�에??</b>\n\n`;
+        let text = `🌅 <b>${userName}님, 좋은 아침이에요!</b>\n\n`;
         if (tasks.length > 0) {
-          text += `?�� ?�늘???�일\n`;
+          text += `📋 오늘의 할일\n`;
           tasks.forEach((t, i) => { text += `  ${i + 1}. ${t.title}\n`; });
         } else {
-          text += `?�늘 ???�을 ?�직 ?�력?��? ?�았?�요.\nDayMate?�서 ?�루�?계획?�보?�요 ?��`;
+          text += `오늘 할 일을 아직 입력하지 않았어요.\nDayMate에서 하루를 계획해보세요 📝`;
         }
-        text += `\n\n<a href="https://daymate-beta.vercel.app">?�� DayMate ?�기</a>`;
+        text += `\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
         await sendTelegramMessage(botToken, chatId, text);
       } : null
     );
 
     this.schedule(
       'm_noon', noonTime,
-      'DayMate ?��', `${userName}?? ?�심 체크??`, '?��',
+      'DayMate 🕛', `${userName}님, 점심 체크인!`, '🕛',
       hasTg ? async () => {
         const d = store.get(dayKey(toDateStr()));
         const tasks = d?.tasks || [];
         const done = tasks.filter(t => t.done && t.title.trim()).length;
         const total = tasks.filter(t => t.title.trim()).length;
         await sendTelegramMessage(botToken, chatId,
-          `?�� <b>${userName}???�심 체크??</b>\n\n???�료: ${done}/${total}\n\n?�후???�이?? ?��`
+          `🕛 <b>${userName}님 점심 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n오후도 화이팅! 💪`
         );
       } : null
     );
 
     this.schedule(
       'm_eve', eveningTime,
-      'DayMate ?��', `${userName}?? ?�??체크??`, '?��',
+      'DayMate 🌆', `${userName}님, 저녁 체크인!`, '🌆',
       hasTg ? async () => {
         const d = store.get(dayKey(toDateStr()));
         const tasks = d?.tasks || [];
         const done = tasks.filter(t => t.done && t.title.trim()).length;
         const total = tasks.filter(t => t.title.trim()).length;
         await sendTelegramMessage(botToken, chatId,
-          `?�� <b>${userName}???�??체크??</b>\n\n???�료: ${done}/${total}\n\n마무�????�요! ?��`
+          `🌆 <b>${userName}님 저녁 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n마무리 잘 해요! 🎯`
         );
       } : null
     );
 
     this.schedule(
       'm_night', nightTime,
-      'DayMate ?��', `${userName}?? 마�?�?체크 + ?�기 ?�성?�고 마무리해??`, '?��',
+      'DayMate 🌙', `${userName}님, 마지막 체크 + 일기 작성하고 마무리해요.`, '🌙',
       hasTg ? async () => {
         const d = store.get(dayKey(toDateStr()));
         const tasks = d?.tasks || [];
         const done = tasks.filter(t => t.done && t.title.trim()).length;
         const total = tasks.filter(t => t.title.trim()).length;
         const hasJournal = !!d?.journal?.body?.trim();
-        let text = `?�� <b>${userName}?? ?�루 마무리할 ?�간?�에??</b>\n\n`;
-        text += `???�료: ${done}/${total}\n`;
-        text += hasJournal ? `?�� ?�기: ?�성 ?�료 ??n` : `?�� ?�기: ?�직 ?�성 ???�️\n`;
-        text += `\n?�늘???�고?�어?? ?��`;
+        let text = `🌙 <b>${userName}님, 하루 마무리할 시간이에요!</b>\n\n`;
+        text += `✅ 완료: ${done}/${total}\n`;
+        text += hasJournal ? `📖 일기: 작성 완료 ✓\n` : `📖 일기: 아직 작성 전 ✏️\n`;
+        text += `\n오늘도 수고했어요! 🌟`;
         await sendTelegramMessage(botToken, chatId, text);
       } : null
     );
@@ -576,11 +576,11 @@ function Toast({ msg, onDone }) {
 
 function BottomNav({ screen, setScreen }) {
   const items = [
-    { id: "home", icon: "?��", label: "?? },
-    { id: "today", icon: "?��", label: "?�기" },
-    { id: "history", icon: "?��", label: "기록" },
-    { id: "stats", icon: "?��", label: "?�계" },
-    { id: "settings", icon: "?�️", label: "?�정" },
+    { id: "home", icon: "🏠", label: "홈" },
+    { id: "today", icon: "📖", label: "일기" },
+    { id: "history", icon: "📅", label: "기록" },
+    { id: "stats", icon: "📊", label: "통계" },
+    { id: "settings", icon: "⚙️", label: "설정" },
   ];
   return (
     <div style={S.bottomNav}>
@@ -713,7 +713,7 @@ const calcGoalProgress = (plans) => {
   
   const monthProgress = Math.round((perfectDaysThisMonth / daysInMonth) * 100);
   
-  // ?�간 진행?? 1??1?��????�늘까�?
+  // 연간 진행도: 1월 1일부터 오늘까지
   let perfectDaysThisYear = 0;
   let daysInYear = 0;
   
@@ -780,18 +780,18 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
       <div style={S.topbar}>
         <div>
           <div style={S.title}>DayMate Lite</div>
-          <div style={S.sub}>{user.name}??· {formatKoreanDate(today)}</div>
+          <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)}</div>
         </div>
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 800 }}>
-          {getPermission() === "granted" ? "?��" : "?��"}
+          {getPermission() === "granted" ? "🔔" : "🔕"}
         </div>
       </div>
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>???�늘 ?�일</span>
+        <span>✅ 오늘 할일</span>
         <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
           style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingTasks ? "?�료 ?? : "?�️ ?�집"}
+          {editingTasks ? "완료 ✓" : "✏️ 편집"}
         </button>
       </div>
       <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid #2D344A" }}>
@@ -803,30 +803,30 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   style={{ ...S.input, flex: 1 }}
                   value={t.title}
                   onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
-                  placeholder={`????${idx + 1}`}
+                  placeholder={`할 일 ${idx + 1}`}
                   maxLength={60}
                 />
                 <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>??/button>
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
               </div>
             ))}
             <button style={{ ...S.btn, marginTop: 4 }}
               onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null }])}>
-              ??????추�?
+              ➕ 할 일 추가
             </button>
           </>
         ) : filledCount === 0 ? (
           <>
             <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 14 }}>
-              ?�늘 ???�을 ?�직 ?�력?��? ?�았?�요
+              오늘 할 일을 아직 입력하지 않았어요
             </div>
-            <button style={S.btn} onClick={startEditTasks}>?�일 ?�력?�기 ??/button>
+            <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
           </>
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneCount}/{filledCount} ?�료</div>
-              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>?�� 모두 ?�료!</div>}
+              <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
+              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
             </div>
             <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
               <div style={{
@@ -848,7 +848,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                     background: task.done ? "#4B6FFF" : "transparent",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>??/span>}
+                    {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                   </div>
                   <div style={{
                     fontSize: 14, fontWeight: 700, flex: 1,
@@ -862,7 +862,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         )}
       </div>
 
-      <div style={S.sectionTitle}>?�� ?�속 기록</div>
+      <div style={S.sectionTitle}>🔥 연속 기록</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "#5C6480" }}>
@@ -870,26 +870,26 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 900, color: "#F0F2F8" }}>
-              {streak > 0 ? `${streak}???�속` : "?�속 기록 ?�음"}
+              {streak > 0 ? `${streak}일 연속` : "연속 기록 없음"}
             </div>
             <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4 }}>
-              ?�벽???�루 (3�??�료 + ?�기)
+              완벽한 하루 (3개 완료 + 일기)
             </div>
           </div>
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�� ?�번 �?/div>
+      <div style={S.sectionTitle}>📊 이번 주</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>?�균 ?�료??/div>
+          <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>평균 완료율</div>
           <div style={{ fontSize: 20, fontWeight: 900, color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>
             {weeklyAvg}%
           </div>
         </div>
         <div style={{ display: "flex", gap: 4, justifyContent: "space-between" }}>
           {weeklyStats.map((d, i) => {
-            const dow = "?�월?�수목금??[new Date(d.date).getDay()];
+            const dow = "일월화수목금토"[new Date(d.date).getDay()];
             return (
               <div key={i} style={{ flex: 1, textAlign: "center" }}>
                 <div style={{
@@ -905,7 +905,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   color: d.isPerfect ? "#4ADE80" : "#A8AFCA",
                   marginBottom: 6,
                 }}>
-                  {d.isPerfect ? "?? : d.rate > 0 ? d.rate : ""}
+                  {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
                 </div>
                 <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 800 }}>{dow}</div>
               </div>
@@ -916,21 +916,21 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
 
       {(todayData?.memo || '').trim() && (
         <>
-          <div style={S.sectionTitle}>?�� ?�늘 메모</div>
+          <div style={S.sectionTitle}>📝 오늘 메모</div>
           <div style={{ ...S.card, cursor: "pointer" }} onClick={onGoToday}>
             <div style={{ fontSize: 13, color: "#A8AFCA", whiteSpace: "pre-wrap", lineHeight: 1.6, maxHeight: 64, overflow: "hidden" }}>
               {(todayData.memo || '').trim().split('\n').slice(0, 3).join('\n')}
             </div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6 }}>?�️ ??��???�집</div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6 }}>✏️ 탭해서 편집</div>
           </div>
         </>
       )}
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>?�� ?�달 목표</span>
+        <span>📅 이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
           style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "#5C6480", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingGoals ? "?�료 ?? : "?�️ ?�집"}
+          {editingGoals ? "완료 ✓" : "✏️ 편집"}
         </button>
       </div>
       <div style={S.card}>
@@ -946,7 +946,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   maxLength={40}
                 />
                 <button onClick={() => setDraftGoals(prev => prev.filter((_, j) => j !== i))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>??/button>
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
               </div>
             ))}
             {draftGoals.length < 5 && (
@@ -955,7 +955,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   style={{ ...S.input, flex: 1 }}
                   value={newGoalInput}
                   onChange={(e) => setNewGoalInput(e.target.value)}
-                  placeholder="??목표 ?�력 ??Enter ?�는 ??
+                  placeholder="새 목표 입력 후 Enter 또는 ➕"
                   maxLength={40}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newGoalInput.trim()) {
@@ -968,7 +968,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                   if (!newGoalInput.trim()) return;
                   setDraftGoals(prev => [...prev, newGoalInput.trim()]);
                   setNewGoalInput('');
-                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>??/button>
+                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>➕</button>
               </div>
             )}
           </>
@@ -979,8 +979,8 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           return (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} ?�성</div>
-                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>?�� ?��? ?�성!</div>}
+                <div style={{ fontSize: 13, color: "#A8AFCA", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
+                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
               </div>
               <div style={{ height: 6, background: "#1E2235", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
                 <div style={{
@@ -1002,7 +1002,7 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                       background: done ? "#4B6FFF" : "transparent",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
-                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>??/span>}
+                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                     </div>
                     <div style={{
                       fontSize: 14, fontWeight: 700, flex: 1,
@@ -1016,13 +1016,13 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
           );
         })() : (
           <div style={{ color: "#5C6480", fontSize: 13, marginBottom: 4 }}>
-            ?�달 목표가 ?�어??{" "}
-            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>?�️ ?�집</span>?�서 추�??�보?�요
+            이달 목표가 없어요.{" "}
+            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
           </div>
         )}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2235" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>?�� ?�벽????/div>
+            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>📆 완벽한 날</div>
             <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 2,
@@ -1030,10 +1030,10 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
                 width: `${goalProgress.monthProgress}%`,
               }} />
             </div>
-            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}??/div>
+            <div style={{ fontSize: 11, color: "#A8AFCA", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>?�� ?�간</div>
+            <div style={{ fontSize: 11, color: "#5C6480", fontWeight: 900 }}>👑 연간</div>
             <div style={{ flex: 1, height: 4, background: "#1E2235", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 2,
@@ -1061,8 +1061,8 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>?�늘 ?�기</div>
-          <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} ?�료</div>
+          <div style={S.title}>오늘 일기</div>
+          <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
       </div>
 
@@ -1072,19 +1072,19 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))",
           border: "1.5px solid rgba(74,222,128,.35)",
         }}>
-          <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>?��</div>
+          <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>🎉</div>
           <div style={{ fontSize: 14, fontWeight: 900, textAlign: "center", color: "#4ADE80" }}>
-            ?�벽???�루!
+            완벽한 하루!
           </div>
           <div style={{ fontSize: 12, textAlign: "center", color: "#A8AFCA", marginTop: 6 }}>
-            3가지 ?�료 + ?�기 ?�성. ?�속 기록???�이�??�어???��
+            3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥
           </div>
         </div>
       )}
 
       <div style={{ ...S.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: 16 }}>
-        <span>?�� ?�늘 메모</span>
-        <span style={{ fontSize: 11, color: "#5C6480", fontWeight: 400 }}>?�시�?기록?�요</span>
+        <span>📝 오늘 메모</span>
+        <span style={{ fontSize: 11, color: "#5C6480", fontWeight: 400 }}>수시로 기록해요</span>
       </div>
       <div style={S.card}>
         <textarea
@@ -1094,24 +1094,24 @@ function Today({ dateStr, data, setData, toast, setToast }) {
           onChange={(e) =>
             setData((prev) => ({ ...prev, memo: e.target.value }))
           }
-          placeholder="?�무 메모, ?�오�??�각, ????.. 뭐든 ?�어??"
+          placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
           maxLength={1200}
         />
         <button
           style={S.btn}
           onClick={() => {
             setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
-            setToast("메모 ?�????);
+            setToast("메모 저장 ✅");
           }}
         >
-          메모 ?�??
+          메모 저장
         </button>
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
           {(data.memo ?? "").length} / 1200
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�기 (22:00 ?�후 추천)</div>
+      <div style={S.sectionTitle}>일기 (22:00 이후 추천)</div>
       <div style={S.card}>
         <textarea
           rows={10}
@@ -1123,7 +1123,7 @@ function Today({ dateStr, data, setData, toast, setToast }) {
               journal: { ...prev.journal, body: e.target.value },
             }))
           }
-          placeholder="?�늘 ?�루�???줄이?�도 기록?�봐??"
+          placeholder="오늘 하루를 한 줄이라도 기록해봐요."
           maxLength={1200}
         />
         <button
@@ -1133,10 +1133,10 @@ function Today({ dateStr, data, setData, toast, setToast }) {
               ...prev,
               journal: { ...prev.journal, savedAt: new Date().toISOString() },
             }));
-            setToast("?�기 ?�????);
+            setToast("일기 저장 ✅");
           }}
         >
-          ?�기 ?�??
+          일기 저장
         </button>
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, textAlign: "right" }}>
           {data.journal.body.length} / 1200
@@ -1214,11 +1214,11 @@ function History({ plans, onOpenDate }) {
       <div style={S.topbar}>
         <div>
           <div style={S.title}>기록</div>
-          <div style={S.sub}>?�력?�서 ?�짜�??�러 ?�인</div>
+          <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>??/button>
-          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>??/button>
+          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
+          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
       </div>
 
@@ -1228,7 +1228,7 @@ function History({ plans, onOpenDate }) {
 
       <div style={{ padding: "0 18px 12px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 6 }}>
-          {["??, "??, "??, "??, "�?, "�?, "??].map((d) => (
+          {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
             <div key={d} style={{ textAlign: "center", fontSize: 11, color: "#5C6480", fontWeight: 900 }}>
               {d}
             </div>
@@ -1259,9 +1259,9 @@ function History({ plans, onOpenDate }) {
                   cursor: clickable ? "pointer" : "default",
                   ...st,
                 }}
-                title={clickable ? (perfect ? "?�벽???�루 ?? : `${r}%`) : ""}
+                title={clickable ? (perfect ? "완벽한 하루 ✓" : `${r}%`) : ""}
               >
-                {perfect ? "?? : day}
+                {perfect ? "✓" : day}
                 {hasMemo && (
                   <span style={{
                     position: "absolute", bottom: 3, right: 3,
@@ -1278,7 +1278,7 @@ function History({ plans, onOpenDate }) {
       <div style={S.sectionTitle}>최근 기록</div>
       {recent.length === 0 && (
         <div style={{ padding: "20px 18px", color: "#5C6480", textAlign: "center" }}>
-          ?�직 기록???�어???��
+          아직 기록이 없어요 🌱
         </div>
       )}
       {recent.map((ds) => {
@@ -1295,25 +1295,25 @@ function History({ plans, onOpenDate }) {
               {formatKoreanDate(ds)}
             </div>
             <div style={{ fontSize: 13, marginTop: 8, color: "#F0F2F8" }}>
-              ??{done}/{Math.max(3, filled || 3)} · {hasJournal ? "?�� ?�기 ?�음" : "?�� ?�기 ?�음"}
+              ✅ {done}/{Math.max(3, filled || 3)} · {hasJournal ? "📖 일기 있음" : "📖 일기 없음"}
             </div>
-            {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>?�� {memoPreview}</div>}
-            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>?�� {journalPreview}</div>}
+            {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {memoPreview}</div>}
+            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "#A8AFCA", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
           </div>
         );
       })}
 
-      <div style={S.sectionTitle}>?�� 메모 / ?�기 검??/div>
+      <div style={S.sectionTitle}>🔍 메모 / 일기 검색</div>
       <div style={{ padding: "0 16px 10px" }}>
         <input
           style={{ ...S.input, width: "100%", boxSizing: "border-box" }}
           value={searchQ}
           onChange={(e) => setSearchQ(e.target.value)}
-          placeholder="?�워?�로 검??.."
+          placeholder="키워드로 검색..."
         />
       </div>
       {searchQ.trim() && searchResults.length === 0 && (
-        <div style={{ padding: "12px 18px", color: "#5C6480", fontSize: 13 }}>검??결과 ?�음</div>
+        <div style={{ padding: "12px 18px", color: "#5C6480", fontSize: 13 }}>검색 결과 없음</div>
       )}
       {searchResults.map((ds) => {
         const d = plans[ds];
@@ -1324,16 +1324,16 @@ function History({ plans, onOpenDate }) {
           const idx = text.toLowerCase().indexOf(q);
           if (idx < 0) return text.slice(0, 60);
           const start = Math.max(0, idx - 15);
-          return (start > 0 ? '?? : '') + text.slice(start, idx + q.length + 30);
+          return (start > 0 ? '…' : '') + text.slice(start, idx + q.length + 30);
         };
         return (
           <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
             <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>{formatKoreanDate(ds)}</div>
             {memoSnippet.toLowerCase().includes(q) && (
-              <div style={{ fontSize: 12, color: "#6C8EFF", marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>?�� {highlight(memoSnippet)}</div>
+              <div style={{ fontSize: 12, color: "#6C8EFF", marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {highlight(memoSnippet)}</div>
             )}
             {journalSnippet.toLowerCase().includes(q) && (
-              <div style={{ fontSize: 12, color: "#A8AFCA", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>?�� {highlight(journalSnippet)}</div>
+              <div style={{ fontSize: 12, color: "#A8AFCA", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {highlight(journalSnippet)}</div>
             )}
           </div>
         );
@@ -1384,7 +1384,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
       ...prev,
       journal: { ...prev.journal, savedAt: new Date().toISOString() },
     }));
-    setToast("?�기 ?�????);
+    setToast("일기 저장 ✅");
   };
 
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
@@ -1394,19 +1394,19 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
-          ??
+          ←
         </button>
         <div style={{ flex: 1 }}>
           <div style={S.title}>{formatKoreanDate(dateStr)}</div>
           <div style={S.sub}>
-            {doneCount}/{filledCount} ?�료
-            {isPerfect && " · ?�� ?�벽???�루"}
+            {doneCount}/{filledCount} 완료
+            {isPerfect && " · 🎉 완벽한 하루"}
           </div>
         </div>
         <div />
       </div>
 
-      <div style={S.sectionTitle}>????({data.tasks.length}�?</div>
+      <div style={S.sectionTitle}>할 일 ({data.tasks.length}개)</div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
           <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
@@ -1420,28 +1420,28 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
                 fontSize: 18, cursor: "pointer",
               }}
             >
-              {t.done ? "?? : idx + 1}
+              {t.done ? "✓" : idx + 1}
             </button>
             <input
               style={S.input}
               value={t.title}
               onChange={(e) => setTitle(t.id, e.target.value)}
-              placeholder={`????${idx + 1}`}
+              placeholder={`할 일 ${idx + 1}`}
               maxLength={60}
             />
             <button
               style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
               onClick={() => removeTask(t.id)}
-              title="??��"
+              title="삭제"
             >
-              ??
+              ✕
             </button>
           </div>
         ))}
-        <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>??????추�?</button>
+        <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>
         {!isToday && (
           <div style={{ marginTop: 8, fontSize: 11, color: "#5C6480" }}>
-            ?�️ 과거 ?�짜 기록???�집 중이?�요
+            ✏️ 과거 날짜 기록을 편집 중이에요
           </div>
         )}
       </div>
@@ -1459,13 +1459,13 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
                 fontSize: 12, fontWeight: 900,
               }}
             >
-              {data.checks[t] ? "?? : "?�️"} {t}
+              {data.checks[t] ? "✅" : "⏱️"} {t}
             </div>
           ))}
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�� 메모</div>
+      <div style={S.sectionTitle}>📝 메모</div>
       <div style={S.card}>
         <textarea
           rows={3}
@@ -1474,24 +1474,24 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
           onChange={(e) =>
             setData((prev) => ({ ...prev, memo: e.target.value }))
           }
-          placeholder="메모�??�겨보세??"
+          placeholder="메모를 남겨보세요."
           maxLength={1200}
         />
         <button
           style={S.btn}
           onClick={() => {
             setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
-            setToast("메모 ?�????);
+            setToast("메모 저장 ✅");
           }}
         >
-          메모 ?�??
+          메모 저장
         </button>
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 6, textAlign: "right" }}>
           {(data.memo ?? "").length} / 1200
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�기</div>
+      <div style={S.sectionTitle}>일기</div>
       <div style={S.card}>
         <textarea
           rows={6}
@@ -1503,10 +1503,10 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
               journal: { ...prev.journal, body: e.target.value },
             }))
           }
-          placeholder="???�의 기록???�겨보세??"
+          placeholder="이 날의 기록을 남겨보세요."
           maxLength={1200}
         />
-        <button style={S.btn} onClick={saveJournal}>?�기 ?�??/button>
+        <button style={S.btn} onClick={saveJournal}>일기 저장</button>
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, textAlign: "right" }}>
           {(data.journal?.body || "").length} / 1200
         </div>
@@ -1536,7 +1536,7 @@ function Stats({ plans }) {
 
   const perfectRate = filledDays === 0 ? 0 : Math.round((perfectDays / filledDays) * 100);
 
-  // ?�별 ?�이??
+  // 월별 데이터
   const monthStats = [];
   for (let m = 0; m < 12; m++) {
     const mStr = pad2(m + 1);
@@ -1554,13 +1554,13 @@ function Stats({ plans }) {
     monthStats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
   }
 
-  // ?�간 ?�트�??�이??(?�당 ?�도 1????~ 12??1??
+  // 연간 히트맵 데이터 (해당 연도 1월1일 ~ 12월31일)
   const buildHeatmap = (year) => {
     const jan1 = new Date(year, 0, 1);
-    const startOffset = jan1.getDay(); // 0=??
+    const startOffset = jan1.getDay(); // 0=일
     const totalDays = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
     const cells = [];
-    // ?�쪽 빈칸
+    // 앞쪽 빈칸
     for (let i = 0; i < startOffset; i++) cells.push(null);
     for (let i = 0; i < totalDays; i++) {
       const d = new Date(year, 0, i + 1);
@@ -1602,16 +1602,16 @@ function Stats({ plans }) {
     <div style={S.content}>
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>?�계</div>
+          <div style={S.title}>통계</div>
           <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>??/button>
-          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>??/button>
+          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
+          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�달 ?�벽????/div>
+      <div style={S.sectionTitle}>이달 완벽한 날</div>
       {/* make these cards occupy full content width by removing horizontal margins */}
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ textAlign: "center" }}>
@@ -1619,7 +1619,7 @@ function Stats({ plans }) {
             {perfectDays}
           </div>
           <div style={{ fontSize: 13, color: "#A8AFCA", marginBottom: 12 }}>
-            {filledDays}??�?{perfectDays}???�벽??
+            {filledDays}일 중 {perfectDays}일 완벽함
           </div>
           <div style={{
             height: 12,
@@ -1636,12 +1636,12 @@ function Stats({ plans }) {
             }} />
           </div>
           <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>
-            {perfectRate}% ?�성??
+            {perfectRate}% 완성도
           </div>
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�간 ?�별 진행??/div>
+      <div style={S.sectionTitle}>연간 월별 진행도</div>
       {/* remove horizontal margins so grid stretches full width */}
       <div style={{ ...S.card, margin: "0 0 10px", padding: "10px 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(50px,1fr))", gap: 6 }}>
@@ -1654,7 +1654,7 @@ function Stats({ plans }) {
               border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid #2D344A",
             }}>
               <div style={{ fontSize: 12, fontWeight: 900, color: "#A8AFCA", marginBottom: 8 }}>
-                {pad2(m.month + 1)}??
+                {pad2(m.month + 1)}월
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, color: m.rate >= 80 ? "#4ADE80" : m.rate >= 50 ? "#FCD34D" : m.filled > 0 ? "#F87171" : "#5C6480" }}>
                 {m.filled === 0 ? "-" : m.rate + "%"}
@@ -1668,23 +1668,23 @@ function Stats({ plans }) {
       </div>
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>?�� ?�간 ?�디</span>
+        <span>🌱 연간 잔디</span>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => setHeatmapYear(y => y - 1)}
-            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>??/button>
+            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>‹</button>
           <span style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, alignSelf: "center" }}>{heatmapYear}</span>
           <button onClick={() => setHeatmapYear(y => y + 1)}
-            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>??/button>
+            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>›</button>
         </div>
       </div>
       <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 10px", overflowX: "auto" }}>
         <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <span>?�벽????<b style={{ color: "#4ADE80" }}>{heatTotalPerfect}</b>??/span>
-          <span>기록????<b style={{ color: "#A8AFCA" }}>{heatTotalFilled}</b>??/span>
+          <span>완벽한 날 <b style={{ color: "#4ADE80" }}>{heatTotalPerfect}</b>일</span>
+          <span>기록한 날 <b style={{ color: "#A8AFCA" }}>{heatTotalFilled}</b>일</span>
         </div>
-        {/* ?�일 ?�더 */}
+        {/* 요일 헤더 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4, minWidth: 200 }}>
-          {["??,"??,"??,"??,"�?,"�?,"??].map(d => (
+          {["일","월","화","수","목","금","토"].map(d => (
             <div key={d} style={{ textAlign: "center", fontSize: 9, color: "#3A4260", fontWeight: 900 }}>{d}</div>
           ))}
         </div>
@@ -1692,7 +1692,7 @@ function Stats({ plans }) {
           {heatmapCells.map((cell, i) => (
             <div
               key={i}
-              title={cell ? `${cell.ds} ${cell.perfect ? "?�� ?�벽" : cell.filled ? `${cell.done}/${cell.total}` : ""}` : ""}
+              title={cell ? `${cell.ds} ${cell.perfect ? "🌟 완벽" : cell.filled ? `${cell.done}/${cell.total}` : ""}` : ""}
               onClick={() => cell && setTooltip(tooltip?.ds === cell.ds ? null : cell)}
               style={{
                 aspectRatio: "1",
@@ -1708,16 +1708,16 @@ function Stats({ plans }) {
         {tooltip && (
           <div style={{ marginTop: 10, padding: "8px 12px", background: "#252B3E", borderRadius: 8, fontSize: 12, color: "#F0F2F8" }}>
             <b>{formatKoreanDate(tooltip.ds)}</b>
-            {tooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>?�� ?�벽????/span>}
-            {!tooltip.perfect && tooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{tooltip.done}/{tooltip.total} ?�료</span>}
+            {tooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
+            {!tooltip.perfect && tooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{tooltip.done}/{tooltip.total} 완료</span>}
           </div>
         )}
         <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "#5C6480" }}>
-          <span>?�음</span>
+          <span>적음</span>
           {["#1A1F2E", "rgba(248,113,113,.25)", "rgba(252,211,77,.35)", "rgba(74,222,128,.4)", "#4ADE80"].map((c, i) => (
             <div key={i} style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
           ))}
-          <span>?�벽</span>
+          <span>완벽</span>
         </div>
       </div>
 
@@ -1766,7 +1766,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
     if (authUser) saveSettings(authUser.uid, { telegram: cfg }).catch(() => {});
-    setToast('?�레그램 ?�정 ?�????);
+    setToast('텔레그램 설정 저장 ✅');
   };
 
   const doAssetSearch = async (query) => {
@@ -1782,7 +1782,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
   const addCustomAsset = (asset) => {
     const allSyms = [...Object.keys(ASSET_META), ...customAssets.map(a => a.sym)];
-    if (allSyms.includes(asset.sym)) { setToast(`${asset.sym} ?��? ?�어??); return; }
+    if (allSyms.includes(asset.sym)) { setToast(`${asset.sym} 이미 있어요`); return; }
     const next = [...customAssets, asset];
     setCustomAssets(next);
     setSelectedAssets(prev => [...prev, asset.sym]);
@@ -1800,25 +1800,25 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     setAlarmTimes(times);
     store.set('dm_alarm_times', times);
     if (authUser) saveSettings(authUser.uid, { alarmTimes: times }).catch(() => {});
-    setToast('?�림 ?�간 ?�????);
+    setToast('알림 시간 저장 ✅');
   };
 
   const testTelegramMsg = async () => {
-    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '??<b>DayMate ?�결 ?�스???�공!</b>\n\n?�레그램 ?�림???�상 ?�동?�요.');
-    setToast(res.ok ? '?�레그램 ?�송 ?�공 ?? : `?�송 ?�패: ${res.error} ?��`);
+    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '✅ <b>DayMate 연결 테스트 성공!</b>\n\n텔레그램 알림이 정상 작동해요.');
+    setToast(res.ok ? '텔레그램 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
   };
 
   const testBriefing = async () => {
-    setToast('브리???�성 �?..');
+    setToast('브리핑 생성 중...');
     const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
     const marketData = await fetchMarketData(finnhubKey.trim(), selectedAssets, customRegistry);
     const text = buildBriefingText(marketData, user.name);
     const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
-    setToast(res.ok ? '브리???�송 ?�공 ?? : `?�송 ?�패: ${res.error} ?��`);
+    setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
   };
 
   const save = () => {
-    const nextUser = { name: (name || "").trim() || "?�용?? };
+    const nextUser = { name: (name || "").trim() || "사용자" };
     const nextGoals = {
       year: clampList(parseLines(yearText), 5),
       month: goals.month || [],
@@ -1828,7 +1828,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     store.set("dm_user", nextUser);
     store.set("dm_goals", nextGoals);
     if (authUser) saveSettings(authUser.uid, { name: nextUser.name }).catch(() => {});
-    setToast("?�???�료 ??);
+    setToast("저장 완료 ✅");
   };
 
 
@@ -1852,7 +1852,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     a.download = `daymate-backup-${toDateStr()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setToast("백업 ?�일 ?�운로드 ??);
+    setToast("백업 파일 다운로드 ✅");
   };
 
   const importData = (event) => {
@@ -1868,9 +1868,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             store.set(k, data[k]);
           }
         });
-        alert("복구 ?�료! ?�을 ?�로고침?�세??");
+        alert("복구 완료! 앱을 새로고침하세요.");
       } catch {
-        alert("?�일 ?�식???�바르�? ?�습?�다.");
+        alert("파일 형식이 올바르지 않습니다.");
       }
     };
     reader.readAsText(file);
@@ -1882,57 +1882,57 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>?�정</div>
-          <div style={S.sub}>?�름 · 목표 · ?�림 · 백업</div>
+          <div style={S.title}>설정</div>
+          <div style={S.sub}>이름 · 목표 · 알림 · 백업</div>
         </div>
       </div>
 
-      <div style={S.sectionTitle}>?�로??/div>
+      <div style={S.sectionTitle}>프로필</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>?�름</div>
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>이름</div>
         <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
-        <button style={S.btn} onClick={save}>?�??/button>
+        <button style={S.btn} onClick={save}>저장</button>
       </div>
 
       <div style={S.sectionTitle}>목표</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>
-          ?�� ?�간 목표 (최�? 5�?
+          👑 연간 목표 (최대 5개)
         </div>
         <textarea
           rows={5}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
           value={yearText}
           onChange={(e) => setYearText(e.target.value)}
-          placeholder="??줄에 ?�나???�력"
+          placeholder="한 줄에 하나씩 입력"
         />
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 8, lineHeight: 1.6 }}>
-          ?�� ?�달 목표?????�면?�서 직접 추�?/?�집?????�어??
+          💡 이달 목표는 홈 화면에서 직접 추가/편집할 수 있어요
         </div>
-        <button style={S.btn} onClick={save}>?�??/button>
+        <button style={S.btn} onClick={save}>저장</button>
       </div>
 
-      <div style={S.sectionTitle}>?�림</div>
+      <div style={S.sectionTitle}>알림</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900 }}>?�림 ON/OFF</div>
+            <div style={{ fontWeight: 900 }}>알림 ON/OFF</div>
             <div style={{ fontSize: 12, color: "#5C6480", marginTop: 4 }}>
-              07:30 / 12:00 / 18:00 / 22:00 (??�� ?�려 ?�을 ???�작)
+              07:30 / 12:00 / 18:00 / 22:00 (탭이 열려 있을 때 동작)
             </div>
             {permission === "denied" && (
               <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
-                브라?��? ?�림??차단?�어 ?�어?? (?�이???�정?�서 ?�용)
+                브라우저 알림이 차단되어 있어요. (사이트 설정에서 허용)
               </div>
             )}
             {permission === "default" && (
               <div style={{ fontSize: 12, color: "#FCD34D", marginTop: 6 }}>
-                ?�림 권한??먼�? ?�용?�야 ?�요.
+                알림 권한을 먼저 허용해야 해요.
               </div>
             )}
             {permission === "unsupported" && (
               <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
-                ??브라?��????�림??지?�하지 ?�아??
+                이 브라우저는 알림을 지원하지 않아요.
               </div>
             )}
           </div>
@@ -1944,8 +1944,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               const next = !notifEnabled;
               setNotifEnabled(next);
               store.set("dm_notif_enabled", next);
-              setToast(next ? "?�림 ON ?? : "?�림 OFF");
-              // scheduler ?�용?� App?�서 처리
+              setToast(next ? "알림 ON ✅" : "알림 OFF");
+              // scheduler 적용은 App에서 처리
             }}
             style={{
               width: 52,
@@ -1979,37 +1979,37 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           style={S.btnGhost}
           onClick={async () => {
             if (permission === "granted") {
-              sendNotification("DayMate Lite", "?�스???�림?�니?? ??, "?��");
-              setToast("?�스???�림 발송 ??);
+              sendNotification("DayMate Lite", "테스트 알림입니다. ✅", "🔔");
+              setToast("테스트 알림 발송 ✅");
             } else if (permission === "denied") {
-              setToast("?�림??차단????브라?��? ?�정 ???�림 ???�용?�로 변경해주세??);
+              setToast("알림이 차단됨 — 브라우저 설정 → 알림 → 허용으로 변경해주세요");
             } else {
               const r = await requestPermission();
               setPermission(r);
               if (r === "granted") {
                 setNotifEnabled(true);
-                sendNotification("DayMate Lite", "?�림???�성?�됐?�요! ??, "?��");
-                setToast("?�림 권한 ?�용????);
+                sendNotification("DayMate Lite", "알림이 활성화됐어요! ✅", "🔔");
+                setToast("알림 권한 허용됨 ✅");
               } else {
-                setToast("?�림 권한 거�?????브라?��? ?�정?�서 ?�용?�주?�요");
+                setToast("알림 권한 거부됨 — 브라우저 설정에서 허용해주세요");
               }
             }
           }}
         >
-          ?�� ?�림 권한 ?�용 / ?�스??
+          🔔 알림 권한 허용 / 테스트
         </button>
       </div>
 
-      <div style={S.sectionTitle}>?�림 ?�간 ?�정</div>
+      <div style={S.sectionTitle}>알림 시간 설정</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
-          ?�침·?�심·?�?�·밤 ?�림 ?�간??조정?????�어??
+          아침·점심·저녁·밤 알림 시간을 조정할 수 있어요.
         </div>
         {[
-          { label: "?�침 기상 ?�람", value: morningTime, set: setMorningTime },
-          { label: "?�심 체크??, value: noonTime, set: setNoonTime },
-          { label: "?�??체크??, value: eveningTime, set: setEveningTime },
-          { label: "�?마감 ?�람", value: nightTime, set: setNightTime },
+          { label: "아침 기상 알람", value: morningTime, set: setMorningTime },
+          { label: "점심 체크인", value: noonTime, set: setNoonTime },
+          { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
+          { label: "밤 마감 알람", value: nightTime, set: setNightTime },
         ].map(({ label, value, set }) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1, fontSize: 13, color: "#F0F2F8", fontWeight: 800 }}>{label}</div>
@@ -2021,12 +2021,12 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             />
           </div>
         ))}
-        <button style={S.btn} onClick={saveAlarmTimes}>?�림 ?�간 ?�??/button>
+        <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
 
-      <div style={S.sectionTitle}>?�레그램 ?�동??/div>
+      <div style={S.sectionTitle}>텔레그램 자동화</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>�??�큰 (Bot Token)</div>
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 6 }}>봇 토큰 (Bot Token)</div>
         <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
 
         <div style={{ height: 10 }} />
@@ -2035,25 +2035,25 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
         <div style={{ height: 10 }} />
         <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 4 }}>
-          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(주식 ?�이?�용)</span>
+          Finnhub API Key <span style={{ color: "#5C6480", fontWeight: 400 }}>(주식 데이터용)</span>
         </div>
-        <input style={S.input} value={finnhubKey} onChange={(e) => setFinnhubKey(e.target.value)} placeholder="API Key ?�력" type="password" />
+        <input style={S.input} value={finnhubKey} onChange={(e) => setFinnhubKey(e.target.value)} placeholder="API Key 입력" type="password" />
 
         <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>?�림 ?�간</div>
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>?�산 브리??/div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>자산 브리핑</div>
             <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>?�일 ?�림</div>
+            <div style={{ fontSize: 11, color: "#5C6480", marginBottom: 4 }}>할일 알림</div>
             <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
           </div>
         </div>
 
         <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>브리???�산 ?�택</div>
+        <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {Object.entries(ASSET_META).map(([sym, meta]) => {
             const on = selectedAssets.includes(sym);
@@ -2095,7 +2095,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>?�산 검??추�?</div>
+          <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
             {['stock', 'crypto'].map(mode => (
               <button
@@ -2116,7 +2116,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               value={assetSearch}
               onChange={e => doAssetSearch(e.target.value)}
             />
-            {searching && <span style={{ color: "#A8AFCA", fontSize: 12, alignSelf: "center" }}>검??�?..</span>}
+            {searching && <span style={{ color: "#A8AFCA", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
           </div>
           {searchResults.length > 0 && (
             <div style={{
@@ -2136,7 +2136,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                     <span style={{ fontWeight: 700, fontSize: 13, color: "#F0F2F8" }}>{item.sym}</span>
                     <span style={{ fontSize: 12, color: "#A8AFCA", marginLeft: 8 }}>{item.label}</span>
                   </div>
-                  <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추�?</span>
+                  <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
                 </div>
               ))}
             </div>
@@ -2144,31 +2144,31 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         </div>
 
         <div style={{ height: 14 }} />
-        <button style={S.btn} onClick={saveTelegram}>?�??/button>
-        <button style={S.btnGhost} onClick={testTelegramMsg}>?�결 ?�스??/button>
-        <button style={S.btnGhost} onClick={testBriefing}>?�산 브리???�스???�송</button>
+        <button style={S.btn} onClick={saveTelegram}>저장</button>
+        <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
+        <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
 
         <div style={{ fontSize: 11, color: "#5C6480", marginTop: 10, lineHeight: 1.7 }}>
-          ?�️ ??�� ?�려 ?�을 ?�만 ?�작?�요.
+          ⚠️ 탭이 열려 있을 때만 동작해요.
         </div>
       </div>
 
       <div style={S.sectionTitle}>백업</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7 }}>
-          ???????�이?�는 �?기기 브라?��????�?�됩?�다.<br />
-          ??JSON?�로 백업?�면 ?�른 기기?�서 복구?????�어??
+          • 이 앱 데이터는 각 기기 브라우저에 저장됩니다.<br />
+          • JSON으로 백업하면 다른 기기에서 복구할 수 있어요.
         </div>
 
         <button style={S.btn} onClick={exportData}>
-          ?�� ?�이???�보?�기 (백업)
+          📦 데이터 내보내기 (백업)
         </button>
 
         <button
           style={S.btnGhost}
           onClick={() => fileInputRef.current?.click()}
         >
-          ?�� ?�이??가?�오�?(복구)
+          📥 데이터 가져오기 (복구)
         </button>
 
         <input
@@ -2182,8 +2182,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         <button
           style={{ ...S.btnGhost, borderColor: "rgba(248,113,113,.35)", color: "#F87171" }}
           onClick={() => {
-            if (!window.confirm("모든 ?�이?��? ??��?�까??")) return;
-            if (!window.confirm("?�말 ??��?�시겠어?? (복구 불�?)")) return;
+            if (!window.confirm("모든 데이터를 삭제할까요?")) return;
+            if (!window.confirm("정말 삭제하시겠어요? (복구 불가)")) return;
             try {
               Object.keys(localStorage)
                 .filter((k) => k.startsWith("dm_"))
@@ -2194,11 +2194,11 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             window.location.reload();
           }}
         >
-          ?���?모든 ?�이????��
+          🗑️ 모든 데이터 삭제
         </button>
       </div>
 
-      <div style={S.sectionTitle}>계정 ?�기??/div>
+      <div style={S.sectionTitle}>계정 동기화</div>
       <div style={S.card}>
         {authUser ? (
           <div>
@@ -2212,20 +2212,20 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
               </div>
             </div>
             <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : '#A8AFCA', marginBottom: 12 }}>
-              {syncStatus === 'syncing' ? '?�기??�?..' : syncStatus === 'synced' ? '???�기???�료' : '?��?�?}
+              {syncStatus === 'syncing' ? '동기화 중...' : syncStatus === 'synced' ? '✓ 동기화 완료' : '대기 중'}
             </div>
-            <button style={S.btnGhost} onClick={() => onGoogleSignOut().catch(() => {})}>로그?�웃</button>
+            <button style={S.btnGhost} onClick={() => onGoogleSignOut().catch(() => {})}>로그아웃</button>
           </div>
         ) : (
           <div>
             <div style={{ fontSize: 12, color: "#A8AFCA", lineHeight: 1.7, marginBottom: 12 }}>
-              Google 계정?�로 로그?�하�??�스?�탑?�모바일 ?�이?��? ?�동?�로 ?�기?�돼??
+              Google 계정으로 로그인하면 데스크탑↔모바일 데이터가 자동으로 동기화돼요.
             </div>
             <button
               style={{ ...S.btn, background: "#fff", color: "#333", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
               onClick={() => onGoogleSignIn().catch(() => {})}
             >
-              <span style={{ fontSize: 16 }}>G</span> Google�?로그??
+              <span style={{ fontSize: 16 }}>G</span> Google로 로그인
             </button>
           </div>
         )}
@@ -2257,9 +2257,9 @@ export default function App() {
 
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
-  const syncReadyRef = useRef(false); // Firestore ?�기 ?�용 ?�래�?(초기 로드 ?�료 ??true)
+  const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
 
-  const [user, setUser] = useState(() => store.get("dm_user", { name: "?�용?? }));
+  const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
   const [telegramCfg, setTelegramCfg] = useState(() => {
@@ -2327,7 +2327,7 @@ export default function App() {
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
 
         if (hasRemote) {
-          // Firestore ?�이?��? 로컬�???��?�기
+          // Firestore 데이터를 로컬로 덮어쓰기
           if (remote.settings) {
             const s = remote.settings;
             if (s.name) { setUser({ name: s.name }); store.set("dm_user", { name: s.name }); }
@@ -2342,7 +2342,7 @@ export default function App() {
             setPlans(merged);
           }
         } else {
-          // 최초 로그?? 로컬 ?�이?��? Firestore�??�로??
+          // 최초 로그인: 로컬 데이터를 Firestore로 업로드
           const localDays = {};
           listAllDays().forEach((ds) => { const d = loadDay(ds); if (d) localDays[ds] = d; });
           await uploadLocalToFirestore(firebaseUser.uid, {
@@ -2383,7 +2383,7 @@ export default function App() {
 
   // Apply notifications (GUARDED)
   useEffect(() => {
-    scheduler.apply(notifEnabled, user.name || "?�용??, telegramCfg, alarmTimes);
+    scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
     return () => scheduler.cancelAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifEnabled, user.name, telegramCfg, alarmTimes]);
@@ -2450,40 +2450,40 @@ export default function App() {
               background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 34, boxShadow: "0 8px 28px rgba(108,142,255,.35)"
-            }}>??/div>
+            }}>✅</div>
             <div style={{ fontSize: 26, fontWeight: 900 }}>DayMate Lite</div>
             <div style={{ fontSize: 13, color: "#A8AFCA", lineHeight: 1.7, marginTop: 10 }}>
-              매일 ?�할 ??3가지?�만 ?�하�?br/>체크?�고, ?�기 ??줄로 마무�?
+              매일 “할 일 3가지”만 정하고<br/>체크하고, 일기 한 줄로 마무리.
             </div>
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>?�름</div>
+            <div style={{ fontSize: 12, color: "#A8AFCA", fontWeight: 900, marginBottom: 8 }}>이름</div>
             <input
               style={S.input}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              placeholder="?? 계승"
+              placeholder="예: 계승"
               maxLength={20}
             />
             <button
               style={S.btn}
               onClick={() => {
-                const nm = (nameInput || "").trim() || "?�용??;
+                const nm = (nameInput || "").trim() || "사용자";
                 setUser({ name: nm });
                 store.set("dm_user", { name: nm });
                 store.set("dm_first_run_done", true);
                 setFirstRunDone(true);
-                setToast("?�작?�니????);
+                setToast("시작합니다 ✅");
               }}
             >
-              ?�작?�기 ??
+              시작하기 →
             </button>
           </div>
 
           <div style={{ padding: "0 22px", color: "#5C6480", fontSize: 12, lineHeight: 1.7 }}>
-            ???�이?�는 기기 브라?��????�?�됩?�다<br/>
-            ??백업?� ?�정?�서 JSON?�로 ?�보?�기 가??
+            • 데이터는 기기 브라우저에 저장됩니다<br/>
+            • 백업은 설정에서 JSON으로 내보내기 가능
           </div>
           <div style={{ height: 30 }} />
         </div>
@@ -2537,11 +2537,11 @@ export default function App() {
           <div style={S.content}>
             <div style={S.topbar}>
               <button onClick={() => changeScreen("history")} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
-                ??
+                ←
               </button>
               <div style={{ flex: 1 }}>
                 <div style={S.title}>기록</div>
-                <div style={S.sub}>?�이???�음</div>
+                <div style={S.sub}>데이터 없음</div>
               </div>
               <div />
             </div>
