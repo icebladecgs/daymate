@@ -216,10 +216,17 @@ async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_META), cus
   return data;
 }
 
-function buildBriefingText(marketData, userName) {
+function buildBriefingText(marketData, userName, weather = null) {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
   let text = `📊 <b>${userName}님의 아침 자산 브리핑</b> (${dateStr})\n`;
+  if (weather) {
+    const icon = weather.icon || '☀️';
+    const temp = weather.temp != null ? `${Math.round(weather.temp)}°C` : '';
+    const desc = weather.description || '';
+    const wind = weather.wind != null ? ` · 바람 ${weather.wind}km/h` : '';
+    text = `${icon} ${weather.city || '서울'} ${temp} · ${desc}${wind}\n` + text;
+  }
   text += `━━━━━━━━━━━━━━━\n`;
 
   const fmtPrice = (n, currency = 'USD') => {
@@ -373,8 +380,10 @@ class NotifScheduler {
         'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
         '📊',
         async () => {
+          const weatherRes = await fetch(`/api/weather?city=${encodeURIComponent(telegramCfg.weatherCity || 'Seoul')}`).then(r => r.json()).catch(() => null);
+          const weather = weatherRes?.ok ? weatherRes : null;
           const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
-          const text = buildBriefingText(marketData, userName);
+          const text = buildBriefingText(marketData, userName, weather);
           await sendTelegramMessage(botToken, chatId, text);
         }
       );
@@ -462,6 +471,10 @@ class NotifScheduler {
         text += `✅ 완료: ${done}/${total}\n`;
         text += hasJournal ? `📖 일기: 작성 완료 ✓\n` : `📖 일기: 아직 작성 전 ✏️\n`;
         text += `\n오늘도 수고했어요! 🌟`;
+        const isWeeklyReview = new Date().getDay() === 0; // 일요일
+        if (isWeeklyReview) {
+          text += `\n\n📝 <b>이번 주 회고</b>\n이번 주 잘한 점 하나와 다음 주 목표를 DayMate에 기록해보세요!`;
+        }
         await sendTelegramMessage(botToken, chatId, text);
       } : null
     );
@@ -683,7 +696,7 @@ function WeeklySchedule({ plans, habits, onOpenDate }) {
             {/* 할일 목록 */}
             {tasks.length > 0 ? (
               <div>
-                {tasks.slice(0, 4).map(t => (
+                {[...tasks].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).slice(0, 4).map(t => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
                     <div style={{
                       width: 14, height: 14, borderRadius: 4, flexShrink: 0,
@@ -697,7 +710,7 @@ function WeeklySchedule({ plans, habits, onOpenDate }) {
                       fontSize: 13, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                       color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)',
                       textDecoration: t.done ? 'line-through' : 'none',
-                    }}>{t.title}</span>
+                    }}>{t.priority ? '⭐ ' : ''}{t.title}</span>
                   </div>
                 ))}
                 {tasks.length > 4 && (
@@ -767,9 +780,9 @@ const CHECK_TIMES = ["07:30", "12:00", "18:00", "22:00"];
 const newDay = (date) => ({
   date,
   tasks: [
-    { id: "t1", title: "", done: false, checkedAt: null },
-    { id: "t2", title: "", done: false, checkedAt: null },
-    { id: "t3", title: "", done: false, checkedAt: null },
+    { id: "t1", title: "", done: false, checkedAt: null, priority: false },
+    { id: "t2", title: "", done: false, checkedAt: null, priority: false },
+    { id: "t3", title: "", done: false, checkedAt: null, priority: false },
   ],
   checks: { "07:30": false, "12:00": false, "18:00": false, "22:00": false },
   journal: { body: "", savedAt: null },
@@ -900,6 +913,16 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
   const [editingGoals, setEditingGoals] = useState(false);
   const [draftGoals, setDraftGoals] = useState([]);
   const [newGoalInput, setNewGoalInput] = useState('');
+  const [prevAllDone, setPrevAllDone] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    if (allDone && !prevAllDone) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2500);
+    }
+    setPrevAllDone(allDone);
+  }, [allDone]);
 
   const startEditTasks = () => {
     setDraftTasks((todayData?.tasks || []).map(t => ({ ...t })));
@@ -923,6 +946,20 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
 
   return (
     <div style={S.content}>
+      {showConfetti && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, pointerEvents:'none', zIndex:500, overflow:'hidden' }}>
+          {Array(20).fill(null).map((_,i) => (
+            <div key={i} style={{
+              position:'absolute',
+              left: `${(i * 5.1 + 3) % 100}%`,
+              top: '-20px',
+              fontSize: 20,
+              animation: `fall ${1.5 + (i % 5) * 0.2}s ease-in forwards`,
+              animationDelay: `${(i % 8) * 0.1}s`,
+            }}>{['🎉','⭐','✨','🎊','💫'][i%5]}</div>
+          ))}
+        </div>
+      )}
       <div style={S.topbar}>
         <div>
           <div style={S.title}>DayMate Lite</div>
@@ -957,9 +994,26 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
               </div>
             ))}
             <button style={{ ...S.btn, marginTop: 4 }}
-              onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null }])}>
+              onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null, priority: false }])}>
               ➕ 할 일 추가
             </button>
+            {(() => {
+              const yesterday = toDateStr(new Date(Date.now() - 86400000));
+              const yData = plans[yesterday];
+              const undone = (yData?.tasks || []).filter(t => t.title.trim() && !t.done);
+              if (undone.length === 0) return null;
+              return (
+                <button style={{ ...S.btnGhost, marginTop: 6, fontSize: 12 }}
+                  onClick={() => setDraftTasks(prev => {
+                    const existing = new Set(prev.map(t => t.title.trim()));
+                    const toAdd = undone.filter(t => !existing.has(t.title.trim()))
+                      .map(t => ({ id: `t${Date.now()}_${t.id}`, title: t.title, done: false, checkedAt: null, priority: t.priority || false }));
+                    return [...prev, ...toAdd];
+                  })}>
+                  ↩️ 어제 미완료 {undone.length}개 가져오기
+                </button>
+              );
+            })()}
           </>
         ) : filledCount === 0 ? (
           <>
@@ -1443,7 +1497,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits }) 
   const addTask = () => {
     setData((prev) => ({
       ...prev,
-      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null }],
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null, priority: false }],
     }));
   };
 
@@ -1501,6 +1555,10 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits }) 
               placeholder={`할 일 ${idx + 1}`}
               maxLength={60}
             />
+            <button onClick={() => setData(prev => ({...prev, tasks: prev.tasks.map(x => x.id === t.id ? {...x, priority: !x.priority} : x)}))}
+              style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:18, flexShrink:0, opacity: t.priority ? 1 : 0.3 }}>
+              ⭐
+            </button>
             <button
               style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
               onClick={() => removeTask(t.id)}
@@ -1921,7 +1979,7 @@ function Stats({ plans, habits }) {
 function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
                     telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
-                    habits, setHabits }) {
+                    habits, setHabits, recurringTasks, setRecurringTasks }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -1956,6 +2014,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     const cfg = {
       botToken: tgToken.trim(), chatId: tgChatId.trim(),
       briefingTime, todoTime, assets: selectedAssets, customAssets,
+      weatherCity: telegramCfg.weatherCity || '',
     };
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
@@ -2267,6 +2326,12 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
           🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
         </div>
 
+        <div style={{ height: 10 }} />
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
+        <input style={S.input} value={telegramCfg.weatherCity || ''}
+          onChange={(e) => setTelegramCfg(prev => ({...prev, weatherCity: e.target.value}))}
+          placeholder="서울 (기본값)" />
+
         <div style={{ height: 14 }} />
         <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -2463,6 +2528,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
+      <div style={S.sectionTitle}>🔁 반복 할일</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          매일 또는 특정 요일에 자동으로 추가되는 할일을 설정해요.
+        </div>
+        {(recurringTasks || []).map((t) => (
+          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <select
+              value={t.days}
+              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
+              style={{ ...S.input, width: 80, marginBottom: 0, padding: "8px 6px", fontSize: 12 }}>
+              <option value="daily">매일</option>
+              <option value="1">월</option><option value="2">화</option><option value="3">수</option>
+              <option value="4">목</option><option value="5">금</option>
+              <option value="6">토</option><option value="0">일</option>
+            </select>
+            <input
+              style={{ ...S.input, flex: 1, marginBottom: 0 }}
+              value={t.title}
+              maxLength={40}
+              placeholder="반복 할일 이름"
+              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, title: e.target.value} : x))}
+            />
+            <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
+              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0 }}>✕</button>
+          </div>
+        ))}
+        {(recurringTasks || []).length < 10 && (
+          <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
+            onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: "", days: "daily" }])}>
+            ➕ 반복 할일 추가
+          </button>
+        )}
+      </div>
+
       <div style={S.sectionTitle}>🎯 습관 관리</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
@@ -2500,7 +2600,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v17 · 2026-03-10
+        DayMate Lite v18 · 2026-03-10
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2536,6 +2636,25 @@ export default function App() {
     setInstallPrompt(null);
   };
 
+  // FCM Web Push 구독
+  const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  useEffect(() => {
+    if (!VAPID_PUBLIC || !authUser) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    navigator.serviceWorker.ready.then(async reg => {
+      try {
+        const existing = await reg.pushManager.getSubscription();
+        const sub = existing || await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: VAPID_PUBLIC,
+        });
+        const { saveSettings: _s } = await import('./firebase.js');
+        await _s(authUser.uid, { pushSubscription: JSON.parse(JSON.stringify(sub)) });
+      } catch {}
+    });
+  }, [authUser, VAPID_PUBLIC]);
+
   // no width limit - let container fill viewport
   const phoneStyleOverride = { maxWidth: '100%' };
 
@@ -2566,6 +2685,7 @@ export default function App() {
     store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
+  const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
 
   const todayStr = toDateStr();
 
@@ -2627,6 +2747,7 @@ export default function App() {
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
+            if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
           }
           if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
           if (Object.keys(remote.days).length > 0) {
@@ -2680,6 +2801,12 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { habits }).catch(() => {});
   }, [habits, authUser]);
 
+  // Persist recurringTasks
+  useEffect(() => {
+    store.set("dm_recurring", recurringTasks);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { recurringTasks }).catch(() => {});
+  }, [recurringTasks, authUser]);
+
   // Apply notifications (GUARDED)
   useEffect(() => {
     scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
@@ -2709,6 +2836,11 @@ export default function App() {
     setPlans((prev) => {
       if (prev[ds]) return prev;
       const d = newDay(ds);
+      const dayOfWeek = new Date(ds + 'T00:00:00').getDay();
+      const applicable = recurringTasks.filter(t => t.title.trim() && (t.days === 'daily' || String(t.days) === String(dayOfWeek)));
+      if (applicable.length > 0) {
+        d.tasks = [...d.tasks.filter(t => t.title.trim()), ...applicable.map(t => ({id:`r${t.id}_${ds}`, title: t.title, done: false, checkedAt: null, priority: false}))];
+      }
       saveDay(ds, d);
       if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, ds, d).catch(() => {});
       return { ...prev, [ds]: d };
@@ -2895,6 +3027,8 @@ export default function App() {
           onGoogleSignOut={googleSignOut}
           habits={habits}
           setHabits={setHabits}
+          recurringTasks={recurringTasks}
+          setRecurringTasks={setRecurringTasks}
         />
       );
     }

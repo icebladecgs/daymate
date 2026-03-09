@@ -103,3 +103,7 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+@keyframes fall {
+  to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}

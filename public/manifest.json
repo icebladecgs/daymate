@@ -9,17 +9,23 @@
   "theme_color": "#4B6FFF",
   "lang": "ko",
   "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "name": "오늘 할일",
+      "short_name": "할일",
+      "description": "오늘 할일 바로가기",
+      "url": "/?screen=today",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     },
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "name": "이번주 일정",
+      "short_name": "일정",
+      "description": "이번주 일정 보기",
+      "url": "/?screen=history",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     }
   ]
 }

@@ -1,12 +1,9 @@
 {
   "crons": [
-    {
-      "path": "/api/notify?type=briefing",
-      "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/notify?type=todo",
-      "schedule": "5 22 * * *"
-    }
+    { "path": "/api/notify?type=briefing", "schedule": "0 22 * * *" },
+    { "path": "/api/notify?type=todo",     "schedule": "5 22 * * *" }
+  ],
+  "routes": [
+    { "src": "/api/telegram-webhook", "dest": "/api/telegram-webhook.js" }
   ]
 }
