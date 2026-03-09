@@ -62,5 +62,32 @@ export default async function handler(req, res) {
     }
   }
 
+  // Yahoo Finance (한국 주식)
+  const yahooAssets = assets.filter(sym => registry[sym]?.src === 'yahoo');
+  for (const sym of yahooAssets) {
+    try {
+      const r = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+      );
+      const j = await r.json();
+      const meta = j?.chart?.result?.[0]?.meta;
+      if (meta && meta.regularMarketPrice > 0) {
+        const price = meta.regularMarketPrice;
+        const prev = meta.chartPreviousClose || meta.previousClose || price;
+        const change = price - prev;
+        const chgPct = prev > 0 ? ((change / prev) * 100) : 0;
+        data[sym] = {
+          label: registry[sym].label,
+          price,
+          change,
+          chgPct,
+          src: 'yahoo',
+          currency: meta.currency || 'KRW',
+        };
+      }
+    } catch {}
+  }
+
   res.status(200).json(data);
 }

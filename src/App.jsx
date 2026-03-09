@@ -208,16 +208,24 @@ function buildBriefingText(marketData, userName) {
   let text = `📊 <b>${userName}님의 아침 자산 브리핑</b> (${dateStr})\n`;
   text += `━━━━━━━━━━━━━━━\n`;
 
-  const fmtPrice = (n) =>
-    n == null ? 'N/A' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtChg = (chgPct, change) => {
+  const fmtPrice = (n, currency = 'USD') => {
+    if (n == null) return 'N/A';
+    if (currency === 'KRW') return Number(n).toLocaleString('ko-KR') + '원';
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtChg = (chgPct, change, currency = 'USD') => {
     if (chgPct == null) return '';
     const arrow = chgPct >= 0 ? '▲' : '▼';
     const pct = `${chgPct >= 0 ? '+' : ''}${Number(chgPct).toFixed(2)}%`;
-    const chgStr = change != null
-      ? ` (${change >= 0 ? '+' : ''}$${Math.abs(Number(change)).toFixed(2)})`
-      : '';
-    return ` ${arrow} ${pct}${chgStr}`;
+    if (change != null) {
+      const sign = change >= 0 ? '+' : '-';
+      const absChange = Math.abs(Number(change));
+      const chgStr = currency === 'KRW'
+        ? ` (${sign}${absChange.toLocaleString('ko-KR')}원)`
+        : ` (${sign}$${absChange.toFixed(2)})`;
+      return ` ${arrow} ${pct}${chgStr}`;
+    }
+    return ` ${arrow} ${pct}`;
   };
 
   // crypto (src='coingecko') 먼저
@@ -225,18 +233,29 @@ function buildBriefingText(marketData, userName) {
   for (const sym of cryptoSyms) {
     const d = marketData[sym];
     const icon = sym === 'BTC' ? '₿' : sym === 'ETH' ? 'Ξ' : '🪙';
-    text += `${icon} <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
+    text += `${icon} <b>${d.label}</b>: ${fmtPrice(d.price)}${fmtChg(d.chgPct)}\n`;
   }
 
-  // 주식 (src='finnhub') 나중
+  // 해외주식 (src='finnhub')
   const stockSyms = Object.keys(marketData).filter(s => marketData[s].src === 'finnhub');
   if (stockSyms.length > 0) {
     text += `━━━━━━━━━━━━━━━\n`;
     for (const sym of stockSyms) {
       const d = marketData[sym];
-      text += `📈 <b>${d.label}</b>: $${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
+      text += `📈 <b>${d.label}</b>: ${fmtPrice(d.price)}${fmtChg(d.chgPct, d.change)}\n`;
     }
   }
+
+  // 국내주식 (src='yahoo')
+  const krSyms = Object.keys(marketData).filter(s => marketData[s].src === 'yahoo');
+  if (krSyms.length > 0) {
+    text += `━━━━━━━━━━━━━━━\n`;
+    for (const sym of krSyms) {
+      const d = marketData[sym];
+      text += `🇰🇷 <b>${d.label}</b>: ${fmtPrice(d.price, d.currency)}${fmtChg(d.chgPct, d.change, d.currency)}\n`;
+    }
+  }
+
   text += `━━━━━━━━━━━━━━━\n좋은 하루 되세요! 🌅`;
   return text;
 }
@@ -261,6 +280,14 @@ async function searchFinnhub(_key, query) {
       .filter(item => item.type === 'Common Stock' || item.type === 'ETP')
       .slice(0, 6)
       .map(item => ({ sym: item.symbol, label: item.description, src: 'finnhub' }));
+  } catch { return []; }
+}
+
+async function searchKoreanStock(query) {
+  try {
+    const r = await fetch(`/api/ksearch?q=${encodeURIComponent(query)}`);
+    const j = await r.json();
+    return j.result || [];
   } catch { return []; }
 }
 
@@ -1923,7 +1950,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     setSearching(true);
     const results = searchMode === 'stock'
       ? await searchFinnhub('', query)
-      : await searchCoinGecko(query);
+      : searchMode === 'korean'
+        ? await searchKoreanStock(query)
+        : await searchCoinGecko(query);
     setSearchResults(results);
     setSearching(false);
   };
@@ -2277,22 +2306,26 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {['stock', 'crypto'].map(mode => (
+            {[
+              { id: 'stock', label: '해외주식/ETF' },
+              { id: 'korean', label: '국내주식' },
+              { id: 'crypto', label: '코인' },
+            ].map(({ id, label }) => (
               <button
-                key={mode}
-                onClick={() => { setSearchMode(mode); setSearchResults([]); setAssetSearch(''); }}
+                key={id}
+                onClick={() => { setSearchMode(id); setSearchResults([]); setAssetSearch(''); }}
                 style={{
                   padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: searchMode === mode ? "#4B6FFF" : "var(--dm-row)",
-                  color: searchMode === mode ? "#fff" : "var(--dm-muted)",
+                  background: searchMode === id ? "#4B6FFF" : "var(--dm-row)",
+                  color: searchMode === id ? "#fff" : "var(--dm-muted)",
                 }}
-              >{mode === 'stock' ? '주식/ETF' : '코인'}</button>
+              >{label}</button>
             ))}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              placeholder={searchMode === 'stock' ? 'AAPL, NVDA, SPY...' : 'SOL, XRP, DOGE...'}
+              placeholder={searchMode === 'stock' ? 'AAPL, NVDA, SPY...' : searchMode === 'korean' ? '삼성전자, 카카오...' : 'SOL, XRP, DOGE...'}
               value={assetSearch}
               onChange={e => doAssetSearch(e.target.value)}
             />
