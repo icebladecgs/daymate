@@ -241,6 +241,18 @@ function buildBriefingText(marketData, userName) {
   return text;
 }
 
+async function fetchMarketDataFromServer(assets, customRegistry = {}) {
+  try {
+    const r = await fetch('/api/market', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assets, customRegistry }),
+    });
+    if (!r.ok) return {};
+    return await r.json();
+  } catch { return {}; }
+}
+
 async function searchFinnhub(_key, query) {
   try {
     const r = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -659,7 +671,7 @@ const isPerfectDay = (dayData) => {
   const filledTasks = dayData.tasks.filter((t) => t.title.trim()).length;
   const doneTasks = dayData.tasks.filter((t) => t.done && t.title.trim()).length;
   const hasJournal = !!dayData.journal?.body?.trim();
-  return filledTasks === 3 && doneTasks === 3 && hasJournal;
+  return filledTasks >= 3 && doneTasks === filledTasks && hasJournal;
 };
 
 const calcStreak = (plans) => {
@@ -685,7 +697,7 @@ const calcWeeklyStats = (plans) => {
     const doneTasks = (day?.tasks || []).filter((t) => t.done && t.title.trim()).length;
     days.push({
       date: dateStr,
-      rate: filledTasks === 0 ? 0 : Math.round((doneTasks / 3) * 100),
+      rate: filledTasks === 0 ? 0 : Math.min(100, Math.round((doneTasks / filledTasks) * 100)),
       isPerfect: isPerfectDay(day),
     });
     current.setDate(current.getDate() - 1);
@@ -1154,7 +1166,7 @@ function History({ plans, onOpenDate, habits }) {
     const filled = d.tasks.filter((t) => t.title.trim()).length;
     if (filled === 0) return 0;
     const done = d.tasks.filter((t) => t.done && t.title.trim()).length;
-    return Math.round((done / 3) * 100);
+    return Math.min(100, Math.round((done / filled) * 100));
   };
 
   const styleOf = (r, isToday, isPerfect) => {
@@ -1303,7 +1315,7 @@ function History({ plans, onOpenDate, habits }) {
               {formatKoreanDate(ds)}
             </div>
             <div style={{ fontSize: 13, marginTop: 8, color: "var(--dm-text)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <span>✅ {done}/{Math.max(3, filled || 3)}</span>
+              <span>✅ {done}/{filled || 0}</span>
               {(habits || []).length > 0 && (() => {
                 const hc = d.habitChecks || {};
                 const hDone = (habits || []).filter(h => hc[h.id]).length;
@@ -1358,7 +1370,7 @@ function History({ plans, onOpenDate, habits }) {
   );
 }
 
-function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
+function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits }) {
   const isToday = dateStr === toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
@@ -1478,6 +1490,45 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast }) {
           ))}
         </div>
       </div>
+
+      {(habits || []).length > 0 && (() => {
+        const habitChecks = data.habitChecks || {};
+        const toggleHabit = (id) => setData(prev => {
+          const cur = prev.habitChecks || {};
+          return { ...prev, habitChecks: { ...cur, [id]: !cur[id] } };
+        });
+        return (
+          <>
+            <div style={S.sectionTitle}>🎯 습관</div>
+            <div style={S.card}>
+              {(habits || []).map((h, i) => {
+                const checked = !!habitChecks[h.id];
+                return (
+                  <div key={h.id} onClick={() => toggleHabit(h.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
+                      cursor: "pointer" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: checked ? "none" : "2px solid #3A4260",
+                      background: checked ? "#A78BFA" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{h.icon}</span>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: checked ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: checked ? "line-through" : "none",
+                    }}>{h.name || "(이름 없음)"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
 
       <div style={S.sectionTitle}>📝 메모</div>
       <div style={S.card}>
@@ -2397,7 +2448,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v15 · 2026-03-08
+        DayMate Lite v16 · 2026-03-10
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2430,9 +2481,6 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     store.set('dm_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  }, []);
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
@@ -2510,7 +2558,7 @@ export default function App() {
             if (s.notifEnabled !== undefined) { setNotifEnabled(s.notifEnabled); store.set("dm_notif_enabled", s.notifEnabled); }
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
-          if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
+            if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
           }
           if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
           if (Object.keys(remote.days).length > 0) {
@@ -2748,6 +2796,7 @@ export default function App() {
           onBack={() => changeScreen("history")}
           toast={toast}
           setToast={setToast}
+          habits={habits}
         />
       );
     }
