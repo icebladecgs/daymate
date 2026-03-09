@@ -2636,6 +2636,13 @@ export default function App() {
     setInstallPrompt(null);
   };
 
+  // no width limit - let container fill viewport
+  const phoneStyleOverride = { maxWidth: '100%' };
+
+  const [authUser, setAuthUser] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
+  const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
+
   // FCM Web Push 구독
   const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY;
   useEffect(() => {
@@ -2654,13 +2661,6 @@ export default function App() {
       } catch {}
     });
   }, [authUser, VAPID_PUBLIC]);
-
-  // no width limit - let container fill viewport
-  const phoneStyleOverride = { maxWidth: '100%' };
-
-  const [authUser, setAuthUser] = useState(null);
-  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
-  const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
 
   // 다크/라이트 모드
   const [isDark, setIsDark] = useState(() => store.get('dm_theme', 'dark') === 'dark');
