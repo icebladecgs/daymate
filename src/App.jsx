@@ -2468,6 +2468,22 @@ export default function App() {
   });
   const [toast, setToast] = useState("");
 
+  // PWA 설치 프롬프트
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setShowInstallBanner(false);
+    setInstallPrompt(null);
+  };
+
   // no width limit - let container fill viewport
   const phoneStyleOverride = { maxWidth: '100%' };
 
@@ -2837,6 +2853,30 @@ export default function App() {
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {render(changeScreen)}
         {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
+        {showInstallBanner && (
+          <div style={{
+            position: "fixed", bottom: 90, left: 16, right: 16, zIndex: 300,
+            background: "var(--dm-card)", border: "1.5px solid #4B6FFF",
+            borderRadius: 16, padding: "14px 16px",
+            display: "flex", alignItems: "center", gap: 12,
+            boxShadow: "0 4px 24px rgba(75,111,255,.3)",
+          }}>
+            <div style={{ fontSize: 28 }}>📲</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>앱처럼 빠르게 실행돼요</div>
+            </div>
+            <button onClick={handleInstall} style={{
+              padding: "8px 14px", borderRadius: 10, border: "none",
+              background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
+              fontSize: 12, fontWeight: 900, cursor: "pointer", flexShrink: 0,
+            }}>설치</button>
+            <button onClick={() => setShowInstallBanner(false)} style={{
+              background: "transparent", border: "none", color: "var(--dm-muted)",
+              fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0, lineHeight: 1,
+            }}>✕</button>
+          </div>
+        )}
         {screen === "home" && (
           <button
             onClick={() => setIsDark(v => !v)}
