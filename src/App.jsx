@@ -49,6 +49,20 @@ const formatKoreanDate = (dateStr) => {
 };
 const monthLabel = (y, m0) => `${y}년 ${m0 + 1}월`;
 
+// 현재 주 월~일 날짜 배열 반환
+const getWeekDates = () => {
+  const today = new Date();
+  const day = today.getDay(); // 0=일
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const mon = new Date(today);
+  mon.setDate(today.getDate() + diffToMon);
+  return Array(7).fill(null).map((_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return toDateStr(d);
+  });
+};
+
 // ---------- Text helpers ----------
 const parseLines = (text) =>
   (text || "")
@@ -605,6 +619,103 @@ const S = {
 };
 
 // ---------- UI atoms ----------
+// ---------- WeeklySchedule ----------
+const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
+
+function WeeklySchedule({ plans, habits, onOpenDate }) {
+  const today = toDateStr();
+  const weekDates = getWeekDates();
+
+  return (
+    <div>
+      {weekDates.map((ds, i) => {
+        const d = plans[ds];
+        const tasks = (d?.tasks || []).filter(t => t.title.trim());
+        const done = tasks.filter(t => t.done).length;
+        const isToday = ds === today;
+        const isFuture = ds > today;
+        const dateObj = new Date(ds + 'T00:00:00');
+        const habitChecks = d?.habitChecks || {};
+        const habitDone = (habits || []).filter(h => habitChecks[h.id]).length;
+        const hasHabits = (habits || []).length > 0;
+        const allDone = tasks.length > 0 && done === tasks.length;
+
+        return (
+          <div key={ds} onClick={() => onOpenDate(ds)}
+            style={{
+              ...S.card,
+              border: isToday
+                ? '1.5px solid #6C8EFF'
+                : allDone ? '1.5px solid rgba(74,222,128,.4)' : '1px solid var(--dm-border)',
+              background: isToday ? 'rgba(108,142,255,.06)' : 'var(--dm-card)',
+              cursor: 'pointer', marginBottom: 8,
+            }}>
+            {/* 헤더 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tasks.length > 0 ? 10 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  fontSize: 13, fontWeight: 900, width: 22,
+                  color: isToday ? '#6C8EFF' : isFuture ? 'var(--dm-text)' : 'var(--dm-muted)',
+                }}>{DOW_KR[i]}</span>
+                <span style={{ fontSize: 12, color: 'var(--dm-sub)' }}>
+                  {dateObj.getMonth() + 1}/{dateObj.getDate()}
+                </span>
+                {isToday && (
+                  <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900,
+                    background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 7px' }}>오늘</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {hasHabits && d && (
+                  <span style={{ fontSize: 11, color: habitDone === (habits||[]).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>
+                    🎯{habitDone}/{(habits||[]).length}
+                  </span>
+                )}
+                {tasks.length > 0 && (
+                  <span style={{ fontSize: 12, fontWeight: 900,
+                    color: allDone ? '#4ADE80' : 'var(--dm-muted)' }}>
+                    {allDone ? '✓ 완료' : `${done}/${tasks.length}`}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* 할일 목록 */}
+            {tasks.length > 0 ? (
+              <div>
+                {tasks.slice(0, 4).map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                    <div style={{
+                      width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                      background: t.done ? '#4B6FFF' : 'transparent',
+                      border: t.done ? 'none' : '1.5px solid #3A4260',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {t.done && <span style={{ color: '#fff', fontSize: 9, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <span style={{
+                      fontSize: 13, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                      color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)',
+                      textDecoration: t.done ? 'line-through' : 'none',
+                    }}>{t.title}</span>
+                  </div>
+                ))}
+                {tasks.length > 4 && (
+                  <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>+{tasks.length - 4}개 더</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>
+                {isFuture || isToday ? '탭해서 할 일 추가 →' : '기록 없음'}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Toast({ msg, onDone }) {
   useEffect(() => {
     const t = setTimeout(onDone, 1900);
@@ -774,7 +885,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit }) {
+function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -944,20 +1055,13 @@ function Home({ user, goals, todayData, plans, onGoToday, onToggleTask, goalChec
         );
       })()}
 
-      {(todayData?.memo || '').trim() && (
-        <>
-          <div style={S.sectionTitle}>📝 오늘 메모</div>
-          <div style={{ ...S.card, cursor: "pointer" }} onClick={onGoToday}>
-            <div style={{ fontSize: 13, color: "var(--dm-sub)", whiteSpace: "pre-wrap", lineHeight: 1.6, maxHeight: 64, overflow: "hidden" }}>
-              {(todayData.memo || '').trim().split('\n').slice(0, 3).join('\n')}
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6 }}>✏️ 탭해서 편집</div>
-          </div>
-        </>
-      )}
+      <div style={S.sectionTitle}>📅 이번주 일정</div>
+      <div style={{ padding: "0 16px" }}>
+        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />
+      </div>
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>📅 이달 목표</span>
+        <span>🎯 이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
           style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
           {editingGoals ? "완료 ✓" : "✏️ 편집"}
@@ -1181,8 +1285,6 @@ function Today({ dateStr, data, setData, toast, setToast }) {
 function History({ plans, onOpenDate, habits }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
-  const [searchQ, setSearchQ] = useState('');
-
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
   const today = toDateStr();
@@ -1218,27 +1320,6 @@ function History({ plans, onOpenDate, habits }) {
     } else setMonth0((m) => m + 1);
   };
 
- const recent = useMemo(() => {
-  try {
-    return Object.keys(plans)
-      .filter((ds) => plans[ds]?.tasks)
-      .sort((a, b) => b.localeCompare(a))
-      .slice(0, 10);
-  } catch { return []; }
-}, [plans]);
-
-  const searchResults = useMemo(() => {
-    if (!searchQ.trim()) return [];
-    const q = searchQ.toLowerCase();
-    return Object.keys(plans)
-      .filter(ds => {
-        const d = plans[ds];
-        return (d?.memo || '').toLowerCase().includes(q) || (d?.journal?.body || '').toLowerCase().includes(q);
-      })
-      .sort((a, b) => b.localeCompare(a));
-  }, [searchQ, plans]);
-
-
   return (
     <div style={S.content}>
       <div style={S.topbar}>
@@ -1272,8 +1353,11 @@ function History({ plans, onOpenDate, habits }) {
             const r = rateOf(ds);
             const isToday = ds === today;
             const perfect = isPerfectDay(plans[ds]);
-            const st = styleOf(r, isToday, perfect);
-            const clickable = r !== null;
+            const isFutureDate = ds > today;
+            const st = isFutureDate && r === null
+              ? { background: "var(--dm-input)", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)" }
+              : styleOf(r, isToday, perfect);
+            const clickable = true;
             const hasMemo = !!(plans[ds]?.memo?.trim());
             const dayHabits = (habits || []);
             const habitChecks = plans[ds]?.habitChecks || {};
@@ -1322,75 +1406,10 @@ function History({ plans, onOpenDate, habits }) {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>최근 기록</div>
-      {recent.length === 0 && (
-        <div style={{ padding: "20px 18px", color: "var(--dm-muted)", textAlign: "center" }}>
-          아직 기록이 없어요 🌱
-        </div>
-      )}
-      {recent.map((ds) => {
-        const d = plans[ds];
-        const done = d.tasks.filter((t) => t.done && t.title.trim()).length;
-        const filled = d.tasks.filter((t) => t.title.trim()).length;
-        const hasJournal = !!d.journal?.body?.trim();
-        const hasMemo = !!d.memo?.trim();
-        const journalPreview = (d.journal?.body || '').trim().split('\n')[0].slice(0, 50);
-        const memoPreview = (d.memo || '').trim().split('\n')[0].slice(0, 50);
-        return (
-          <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>
-              {formatKoreanDate(ds)}
-            </div>
-            <div style={{ fontSize: 13, marginTop: 8, color: "var(--dm-text)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <span>✅ {done}/{filled || 0}</span>
-              {(habits || []).length > 0 && (() => {
-                const hc = d.habitChecks || {};
-                const hDone = (habits || []).filter(h => hc[h.id]).length;
-                return <span style={{ color: hDone === (habits||[]).length && (habits||[]).length > 0 ? "#A78BFA" : "var(--dm-sub)" }}>🎯 {hDone}/{(habits||[]).length}</span>;
-              })()}
-              <span>{hasJournal ? "📖 일기 있음" : "📖 일기 없음"}</span>
-            </div>
-            {hasMemo && <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 6, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {memoPreview}</div>}
-            {hasJournal && journalPreview && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {journalPreview}</div>}
-          </div>
-        );
-      })}
-
-      <div style={S.sectionTitle}>🔍 메모 / 일기 검색</div>
-      <div style={{ padding: "0 16px 10px" }}>
-        <input
-          style={{ ...S.input, width: "100%", boxSizing: "border-box" }}
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
-          placeholder="키워드로 검색..."
-        />
+      <div style={S.sectionTitle}>📅 이번주 일정</div>
+      <div style={{ padding: "0 16px" }}>
+        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />
       </div>
-      {searchQ.trim() && searchResults.length === 0 && (
-        <div style={{ padding: "12px 18px", color: "var(--dm-muted)", fontSize: 13 }}>검색 결과 없음</div>
-      )}
-      {searchResults.map((ds) => {
-        const d = plans[ds];
-        const q = searchQ.toLowerCase();
-        const memoSnippet = (d?.memo || '').trim();
-        const journalSnippet = (d?.journal?.body || '').trim();
-        const highlight = (text) => {
-          const idx = text.toLowerCase().indexOf(q);
-          if (idx < 0) return text.slice(0, 60);
-          const start = Math.max(0, idx - 15);
-          return (start > 0 ? '…' : '') + text.slice(start, idx + q.length + 30);
-        };
-        return (
-          <div key={ds} style={{ ...S.card, cursor: "pointer" }} onClick={() => onOpenDate(ds)}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>{formatKoreanDate(ds)}</div>
-            {memoSnippet.toLowerCase().includes(q) && (
-              <div style={{ fontSize: 12, color: "#6C8EFF", marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>📝 {highlight(memoSnippet)}</div>
-            )}
-            {journalSnippet.toLowerCase().includes(q) && (
-              <div style={{ fontSize: 12, color: "var(--dm-sub)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>💬 {highlight(journalSnippet)}</div>
-            )}
-          </div>
-        );
-      })}
 
       <div style={{ height: 12 }} />
     </div>
@@ -2481,7 +2500,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v16 · 2026-03-10
+        DayMate Lite v17 · 2026-03-10
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2687,6 +2706,13 @@ export default function App() {
   };
 
   const openDetail = (ds) => {
+    setPlans((prev) => {
+      if (prev[ds]) return prev;
+      const d = newDay(ds);
+      saveDay(ds, d);
+      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, ds, d).catch(() => {});
+      return { ...prev, [ds]: d };
+    });
     setOpenDate(ds);
     setScreen("detail");
     window.history.replaceState(null,'',`?screen=detail&date=${ds}`);
@@ -2786,8 +2812,6 @@ export default function App() {
           goals={goals}
           todayData={todayData}
           plans={plans}
-          onGoToday={() => changeScreen("today")}
-          onGoHistory={() => changeScreen("history")}
           onToggleTask={(id) => setTodayData(prev => ({
             ...prev,
             tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t),
@@ -2798,6 +2822,7 @@ export default function App() {
           onSaveMonthGoals={onSaveMonthGoals}
           habits={habits}
           onToggleHabit={onToggleHabit}
+          onOpenDate={openDetail}
         />
       );
     }
