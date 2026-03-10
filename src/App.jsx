@@ -898,7 +898,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate }) {
+function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -993,7 +993,7 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => onOpenDate(today)} style={{
+          <button onClick={() => onOpenDateMemo(today)} style={{
             background: "var(--dm-card)", border: "1.5px solid var(--dm-border)",
             borderRadius: 10, padding: "6px 12px", cursor: "pointer",
             fontSize: 13, color: "var(--dm-text)", fontWeight: 700,
@@ -1542,10 +1542,16 @@ function History({ plans, onOpenDate, habits }) {
   );
 }
 
-function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits }) {
+function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo }) {
   const isToday = dateStr === toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
+  const memoRef = useRef(null);
+  useEffect(() => {
+    if (scrollToMemo && memoRef.current) {
+      setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  }, [scrollToMemo]);
 
   const toggleDone = (id) => {
     setData((prev) => {
@@ -1706,7 +1712,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits }) 
         );
       })()}
 
-      <div style={S.sectionTitle}>📝 메모</div>
+      <div ref={memoRef} style={S.sectionTitle}>📝 메모</div>
       <div style={S.card}>
         <textarea
           rows={3}
@@ -2792,6 +2798,7 @@ export default function App() {
   });
 
   const [openDate, setOpenDate] = useState(null);
+  const [scrollToMemo, setScrollToMemo] = useState(false);
 
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
@@ -2938,8 +2945,14 @@ export default function App() {
       return { ...prev, [ds]: d };
     });
     setOpenDate(ds);
+    setScrollToMemo(false);
     setScreen("detail");
     window.history.replaceState(null,'',`?screen=detail&date=${ds}`);
+  };
+
+  const openDetailMemo = (ds) => {
+    openDetail(ds);
+    setScrollToMemo(true);
   };
 
   const setDetailData = (updater) => {
@@ -3047,6 +3060,7 @@ export default function App() {
           habits={habits}
           onToggleHabit={onToggleHabit}
           onOpenDate={openDetail}
+          onOpenDateMemo={openDetailMemo}
         />
       );
     }
@@ -3095,6 +3109,7 @@ export default function App() {
           toast={toast}
           setToast={setToast}
           habits={habits}
+          scrollToMemo={scrollToMemo}
         />
       );
     }
