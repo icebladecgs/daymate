@@ -913,6 +913,28 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
     return () => clearInterval(t);
   }, []);
 
+  // 언젠가 할일
+  const [someday, setSomeday] = useState(() => store.get("dm_someday") || []);
+  const [somedayInput, setSomedayInput] = useState("");
+  const saveSomeday = (next) => { setSomeday(next); store.set("dm_someday", next); };
+  const addSomeday = () => {
+    const title = somedayInput.trim();
+    if (!title) return;
+    saveSomeday([...someday, { id: `sd${Date.now()}`, title, done: false }]);
+    setSomedayInput("");
+  };
+  const toggleSomeday = (id) => saveSomeday(someday.map(x => x.id === id ? { ...x, done: !x.done } : x));
+  const deleteSomeday = (id) => saveSomeday(someday.filter(x => x.id !== id));
+  const moveToToday = (item) => {
+    const tasks = [...(todayData?.tasks || [])];
+    const emptyIdx = tasks.findIndex(t => !t.title.trim());
+    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false };
+    if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+    else tasks.push(newTask);
+    onSetTodayTasks(tasks);
+    deleteSomeday(item.id);
+  };
+
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
   const [editingGoals, setEditingGoals] = useState(false);
@@ -1065,6 +1087,43 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
             })}
           </>
         )}
+      </div>
+
+      <div style={S.sectionTitle}>📋 언젠가 할일</div>
+      <div style={S.card}>
+        {someday.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>언제 할지 모르지만 해야 할 일을 적어두세요.</div>
+        )}
+        {someday.map(item => (
+          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <button onClick={() => toggleSomeday(item.id)} style={{
+              width: 22, height: 22, borderRadius: 6, border: `2px solid ${item.done ? "#4ADE80" : "var(--dm-border)"}`,
+              background: item.done ? "#4ADE80" : "transparent", flexShrink: 0, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+            }}>{item.done ? "✓" : ""}</button>
+            <div style={{ flex: 1, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none" }}>
+              {item.title}
+            </div>
+            <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
+              background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6,
+              color: "#4B6FFF", fontSize: 10, fontWeight: 900, cursor: "pointer", padding: "3px 6px", flexShrink: 0,
+            }}>오늘로↑</button>
+            <button onClick={() => deleteSomeday(item.id)} style={{
+              background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1,
+            }}>✕</button>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, marginTop: someday.length > 0 ? 8 : 0 }}>
+          <input
+            style={{ ...S.input, flex: 1, marginBottom: 0 }}
+            value={somedayInput}
+            onChange={e => setSomedayInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addSomeday()}
+            placeholder="언젠가 할 일 추가..."
+            maxLength={60}
+          />
+          <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
+        </div>
       </div>
 
       {habits.length > 0 && (() => {
