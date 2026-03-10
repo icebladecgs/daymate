@@ -2604,7 +2604,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       <div style={S.card}>
         {installPrompt ? (
           <button onClick={handleInstall} style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
-            홈 화면에 설치하기
+            앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
           </button>
         ) : (
           <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
