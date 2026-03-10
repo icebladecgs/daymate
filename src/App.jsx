@@ -907,6 +907,11 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
@@ -963,7 +968,7 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
       <div style={S.topbar}>
         <div>
           <div style={S.title}>DayMate Lite</div>
-          <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)}</div>
+          <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
           {getPermission() === "granted" ? "🔔" : "🔕"}
