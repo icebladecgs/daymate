@@ -1984,6 +1984,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
   const fileInputRef = useRef(null);
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
@@ -2602,14 +2603,14 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>📲 앱 설치</div>
       <div style={S.card}>
-        {installPrompt ? (
-          <button onClick={handleInstall} style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
-            앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
-          </button>
-        ) : (
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
-            iOS Safari: 하단 공유 버튼 → <b>홈 화면에 추가</b><br />
-            Android Chrome: 주소창 오른쪽 메뉴 → <b>앱 설치</b> (또는 자동 배너 대기)
+        <button onClick={installPrompt ? handleInstall : () => setShowInstallGuide(v => !v)}
+          style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
+          앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
+        </button>
+        {!installPrompt && showInstallGuide && (
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
+            📱 <b>iOS Safari:</b> 하단 공유(□↑) 버튼 → <b>홈 화면에 추가</b><br />
+            🤖 <b>Android Chrome:</b> 주소창 오른쪽 ⋮ 메뉴 → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>
           </div>
         )}
       </div>
