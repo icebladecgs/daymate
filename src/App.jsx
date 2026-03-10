@@ -1979,7 +1979,8 @@ function Stats({ plans, habits }) {
 function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
                     telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
-                    habits, setHabits, recurringTasks, setRecurringTasks }) {
+                    habits, setHabits, recurringTasks, setRecurringTasks,
+                    installPrompt, handleInstall }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -2599,6 +2600,20 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
+      <div style={S.sectionTitle}>📲 앱 설치</div>
+      <div style={S.card}>
+        {installPrompt ? (
+          <button onClick={handleInstall} style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
+            홈 화면에 설치하기
+          </button>
+        ) : (
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
+            iOS Safari: 하단 공유 버튼 → <b>홈 화면에 추가</b><br />
+            Android Chrome: 주소창 오른쪽 메뉴 → <b>앱 설치</b> (또는 자동 배너 대기)
+          </div>
+        )}
+      </div>
+
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
         DayMate Lite v18 · 2026-03-10
       </div>
@@ -3029,6 +3044,8 @@ export default function App() {
           setHabits={setHabits}
           recurringTasks={recurringTasks}
           setRecurringTasks={setRecurringTasks}
+          installPrompt={installPrompt}
+          handleInstall={handleInstall}
         />
       );
     }
