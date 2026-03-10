@@ -992,8 +992,16 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
           <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
-          {getPermission() === "granted" ? "🔔" : "🔕"}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => onOpenDate(today)} style={{
+            background: "var(--dm-card)", border: "1.5px solid var(--dm-border)",
+            borderRadius: 10, padding: "6px 12px", cursor: "pointer",
+            fontSize: 13, color: "var(--dm-text)", fontWeight: 700,
+            display: "flex", alignItems: "center", gap: 5,
+          }}>📝 <span style={{ fontSize: 12 }}>메모</span></button>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
+            {getPermission() === "granted" ? "🔔" : "🔕"}
+          </div>
         </div>
       </div>
 
