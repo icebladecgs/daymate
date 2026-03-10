@@ -9,9 +9,8 @@ export default async function handler(req, res) {
       { headers: { 'User-Agent': 'Mozilla/5.0' } }
     );
     const j = await r.json();
-    const KOREAN_EXCHANGES = ['KSC', 'KOE', 'KSE'];
     const result = (j.quotes || [])
-      .filter(q => q.quoteType === 'EQUITY' && KOREAN_EXCHANGES.includes(q.exchange))
+      .filter(q => q.quoteType === 'EQUITY' && /\.(KS|KQ)$/.test(q.symbol))
       .slice(0, 6)
       .map(q => ({
         sym: q.symbol,

@@ -2088,17 +2088,21 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
     setToast('텔레그램 설정 저장 ✅');
   };
 
-  const doAssetSearch = async (query) => {
+  const searchTimerRef = useRef(null);
+  const doAssetSearch = (query) => {
     setAssetSearch(query);
     if (!query.trim()) { setSearchResults([]); return; }
-    setSearching(true);
-    const results = searchMode === 'stock'
-      ? await searchFinnhub('', query)
-      : searchMode === 'korean'
-        ? await searchKoreanStock(query)
-        : await searchCoinGecko(query);
-    setSearchResults(results);
-    setSearching(false);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      const results = searchMode === 'stock'
+        ? await searchFinnhub('', query)
+        : searchMode === 'korean'
+          ? await searchKoreanStock(query)
+          : await searchCoinGecko(query);
+      setSearchResults(results);
+      setSearching(false);
+    }, 500);
   };
 
   const addCustomAsset = (asset) => {
