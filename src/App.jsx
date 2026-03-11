@@ -3071,6 +3071,27 @@ export default function App() {
     } catch {}
     return "home";
   });
+  const screenRef = useRef(null);
+  useEffect(() => { screenRef.current = screen; }, [screen]);
+
+  // 안드로이드 뒤로가기 처리: 화면 내 이동 / 홈에서만 종료 확인
+  useEffect(() => {
+    history.replaceState({ screen: 'home', isRoot: true }, '', window.location.href);
+    history.pushState({ screen: 'home', isRoot: false }, '', window.location.href);
+    const handler = (e) => {
+      if (!e.state || e.state.isRoot) {
+        const confirmed = window.confirm('앱을 종료하시겠습니까?');
+        if (!confirmed) {
+          history.pushState({ screen: screenRef.current, isRoot: false }, '', `?screen=${screenRef.current}`);
+        }
+      } else {
+        setScreen(e.state.screen);
+      }
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [toast, setToast] = useState("");
 
   // PWA 설치 프롬프트
@@ -3343,7 +3364,7 @@ export default function App() {
     setOpenDate(ds);
     setScrollToMemo(false);
     setScreen("detail");
-    window.history.replaceState(null,'',`?screen=detail&date=${ds}`);
+    history.pushState({ screen: 'detail', isRoot: false }, '', `?screen=detail&date=${ds}`);
   };
 
   const openDetailMemo = (ds) => {
@@ -3522,7 +3543,7 @@ export default function App() {
         return (
           <div style={S.content}>
             <div style={S.topbar}>
-              <button onClick={() => changeScreen("history")} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
+              <button onClick={() => history.back()} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
                 ←
               </button>
               <div style={{ flex: 1 }}>
@@ -3539,7 +3560,7 @@ export default function App() {
           dateStr={openDate}
           data={d}
           setData={setDetailData}
-          onBack={() => changeScreen("history")}
+          onBack={() => history.back()}
           toast={toast}
           setToast={setToast}
           habits={habits}
@@ -3588,7 +3609,7 @@ export default function App() {
 
   const changeScreen = (s) => {
     setScreen(s);
-    window.history.replaceState(null,'',`?screen=${s}`);
+    history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
   };
 
   return (
