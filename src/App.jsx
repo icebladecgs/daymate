@@ -1759,6 +1759,9 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
   };
 
   const removeTask = (id) => {
+    const token = getValidGcalToken?.();
+    const task = data.tasks.find(t => t.id === id);
+    if (token && task?.gcalEventId) gcalDeleteEvent(token, task.gcalEventId).catch(() => {});
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   };
 
@@ -1831,6 +1834,15 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
               style={S.input}
               value={t.title}
               onChange={(e) => setTitle(t.id, e.target.value)}
+              onBlur={(e) => {
+                const token = getValidGcalToken?.();
+                if (!token || t.gcalEventId || !e.target.value.trim()) return;
+                gcalCreateEvent(token, dateStr, { ...t, title: e.target.value.trim() })
+                  .then(gcalEventId => setData(prev => ({
+                    ...prev,
+                    tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
+                  }))).catch(() => {});
+              }}
               placeholder={`할 일 ${idx + 1}`}
               maxLength={60}
             />
@@ -2986,7 +2998,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v22 · 2026-03-11
+        DayMate Lite v23 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
