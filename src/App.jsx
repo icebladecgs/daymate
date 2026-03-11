@@ -1348,10 +1348,18 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
 
 function JournalViewer({ plans, onClose }) {
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState('');
 
   const journalEntries = Object.entries(plans)
     .filter(([, d]) => d?.journal?.body?.trim())
     .sort(([a], [b]) => b.localeCompare(a));
+
+  const filtered = query.trim()
+    ? journalEntries.filter(([ds, d]) =>
+        d.journal.body.toLowerCase().includes(query.toLowerCase()) ||
+        formatKoreanDate(ds).includes(query)
+      )
+    : journalEntries;
 
   const allText = journalEntries
     .map(([ds, d]) => `[${formatKoreanDate(ds)}]\n${d.journal.body.trim()}`)
@@ -1389,12 +1397,20 @@ function JournalViewer({ plans, onClose }) {
           {copied ? '✓ 복사됨' : '전체 복사'}
         </button>
       </div>
+      <div style={{ padding: '8px 16px 4px', flexShrink: 0 }}>
+        <input
+          style={{ ...S.input, marginBottom: 0 }}
+          placeholder="🔍 일기 검색..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      </div>
       <div style={{ ...S.content, paddingBottom: 32 }}>
-        {journalEntries.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>
-            아직 작성된 일기가 없어요.
+            {query ? '검색 결과가 없어요.' : '아직 작성된 일기가 없어요.'}
           </div>
-        ) : journalEntries.map(([ds, d]) => (
+        ) : filtered.map(([ds, d]) => (
           <div key={ds} style={S.card}>
             <div style={{ fontSize: 11, color: '#A78BFA', fontWeight: 900, marginBottom: 8 }}>
               {formatKoreanDate(ds)}
@@ -1460,7 +1476,7 @@ function Today({ dateStr, data, setData, toast, setToast, plans }) {
       </div>
       <div style={S.card}>
         <textarea
-          rows={4}
+          rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
           value={data.memo ?? ""}
           onChange={(e) =>
@@ -1522,10 +1538,18 @@ function Today({ dateStr, data, setData, toast, setToast, plans }) {
 
 function MemoViewer({ plans, onClose }) {
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState('');
 
   const memoEntries = Object.entries(plans)
     .filter(([, d]) => d?.memo?.trim())
     .sort(([a], [b]) => b.localeCompare(a));
+
+  const filtered = query.trim()
+    ? memoEntries.filter(([ds, d]) =>
+        d.memo.toLowerCase().includes(query.toLowerCase()) ||
+        formatKoreanDate(ds).includes(query)
+      )
+    : memoEntries;
 
   const allText = memoEntries
     .map(([ds, d]) => `[${formatKoreanDate(ds)}]\n${d.memo.trim()}`)
@@ -1563,13 +1587,20 @@ function MemoViewer({ plans, onClose }) {
           {copied ? '✓ 복사됨' : '전체 복사'}
         </button>
       </div>
-
+      <div style={{ padding: '8px 16px 4px', flexShrink: 0 }}>
+        <input
+          style={{ ...S.input, marginBottom: 0 }}
+          placeholder="🔍 메모 검색..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      </div>
       <div style={{ ...S.content, paddingBottom: 32 }}>
-        {memoEntries.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>
-            아직 작성된 메모가 없어요.
+            {query ? '검색 결과가 없어요.' : '아직 작성된 메모가 없어요.'}
           </div>
-        ) : memoEntries.map(([ds, d]) => (
+        ) : filtered.map(([ds, d]) => (
           <div key={ds} style={S.card}>
             <div style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 900, marginBottom: 8 }}>
               {formatKoreanDate(ds)}
@@ -2916,7 +2947,9 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : 'var(--dm-sub)', marginBottom: 12 }}>
               {syncStatus === 'syncing' ? '동기화 중...' : syncStatus === 'synced' ? '✓ 동기화 완료' : '대기 중'}
             </div>
-            <button style={S.btnGhost} onClick={() => onGoogleSignOut().catch(() => {})}>로그아웃</button>
+            <button style={S.btnGhost} onClick={() => {
+              if (window.confirm('로그아웃하시겠습니까?\n로그아웃해도 기기의 데이터는 유지돼요.')) onGoogleSignOut().catch(() => {});
+            }}>로그아웃</button>
           </div>
         ) : (
           <div>
@@ -2937,7 +2970,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       <div style={S.card}>
         <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
           {gcalConnected
-            ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 만료`
+            ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 까지 유효`
             : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
         </div>
         {gcalConnected ? (
@@ -2965,8 +2998,10 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             {gcalStatus}
           </div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.7 }}>
-          💡 구글 로그인 팝업이 열려요. 토큰은 1시간 유효하며 만료 시 재연동이 필요해요.
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.8 }}>
+          💡 연동 버튼을 누르면 구글 계정 선택 팝업이 열려요.<br/>
+          ⚠️ "앱을 확인할 수 없습니다" 경고창이 뜨면 <b>고급 → 계속</b>을 눌러주세요.<br/>
+          🕐 연동은 1시간 유효해요. 만료되면 버튼이 다시 "연동하기"로 바뀌며, 재연동하면 돼요.
         </div>
       </div>
 
@@ -3018,7 +3053,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v26 · 2026-03-12
+        DayMate Lite v28 · 2026-03-12
       </div>
       <div style={{ height: 12 }} />
     </div>
