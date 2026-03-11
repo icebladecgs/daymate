@@ -1734,6 +1734,7 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const memoRef = useRef(null);
+  const pendingGcalRef = useRef(new Set()); // 생성 중인 task id 추적 (중복 방지)
   useEffect(() => {
     if (scrollToMemo && memoRef.current) {
       setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -1848,12 +1849,15 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
                 if (!token || !title) return;
                 if (t.gcalEventId) {
                   gcalUpdateEvent(token, t.gcalEventId, title).catch(() => {});
-                } else {
+                } else if (!pendingGcalRef.current.has(t.id)) {
+                  pendingGcalRef.current.add(t.id);
                   gcalCreateEvent(token, dateStr, { ...t, title })
                     .then(gcalEventId => setData(prev => ({
                       ...prev,
                       tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
-                    }))).catch(() => {});
+                    })))
+                    .catch(() => {})
+                    .finally(() => pendingGcalRef.current.delete(t.id));
                 }
               }}
               placeholder={`할 일 ${idx + 1}`}
@@ -2983,15 +2987,17 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
             : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
         </div>
         {gcalConnected ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleGcalPull} style={{ ...S.btnGhost, flex: 1, marginTop: 0, fontSize: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={handleGcalPull} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
               📥 오늘 일정 가져오기
             </button>
-            <button onClick={onGcalDisconnect} style={{
-              ...S.btnGhost, marginTop: 0, fontSize: 12, flexShrink: 0,
+            <button onClick={() => {
+              if (window.confirm('구글 캘린더 연동을 정말로 해제하시겠습니까?')) onGcalDisconnect();
+            }} style={{
+              ...S.btnGhost, marginTop: 0, fontSize: 13,
               color: '#F87171', border: '1.5px solid rgba(248,113,113,.35)',
             }}>
-              연동 해제
+              🔓 연동 해제
             </button>
           </div>
         ) : (
@@ -3071,8 +3077,7 @@ export default function App() {
           userVisibleOnly: true,
           applicationServerKey: VAPID_PUBLIC,
         });
-        const { saveSettings: _s } = await import('./firebase.js');
-        await _s(authUser.uid, { pushSubscription: JSON.parse(JSON.stringify(sub)) });
+        await saveSettings(authUser.uid, { pushSubscription: JSON.parse(JSON.stringify(sub)) });
       } catch {}
     });
   }, [authUser, VAPID_PUBLIC]);
@@ -3333,6 +3338,15 @@ export default function App() {
     const newTaskIds = new Set(tasks.map(t => t.id));
     prevTasks.filter(t => t.gcalEventId && !newTaskIds.has(t.id))
       .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(() => {}));
+
+    // 제목이 변경된 할일을 Calendar에서 수정
+    const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
+    tasks.forEach(t => {
+      const prev = prevTaskMap.get(t.id);
+      if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
+        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(() => {});
+      }
+    });
 
     // 새로 추가된 할일을 Calendar에 생성
     const prevTaskIds = new Set(prevTasks.map(t => t.id));
