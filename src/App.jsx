@@ -2539,6 +2539,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
+      <div style={S.sectionTitle}>🔁 반복 할일</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          매일 또는 특정 요일에 자동으로 추가되는 할일을 설정해요.
+        </div>
+        {(recurringTasks || []).map((t) => (
+          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <select
+              value={t.days}
+              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
+              style={{ ...S.input, width: 80, marginBottom: 0, padding: "8px 6px", fontSize: 12 }}>
+              <option value="daily">매일</option>
+              <option value="1">월</option><option value="2">화</option><option value="3">수</option>
+              <option value="4">목</option><option value="5">금</option>
+              <option value="6">토</option><option value="0">일</option>
+            </select>
+            <input
+              style={{ ...S.input, flex: 1, marginBottom: 0 }}
+              value={t.title}
+              maxLength={40}
+              placeholder="반복 할일 이름"
+              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, title: e.target.value} : x))}
+            />
+            <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
+              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0 }}>✕</button>
+          </div>
+        ))}
+        {(recurringTasks || []).length < 10 && (
+          <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
+            onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: "", days: "daily" }])}>
+            ➕ 반복 할일 추가
+          </button>
+        )}
+      </div>
+
       <div style={S.sectionTitle}>알림</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -2897,39 +2932,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
-      <div style={S.sectionTitle}>🔁 반복 할일</div>
+      <div style={S.sectionTitle}>🗓️ 구글 캘린더 연동</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          매일 또는 특정 요일에 자동으로 추가되는 할일을 설정해요.
+        <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
+          {gcalConnected
+            ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 만료`
+            : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
         </div>
-        {(recurringTasks || []).map((t) => (
-          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <select
-              value={t.days}
-              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
-              style={{ ...S.input, width: 80, marginBottom: 0, padding: "8px 6px", fontSize: 12 }}>
-              <option value="daily">매일</option>
-              <option value="1">월</option><option value="2">화</option><option value="3">수</option>
-              <option value="4">목</option><option value="5">금</option>
-              <option value="6">토</option><option value="0">일</option>
-            </select>
-            <input
-              style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              value={t.title}
-              maxLength={40}
-              placeholder="반복 할일 이름"
-              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, title: e.target.value} : x))}
-            />
-            <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
-              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0 }}>✕</button>
+        {gcalConnected ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={handleGcalPull} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
+              📥 오늘 일정 가져오기
+            </button>
+            <button onClick={() => {
+              if (window.confirm('구글 캘린더 연동을 정말로 해제하시겠습니까?')) onGcalDisconnect();
+            }} style={{
+              ...S.btnGhost, marginTop: 0, fontSize: 13,
+              color: '#F87171', border: '1.5px solid rgba(248,113,113,.35)',
+            }}>
+              🔓 연동 해제
+            </button>
           </div>
-        ))}
-        {(recurringTasks || []).length < 10 && (
-          <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
-            onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: "", days: "daily" }])}>
-            ➕ 반복 할일 추가
-          </button>
+        ) : (
+          <button onClick={handleGcalConnect} style={S.btn}>🔗 구글 캘린더 연동하기</button>
         )}
+        {gcalStatus && (
+          <div style={{
+            fontSize: 12, marginTop: 10, fontWeight: 700,
+            color: gcalStatus.startsWith('✓') ? '#4ADE80' : gcalStatus.includes('중') ? 'var(--dm-sub)' : '#F87171',
+          }}>
+            {gcalStatus}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.7 }}>
+          💡 구글 로그인 팝업이 열려요. 토큰은 1시간 유효하며 만료 시 재연동이 필요해요.
+        </div>
       </div>
 
       <div style={S.sectionTitle}>📲 앱 설치</div>
@@ -2979,45 +3016,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         </div>
       </div>
 
-      <div style={S.sectionTitle}>🗓️ 구글 캘린더 연동</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
-          {gcalConnected
-            ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 만료`
-            : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
-        </div>
-        {gcalConnected ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button onClick={handleGcalPull} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
-              📥 오늘 일정 가져오기
-            </button>
-            <button onClick={() => {
-              if (window.confirm('구글 캘린더 연동을 정말로 해제하시겠습니까?')) onGcalDisconnect();
-            }} style={{
-              ...S.btnGhost, marginTop: 0, fontSize: 13,
-              color: '#F87171', border: '1.5px solid rgba(248,113,113,.35)',
-            }}>
-              🔓 연동 해제
-            </button>
-          </div>
-        ) : (
-          <button onClick={handleGcalConnect} style={S.btn}>🔗 구글 캘린더 연동하기</button>
-        )}
-        {gcalStatus && (
-          <div style={{
-            fontSize: 12, marginTop: 10, fontWeight: 700,
-            color: gcalStatus.startsWith('✓') ? '#4ADE80' : gcalStatus.includes('중') ? 'var(--dm-sub)' : '#F87171',
-          }}>
-            {gcalStatus}
-          </div>
-        )}
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.7 }}>
-          💡 구글 로그인 팝업이 열려요. 토큰은 1시간 유효하며 만료 시 재연동이 필요해요.
-        </div>
-      </div>
-
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v24 · 2026-03-11
+        DayMate Lite v26 · 2026-03-12
       </div>
       <div style={{ height: 12 }} />
     </div>
