@@ -784,7 +784,7 @@ function Toast({ msg, onDone }) {
 function BottomNav({ screen, setScreen }) {
   const items = [
     { id: "home", icon: "🏠", label: "홈" },
-    { id: "today", icon: "📖", label: "일기" },
+    { id: "today", icon: "📖", label: "일기/메모" },
     { id: "history", icon: "📅", label: "기록" },
     { id: "stats", icon: "📊", label: "통계" },
     { id: "settings", icon: "⚙️", label: "설정" },
@@ -1036,16 +1036,8 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
           <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => onOpenDateMemo(today)} style={{
-            background: "var(--dm-card)", border: "1.5px solid var(--dm-border)",
-            borderRadius: 10, padding: "6px 12px", cursor: "pointer",
-            fontSize: 13, color: "var(--dm-text)", fontWeight: 700,
-            display: "flex", alignItems: "center", gap: 5,
-          }}>📝 <span style={{ fontSize: 12 }}>메모</span></button>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
             {getPermission() === "granted" ? "🔔" : "🔕"}
-          </div>
         </div>
       </div>
 
@@ -2289,7 +2281,8 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
                     habits, setHabits, recurringTasks, setRecurringTasks,
                     installPrompt, handleInstall,
-                    gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull }) {
+                    gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
+                    isDark, setIsDark }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -2472,10 +2465,18 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       <div style={S.topbar}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={S.title}>설정</div>
           <div style={S.sub}>이름 · 목표 · 알림 · 백업</div>
         </div>
+        <button
+          onClick={() => setIsDark(v => !v)}
+          style={{ width:38, height:38, borderRadius:999,
+            border:"1.5px solid var(--dm-border)", background:"var(--dm-input)", fontSize:18,
+            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+            flexShrink: 0 }}>
+          {isDark ? "☀️" : "🌙"}
+        </button>
       </div>
 
       <div style={S.sectionTitle}>프로필</div>
@@ -3542,6 +3543,8 @@ export default function App() {
           onGcalConnect={connectGcal}
           onGcalDisconnect={disconnectGcal}
           onGcalPull={pullFromGcal}
+          isDark={isDark}
+          setIsDark={setIsDark}
         />
       );
     }
@@ -3582,16 +3585,7 @@ export default function App() {
             }}>✕</button>
           </div>
         )}
-        {screen === "home" && (
-          <button
-            onClick={() => setIsDark(v => !v)}
-            style={{ position:"fixed", top:14, right:16, width:38, height:38, borderRadius:999,
-              border:"1.5px solid var(--dm-border)", background:"var(--dm-card)", fontSize:18,
-              cursor:"pointer", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center",
-              boxShadow:"0 2px 12px rgba(0,0,0,.25)" }}>
-            {isDark ? "☀️" : "🌙"}
-          </button>
-        )}
+
       </div>
     </div>
   );
