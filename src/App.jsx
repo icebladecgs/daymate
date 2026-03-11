@@ -2768,7 +2768,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v18 · 2026-03-10
+        DayMate Lite v19 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
