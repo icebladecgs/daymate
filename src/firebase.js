@@ -72,6 +72,16 @@ export async function loadAllFromFirestore(uid) {
   return result;
 }
 
+// Google Calendar OAuth (Calendar scope)
+export async function googleSignInWithCalendarScope() {
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar');
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential) throw new Error('no credential');
+  return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
+}
+
 // localStorage 데이터를 Firestore로 최초 업로드 (Firestore가 비어있을 때)
 export async function uploadLocalToFirestore(uid, localData) {
   const { settings, goals, days } = localData;

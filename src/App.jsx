@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope } from "./firebase.js";
 
 /* =========================================================
    DayMate Lite (safe, mobile-friendly)
@@ -62,6 +62,42 @@ const getWeekDates = () => {
     return toDateStr(d);
   });
 };
+
+// ---------- Google Calendar API ----------
+async function gcalCreateEvent(token, dateStr, task) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  const endDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      summary: task.title,
+      start: { date: dateStr },
+      end: { date: endDate },
+      extendedProperties: { private: { daymateId: task.id } },
+    }),
+  });
+  if (!res.ok) throw new Error(`gcal ${res.status}`);
+  return (await res.json()).id;
+}
+
+async function gcalDeleteEvent(token, eventId) {
+  await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+async function gcalFetchTodayEvents(token, dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  const nextDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(dateStr + 'T00:00:00Z')}&timeMax=${encodeURIComponent(nextDate + 'T00:00:00Z')}&singleEvents=true&orderBy=startTime`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`gcal fetch ${res.status}`);
+  return (await res.json()).items || [];
+}
 
 // ---------- Text helpers ----------
 const parseLines = (text) =>
@@ -2201,12 +2237,15 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                     telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
                     habits, setHabits, recurringTasks, setRecurringTasks,
-                    installPrompt, handleInstall }) {
+                    installPrompt, handleInstall,
+                    gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [gcalStatus, setGcalStatus] = useState('');
+  const gcalConnected = !!(gcalToken && Date.now() < gcalTokenExp);
   const fileInputRef = useRef(null);
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
@@ -2276,6 +2315,24 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const removeCustomAsset = (sym) => {
     setCustomAssets(prev => prev.filter(a => a.sym !== sym));
     setSelectedAssets(prev => prev.filter(s => s !== sym));
+  };
+
+  const handleGcalConnect = async () => {
+    setGcalStatus('연결 중...');
+    const token = await onGcalConnect();
+    setGcalStatus(token ? '✓ 연동 완료' : '✗ 연동 실패 (팝업 차단 확인)');
+    setTimeout(() => setGcalStatus(''), 3000);
+  };
+
+  const handleGcalPull = async () => {
+    setGcalStatus('가져오는 중...');
+    try {
+      const count = await onGcalPull(gcalToken);
+      setGcalStatus(count > 0 ? `✓ ${count}개 가져왔어요` : '✓ 새 일정 없음');
+    } catch {
+      setGcalStatus('✗ 실패 (토큰 만료됐을 수 있어요)');
+    }
+    setTimeout(() => setGcalStatus(''), 3000);
   };
 
   const saveAlarmTimes = () => {
@@ -2871,8 +2928,43 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         </div>
       </div>
 
+      <div style={S.sectionTitle}>🗓️ 구글 캘린더 연동</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
+          {gcalConnected
+            ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 만료`
+            : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
+        </div>
+        {gcalConnected ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleGcalPull} style={{ ...S.btnGhost, flex: 1, marginTop: 0, fontSize: 12 }}>
+              📥 오늘 일정 가져오기
+            </button>
+            <button onClick={onGcalDisconnect} style={{
+              ...S.btnGhost, marginTop: 0, fontSize: 12, flexShrink: 0,
+              color: '#F87171', border: '1.5px solid rgba(248,113,113,.35)',
+            }}>
+              연동 해제
+            </button>
+          </div>
+        ) : (
+          <button onClick={handleGcalConnect} style={S.btn}>🔗 구글 캘린더 연동하기</button>
+        )}
+        {gcalStatus && (
+          <div style={{
+            fontSize: 12, marginTop: 10, fontWeight: 700,
+            color: gcalStatus.startsWith('✓') ? '#4ADE80' : gcalStatus.includes('중') ? 'var(--dm-sub)' : '#F87171',
+          }}>
+            {gcalStatus}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.7 }}>
+          💡 구글 로그인 팝업이 열려요. 토큰은 1시간 유효하며 만료 시 재연동이 필요해요.
+        </div>
+      </div>
+
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v20 · 2026-03-11
+        DayMate Lite v21 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -2914,6 +3006,10 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'
   const syncReadyRef = useRef(false); // Firestore 쓰기 허용 플래그 (초기 로드 완료 후 true)
+
+  // Google Calendar 연동 토큰
+  const [gcalToken, setGcalToken] = useState(() => store.get('dm_gcal_token', null));
+  const [gcalTokenExp, setGcalTokenExp] = useState(() => store.get('dm_gcal_token_exp', 0));
 
   // FCM Web Push 구독
   const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -2988,6 +3084,44 @@ export default function App() {
   };
 
   const todayData = plans[todayStr] || null;
+
+  const getValidGcalToken = () => {
+    const t = store.get('dm_gcal_token', null);
+    const e = store.get('dm_gcal_token_exp', 0);
+    return t && Date.now() < e ? t : null;
+  };
+
+  const connectGcal = async () => {
+    try {
+      const { accessToken, expiresAt } = await googleSignInWithCalendarScope();
+      store.set('dm_gcal_token', accessToken);
+      store.set('dm_gcal_token_exp', expiresAt);
+      setGcalToken(accessToken);
+      setGcalTokenExp(expiresAt);
+      return accessToken;
+    } catch { return null; }
+  };
+
+  const disconnectGcal = () => {
+    store.remove('dm_gcal_token');
+    store.remove('dm_gcal_token_exp');
+    setGcalToken(null);
+    setGcalTokenExp(0);
+  };
+
+  const pullFromGcal = async (token) => {
+    const events = await gcalFetchTodayEvents(token, todayStr);
+    const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
+    if (external.length === 0) return 0;
+    const curTasks = plans[todayStr]?.tasks || [];
+    const existingTitles = new Set(curTasks.map(t => t.title.trim().toLowerCase()));
+    const toAdd = external
+      .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
+      .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
+    if (toAdd.length === 0) return 0;
+    setTodayData(prev => ({ ...prev, tasks: [...(prev.tasks || []), ...toAdd] }));
+    return toAdd.length;
+  };
 
   const ensureToday = () => {
     setPlans((prev) => {
@@ -3142,7 +3276,35 @@ export default function App() {
   };
 
   const onSetTodayTasks = (tasks) => {
+    const prevTasks = todayData?.tasks || [];
     setTodayData(prev => ({ ...prev, tasks }));
+
+    const token = getValidGcalToken();
+    if (!token) return;
+
+    // 삭제된 할일의 Calendar 이벤트 제거
+    const newTaskIds = new Set(tasks.map(t => t.id));
+    prevTasks.filter(t => t.gcalEventId && !newTaskIds.has(t.id))
+      .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(() => {}));
+
+    // 새로 추가된 할일을 Calendar에 생성
+    const prevTaskIds = new Set(prevTasks.map(t => t.id));
+    const toCreate = tasks.filter(t => t.title.trim() && !t.gcalEventId && !prevTaskIds.has(t.id));
+    if (toCreate.length === 0) return;
+    Promise.all(toCreate.map(async task => {
+      try { return { id: task.id, gcalEventId: await gcalCreateEvent(token, todayStr, task) }; }
+      catch { return null; }
+    })).then(results => {
+      const updates = results.filter(Boolean);
+      if (updates.length === 0) return;
+      setTodayData(prev => ({
+        ...prev,
+        tasks: prev.tasks.map(t => {
+          const u = updates.find(r => r.id === t.id);
+          return u ? { ...t, gcalEventId: u.gcalEventId } : t;
+        }),
+      }));
+    });
   };
 
   const onSaveMonthGoals = (monthGoals) => {
@@ -3313,6 +3475,11 @@ export default function App() {
           setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt}
           handleInstall={handleInstall}
+          gcalToken={gcalToken}
+          gcalTokenExp={gcalTokenExp}
+          onGcalConnect={connectGcal}
+          onGcalDisconnect={disconnectGcal}
+          onGcalPull={pullFromGcal}
         />
       );
     }
