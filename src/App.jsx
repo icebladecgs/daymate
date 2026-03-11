@@ -1721,7 +1721,7 @@ function History({ plans, onOpenDate, habits }) {
   );
 }
 
-function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo }) {
+function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken }) {
   const isToday = dateStr === toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
@@ -1789,7 +1789,29 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
         <div />
       </div>
 
-      <div style={S.sectionTitle}>할 일 ({data.tasks.length}개)</div>
+      <div style={{ ...S.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>할 일 ({data.tasks.length}개)</span>
+        {getValidGcalToken && getValidGcalToken() && (
+          <button onClick={async () => {
+            const token = getValidGcalToken();
+            if (!token) return;
+            try {
+              const events = await gcalFetchTodayEvents(token, dateStr);
+              const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
+              if (external.length === 0) { setToast('가져올 일정이 없어요'); return; }
+              const existingTitles = new Set(data.tasks.map(t => t.title.trim().toLowerCase()));
+              const toAdd = external
+                .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
+                .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
+              if (toAdd.length === 0) { setToast('이미 모두 추가됨'); return; }
+              setData(prev => ({ ...prev, tasks: [...prev.tasks, ...toAdd] }));
+              setToast(`${toAdd.length}개 추가됨`);
+            } catch { setToast('캘린더 가져오기 실패'); }
+          }} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, cursor: 'pointer', color: 'var(--dm-sub)' }}>
+            📅 캘린더에서 가져오기
+          </button>
+        )}
+      </div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
           <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
@@ -2964,7 +2986,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v21 · 2026-03-11
+        DayMate Lite v22 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -3447,6 +3469,7 @@ export default function App() {
           setToast={setToast}
           habits={habits}
           scrollToMemo={scrollToMemo}
+          getValidGcalToken={getValidGcalToken}
         />
       );
     }
