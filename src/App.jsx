@@ -1310,10 +1310,78 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
   );
 }
 
-function Today({ dateStr, data, setData, toast, setToast }) {
+function JournalViewer({ plans, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  const journalEntries = Object.entries(plans)
+    .filter(([, d]) => d?.journal?.body?.trim())
+    .sort(([a], [b]) => b.localeCompare(a));
+
+  const allText = journalEntries
+    .map(([ds, d]) => `[${formatKoreanDate(ds)}]\n${d.journal.body.trim()}`)
+    .join('\n\n───────────\n\n');
+
+  const copyAll = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(allText).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = allText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+      <div style={{ ...S.topbar, flexShrink: 0 }}>
+        <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
+        <div style={{ flex: 1 }}>
+          <div style={S.title}>일기 몰아보기</div>
+          <div style={S.sub}>{journalEntries.length}일치 일기</div>
+        </div>
+        <button onClick={copyAll} style={{
+          padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+          background: copied ? 'rgba(74,222,128,.15)' : 'rgba(108,142,255,.15)',
+          color: copied ? '#4ADE80' : '#6C8EFF',
+          fontSize: 12, fontWeight: 900, flexShrink: 0,
+        }}>
+          {copied ? '✓ 복사됨' : '전체 복사'}
+        </button>
+      </div>
+      <div style={{ ...S.content, paddingBottom: 32 }}>
+        {journalEntries.length === 0 ? (
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>
+            아직 작성된 일기가 없어요.
+          </div>
+        ) : journalEntries.map(([ds, d]) => (
+          <div key={ds} style={S.card}>
+            <div style={{ fontSize: 11, color: '#A78BFA', fontWeight: 900, marginBottom: 8 }}>
+              {formatKoreanDate(ds)}
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {d.journal.body.trim()}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Today({ dateStr, data, setData, toast, setToast, plans }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
+  const [showMemoViewer, setShowMemoViewer] = useState(false);
+  const [showJournalViewer, setShowJournalViewer] = useState(false);
+
+  if (showMemoViewer) return <MemoViewer plans={plans} onClose={() => setShowMemoViewer(false)} />;
+  if (showJournalViewer) return <JournalViewer plans={plans} onClose={() => setShowJournalViewer(false)} />;
 
   return (
     <div style={S.content}>
@@ -1323,6 +1391,14 @@ function Today({ dateStr, data, setData, toast, setToast }) {
         <div>
           <div style={S.title}>오늘 일기</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setShowMemoViewer(true)} style={{
+            ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto',
+          }}>전체메모</button>
+          <button onClick={() => setShowJournalViewer(true)} style={{
+            ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto',
+          }}>전체일기</button>
         </div>
       </div>
 
@@ -1521,9 +1597,6 @@ function History({ plans, onOpenDate, habits }) {
           <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setShowMemoViewer(true)} style={{
-            ...S.btnGhost, marginTop: 0, padding: '8px 12px', fontSize: 12, width: 'auto',
-          }}>📝 메모</button>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
@@ -2133,6 +2206,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const fileInputRef = useRef(null);
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
@@ -2321,14 +2395,47 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         <button style={S.btn} onClick={save}>저장</button>
       </div>
 
+      <div style={S.sectionTitle}>🎯 습관 관리</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          매일 반복할 습관을 등록하면 홈 화면에서 체크할 수 있어요. (최대 10개)
+        </div>
+        {(habits || []).map((h) => (
+          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <input
+              style={{ ...S.input, width: 48, textAlign: "center", marginBottom: 0, padding: "8px 4px" }}
+              value={h.icon}
+              maxLength={2}
+              placeholder="🎯"
+              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
+            />
+            <input
+              style={{ ...S.input, flex: 1, marginBottom: 0 }}
+              value={h.name}
+              maxLength={20}
+              placeholder="습관 이름 (예: 운동, 독서)"
+              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
+            />
+            <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
+              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0, lineHeight: 1 }}>✕</button>
+          </div>
+        ))}
+        {(habits || []).length < 10 && (
+          <button style={{ ...S.btn, marginTop: (habits || []).length > 0 ? 4 : 0 }}
+            onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: "", icon: "🎯" }])}>
+            ➕ 습관 추가
+          </button>
+        )}
+        {(habits || []).length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>아직 등록된 습관이 없어요.</div>
+        )}
+      </div>
+
       <div style={S.sectionTitle}>알림</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 900 }}>알림 ON/OFF</div>
-            <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>
-              07:30 / 12:00 / 18:00 / 22:00 (탭이 열려 있을 때 동작)
-            </div>
             {permission === "denied" && (
               <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
                 브라우저 알림이 차단되어 있어요. (사이트 설정에서 허용)
@@ -2717,42 +2824,6 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
-      <div style={S.sectionTitle}>🎯 습관 관리</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          매일 반복할 습관을 등록하면 홈 화면에서 체크할 수 있어요. (최대 10개)
-        </div>
-        {(habits || []).map((h) => (
-          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <input
-              style={{ ...S.input, width: 48, textAlign: "center", marginBottom: 0, padding: "8px 4px" }}
-              value={h.icon}
-              maxLength={2}
-              placeholder="🎯"
-              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
-            />
-            <input
-              style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              value={h.name}
-              maxLength={20}
-              placeholder="습관 이름 (예: 운동, 독서)"
-              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
-            />
-            <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
-              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0, lineHeight: 1 }}>✕</button>
-          </div>
-        ))}
-        {(habits || []).length < 10 && (
-          <button style={{ ...S.btn, marginTop: (habits || []).length > 0 ? 4 : 0 }}
-            onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: "", icon: "🎯" }])}>
-            ➕ 습관 추가
-          </button>
-        )}
-        {(habits || []).length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>아직 등록된 습관이 없어요.</div>
-        )}
-      </div>
-
       <div style={S.sectionTitle}>📲 앱 설치</div>
       <div style={S.card}>
         <button onClick={installPrompt ? handleInstall : () => setShowInstallGuide(v => !v)}
@@ -2767,8 +2838,41 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
         )}
       </div>
 
+      <div style={S.sectionTitle}>🔗 친구에게 공유하기</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          DayMate를 친구에게 소개해보세요!
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {navigator.share && (
+            <button onClick={async () => {
+              try { await navigator.share({ title: 'DayMate', text: '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 ', url: 'https://daymate-beta.vercel.app' }); } catch {}
+            }} style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,#FEE500,#FDD835)', color: '#3C1E1E' }}>
+              💬 카카오 / 문자로 공유하기
+            </button>
+          )}
+          <button onClick={() => {
+            const full = '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 https://daymate-beta.vercel.app';
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(full).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); });
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = full; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+              setShareCopied(true); setTimeout(() => setShareCopied(false), 2000);
+            }
+          }} style={{
+            ...S.btn, marginTop: 0,
+            background: shareCopied ? 'rgba(74,222,128,.15)' : 'var(--dm-input)',
+            color: shareCopied ? '#4ADE80' : 'var(--dm-text)',
+            border: '1.5px solid var(--dm-border)', boxShadow: 'none',
+          }}>
+            {shareCopied ? '✓ 링크 복사됨' : '🔗 링크 복사하기'}
+          </button>
+        </div>
+      </div>
+
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v19 · 2026-03-11
+        DayMate Lite v20 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -3143,6 +3247,7 @@ export default function App() {
           setData={setTodayData}
           toast={toast}
           setToast={setToast}
+          plans={plans}
         />
       );
     }
