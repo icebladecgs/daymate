@@ -89,6 +89,14 @@ async function gcalDeleteEvent(token, eventId) {
   });
 }
 
+async function gcalUpdateEvent(token, eventId, title) {
+  await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary: title }),
+  });
+}
+
 async function gcalFetchTodayEvents(token, dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
@@ -1836,12 +1844,17 @@ function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, sc
               onChange={(e) => setTitle(t.id, e.target.value)}
               onBlur={(e) => {
                 const token = getValidGcalToken?.();
-                if (!token || t.gcalEventId || !e.target.value.trim()) return;
-                gcalCreateEvent(token, dateStr, { ...t, title: e.target.value.trim() })
-                  .then(gcalEventId => setData(prev => ({
-                    ...prev,
-                    tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
-                  }))).catch(() => {});
+                const title = e.target.value.trim();
+                if (!token || !title) return;
+                if (t.gcalEventId) {
+                  gcalUpdateEvent(token, t.gcalEventId, title).catch(() => {});
+                } else {
+                  gcalCreateEvent(token, dateStr, { ...t, title })
+                    .then(gcalEventId => setData(prev => ({
+                      ...prev,
+                      tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
+                    }))).catch(() => {});
+                }
               }}
               placeholder={`할 일 ${idx + 1}`}
               maxLength={60}
@@ -2998,7 +3011,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v23 · 2026-03-11
+        DayMate Lite v24 · 2026-03-11
       </div>
       <div style={{ height: 12 }} />
     </div>
