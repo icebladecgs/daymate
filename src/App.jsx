@@ -2311,7 +2311,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
                     telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
                     authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
                     habits, setHabits, recurringTasks, setRecurringTasks,
-                    installPrompt, handleInstall,
+                    installPrompt, handleInstall, setShowInstallBanner,
                     gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
                     isDark, setIsDark }) {
   const [name, setName] = useState(user.name || "");
@@ -3007,7 +3007,10 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
 
       <div style={S.sectionTitle}>📲 앱 설치</div>
       <div style={S.card}>
-        <button onClick={installPrompt ? handleInstall : () => setShowInstallGuide(v => !v)}
+        <button onClick={() => {
+            if (installPrompt) { handleInstall(); }
+            else { store.set('dm_install_dismissed', false); setShowInstallBanner(true); setShowInstallGuide(v => !v); }
+          }}
           style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
           앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
         </button>
@@ -3053,7 +3056,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v28 · 2026-03-12
+        DayMate Lite v30 · 2026-03-12
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -3096,9 +3099,19 @@ export default function App() {
 
   // PWA 설치 프롬프트
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const [showInstallBanner, setShowInstallBanner] = useState(() => {
+    if (isStandalone) return false;
+    if (store.get('dm_install_dismissed')) return false;
+    return isIOS; // iOS면 기본으로 표시
+  });
   useEffect(() => {
-    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      if (!isStandalone && !store.get('dm_install_dismissed')) setShowInstallBanner(true);
+    };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
@@ -3106,8 +3119,12 @@ export default function App() {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallBanner(false);
+    if (outcome === 'accepted') { setShowInstallBanner(false); store.set('dm_install_dismissed', true); }
     setInstallPrompt(null);
+  };
+  const dismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    store.set('dm_install_dismissed', true);
   };
 
   // no width limit - let container fill viewport
@@ -3594,6 +3611,7 @@ export default function App() {
           setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt}
           handleInstall={handleInstall}
+          setShowInstallBanner={setShowInstallBanner}
           gcalToken={gcalToken}
           gcalTokenExp={gcalTokenExp}
           onGcalConnect={connectGcal}
@@ -3622,23 +3640,33 @@ export default function App() {
             position: "fixed", bottom: 90, left: 16, right: 16, zIndex: 300,
             background: "var(--dm-card)", border: "1.5px solid #4B6FFF",
             borderRadius: 16, padding: "14px 16px",
-            display: "flex", alignItems: "center", gap: 12,
             boxShadow: "0 4px 24px rgba(75,111,255,.3)",
           }}>
-            <div style={{ fontSize: 28 }}>📲</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>앱처럼 빠르게 실행돼요</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 28 }}>📲</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>앱처럼 빠르게 실행돼요</div>
+              </div>
+              {installPrompt && (
+                <button onClick={handleInstall} style={{
+                  padding: "8px 14px", borderRadius: 10, border: "none",
+                  background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
+                  fontSize: 12, fontWeight: 900, cursor: "pointer", flexShrink: 0,
+                }}>설치</button>
+              )}
+              <button onClick={dismissInstallBanner} style={{
+                background: "transparent", border: "none", color: "var(--dm-muted)",
+                fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0, lineHeight: 1,
+              }}>✕</button>
             </div>
-            <button onClick={handleInstall} style={{
-              padding: "8px 14px", borderRadius: 10, border: "none",
-              background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
-              fontSize: 12, fontWeight: 900, cursor: "pointer", flexShrink: 0,
-            }}>설치</button>
-            <button onClick={() => setShowInstallBanner(false)} style={{
-              background: "transparent", border: "none", color: "var(--dm-muted)",
-              fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0, lineHeight: 1,
-            }}>✕</button>
+            {isIOS && !installPrompt && (
+              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
+                1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유 버튼 (□↑)</b> 누르기<br/>
+                2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> 선택<br/>
+                3️⃣ 오른쪽 위 <b style={{color:"var(--dm-text)"}}>추가</b> 누르면 완료!
+              </div>
+            )}
           </div>
         )}
 
