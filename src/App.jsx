@@ -942,7 +942,7 @@ const calcGoalProgress = (plans) => {
 };
 
 // ---------- Screens ----------
-function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo }) {
+function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim())
     .length;
@@ -1040,6 +1040,27 @@ function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggl
             {getPermission() === "granted" ? "🔔" : "🔕"}
         </div>
       </div>
+
+      {showInstallBanner && (
+        <div style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid #4B6FFF", padding: "12px 14px", boxShadow: "0 2px 12px rgba(75,111,255,.2)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: installPrompt || isIOS ? 10 : 0 }}>
+            <div style={{ fontSize: 22 }}>📲</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>앱처럼 빠르게 실행돼요</div>
+            </div>
+            <button onClick={dismissInstallBanner} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
+          </div>
+          {installPrompt && (
+            <button onClick={handleInstall} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
+          )}
+          {!installPrompt && (
+            <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
+              {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>✅ 오늘 할일</span>
@@ -3056,7 +3077,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v31 · 2026-03-12
+        DayMate Lite v32 · 2026-03-12
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -3532,6 +3553,11 @@ export default function App() {
           onToggleHabit={onToggleHabit}
           onOpenDate={openDetail}
           onOpenDateMemo={openDetailMemo}
+          installPrompt={installPrompt}
+          handleInstall={handleInstall}
+          showInstallBanner={showInstallBanner}
+          dismissInstallBanner={dismissInstallBanner}
+          isIOS={isIOS}
         />
       );
     }
@@ -3635,45 +3661,6 @@ export default function App() {
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {render(changeScreen)}
         {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
-        {showInstallBanner && (
-          <div style={{
-            position: "fixed", bottom: 90, left: 16, right: 16, zIndex: 300,
-            background: "var(--dm-card)", border: "1.5px solid #4B6FFF",
-            borderRadius: 16, padding: "14px 16px",
-            boxShadow: "0 4px 24px rgba(75,111,255,.3)",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: installPrompt || isIOS ? 10 : 0 }}>
-              <div style={{ fontSize: 28 }}>📲</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>앱처럼 빠르게 실행돼요</div>
-              </div>
-              <button onClick={dismissInstallBanner} style={{
-                background: "transparent", border: "none", color: "var(--dm-muted)",
-                fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0, lineHeight: 1,
-              }}>✕</button>
-            </div>
-            {installPrompt && (
-              <button onClick={handleInstall} style={{
-                width: "100%", padding: "12px", borderRadius: 12, border: "none",
-                background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
-                fontSize: 15, fontWeight: 900, cursor: "pointer",
-              }}>설치하기</button>
-            )}
-            {!installPrompt && (
-              <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
-                {isIOS ? <>
-                  1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유 버튼 (□↑)</b> 누르기<br/>
-                  2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> 선택<br/>
-                  3️⃣ 오른쪽 위 <b style={{color:"var(--dm-text)"}}>추가</b> 누르면 완료!
-                </> : <>
-                  주소창 오른쪽 <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> →<br/>
-                  <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b>
-                </>}
-              </div>
-            )}
-          </div>
-        )}
 
       </div>
     </div>
