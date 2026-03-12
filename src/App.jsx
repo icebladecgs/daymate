@@ -3056,7 +3056,7 @@ function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnable
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v30 · 2026-03-12
+        DayMate Lite v31 · 2026-03-12
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -3642,29 +3642,34 @@ export default function App() {
             borderRadius: 16, padding: "14px 16px",
             boxShadow: "0 4px 24px rgba(75,111,255,.3)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: installPrompt || isIOS ? 10 : 0 }}>
               <div style={{ fontSize: 28 }}>📲</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>앱처럼 빠르게 실행돼요</div>
               </div>
-              {installPrompt && (
-                <button onClick={handleInstall} style={{
-                  padding: "8px 14px", borderRadius: 10, border: "none",
-                  background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
-                  fontSize: 12, fontWeight: 900, cursor: "pointer", flexShrink: 0,
-                }}>설치</button>
-              )}
               <button onClick={dismissInstallBanner} style={{
                 background: "transparent", border: "none", color: "var(--dm-muted)",
                 fontSize: 18, cursor: "pointer", padding: 4, flexShrink: 0, lineHeight: 1,
               }}>✕</button>
             </div>
-            {isIOS && !installPrompt && (
-              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
-                1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유 버튼 (□↑)</b> 누르기<br/>
-                2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> 선택<br/>
-                3️⃣ 오른쪽 위 <b style={{color:"var(--dm-text)"}}>추가</b> 누르면 완료!
+            {installPrompt && (
+              <button onClick={handleInstall} style={{
+                width: "100%", padding: "12px", borderRadius: 12, border: "none",
+                background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff",
+                fontSize: 15, fontWeight: 900, cursor: "pointer",
+              }}>설치하기</button>
+            )}
+            {!installPrompt && (
+              <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
+                {isIOS ? <>
+                  1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유 버튼 (□↑)</b> 누르기<br/>
+                  2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> 선택<br/>
+                  3️⃣ 오른쪽 위 <b style={{color:"var(--dm-text)"}}>추가</b> 누르면 완료!
+                </> : <>
+                  주소창 오른쪽 <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> →<br/>
+                  <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b>
+                </>}
               </div>
             )}
           </div>
