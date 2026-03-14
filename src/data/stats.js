@@ -77,3 +77,31 @@ export const calcGoalProgress = (plans) => {
 
   return { monthProgress, yearProgress, perfectDaysThisMonth, daysInMonth };
 };
+
+export const calcDayScore = (dayData, habits = []) => {
+  if (!dayData) return 0;
+  const tasks = (dayData.tasks || []).filter(t => t.title.trim());
+  const done = tasks.filter(t => t.done).length;
+  let score = 0;
+  score += done * 10;
+  if (tasks.length > 0 && done === tasks.length) score += 20;
+  const habitChecks = dayData.habitChecks || {};
+  const doneHabits = habits.filter(h => habitChecks[h.id]).length;
+  score += doneHabits * 5;
+  if (habits.length > 0 && doneHabits === habits.length) score += 15;
+  if (dayData.journal?.body?.trim()) score += 15;
+  if (tasks.length >= 3 && done === tasks.length && dayData.journal?.body?.trim()) score += 25;
+  return score;
+};
+
+const LEVEL_TITLES = ['새싹','새싹','새싹','성장','성장','도전자','도전자','실행가','실행가','실행가','마스터','마스터','마스터','마스터','마스터','전설','전설','전설','전설','전설','챔피언'];
+const LEVEL_ICONS  = ['🌱','🌱','🌱','🌿','🌿','⚡','⚡','🔥','🔥','🔥','👑','👑','👑','👑','👑','🌟','🌟','🌟','🌟','🌟','💎'];
+
+export const calcLevel = (totalScore) => {
+  const level = Math.max(1, Math.floor(Math.sqrt(totalScore / 100)) + 1);
+  const idx = Math.min(level - 1, LEVEL_TITLES.length - 1);
+  const curFloor = Math.pow(level - 1, 2) * 100;
+  const nextFloor = Math.pow(level, 2) * 100;
+  const progress = totalScore >= nextFloor ? 100 : Math.round((totalScore - curFloor) / (nextFloor - curFloor) * 100);
+  return { level, title: LEVEL_TITLES[idx], icon: LEVEL_ICONS[idx], progress, nextFloor, curFloor };
+};

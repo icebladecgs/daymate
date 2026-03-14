@@ -5,6 +5,7 @@ import { toDateStr } from "./utils/date.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
+import { calcDayScore } from "./data/stats.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
@@ -126,6 +127,7 @@ export default function App() {
     store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
+  const [scores, setScores] = useState(() => store.get("dm_scores", {}));
   const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
 
   const todayStr = toDateStr();
@@ -138,6 +140,20 @@ export default function App() {
     });
     return all;
   });
+
+  // 과거 날짜 점수 스냅샷 (오늘 이전 날만, 한 번 저장되면 변경 불가)
+  useEffect(() => {
+    const today = toDateStr();
+    const next = { ...scores };
+    let changed = false;
+    Object.keys(plans).forEach(ds => {
+      if (ds < today && next[ds] === undefined) {
+        const s = calcDayScore(plans[ds], habits);
+        if (s > 0) { next[ds] = s; changed = true; }
+      }
+    });
+    if (changed) { setScores(next); store.set("dm_scores", next); }
+  }, []); // eslint-disable-line
 
   const [openDate, setOpenDate] = useState(null);
   const [scrollToMemo, setScrollToMemo] = useState(false);
@@ -451,7 +467,7 @@ export default function App() {
           goalChecks={goalChecks} onToggleGoal={onToggleGoal}
           onSetTodayTasks={onSetTodayTasks} onSaveMonthGoals={onSaveMonthGoals}
           habits={habits} onToggleHabit={onToggleHabit}
-          onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
+          scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS}

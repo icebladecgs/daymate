@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
-import { calcStreak, calcGoalProgress } from "../data/stats.js";
+import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -14,6 +14,13 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
+  const todayScore = useMemo(() => calcDayScore(todayData, habits), [todayData, habits]);
+  const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore, [scores, todayScore]);
+  const levelInfo = useMemo(() => calcLevel(totalScore), [totalScore]);
+  const monthScore = useMemo(() => {
+    const prefix = toDateStr().slice(0, 7);
+    return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
+  }, [scores, todayScore]);
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
@@ -125,6 +132,27 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           )}
         </div>
       )}
+
+      <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.06))", border: "1.5px solid rgba(108,142,255,.3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ textAlign: "center", minWidth: 52 }}>
+            <div style={{ fontSize: 28 }}>{levelInfo.icon}</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF", marginTop: 2 }}>Lv.{levelInfo.level}</div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
+              <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
+            </div>
+            <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 3, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+            </div>
+            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4, textAlign: "right" }}>
+              {totalScore.toLocaleString()} / {levelInfo.nextFloor.toLocaleString()} XP → Lv.{levelInfo.level + 1}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>🎯 이달 목표</span>
