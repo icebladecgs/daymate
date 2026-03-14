@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
@@ -48,6 +48,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [newGoalInput, setNewGoalInput] = useState('');
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [swipedId, setSwipedId] = useState(null);
+  const swipeStartX = useRef(0);
 
   useEffect(() => {
     if (allDone && !prevAllDone) {
@@ -311,24 +313,41 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             {(todayData?.tasks || []).map((task, i) => {
               if (!task.title.trim()) return null;
+              const isSwiped = swipedId === task.id;
               return (
-                <div key={task.id} onClick={() => onToggleTask(task.id)}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                    borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none",
-                    cursor: "pointer" }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                    border: task.done ? "none" : "2px solid #3A4260",
-                    background: task.done ? "#4B6FFF" : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                <div key={task.id} style={{ position: "relative", overflow: "hidden",
+                  borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none" }}>
+                  <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
+                    style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 70,
+                      background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
+                    삭제
+                  </button>
+                  <div
+                    onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
+                    onTouchEnd={(e) => {
+                      const dx = e.changedTouches[0].clientX - swipeStartX.current;
+                      if (dx < -60) setSwipedId(task.id);
+                      else if (dx > 10) setSwipedId(null);
+                    }}
+                    onClick={() => { if (isSwiped) { setSwipedId(null); return; } onToggleTask(task.id); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      cursor: "pointer", background: "var(--dm-card)",
+                      transform: isSwiped ? "translateX(-70px)" : "translateX(0)",
+                      transition: "transform 0.2s" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: task.done ? "none" : "2px solid #3A4260",
+                      background: task.done ? "#4B6FFF" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: task.done ? "line-through" : "none",
+                    }}>{task.title}</div>
                   </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 700, flex: 1,
-                    color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
-                    textDecoration: task.done ? "line-through" : "none",
-                  }}>{task.title}</div>
                 </div>
               );
             })}

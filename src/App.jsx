@@ -524,7 +524,9 @@ export default function App() {
     <div style={S.app}>
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {renderScreen()}
-        {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} />}
+        {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+          home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
+        }} />}
       </div>
     </div>
   );

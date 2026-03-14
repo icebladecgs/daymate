@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toDateStr, pad2, monthLabel } from "../utils/date.js";
+import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay } from "../data/stats.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
@@ -9,6 +9,7 @@ export default function History({ plans, onOpenDate, habits }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [showMemoViewer, setShowMemoViewer] = useState(false);
+  const [preview, setPreview] = useState(null);
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
   const today = toDateStr();
@@ -87,7 +88,7 @@ export default function History({ plans, onOpenDate, habits }) {
             return (
               <div
                 key={ds}
-                onClick={() => onOpenDate(ds)}
+                onClick={() => setPreview(ds)}
                 style={{
                   aspectRatio: 1,
                   borderRadius: 10,
@@ -133,6 +134,77 @@ export default function History({ plans, onOpenDate, habits }) {
       </div>
 
       <div style={{ height: 12 }} />
+
+      {preview && (() => {
+        const d = plans[preview];
+        const tasks = (d?.tasks || []).filter(t => t.title.trim());
+        const done = tasks.filter(t => t.done).length;
+        const dayHabits = habits || [];
+        const habitChecks = d?.habitChecks || {};
+        return (
+          <>
+            <div onClick={() => setPreview(null)} style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200,
+            }} />
+            <div style={{
+              position: "fixed", left: 0, right: 0, bottom: 0,
+              background: "var(--dm-card)", borderRadius: "20px 20px 0 0",
+              padding: "20px 20px 36px", zIndex: 201, boxShadow: "0 -4px 24px rgba(0,0,0,.3)",
+            }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--dm-border)", margin: "0 auto 16px" }} />
+              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", marginBottom: 12 }}>
+                {formatKoreanDate(preview)}
+              </div>
+              {tasks.length > 0 ? (
+                <>
+                  <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+                    {done}/{tasks.length} 완료
+                    <div style={{ height: 4, background: "var(--dm-input)", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
+                      <div style={{ height: "100%", borderRadius: 2, background: done === tasks.length ? "#4ADE80" : "#4B6FFF", width: `${Math.round(done / tasks.length * 100)}%` }} />
+                    </div>
+                  </div>
+                  {tasks.slice(0, 3).map((t, i) => (
+                    <div key={i} style={{ fontSize: 13, color: t.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: t.done ? "line-through" : "none", padding: "3px 0" }}>
+                      {t.done ? "✓ " : "○ "}{t.title}
+                    </div>
+                  ))}
+                  {tasks.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{tasks.length - 3}개 더</div>}
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 8 }}>기록 없음</div>
+              )}
+              {dayHabits.length > 0 && d && (
+                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  {dayHabits.map(h => (
+                    <span key={h.id} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 999,
+                      background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-input)",
+                      color: habitChecks[h.id] ? "#A78BFA" : "var(--dm-muted)" }}>
+                      {h.icon} {habitChecks[h.id] ? "✓" : "-"}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {d?.memo?.trim() && (
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
+                  background: "var(--dm-input)", borderRadius: 8, padding: "6px 10px",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  📝 {d.memo.trim()}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <button onClick={() => setPreview(null)}
+                  style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--dm-input)", border: "1px solid var(--dm-border)", color: "var(--dm-sub)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  닫기
+                </button>
+                <button onClick={() => { onOpenDate(preview); setPreview(null); }}
+                  style={{ flex: 2, padding: 12, borderRadius: 10, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  상세보기 →
+                </button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
