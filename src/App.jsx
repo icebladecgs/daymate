@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope } from "./firebase.js";
 import { store } from "./utils/storage.js";
-import { toDateStr } from "./utils/date.js";
+import { toDateStr, getWeekKey } from "./utils/date.js";
+import { driveBackup } from "./api/drive.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
@@ -129,6 +130,11 @@ export default function App() {
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
   const [scores, setScores] = useState(() => store.get("dm_scores", {}));
   const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
+  const [event, setEvent] = useState(() => store.get("dm_event", { name: "", startDate: "", endDate: "", active: false }));
+  const [driveToken, setDriveToken] = useState(() => store.get("dm_drive_token", null));
+  const [driveTokenExp, setDriveTokenExp] = useState(() => store.get("dm_drive_token_exp", 0));
+  const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
+  const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
 
   const todayStr = toDateStr();
 
@@ -140,6 +146,18 @@ export default function App() {
     });
     return all;
   });
+
+  // event 변경 시 localStorage 저장
+  useEffect(() => { store.set('dm_event', event); }, [event]);
+
+  // Drive 자동 백업 (하루 1회)
+  useEffect(() => {
+    const token = getValidDriveToken();
+    if (!token) return;
+    const today = toDateStr();
+    if (store.get('dm_last_drive_backup', '')?.slice(0, 10) === today) return;
+    performDriveBackup(token).catch(() => {});
+  }, []); // eslint-disable-line
 
   // 과거 날짜 점수 스냅샷 (오늘 이전 날만, 한 번 저장되면 변경 불가)
   useEffect(() => {
@@ -195,6 +213,36 @@ export default function App() {
     store.remove('dm_gcal_token_exp');
     setGcalToken(null);
     setGcalTokenExp(0);
+  };
+
+  const getValidDriveToken = () => {
+    const t = store.get('dm_drive_token', null);
+    const e = store.get('dm_drive_token_exp', 0);
+    return t && Date.now() < e ? t : null;
+  };
+
+  const connectDrive = async () => {
+    try {
+      const { accessToken, expiresAt } = await googleSignInWithDriveScope();
+      store.set('dm_drive_token', accessToken);
+      store.set('dm_drive_token_exp', expiresAt);
+      setDriveToken(accessToken);
+      setDriveTokenExp(expiresAt);
+      return accessToken;
+    } catch { return null; }
+  };
+
+  const performDriveBackup = async (token) => {
+    const data = {};
+    try { Object.keys(localStorage).filter(k => k.startsWith('dm_')).forEach(k => { data[k] = store.get(k); }); } catch {}
+    await driveBackup(token, data);
+    const now = new Date().toISOString();
+    store.set('dm_last_drive_backup', now);
+    setLastDriveBackup(now);
+  };
+
+  const addInviteBonus = (pts) => {
+    setInviteBonus(prev => { const next = prev + pts; store.set('dm_invite_bonus', next); return next; });
   };
 
   const pullFromGcal = async (token) => {
@@ -399,52 +447,110 @@ export default function App() {
   // 온보딩
   const [firstRunDone, setFirstRunDone] = useState(() => !!store.get("dm_first_run_done", false));
   const [nameInput, setNameInput] = useState("");
+  const [onboardStep, setOnboardStep] = useState(1);
 
   if (!firstRunDone) {
+    const iconBox = (
+      <div style={{
+        width: 72, height: 72, borderRadius: 20, margin: "0 auto 16px",
+        background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 32, boxShadow: "0 8px 24px rgba(108,142,255,.35)",
+      }}>✅</div>
+    );
+    const stepDots = (
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
+        {[1,2,3].map(n => (
+          <div key={n} style={{ width: n === onboardStep ? 20 : 8, height: 8, borderRadius: 4, transition: "width .2s", background: n === onboardStep ? "#6C8EFF" : "var(--dm-border)" }} />
+        ))}
+      </div>
+    );
+
     return (
       <div style={S.app}>
         <div style={S.phone}>
           {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-          <div style={{ padding: "44px 22px 18px", textAlign: "center" }}>
-            <div style={{
-              width: 78, height: 78, borderRadius: 22, margin: "0 auto 18px",
-              background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 34, boxShadow: "0 8px 28px rgba(108,142,255,.35)"
-            }}>✅</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>DayMate Lite</div>
-            <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7, marginTop: 10 }}>
-              매일 "할 일 3가지"만 정하고<br/>체크하고, 일기 한 줄로 마무리.
-            </div>
+          <div style={{ padding: "44px 22px 24px" }}>
+            {iconBox}
+            {stepDots}
+
+            {onboardStep === 1 && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 24 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900 }}>DayMate Lite</div>
+                  <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8, marginTop: 8 }}>
+                    매일 할 일 3가지만 정하고<br/>체크하고, 일기 한 줄로 마무리.
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>이름이 뭐예요?</div>
+                <input
+                  style={S.input}
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && setOnboardStep(2)}
+                  placeholder="예: 계승"
+                  maxLength={20}
+                  autoFocus
+                />
+                <button style={S.btn} onClick={() => {
+                  const nm = (nameInput || "").trim() || "사용자";
+                  setUser({ name: nm }); store.set("dm_user", { name: nm });
+                  setOnboardStep(2);
+                }}>다음 →</button>
+              </>
+            )}
+
+            {onboardStep === 2 && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>📊 점수 시스템</div>
+                  <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 6 }}>매일 하루를 완성하면 XP가 쌓여요</div>
+                </div>
+                {[
+                  ["✅ 할일 완료", "개당 +10pt · 전부 완료 보너스 +20pt"],
+                  ["🎯 습관 체크", "개당 +5pt · 전부 완료 보너스 +15pt"],
+                  ["📝 일기 작성", "+15pt"],
+                  ["🎉 완벽한 하루", "3가지 완료 + 일기 작성 시 +25pt 보너스"],
+                ].map(([label, desc]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--dm-row)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "#6C8EFF", fontWeight: 900 }}>{desc}</div>
+                  </div>
+                ))}
+                <button style={{ ...S.btn, marginTop: 20 }} onClick={() => setOnboardStep(3)}>다음 →</button>
+              </>
+            )}
+
+            {onboardStep === 3 && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>🏆 레벨 시스템</div>
+                  <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 6 }}>꾸준히 하면 레벨이 올라가요!</div>
+                </div>
+                {[
+                  ["🌱", "새싹", "Lv.1"],
+                  ["🌿", "성장", "Lv.2~3"],
+                  ["⚡", "도전자", "Lv.4~5"],
+                  ["🔥", "실행가", "Lv.6~7"],
+                  ["👑", "마스터", "Lv.8~9"],
+                  ["💎", "챔피언", "Lv.10+"],
+                ].map(([icon, title, lv]) => (
+                  <div key={lv} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--dm-row)" }}>
+                    <div style={{ fontSize: 22, width: 32, textAlign: "center" }}>{icon}</div>
+                    <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{title}</div>
+                    <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>{lv}</div>
+                  </div>
+                ))}
+                <button style={{ ...S.btn, marginTop: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
+                  store.set("dm_first_run_done", true);
+                  setFirstRunDone(true);
+                  setToast("시작합니다 ✅");
+                }}>🚀 시작하기</button>
+              </>
+            )}
+
+            <div style={{ height: 20 }} />
           </div>
-          <div style={S.card}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>이름</div>
-            <input
-              style={S.input}
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="예: 계승"
-              maxLength={20}
-            />
-            <button
-              style={S.btn}
-              onClick={() => {
-                const nm = (nameInput || "").trim() || "사용자";
-                setUser({ name: nm });
-                store.set("dm_user", { name: nm });
-                store.set("dm_first_run_done", true);
-                setFirstRunDone(true);
-                setToast("시작합니다 ✅");
-              }}
-            >
-              시작하기 →
-            </button>
-          </div>
-          <div style={{ padding: "0 22px", color: "var(--dm-muted)", fontSize: 12, lineHeight: 1.7 }}>
-            • 데이터는 기기 브라우저에 저장됩니다<br/>
-            • 백업은 설정에서 JSON으로 내보내기 가능
-          </div>
-          <div style={{ height: 30 }} />
         </div>
       </div>
     );
@@ -470,7 +576,7 @@ export default function App() {
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
-          isIOS={isIOS}
+          isIOS={isIOS} event={event} inviteBonus={inviteBonus}
         />
       );
     }
@@ -530,6 +636,11 @@ export default function App() {
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
           onGcalPull={pullFromGcal}
           isDark={isDark} setIsDark={setIsDark}
+          event={event} setEvent={setEvent}
+          onAddInviteBonus={addInviteBonus}
+          driveToken={driveToken} driveTokenExp={driveTokenExp}
+          onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
+          lastDriveBackup={lastDriveBackup}
         />
       );
     }

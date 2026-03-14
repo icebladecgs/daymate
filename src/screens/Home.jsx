@@ -6,7 +6,7 @@ import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/s
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -15,7 +15,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
   const todayScore = useMemo(() => calcDayScore(todayData, habits), [todayData, habits]);
-  const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore, [scores, todayScore]);
+  const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore + (inviteBonus || 0), [scores, todayScore, inviteBonus]);
   const levelInfo = useMemo(() => calcLevel(totalScore), [totalScore]);
   const monthScore = useMemo(() => {
     const prefix = toDateStr().slice(0, 7);
@@ -132,6 +132,26 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           )}
         </div>
       )}
+
+      {(() => {
+        const today = toDateStr();
+        if (!event?.active || !event?.name || !event?.startDate || !event?.endDate) return null;
+        if (today < event.startDate || today > event.endDate) return null;
+        const daysLeft = Math.ceil((new Date(event.endDate + 'T23:59:59') - new Date()) / 86400000);
+        return (
+          <div style={{ margin: "0 0 12px", borderRadius: 14, background: "linear-gradient(135deg,rgba(252,211,77,.12),rgba(251,146,60,.08))", border: "1.5px solid rgba(252,211,77,.4)", padding: "12px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 24 }}>🏆</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{event.name}</div>
+                <div style={{ fontSize: 11, color: "#FCD34D", marginTop: 2, fontWeight: 700 }}>
+                  {daysLeft > 0 ? `D-${daysLeft} · ${event.endDate} 마감` : '오늘 마감!'}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.06))", border: "1.5px solid rgba(108,142,255,.3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

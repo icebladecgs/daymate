@@ -82,6 +82,16 @@ export async function googleSignInWithCalendarScope() {
   return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
 }
 
+// Google Drive OAuth (drive.file scope — only files created by this app)
+export async function googleSignInWithDriveScope() {
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/drive.file');
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential) throw new Error('no credential');
+  return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
+}
+
 // localStorage 데이터를 Firestore로 최초 업로드 (Firestore가 비어있을 때)
 export async function uploadLocalToFirestore(uid, localData) {
   const { settings, goals, days } = localData;

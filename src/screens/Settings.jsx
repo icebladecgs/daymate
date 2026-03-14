@@ -14,7 +14,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                     habits, setHabits, recurringTasks, setRecurringTasks,
                     installPrompt, handleInstall, setShowInstallBanner,
                     gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
-                    isDark, setIsDark }) {
+                    isDark, setIsDark,
+                    event, setEvent, onAddInviteBonus,
+                    driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -23,6 +25,58 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [gcalStatus, setGcalStatus] = useState('');
   const gcalConnected = !!(gcalToken && Date.now() < gcalTokenExp);
   const fileInputRef = useRef(null);
+
+  // Feature 4: 초대 코드
+  const [myCode] = useState(() => {
+    const ex = store.get('dm_invite_code');
+    if (ex) return ex;
+    const code = Math.random().toString(36).substr(2, 6).toUpperCase();
+    store.set('dm_invite_code', code);
+    return code;
+  });
+  const [codeInput, setCodeInput] = useState('');
+  const [codeStatus, setCodeStatus] = useState('');
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  // Feature 6: 이벤트 배너
+  const [eventName, setEventName] = useState(event?.name || '');
+  const [eventStart, setEventStart] = useState(event?.startDate || '');
+  const [eventEnd, setEventEnd] = useState(event?.endDate || '');
+  const [eventActive, setEventActive] = useState(event?.active || false);
+
+  // Feature 9: Drive
+  const driveConnected = !!(driveToken && Date.now() < driveTokenExp);
+  const [driveStatus, setDriveStatus] = useState('');
+
+  const useInviteCode = () => {
+    const code = codeInput.trim().toUpperCase();
+    if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return; }
+    if (code === myCode) { setCodeStatus('내 코드는 사용할 수 없어요'); return; }
+    const used = store.get('dm_used_invite_codes', []);
+    if (used.includes(code)) { setCodeStatus('이미 사용한 코드예요'); return; }
+    store.set('dm_used_invite_codes', [...used, code]);
+    onAddInviteBonus?.(100);
+    setCodeStatus('✅ +100 XP 획득!');
+    setCodeInput('');
+    setTimeout(() => setCodeStatus(''), 4000);
+  };
+
+  const saveEvent = () => {
+    setEvent({ name: eventName, startDate: eventStart, endDate: eventEnd, active: eventActive });
+    setToast('이벤트 저장 ✅');
+  };
+
+  const handleDriveConnect = async () => {
+    setDriveStatus('연결 중...');
+    const token = await onDriveConnect?.();
+    if (token) {
+      setDriveStatus('✓ Drive 연동 완료');
+      onDriveBackup?.(token).then(() => setToast('Drive 백업 완료 ✅')).catch(() => {});
+    } else {
+      setDriveStatus('✗ 연동 실패');
+    }
+    setTimeout(() => setDriveStatus(''), 3000);
+  };
 
   const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
   const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
@@ -571,6 +625,37 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <button style={S.btn} onClick={exportData}>📦 데이터 내보내기 (백업)</button>
         <button style={S.btnGhost} onClick={() => fileInputRef.current?.click()}>📥 데이터 가져오기 (복구)</button>
         <input ref={fileInputRef} type="file" accept="application/json" onChange={importData} style={{ display: "none" }} />
+
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--dm-row)" }}>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>☁️ 구글 드라이브 자동 백업</div>
+          {lastDriveBackup && (
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8 }}>
+              마지막 백업: {new Date(lastDriveBackup).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+          )}
+          {driveConnected ? (
+            <button onClick={async () => {
+              setDriveStatus('백업 중...');
+              try { await onDriveBackup?.(driveToken); setToast('Drive 백업 완료 ✅'); setDriveStatus(''); }
+              catch { setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
+            }} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
+              ☁️ 지금 백업하기
+            </button>
+          ) : (
+            <button onClick={handleDriveConnect} style={{ ...S.btn, marginTop: 0, fontSize: 13 }}>
+              🔗 구글 드라이브 연동
+            </button>
+          )}
+          {driveStatus && (
+            <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: driveStatus.startsWith('✓') ? '#4ADE80' : driveStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
+              {driveStatus}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
+            💡 연동하면 매일 자동으로 구글 드라이브에 백업돼요.<br/>
+            ⚠️ 1시간마다 재연동이 필요해요.
+          </div>
+        </div>
         <button
           style={{ ...S.btnGhost, borderColor: "rgba(248,113,113,.35)", color: "#F87171" }}
           onClick={() => {
@@ -679,6 +764,70 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
+      <div style={S.sectionTitle}>🎁 친구 초대</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          내 초대 코드를 친구에게 공유하세요. 친구가 코드를 입력하면 <b style={{ color: "#6C8EFF" }}>+100 XP</b>를 받아요!
+        </div>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>내 초대 코드</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <div style={{ flex: 1, padding: "12px 14px", borderRadius: 12, background: "var(--dm-deep)", border: "1.5px solid var(--dm-border)", fontSize: 20, fontWeight: 900, letterSpacing: 4, textAlign: "center", color: "#6C8EFF" }}>
+            {myCode}
+          </div>
+          <button onClick={() => {
+            const txt = `DayMate 초대 코드: ${myCode}\n👉 https://daymate-beta.vercel.app`;
+            navigator.clipboard?.writeText(txt).then(() => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); });
+          }} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>
+            {codeCopied ? '✓' : '복사'}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>친구 코드 입력</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            style={{ ...S.input, flex: 1, marginBottom: 0, letterSpacing: 2, textTransform: "uppercase" }}
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && useInviteCode()}
+            placeholder="XXXXXX"
+            maxLength={8}
+          />
+          <button onClick={useInviteCode} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>사용</button>
+        </div>
+        {codeStatus && (
+          <div style={{ fontSize: 13, marginTop: 10, fontWeight: 900, color: codeStatus.startsWith('✅') ? '#4ADE80' : '#F87171' }}>{codeStatus}</div>
+        )}
+      </div>
+
+      <div style={S.sectionTitle}>🏆 이벤트 배너 설정</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          홈 화면에 이벤트 배너를 표시해요. 기간 내에만 노출되고 D-day가 카운트다운돼요.
+        </div>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>이벤트 이름</div>
+        <input style={S.input} value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="예: 3월 챌린지 🔥" maxLength={30} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>시작일</div>
+            <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종료일</div>
+            <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} />
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ fontWeight: 900, fontSize: 13 }}>배너 활성화</div>
+          <div onClick={() => setEventActive(v => !v)} style={{
+            width: 52, height: 28, borderRadius: 999,
+            background: eventActive ? "#6C8EFF" : "var(--dm-border)",
+            cursor: "pointer", position: "relative", flexShrink: 0,
+          }}>
+            <div style={{ position: "absolute", top: 4, left: eventActive ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+          </div>
+        </div>
+        <button style={S.btn} onClick={saveEvent}>이벤트 저장</button>
+      </div>
+
       <div style={S.sectionTitle}>🔗 친구에게 공유하기</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
@@ -713,7 +862,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </div>
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v32 · 2026-03-12
+        DayMate Lite v44 · 2026-03-14
       </div>
       <div style={{ height: 12 }} />
     </div>
