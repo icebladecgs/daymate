@@ -125,6 +125,126 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       )}
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+        <span>🎯 이달 목표</span>
+        <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
+          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          {editingGoals ? "완료 ✓" : "✏️ 편집"}
+        </button>
+      </div>
+      <div style={S.card}>
+        {editingGoals ? (
+          <>
+            {draftGoals.map((g, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={g}
+                  onChange={(e) => setDraftGoals(prev => prev.map((x, j) => j === i ? e.target.value : x))}
+                  placeholder={`목표 ${i + 1}`}
+                  maxLength={40}
+                />
+                <button onClick={() => setDraftGoals(prev => prev.filter((_, j) => j !== i))}
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+            {draftGoals.length < 5 && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={newGoalInput}
+                  onChange={(e) => setNewGoalInput(e.target.value)}
+                  placeholder="새 목표 입력 후 Enter 또는 ➕"
+                  maxLength={40}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newGoalInput.trim()) {
+                      setDraftGoals(prev => [...prev, newGoalInput.trim()]);
+                      setNewGoalInput('');
+                    }
+                  }}
+                />
+                <button onClick={() => {
+                  if (!newGoalInput.trim()) return;
+                  setDraftGoals(prev => [...prev, newGoalInput.trim()]);
+                  setNewGoalInput('');
+                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>➕</button>
+              </div>
+            )}
+          </>
+        ) : (goals.month || []).length ? (() => {
+          const monthGoals = goals.month;
+          const doneGoals = monthGoals.filter((_, i) => goalChecks[i]).length;
+          const allGoalsDone = doneGoals === monthGoals.length;
+          return (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
+                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
+              </div>
+              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+                <div style={{
+                  height: "100%", borderRadius: 3, transition: "width 0.3s",
+                  background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
+                  width: `${(doneGoals / monthGoals.length) * 100}%`,
+                }} />
+              </div>
+              {monthGoals.map((g, i) => {
+                const done = !!goalChecks[i];
+                return (
+                  <div key={i} onClick={() => onToggleGoal(i)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      borderBottom: i < monthGoals.length - 1 ? `1px solid var(--dm-row)` : "none",
+                      cursor: "pointer" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: done ? "none" : "2px solid #3A4260",
+                      background: done ? "#4B6FFF" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: done ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: done ? "line-through" : "none",
+                    }}>{g}</div>
+                  </div>
+                );
+              })}
+            </>
+          );
+        })() : (
+          <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 4 }}>
+            이달 목표가 없어요.{" "}
+            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
+          </div>
+        )}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>📆 완벽한 날</div>
+            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
+                width: `${goalProgress.monthProgress}%`,
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>👑 연간</div>
+            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
+                width: `${goalProgress.yearProgress}%`,
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>✅ 오늘 할일</span>
         <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
           style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
@@ -305,125 +425,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />
       </div>
 
-      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>🎯 이달 목표</span>
-        <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
-          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingGoals ? "완료 ✓" : "✏️ 편집"}
-        </button>
-      </div>
-      <div style={S.card}>
-        {editingGoals ? (
-          <>
-            {draftGoals.map((g, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={g}
-                  onChange={(e) => setDraftGoals(prev => prev.map((x, j) => j === i ? e.target.value : x))}
-                  placeholder={`목표 ${i + 1}`}
-                  maxLength={40}
-                />
-                <button onClick={() => setDraftGoals(prev => prev.filter((_, j) => j !== i))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
-              </div>
-            ))}
-            {draftGoals.length < 5 && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={newGoalInput}
-                  onChange={(e) => setNewGoalInput(e.target.value)}
-                  placeholder="새 목표 입력 후 Enter 또는 ➕"
-                  maxLength={40}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newGoalInput.trim()) {
-                      setDraftGoals(prev => [...prev, newGoalInput.trim()]);
-                      setNewGoalInput('');
-                    }
-                  }}
-                />
-                <button onClick={() => {
-                  if (!newGoalInput.trim()) return;
-                  setDraftGoals(prev => [...prev, newGoalInput.trim()]);
-                  setNewGoalInput('');
-                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>➕</button>
-              </div>
-            )}
-          </>
-        ) : (goals.month || []).length ? (() => {
-          const monthGoals = goals.month;
-          const doneGoals = monthGoals.filter((_, i) => goalChecks[i]).length;
-          const allGoalsDone = doneGoals === monthGoals.length;
-          return (
-            <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
-                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
-              </div>
-              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{
-                  height: "100%", borderRadius: 3, transition: "width 0.3s",
-                  background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
-                  width: `${(doneGoals / monthGoals.length) * 100}%`,
-                }} />
-              </div>
-              {monthGoals.map((g, i) => {
-                const done = !!goalChecks[i];
-                return (
-                  <div key={i} onClick={() => onToggleGoal(i)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      borderBottom: i < monthGoals.length - 1 ? `1px solid var(--dm-row)` : "none",
-                      cursor: "pointer" }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                      border: done ? "none" : "2px solid #3A4260",
-                      background: done ? "#4B6FFF" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
-                    </div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, flex: 1,
-                      color: done ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: done ? "line-through" : "none",
-                    }}>{g}</div>
-                  </div>
-                );
-              })}
-            </>
-          );
-        })() : (
-          <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 4 }}>
-            이달 목표가 없어요.{" "}
-            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
-          </div>
-        )}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>📆 완벽한 날</div>
-            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 2,
-                background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
-                width: `${goalProgress.monthProgress}%`,
-              }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>👑 연간</div>
-            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 2,
-                background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
-                width: `${goalProgress.yearProgress}%`,
-              }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
-          </div>
-        </div>
-      </div>
       <div style={{ height: 12 }} />
     </div>
   );
