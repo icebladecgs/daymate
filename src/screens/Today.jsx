@@ -24,7 +24,10 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
     r.continuous = true;
     recognitionRef.current = r;
     r.onresult = (e) => {
-      const text = Array.from(e.results).filter(x => x.isFinal).map(x => x[0].transcript).join('');
+      let text = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) text += e.results[i][0].transcript;
+      }
       if (!text) return;
       if (field === 'memo') {
         setData(prev => ({ ...prev, memo: (prev.memo ?? '') + (prev.memo?.trim() ? '\n' : '') + text }));
