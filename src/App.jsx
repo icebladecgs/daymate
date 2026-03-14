@@ -77,7 +77,7 @@ export default function App() {
     store.set('dm_install_dismissed', true);
   };
 
-  const phoneStyleOverride = { maxWidth: '100%' };
+  const phoneStyleOverride = {};
 
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');

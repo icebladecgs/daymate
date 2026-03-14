@@ -10,12 +10,13 @@ const S = {
   },
   phone: {
     width: "100%",
-    maxWidth: "100%",
+    maxWidth: 430,
     minHeight: "100vh",
     background: "var(--dm-phone)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    boxShadow: "0 0 40px rgba(0,0,0,.4)",
   },
   content: {
     flex: 1,
