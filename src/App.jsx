@@ -508,7 +508,7 @@ export default function App() {
           onBack={() => history.back()}
           toast={toast} setToast={setToast}
           habits={habits} scrollToMemo={scrollToMemo}
-          getValidGcalToken={getValidGcalToken}
+          getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
         />
       );
     }

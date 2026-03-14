@@ -6,7 +6,7 @@ import { CHECK_TIMES } from "../data/model.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
-export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken }) {
+export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect }) {
   const isToday = dateStr === toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
@@ -80,7 +80,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
 
       <div style={{ ...S.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span>할 일 ({data.tasks.length}개)</span>
-        {getValidGcalToken && getValidGcalToken() && (
+        {getValidGcalToken && (getValidGcalToken() ? (
           <button onClick={async () => {
             const token = getValidGcalToken();
             if (!token) return;
@@ -99,7 +99,17 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           }} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, cursor: 'pointer', color: 'var(--dm-sub)' }}>
             📅 캘린더에서 가져오기
           </button>
-        )}
+        ) : (
+          <button onClick={async () => {
+            if (!onGcalConnect) return;
+            setToast('구글 로그인 중...');
+            const token = await onGcalConnect();
+            if (token) setToast('캘린더 연동 완료 ✅');
+            else setToast('연동 실패');
+          }} style={{ fontSize: 12, padding: '3px 8px', background: 'rgba(75,111,255,.12)', border: '1px solid #4B6FFF', borderRadius: 6, cursor: 'pointer', color: '#6C8EFF', fontWeight: 900 }}>
+            📅 캘린더 연동하기
+          </button>
+        ))}
       </div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
