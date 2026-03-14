@@ -12,35 +12,28 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
   const [showMemoViewer, setShowMemoViewer] = useState(false);
   const [showJournalViewer, setShowJournalViewer] = useState(false);
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
-  const [interimText, setInterimText] = useState('');
   const recognitionRef = useRef(null);
 
   const startRecording = (field) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setToast('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
-    if (recording) { recognitionRef.current?.stop(); setRecording(null); setInterimText(''); return; }
+    if (recording) { recognitionRef.current?.stop(); setRecording(null); return; }
     const r = new SR();
     r.lang = 'ko-KR';
-    r.interimResults = true;
+    r.interimResults = false;
     r.continuous = true;
     recognitionRef.current = r;
     r.onresult = (e) => {
-      let finalText = '';
-      let interim = '';
-      for (const result of e.results) {
-        if (result.isFinal) finalText += result[0].transcript;
-        else interim += result[0].transcript;
-      }
-      setInterimText(interim);
-      if (!finalText) return;
+      const text = Array.from(e.results).filter(x => x.isFinal).map(x => x[0].transcript).join('');
+      if (!text) return;
       if (field === 'memo') {
-        setData(prev => ({ ...prev, memo: (prev.memo ?? '') + (prev.memo?.trim() ? '\n' : '') + finalText }));
+        setData(prev => ({ ...prev, memo: (prev.memo ?? '') + (prev.memo?.trim() ? '\n' : '') + text }));
       } else {
-        setData(prev => ({ ...prev, journal: { ...prev.journal, body: (prev.journal?.body || '') + (prev.journal?.body?.trim() ? '\n' : '') + finalText } }));
+        setData(prev => ({ ...prev, journal: { ...prev.journal, body: (prev.journal?.body || '') + (prev.journal?.body?.trim() ? '\n' : '') + text } }));
       }
     };
-    r.onerror = () => { setRecording(null); setInterimText(''); };
-    r.onend = () => { setRecording(null); setInterimText(''); };
+    r.onerror = () => setRecording(null);
+    r.onend = () => setRecording(null);
     r.start();
     setRecording(field);
   };
@@ -101,11 +94,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
           placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
           maxLength={1200}
         />
-        {recording === 'memo' && (
-          <div style={{ marginTop: 6, padding: '8px 10px', background: 'rgba(248,113,113,.08)', borderRadius: 8, fontSize: 13, color: interimText ? 'var(--dm-text)' : 'var(--dm-muted)', minHeight: 32, lineHeight: 1.6 }}>
-            {interimText || '듣는 중...'}
-          </div>
-        )}
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button
             style={{ ...S.btn, marginTop: 0, flex: 1 }}
@@ -141,11 +129,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
           placeholder="오늘 하루를 한 줄이라도 기록해봐요."
           maxLength={1200}
         />
-        {recording === 'journal' && (
-          <div style={{ marginTop: 6, padding: '8px 10px', background: 'rgba(248,113,113,.08)', borderRadius: 8, fontSize: 13, color: interimText ? 'var(--dm-text)' : 'var(--dm-muted)', minHeight: 32, lineHeight: 1.6 }}>
-            {interimText || '듣는 중...'}
-          </div>
-        )}
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button
             style={{ ...S.btn, marginTop: 0, flex: 1 }}
