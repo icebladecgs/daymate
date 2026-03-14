@@ -10,6 +10,7 @@ const S = {
     width: "100%",
     maxWidth: 430,
     minHeight: "100vh",
+    margin: "0 auto",
     background: "var(--dm-phone)",
     display: "flex",
     flexDirection: "column",
