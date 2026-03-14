@@ -4,9 +4,7 @@ const S = {
     color: "var(--dm-text)",
     fontFamily: "'Pretendard','Apple SD Gothic Neo',sans-serif",
     minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    width: "100vw",
+    width: "100%",
   },
   phone: {
     width: "100%",
