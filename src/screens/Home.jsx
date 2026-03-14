@@ -155,6 +155,115 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       </div>
 
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
+        <span>✅ 오늘 할일</span>
+        <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
+          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+          {editingTasks ? "완료 ✓" : "✏️ 편집"}
+        </button>
+      </div>
+      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
+        {editingTasks ? (
+          <>
+            {draftTasks.map((t, idx) => (
+              <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={t.title}
+                  onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
+                  placeholder={`할 일 ${idx + 1}`}
+                  maxLength={60}
+                />
+                <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
+                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+            <button style={{ ...S.btn, marginTop: 4 }}
+              onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null, priority: false }])}>
+              ➕ 할 일 추가
+            </button>
+            {(() => {
+              const yesterday = toDateStr(new Date(Date.now() - 86400000));
+              const yData = plans[yesterday];
+              const undone = (yData?.tasks || []).filter(t => t.title.trim() && !t.done);
+              if (undone.length === 0) return null;
+              return (
+                <button style={{ ...S.btnGhost, marginTop: 6, fontSize: 12 }}
+                  onClick={() => setDraftTasks(prev => {
+                    const existing = new Set(prev.map(t => t.title.trim()));
+                    const toAdd = undone.filter(t => !existing.has(t.title.trim()))
+                      .map(t => ({ id: `t${Date.now()}_${t.id}`, title: t.title, done: false, checkedAt: null, priority: t.priority || false }));
+                    return [...prev, ...toAdd];
+                  })}>
+                  ↩️ 어제 미완료 {undone.length}개 가져오기
+                </button>
+              );
+            })()}
+          </>
+        ) : filledCount === 0 ? (
+          <>
+            <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 14 }}>
+              오늘 할 일을 아직 입력하지 않았어요
+            </div>
+            <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
+              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
+            </div>
+            <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{
+                height: "100%", borderRadius: 3, transition: "width 0.3s",
+                background: allDone ? "#4ADE80" : "#4B6FFF",
+                width: `${(doneCount / filledCount) * 100}%`,
+              }} />
+            </div>
+            {(todayData?.tasks || []).map((task, i) => {
+              if (!task.title.trim()) return null;
+              const isSwiped = swipedId === task.id;
+              return (
+                <div key={task.id} style={{ position: "relative", overflow: "hidden",
+                  borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none" }}>
+                  <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
+                    style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 70,
+                      background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
+                    삭제
+                  </button>
+                  <div
+                    onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
+                    onTouchEnd={(e) => {
+                      const dx = e.changedTouches[0].clientX - swipeStartX.current;
+                      if (dx < -60) setSwipedId(task.id);
+                      else if (dx > 10) setSwipedId(null);
+                    }}
+                    onClick={() => { if (isSwiped) { setSwipedId(null); return; } onToggleTask(task.id); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      cursor: "pointer", background: "var(--dm-card)",
+                      transform: isSwiped ? "translateX(-70px)" : "translateX(0)",
+                      transition: "transform 0.2s" }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: task.done ? "none" : "2px solid #3A4260",
+                      background: task.done ? "#4B6FFF" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, flex: 1,
+                      color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: task.done ? "line-through" : "none",
+                    }}>{task.title}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+
+      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>🎯 이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
           style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
@@ -272,115 +381,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
           </div>
         </div>
-      </div>
-
-      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>✅ 오늘 할일</span>
-        <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
-          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingTasks ? "완료 ✓" : "✏️ 편집"}
-        </button>
-      </div>
-      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
-        {editingTasks ? (
-          <>
-            {draftTasks.map((t, idx) => (
-              <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={t.title}
-                  onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
-                  placeholder={`할 일 ${idx + 1}`}
-                  maxLength={60}
-                />
-                <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
-              </div>
-            ))}
-            <button style={{ ...S.btn, marginTop: 4 }}
-              onClick={() => setDraftTasks(prev => [...prev, { id: `t${Date.now()}`, title: "", done: false, checkedAt: null, priority: false }])}>
-              ➕ 할 일 추가
-            </button>
-            {(() => {
-              const yesterday = toDateStr(new Date(Date.now() - 86400000));
-              const yData = plans[yesterday];
-              const undone = (yData?.tasks || []).filter(t => t.title.trim() && !t.done);
-              if (undone.length === 0) return null;
-              return (
-                <button style={{ ...S.btnGhost, marginTop: 6, fontSize: 12 }}
-                  onClick={() => setDraftTasks(prev => {
-                    const existing = new Set(prev.map(t => t.title.trim()));
-                    const toAdd = undone.filter(t => !existing.has(t.title.trim()))
-                      .map(t => ({ id: `t${Date.now()}_${t.id}`, title: t.title, done: false, checkedAt: null, priority: t.priority || false }));
-                    return [...prev, ...toAdd];
-                  })}>
-                  ↩️ 어제 미완료 {undone.length}개 가져오기
-                </button>
-              );
-            })()}
-          </>
-        ) : filledCount === 0 ? (
-          <>
-            <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 14 }}>
-              오늘 할 일을 아직 입력하지 않았어요
-            </div>
-            <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
-              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
-            </div>
-            <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
-              <div style={{
-                height: "100%", borderRadius: 3, transition: "width 0.3s",
-                background: allDone ? "#4ADE80" : "#4B6FFF",
-                width: `${(doneCount / filledCount) * 100}%`,
-              }} />
-            </div>
-            {(todayData?.tasks || []).map((task, i) => {
-              if (!task.title.trim()) return null;
-              const isSwiped = swipedId === task.id;
-              return (
-                <div key={task.id} style={{ position: "relative", overflow: "hidden",
-                  borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none" }}>
-                  <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
-                    style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 70,
-                      background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
-                    삭제
-                  </button>
-                  <div
-                    onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
-                    onTouchEnd={(e) => {
-                      const dx = e.changedTouches[0].clientX - swipeStartX.current;
-                      if (dx < -60) setSwipedId(task.id);
-                      else if (dx > 10) setSwipedId(null);
-                    }}
-                    onClick={() => { if (isSwiped) { setSwipedId(null); return; } onToggleTask(task.id); }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      cursor: "pointer", background: "var(--dm-card)",
-                      transform: isSwiped ? "translateX(-70px)" : "translateX(0)",
-                      transition: "transform 0.2s" }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                      border: task.done ? "none" : "2px solid #3A4260",
-                      background: task.done ? "#4B6FFF" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
-                    </div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, flex: 1,
-                      color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: task.done ? "line-through" : "none",
-                    }}>{task.title}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </>
-        )}
       </div>
 
       <div style={S.sectionTitle}>📋 언젠가 할일</div>
