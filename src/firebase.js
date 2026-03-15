@@ -74,13 +74,19 @@ export async function loadAllFromFirestore(uid) {
 }
 
 // Google Calendar OAuth (Calendar scope)
-export async function googleSignInWithCalendarScope() {
-  const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/calendar');
-  const result = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  if (!credential) throw new Error('no credential');
-  return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
+export function googleSignInWithCalendarScope() {
+  return new Promise((resolve, reject) => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: '9221676076-5ceja00ivoodlv4sqf045sv5poqousi8.apps.googleusercontent.com',
+      scope: 'https://www.googleapis.com/auth/calendar',
+      prompt: '',
+      callback: (response) => {
+        if (response.error) { reject(new Error(response.error)); return; }
+        resolve({ accessToken: response.access_token, expiresAt: Date.now() + response.expires_in * 1000 });
+      },
+    });
+    client.requestAccessToken();
+  });
 }
 
 // Google Drive OAuth (drive.file scope — only files created by this app)

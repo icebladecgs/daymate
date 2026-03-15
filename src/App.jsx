@@ -88,6 +88,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
+  const gcalRefreshTimerRef = useRef(null);
 
   const [gcalToken, setGcalToken] = useState(() => store.get('dm_gcal_token', null));
   const [gcalTokenExp, setGcalTokenExp] = useState(() => store.get('dm_gcal_token_exp', 0));
@@ -153,6 +154,16 @@ export default function App() {
 
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
+
+  // 구글 캘린더 토큰 자동 갱신 예약 (앱 시작 시)
+  useEffect(() => {
+    const e = store.get('dm_gcal_token_exp', 0);
+    if (!e) return;
+    const delay = e - Date.now() - 5 * 60 * 1000;
+    if (delay <= 0) { connectGcal(); return; }
+    gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
+    return () => clearTimeout(gcalRefreshTimerRef.current);
+  }, []); // eslint-disable-line
 
   // Drive 자동 백업 (하루 1회)
   useEffect(() => {
@@ -229,6 +240,9 @@ export default function App() {
       store.set('dm_gcal_token_exp', expiresAt);
       setGcalToken(accessToken);
       setGcalTokenExp(expiresAt);
+      if (gcalRefreshTimerRef.current) clearTimeout(gcalRefreshTimerRef.current);
+      const delay = expiresAt - Date.now() - 5 * 60 * 1000;
+      if (delay > 0) gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
       return accessToken;
     } catch { return null; }
   };
