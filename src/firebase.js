@@ -93,6 +93,17 @@ export async function googleSignInWithDriveScope() {
   return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
 }
 
+// ---------- Rankings ----------
+
+export async function updateRanking(uid, data) {
+  await setDoc(doc(db, 'rankings', uid), data, { merge: true });
+}
+
+export async function loadRankings() {
+  const snap = await getDocs(collection(db, 'rankings'));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
 // ---------- Admin ----------
 
 // 로그인 시 유저 루트 문서에 메타 저장 (관리자 조회용)

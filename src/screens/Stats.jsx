@@ -1,12 +1,45 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay, calcStreak, calcWeeklyStats } from "../data/stats.js";
+import { loadRankings } from "../firebase.js";
 import S from "../styles.js";
 
-export default function Stats({ plans, habits }) {
+function maskEmail(email) {
+  if (!email) return '익명';
+  const [local, domain] = email.split('@');
+  const masked = local.slice(0, 4) + '****';
+  return `${masked}@${domain}`;
+}
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+export default function Stats({ plans, habits, authUser }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
+  const [rankings, setRankings] = useState([]);
+  const [rankLoading, setRankLoading] = useState(true);
+  const [rankTab, setRankTab] = useState('total'); // 'total' | 'month'
+  const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
+  const currentMonthLabel = `${new Date().getMonth() + 1}월`;
+
+  useEffect(() => {
+    loadRankings()
+      .then(list => setRankings(list))
+      .catch(() => {})
+      .finally(() => setRankLoading(false));
+  }, []);
+
+  const sortedRankings = useMemo(() => {
+    const list = [...rankings];
+    if (rankTab === 'month') {
+      return list
+        .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score);
+    }
+    return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+  }, [rankings, rankTab, currentYM]);
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
@@ -276,6 +309,47 @@ export default function Stats({ plans, habits }) {
           </div>
         </>
       )}
+
+      {/* 전체 랭킹 */}
+      <div style={S.sectionTitle}>🏆 랭킹</div>
+      <div style={S.card}>
+        {/* 탭 */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          {[['total', '전체'], ['month', `${currentMonthLabel} (이번달)`]].map(([key, label]) => (
+            <button key={key} onClick={() => setRankTab(key)} style={{
+              ...S.btn, marginTop: 0, flex: 1, fontSize: 12,
+              background: rankTab === key ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
+              color: rankTab === key ? '#fff' : 'var(--dm-sub)',
+              boxShadow: 'none',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {rankLoading ? (
+          <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>로딩 중...</div>
+        ) : sortedRankings.length === 0 ? (
+          <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>아직 랭킹 데이터가 없어요</div>
+        ) : (
+          sortedRankings.map((r, i) => {
+            const isMe = authUser?.uid === r.uid;
+            const score = rankTab === 'month' ? r.score : r.totalScore;
+            return (
+              <div key={r.uid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < sortedRankings.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
+                <div style={{ fontSize: i < 3 ? 20 : 13, width: 28, textAlign: 'center', fontWeight: 900, color: 'var(--dm-muted)' }}>
+                  {i < 3 ? MEDALS[i] : `${i + 1}`}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: isMe ? 900 : 700, color: isMe ? '#6C8EFF' : 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {maskEmail(r.email)}{isMe ? ' 👈 나' : ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>Lv.{r.level} · {r.daysCount || 0}일 기록</div>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#FBBF24' }}>{(score || 0).toLocaleString()} XP</div>
+              </div>
+            );
+          })
+        )}
+      </div>
 
       <div style={{ height: 12 }} />
     </div>

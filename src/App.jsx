@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
-import { calcDayScore } from "./data/stats.js";
+import { calcDayScore, calcLevel } from "./data/stats.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
@@ -174,7 +174,28 @@ export default function App() {
         if (s > 0) { next[ds] = s; changed = true; }
       }
     });
-    if (changed) { setScores(next); store.set("dm_scores", next); }
+    if (changed) {
+      setScores(next);
+      store.set("dm_scores", next);
+      if (authUser) {
+        const total = Object.values(next).reduce((a, b) => a + b, 0) + (store.get('dm_invite_bonus', 0));
+        const lvInfo = calcLevel(total);
+        // 월별 점수 계산
+        const monthlyScores = {};
+        Object.entries(next).forEach(([ds, score]) => {
+          const ym = ds.slice(0, 7); // "2026-03"
+          monthlyScores[ym] = (monthlyScores[ym] || 0) + score;
+        });
+        updateRanking(authUser.uid, {
+          email: authUser.email,
+          totalScore: total,
+          level: lvInfo.level,
+          daysCount: Object.keys(next).length,
+          monthlyScores,
+          updatedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
+    }
   }, []); // eslint-disable-line
 
   const [openDate, setOpenDate] = useState(null);
@@ -609,7 +630,7 @@ export default function App() {
       return <History plans={plans} onOpenDate={openDetail} habits={habits} />;
     }
     if (screen === "stats") {
-      return <Stats plans={plans} habits={habits} />;
+      return <Stats plans={plans} habits={habits} authUser={authUser} />;
     }
     if (screen === "detail") {
       const d = plans[openDate];
