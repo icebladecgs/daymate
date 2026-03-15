@@ -667,7 +667,10 @@ export default function App() {
       return <Admin authUser={authUser} onBack={() => changeScreen("settings")} />;
     }
     if (screen === "chat") {
-      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")} />;
+      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")}
+        onSetTodayTasks={onSetTodayTasks}
+        onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
+      />;
     }
     return null;
   };

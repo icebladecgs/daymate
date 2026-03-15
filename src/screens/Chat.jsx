@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 
-export default function Chat({ user, todayData, habits, scores, onBack }) {
+export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `안녕하세요 ${user?.name || ''}님! 오늘 하루 어떻게 도와드릴까요?` }
   ]);
@@ -17,6 +17,38 @@ export default function Chat({ user, todayData, habits, scores, onBack }) {
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 300);
   }, []);
+
+  const applyActions = (actions) => {
+    let tasks = [...(todayData?.tasks || [])];
+    let memo = todayData?.memo || '';
+
+    for (const action of actions) {
+      if (action.type === 'add_task') {
+        const newTask = { id: `t${Date.now()}_${Math.random().toString(36).slice(2,6)}`, title: action.title, done: false, checkedAt: null, priority: false };
+        const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+        if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+        else tasks = [...tasks, newTask];
+      } else if (action.type === 'complete_task') {
+        const filled = tasks.filter(t => t.title?.trim());
+        const target = filled[action.number - 1];
+        if (target) tasks = tasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
+      } else if (action.type === 'delete_task') {
+        const filled = tasks.filter(t => t.title?.trim());
+        const target = filled[action.number - 1];
+        if (target) tasks = tasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
+      } else if (action.type === 'add_memo') {
+        memo = memo ? `${memo}\n${action.content}` : action.content;
+      } else if (action.type === 'set_tasks') {
+        const newTasks = action.titles.map((title, i) => ({ id: `t${Date.now()}_${i}`, title, done: false, checkedAt: null, priority: false }));
+        // 빈 슬롯 채우고 나머지 추가
+        tasks = tasks.map(t => !t.title?.trim() && newTasks.length > 0 ? newTasks.shift() : t);
+        tasks = [...tasks, ...newTasks];
+      }
+    }
+
+    onSetTodayTasks?.(tasks);
+    if (memo !== (todayData?.memo || '')) onSetMemo?.(memo);
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -46,6 +78,10 @@ export default function Chat({ user, todayData, habits, scores, onBack }) {
       });
       const data = await res.json();
       if (data.reply) {
+        // 액션 처리 (할일 추가/완료/삭제, 메모 추가)
+        if (data.actions?.length > 0) {
+          applyActions(data.actions);
+        }
         setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: '오류가 발생했어요. 다시 시도해주세요.' }]);
