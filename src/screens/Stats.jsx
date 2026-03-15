@@ -16,7 +16,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default function Stats({ plans, habits, authUser }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
-  const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
+  const [barTooltip, setBarTooltip] = useState(null);
   const [rankings, setRankings] = useState([]);
   const [rankLoading, setRankLoading] = useState(true);
   const [rankTab, setRankTab] = useState('total'); // 'total' | 'month' | 'invite'
@@ -85,28 +85,22 @@ export default function Stats({ plans, habits, authUser }) {
     monthStats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
   }
 
-  const buildHeatmap = (year) => {
-    const jan1 = new Date(year, 0, 1);
-    const startOffset = jan1.getDay();
-    const totalDays = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
-    const cells = [];
-    for (let i = 0; i < startOffset; i++) cells.push(null);
-    for (let i = 0; i < totalDays; i++) {
-      const d = new Date(year, 0, i + 1);
+const last30 = useMemo(() => {
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
       const ds = toDateStr(d);
       const day = plans[ds];
       const filled = day && (day.tasks || []).some(t => t.title.trim());
+      const tasks = day ? (day.tasks || []).filter(t => t.title.trim()) : [];
+      const done = tasks.filter(t => t.done).length;
       const perfect = isPerfectDay(day);
-      const done = day ? (day.tasks || []).filter(t => t.done && t.title.trim()).length : 0;
-      const total = day ? (day.tasks || []).filter(t => t.title.trim()).length : 0;
-      cells.push({ ds, filled, perfect, done, total, month: d.getMonth(), date: d.getDate() });
+      const rate = tasks.length > 0 ? done / tasks.length : 0;
+      days.push({ ds, filled, perfect, done, total: tasks.length, rate, date: d.getDate(), weekday: d.getDay() });
     }
-    return cells;
-  };
-
-  const heatmapCells = useMemo(() => buildHeatmap(heatmapYear), [heatmapYear, plans]);
-  const heatTotalPerfect = heatmapCells.filter(c => c && c.perfect).length;
-  const heatTotalFilled = heatmapCells.filter(c => c && c.filled).length;
+    return days;
+  }, [plans]);
 
   const cellColor = (cell) => {
     if (!cell || !cell.filled) return 'var(--dm-deep)';
@@ -116,7 +110,6 @@ export default function Stats({ plans, habits, authUser }) {
     return 'rgba(252,211,77,.35)';
   };
 
-  const [tooltip, setTooltip] = useState(null);
 
   const prev = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -225,56 +218,49 @@ export default function Stats({ plans, habits, authUser }) {
         </div>
       </div>
 
-      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>🌱 연간 잔디</span>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => setHeatmapYear(y => y - 1)}
-            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>‹</button>
-          <span style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, alignSelf: "center" }}>{heatmapYear}</span>
-          <button onClick={() => setHeatmapYear(y => y + 1)}
-            style={{ ...S.btnGhost, width: 32, marginTop: 0, padding: "4px 8px", fontSize: 13 }}>›</button>
+      <div style={S.sectionTitle}>📊 최근 30일</div>
+      <div style={{ ...S.card, padding: "14px 12px" }}>
+        {/* 바 차트 */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 72 }}>
+          {last30.map((day, i) => {
+            const barH = day.filled ? Math.max(8, Math.round(day.rate * 60)) : 4;
+            const color = day.perfect ? '#4ADE80' : day.filled ? day.rate >= 0.5 ? '#FCD34D' : '#F87171' : 'var(--dm-deep)';
+            const isSelected = barTooltip?.ds === day.ds;
+            return (
+              <div key={day.ds} onClick={() => setBarTooltip(isSelected ? null : day)}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", gap: 3 }}>
+                <div style={{
+                  width: "100%", height: barH, borderRadius: 3,
+                  background: color,
+                  opacity: isSelected ? 1 : 0.85,
+                  border: isSelected ? "1.5px solid #6C8EFF" : "1.5px solid transparent",
+                  transition: "height 0.2s",
+                }} />
+                {/* 날짜 레이블: 매주 일요일 또는 1일 */}
+                <div style={{ fontSize: 8, color: "var(--dm-muted)", whiteSpace: "nowrap" }}>
+                  {day.weekday === 0 || day.date === 1 ? `${day.date}` : ""}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
-      <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 10px", overflowX: "auto" }}>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <span>완벽한 날 <b style={{ color: "#4ADE80" }}>{heatTotalPerfect}</b>일</span>
-          <span>기록한 날 <b style={{ color: "var(--dm-sub)" }}>{heatTotalFilled}</b>일</span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4, minWidth: 200 }}>
-          {["일","월","화","수","목","금","토"].map(d => (
-            <div key={d} style={{ textAlign: "center", fontSize: 9, color: "#3A4260", fontWeight: 900 }}>{d}</div>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, minWidth: 200 }}>
-          {heatmapCells.map((cell, i) => (
-            <div
-              key={i}
-              title={cell ? `${cell.ds} ${cell.perfect ? "🌟 완벽" : cell.filled ? `${cell.done}/${cell.total}` : ""}` : ""}
-              onClick={() => cell && setTooltip(tooltip?.ds === cell.ds ? null : cell)}
-              style={{
-                aspectRatio: "1",
-                borderRadius: 3,
-                background: cellColor(cell),
-                cursor: cell && cell.filled ? "pointer" : "default",
-                border: tooltip && cell && tooltip.ds === cell.ds ? "1.5px solid #6C8EFF" : "1.5px solid transparent",
-                transition: "transform 0.1s",
-              }}
-            />
-          ))}
-        </div>
-        {tooltip && (
+        {/* 툴팁 */}
+        {barTooltip && (
           <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--dm-input)", borderRadius: 8, fontSize: 12, color: "var(--dm-text)" }}>
-            <b>{formatKoreanDate(tooltip.ds)}</b>
-            {tooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
-            {!tooltip.perfect && tooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{tooltip.done}/{tooltip.total} 완료</span>}
+            <b>{formatKoreanDate(barTooltip.ds)}</b>
+            {barTooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
+            {!barTooltip.perfect && barTooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{barTooltip.done}/{barTooltip.total} 완료</span>}
+            {!barTooltip.filled && <span style={{ color: "var(--dm-muted)", marginLeft: 8 }}>기록 없음</span>}
           </div>
         )}
-        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center", fontSize: 10, color: "var(--dm-muted)" }}>
-          <span>적음</span>
-          {["var(--dm-deep)", "rgba(248,113,113,.25)", "rgba(252,211,77,.35)", "rgba(74,222,128,.4)", "#4ADE80"].map((c, i) => (
-            <div key={i} style={{ width: 12, height: 12, borderRadius: 3, background: c }} />
+        {/* 범례 */}
+        <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 10, color: "var(--dm-muted)" }}>
+          {[['#4ADE80', '완벽'], ['#FCD34D', '50%↑'], ['#F87171', '50%↓'], ['var(--dm-deep)', '없음']].map(([c, label]) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
+              <span>{label}</span>
+            </div>
           ))}
-          <span>완벽</span>
         </div>
       </div>
 
