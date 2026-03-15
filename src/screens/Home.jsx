@@ -6,7 +6,7 @@ import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/s
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus, onOpenChat }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -107,9 +107,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 800 }}>
-            {getPermission() === "granted" ? "🔔" : "🔕"}
-        </div>
+        <button onClick={onOpenChat} style={{ ...S.btnGhost, marginTop: 0, width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ✦
+        </button>
       </div>
 
       {showInstallBanner && (

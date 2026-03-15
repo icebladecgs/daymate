@@ -17,6 +17,7 @@ import Stats from "./screens/Stats.jsx";
 import DayDetail from "./screens/DayDetail.jsx";
 import Settings from "./screens/Settings.jsx";
 import Admin from "./screens/Admin.jsx";
+import Chat from "./screens/Chat.jsx";
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
@@ -593,6 +594,7 @@ export default function App() {
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS} event={event} inviteBonus={inviteBonus}
+          onOpenChat={() => changeScreen("chat")}
         />
       );
     }
@@ -664,6 +666,9 @@ export default function App() {
     if (screen === "admin") {
       return <Admin authUser={authUser} onBack={() => changeScreen("settings")} />;
     }
+    if (screen === "chat") {
+      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")} />;
+    }
     return null;
   };
 
@@ -671,7 +676,7 @@ export default function App() {
     <div style={S.app}>
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {renderScreen()}
-        {screen !== "detail" && screen !== "admin" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
         }} />}
       </div>
