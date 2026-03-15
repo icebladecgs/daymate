@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -13,6 +13,8 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
   const [showJournalViewer, setShowJournalViewer] = useState(false);
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
   const recognitionRef = useRef(null);
+  const memoRef = useRef(null);
+  useEffect(() => { setTimeout(() => memoRef.current?.focus(), 100); }, []);
 
   const startRecording = (field) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -88,6 +90,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
       </div>
       <div style={S.card}>
         <textarea
+          ref={memoRef}
           rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
           value={data.memo ?? ""}
