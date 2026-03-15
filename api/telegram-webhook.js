@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import Anthropic from '@anthropic-ai/sdk';
 
 if (!getApps().length) {
   initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
@@ -9,6 +10,7 @@ const db = getFirestore();
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || '');
 const UID = process.env.FIREBASE_USER_UID;
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function send(text) {
   if (!BOT_TOKEN || !CHAT_ID) return;
@@ -22,6 +24,173 @@ async function send(text) {
 function pad2(n) { return String(n).padStart(2, '0'); }
 function toDateStr(d = new Date()) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+async function getTodayData(today) {
+  const snap = await db.doc(`users/${UID}/days/${today}`).get();
+  return snap.data() || {};
+}
+
+async function getRecentStats(today) {
+  const snaps = await db.collection(`users/${UID}/days`).orderBy('__name__', 'desc').limit(7).get();
+  return snaps.docs.map(doc => {
+    const d = doc.data();
+    const tasks = (d.tasks || []).filter(t => t.title?.trim());
+    const done = tasks.filter(t => t.done).length;
+    return { date: doc.id, done, total: tasks.length };
+  });
+}
+
+// Claude tool use로 DayMate 데이터 조작
+async function askClaude(userMessage, today) {
+  const todayData = await getTodayData(today);
+  const recentStats = await getRecentStats(today);
+  const tasks = (todayData.tasks || []).filter(t => t.title?.trim());
+  const habits = todayData.habitChecks || {};
+
+  const systemPrompt = `당신은 DayMate 앱의 AI 어시스턴트입니다. 사용자의 하루 관리를 돕습니다.
+한국어로 간결하게 답변하세요. HTML 태그 없이 일반 텍스트로만 응답하세요.
+
+오늘(${today}) 현황:
+- 할일: ${tasks.length === 0 ? '없음' : tasks.map((t, i) => `${i+1}. ${t.title} [${t.done ? '완료' : '미완료'}]`).join(', ')}
+- 메모: ${todayData.memo?.trim() || '없음'}
+- 일기: ${todayData.journal?.body?.trim() ? '작성됨' : '없음'}
+- 최근 7일: ${recentStats.map(s => `${s.date}(${s.done}/${s.total})`).join(', ')}
+
+사용 가능한 기능:
+- 할일 추가/완료/삭제
+- 메모 추가
+- 현황 조회`;
+
+  const tools = [
+    {
+      name: 'add_task',
+      description: '오늘 할일을 추가합니다',
+      input_schema: {
+        type: 'object',
+        properties: { title: { type: 'string', description: '할일 제목' } },
+        required: ['title'],
+      },
+    },
+    {
+      name: 'complete_task',
+      description: '할일을 완료 처리합니다',
+      input_schema: {
+        type: 'object',
+        properties: { number: { type: 'number', description: '할일 번호 (1부터 시작)' } },
+        required: ['number'],
+      },
+    },
+    {
+      name: 'delete_task',
+      description: '할일을 삭제합니다',
+      input_schema: {
+        type: 'object',
+        properties: { number: { type: 'number', description: '할일 번호 (1부터 시작)' } },
+        required: ['number'],
+      },
+    },
+    {
+      name: 'add_memo',
+      description: '오늘 메모에 내용을 추가합니다',
+      input_schema: {
+        type: 'object',
+        properties: { content: { type: 'string', description: '추가할 메모 내용' } },
+        required: ['content'],
+      },
+    },
+  ];
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    system: systemPrompt,
+    tools,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+
+  // tool use 처리
+  const toolResults = [];
+  for (const block of response.content) {
+    if (block.type === 'tool_use') {
+      const result = await executeTool(block.name, block.input, today, todayData);
+      toolResults.push({ toolName: block.name, result });
+    }
+  }
+
+  // tool을 사용했으면 결과 포함해서 최종 응답 받기
+  if (toolResults.length > 0) {
+    const followUp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      system: systemPrompt,
+      tools,
+      messages: [
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: response.content },
+        {
+          role: 'user',
+          content: response.content
+            .filter(b => b.type === 'tool_use')
+            .map((b, i) => ({
+              type: 'tool_result',
+              tool_use_id: b.id,
+              content: toolResults[i].result,
+            })),
+        },
+      ],
+    });
+    return followUp.content.find(b => b.type === 'text')?.text || '완료했어요.';
+  }
+
+  return response.content.find(b => b.type === 'text')?.text || '죄송해요, 다시 말씀해주세요.';
+}
+
+async function executeTool(name, input, today, todayData) {
+  const allTasks = todayData.tasks || [];
+  const filledTasks = allTasks.filter(t => t.title?.trim());
+
+  if (name === 'add_task') {
+    const newTask = {
+      id: `t${Date.now()}`,
+      title: input.title,
+      done: false,
+      checkedAt: null,
+      priority: false,
+    };
+    // 빈 슬롯 먼저 채우기
+    const tasks = [...allTasks];
+    const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+    if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+    else tasks.push(newTask);
+    await db.doc(`users/${UID}/days/${today}`).set({ ...todayData, tasks }, { merge: true });
+    return `"${input.title}" 추가됨`;
+  }
+
+  if (name === 'complete_task') {
+    const target = filledTasks[input.number - 1];
+    if (!target) return `번호 ${input.number}번 할일이 없습니다`;
+    const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
+    await db.doc(`users/${UID}/days/${today}`).set({ ...todayData, tasks: updated }, { merge: true });
+    return `"${target.title}" 완료 처리됨`;
+  }
+
+  if (name === 'delete_task') {
+    const target = filledTasks[input.number - 1];
+    if (!target) return `번호 ${input.number}번 할일이 없습니다`;
+    const updated = allTasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
+    await db.doc(`users/${UID}/days/${today}`).set({ ...todayData, tasks: updated }, { merge: true });
+    return `"${target.title}" 삭제됨`;
+  }
+
+  if (name === 'add_memo') {
+    const prev = todayData.memo || '';
+    const newMemo = prev ? `${prev}\n${input.content}` : input.content;
+    await db.doc(`users/${UID}/days/${today}`).set({ ...todayData, memo: newMemo }, { merge: true });
+    return `메모 추가됨`;
+  }
+
+  return '알 수 없는 도구';
 }
 
 export default async function handler(req, res) {
@@ -80,14 +249,22 @@ export default async function handler(req, res) {
       await send(reply);
     } else if (text === '/help' || text === '/도움') {
       await send(
-        `🤖 <b>DayMate 명령어</b>\n\n` +
+        `🤖 <b>DayMate AI 어시스턴트</b>\n\n` +
+        `자연어로 말씀해주세요!\n` +
+        `예) "운동하기 추가해줘"\n` +
+        `예) "1번 완료해줘"\n` +
+        `예) "오늘 할일 알려줘"\n\n` +
+        `<b>명령어</b>\n` +
         `/today — 오늘 할일 조회\n` +
-        `/done N — N번 할일 완료 처리\n` +
+        `/done N — N번 완료 처리\n` +
         `/stats — 최근 7일 통계\n` +
         `/help — 도움말`
       );
     } else {
-      await send(`❓ 모르는 명령어예요.\n/help 로 명령어 목록을 확인하세요.`);
+      // 자연어 → Claude
+      await send('⏳ 처리 중...');
+      const reply = await askClaude(text, today);
+      await send(reply);
     }
   } catch (e) {
     await send(`⚠️ 오류가 발생했어요: ${e.message}`);

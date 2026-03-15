@@ -14,7 +14,23 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
   const recognitionRef = useRef(null);
   const memoRef = useRef(null);
-  useEffect(() => { setTimeout(() => memoRef.current?.focus(), 100); }, []);
+  useEffect(() => {
+    setTimeout(() => {
+      const el = memoRef.current;
+      if (!el) return;
+      if (data.memo?.trim()) {
+        // 기존 메모가 있으면 두 줄 내려서 커서 위치
+        const appended = data.memo.trimEnd() + '\n\n';
+        setData(prev => ({ ...prev, memo: appended }));
+        setTimeout(() => {
+          el.focus();
+          el.setSelectionRange(appended.length, appended.length);
+        }, 50);
+      } else {
+        el.focus();
+      }
+    }, 100);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startRecording = (field) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
