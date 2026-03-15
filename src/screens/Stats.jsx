@@ -19,7 +19,7 @@ export default function Stats({ plans, habits, authUser }) {
   const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
   const [rankings, setRankings] = useState([]);
   const [rankLoading, setRankLoading] = useState(true);
-  const [rankTab, setRankTab] = useState('total'); // 'total' | 'month'
+  const [rankTab, setRankTab] = useState('total'); // 'total' | 'month' | 'invite'
   const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
   const currentMonthLabel = `${new Date().getMonth() + 1}월`;
 
@@ -37,6 +37,11 @@ export default function Stats({ plans, habits, authUser }) {
         .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
         .filter(r => r.score > 0)
         .sort((a, b) => b.score - a.score);
+    }
+    if (rankTab === 'invite') {
+      return list
+        .filter(r => (r.inviteCount || 0) > 0)
+        .sort((a, b) => (b.inviteCount || 0) - (a.inviteCount || 0));
     }
     return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
   }, [rankings, rankTab, currentYM]);
@@ -315,7 +320,7 @@ export default function Stats({ plans, habits, authUser }) {
       <div style={S.card}>
         {/* 탭 */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-          {[['total', '전체'], ['month', `${currentMonthLabel} (이번달)`]].map(([key, label]) => (
+          {[['total', '전체'], ['month', `${currentMonthLabel}`], ['invite', '초대']].map(([key, label]) => (
             <button key={key} onClick={() => setRankTab(key)} style={{
               ...S.btn, marginTop: 0, flex: 1, fontSize: 12,
               background: rankTab === key ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
@@ -344,7 +349,9 @@ export default function Stats({ plans, habits, authUser }) {
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>Lv.{r.level} · {r.daysCount || 0}일 기록</div>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: '#FBBF24' }}>{(score || 0).toLocaleString()} XP</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: rankTab === 'invite' ? '#F472B6' : '#FBBF24' }}>
+                  {rankTab === 'invite' ? `${r.inviteCount || 0}명` : `${(score || 0).toLocaleString()} XP`}
+                </div>
               </div>
             );
           })

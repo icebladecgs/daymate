@@ -99,6 +99,21 @@ export async function updateRanking(uid, data) {
   await setDoc(doc(db, 'rankings', uid), data, { merge: true });
 }
 
+// 내 초대 코드를 inviteCodes 컬렉션에 등록 (로그인 시 호출)
+export async function registerInviteCode(uid, code) {
+  await setDoc(doc(db, 'inviteCodes', code), { uid }, { merge: true });
+}
+
+// 초대 코드 사용 → 코드 주인의 inviteCount 증가
+export async function recordInviteUse(code) {
+  const snap = await getDoc(doc(db, 'inviteCodes', code));
+  if (!snap.exists()) return;
+  const { uid } = snap.data();
+  await setDoc(doc(db, 'rankings', uid), {
+    inviteCount: (((await getDoc(doc(db, 'rankings', uid))).data()?.inviteCount) || 0) + 1,
+  }, { merge: true });
+}
+
 export async function loadRankings() {
   const snap = await getDocs(collection(db, 'rankings'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));

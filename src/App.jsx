@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -315,6 +315,8 @@ export default function App() {
         lastSeen: new Date().toISOString(),
         createdAt: firebaseUser.metadata.creationTime,
       }).catch(() => {});
+      const myInviteCode = store.get('dm_invite_code');
+      if (myInviteCode) registerInviteCode(firebaseUser.uid, myInviteCode).catch(() => {});
       try {
         const remote = await loadAllFromFirestore(firebaseUser.uid);
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;

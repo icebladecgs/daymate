@@ -4,7 +4,7 @@ import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
-import { saveSettings, saveGoals } from "../firebase.js";
+import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
@@ -56,6 +56,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     if (used.includes(code)) { setCodeStatus('이미 사용한 코드예요'); return false; }
     store.set('dm_used_invite_codes', [...used, code]);
     onAddInviteBonus?.(100);
+    recordInviteUse(code).catch(() => {});
     setCodeStatus('✅ +100 XP 획득!');
     setCodeInput('');
     setTimeout(() => setCodeStatus(''), 4000);
