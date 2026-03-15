@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification } from "../utils/notification.js";
@@ -16,7 +16,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                     gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
                     isDark, setIsDark,
                     event, setEvent, onAddInviteBonus,
-                    driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup }) {
+                    driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
+                    onOpenAdmin }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -48,18 +49,28 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const driveConnected = !!(driveToken && Date.now() < driveTokenExp);
   const [driveStatus, setDriveStatus] = useState('');
 
-  const useInviteCode = () => {
-    const code = codeInput.trim().toUpperCase();
-    if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return; }
-    if (code === myCode) { setCodeStatus('내 코드는 사용할 수 없어요'); return; }
+  const applyInviteCode = (code) => {
+    if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return false; }
+    if (code === myCode) { setCodeStatus('내 코드는 사용할 수 없어요'); return false; }
     const used = store.get('dm_used_invite_codes', []);
-    if (used.includes(code)) { setCodeStatus('이미 사용한 코드예요'); return; }
+    if (used.includes(code)) { setCodeStatus('이미 사용한 코드예요'); return false; }
     store.set('dm_used_invite_codes', [...used, code]);
     onAddInviteBonus?.(100);
     setCodeStatus('✅ +100 XP 획득!');
     setCodeInput('');
     setTimeout(() => setCodeStatus(''), 4000);
+    return true;
   };
+
+  const useInviteCode = () => applyInviteCode(codeInput.trim().toUpperCase());
+
+  // 링크로 접속 시 초대 코드 자동 적용
+  useEffect(() => {
+    const pending = store.get('dm_pending_invite');
+    if (!pending) return;
+    store.remove('dm_pending_invite');
+    applyInviteCode(pending);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveEvent = () => {
     setEvent({ name: eventName, startDate: eventStart, endDate: eventEnd, active: eventActive });
@@ -775,7 +786,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             {myCode}
           </div>
           <button onClick={() => {
-            const txt = `DayMate 초대 코드: ${myCode}\n👉 https://daymate-beta.vercel.app`;
+            const txt = `DayMate 초대 코드: ${myCode}\n👉 https://daymate-beta.vercel.app?invite=${myCode}`;
             navigator.clipboard?.writeText(txt).then(() => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); });
           }} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>
             {codeCopied ? '✓' : '복사'}
@@ -836,13 +847,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {navigator.share && (
             <button onClick={async () => {
-              try { await navigator.share({ title: 'DayMate', text: '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 ', url: 'https://daymate-beta.vercel.app' }); } catch {}
+              try { await navigator.share({ title: 'DayMate', text: '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 ', url: `https://daymate-beta.vercel.app?invite=${myCode}` }); } catch {}
             }} style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,#FEE500,#FDD835)', color: '#3C1E1E' }}>
               💬 카카오 / 문자로 공유하기
             </button>
           )}
           <button onClick={() => {
-            const full = '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 https://daymate-beta.vercel.app';
+            const full = `📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 https://daymate-beta.vercel.app?invite=${myCode}`;
             if (navigator.clipboard) {
               navigator.clipboard.writeText(full).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); });
             } else {
@@ -860,6 +871,14 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </button>
         </div>
       </div>
+
+      {authUser && onOpenAdmin && (
+        <div style={{ padding: "0 18px 8px" }}>
+          <button onClick={onOpenAdmin} style={{ ...S.btn, background: "transparent", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)", boxShadow: "none", fontSize: 12 }}>
+            🛠 관리자 페이지
+          </button>
+        </div>
+      )}
 
       <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
         DayMate Lite v44 · 2026-03-14

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -16,11 +16,14 @@ import History from "./screens/History.jsx";
 import Stats from "./screens/Stats.jsx";
 import DayDetail from "./screens/DayDetail.jsx";
 import Settings from "./screens/Settings.jsx";
+import Admin from "./screens/Admin.jsx";
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
+      const inviteParam = params.get('invite');
+      if (inviteParam) store.set('dm_pending_invite', inviteParam.toUpperCase());
       const s = params.get('screen') || window.location.hash.replace('#','');
       if (s) return s;
     } catch {}
@@ -277,6 +280,12 @@ export default function App() {
 
       setSyncStatus('syncing');
       syncReadyRef.current = false;
+      updateUserMeta(firebaseUser.uid, {
+        email: firebaseUser.email,
+        photoURL: firebaseUser.photoURL,
+        lastSeen: new Date().toISOString(),
+        createdAt: firebaseUser.metadata.creationTime,
+      }).catch(() => {});
       try {
         const remote = await loadAllFromFirestore(firebaseUser.uid);
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
@@ -284,7 +293,7 @@ export default function App() {
         if (hasRemote) {
           if (remote.settings) {
             const s = remote.settings;
-            if (s.name) { setUser({ name: s.name }); store.set("dm_user", { name: s.name }); }
+            if (s.name) { setUser({ name: s.name }); store.set("dm_user", { name: s.name }); updateUserMeta(firebaseUser.uid, { name: s.name }).catch(() => {}); }
             if (s.notifEnabled !== undefined) { setNotifEnabled(s.notifEnabled); store.set("dm_notif_enabled", s.notifEnabled); }
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
@@ -641,8 +650,12 @@ export default function App() {
           driveToken={driveToken} driveTokenExp={driveTokenExp}
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
           lastDriveBackup={lastDriveBackup}
+          onOpenAdmin={() => changeScreen("admin")}
         />
       );
+    }
+    if (screen === "admin") {
+      return <Admin authUser={authUser} onBack={() => changeScreen("settings")} />;
     }
     return null;
   };
@@ -651,7 +664,7 @@ export default function App() {
     <div style={S.app}>
       <div style={{...S.phone, ...phoneStyleOverride}}>
         {renderScreen()}
-        {screen !== "detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
         }} />}
       </div>

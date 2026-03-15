@@ -13,6 +13,7 @@ import {
   setDoc,
   collection,
   getDocs,
+  getCountFromServer,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -91,6 +92,34 @@ export async function googleSignInWithDriveScope() {
   if (!credential) throw new Error('no credential');
   return { accessToken: credential.accessToken, expiresAt: Date.now() + 3600 * 1000 };
 }
+
+// ---------- Admin ----------
+
+// 로그인 시 유저 루트 문서에 메타 저장 (관리자 조회용)
+export async function updateUserMeta(uid, data) {
+  await setDoc(doc(db, 'users', uid), data, { merge: true });
+}
+
+// 전체 유저 메타 목록 (관리자 전용)
+export async function loadAllUsersMeta() {
+  const snap = await getDocs(collection(db, 'users'));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+// 특정 유저의 day 기록 수
+export async function getUserDaysCount(uid) {
+  const snap = await getCountFromServer(collection(db, 'users', uid, 'days'));
+  return snap.data().count;
+}
+
+// admin/config 문서의 uids 배열에 포함 여부 확인
+export async function checkIsAdmin(uid) {
+  const snap = await getDoc(doc(db, 'admin', 'config')); // 에러는 caller에서 처리
+  if (!snap.exists()) return false;
+  return (snap.data().uids || []).includes(uid);
+}
+
+// ---------- Firestore (local → cloud) ----------
 
 // localStorage 데이터를 Firestore로 최초 업로드 (Firestore가 비어있을 때)
 export async function uploadLocalToFirestore(uid, localData) {

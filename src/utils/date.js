@@ -11,6 +11,16 @@ export const formatKoreanDate = (dateStr) => {
 
 export const monthLabel = (y, m0) => `${y}년 ${m0 + 1}월`;
 
+export const getWeekKey = (date = new Date()) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+};
+
 export const getWeekDates = () => {
   const today = new Date();
   const day = today.getDay(); // 0=일
