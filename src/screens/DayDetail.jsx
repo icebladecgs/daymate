@@ -93,7 +93,14 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
                 .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
               if (toAdd.length === 0) { setToast('이미 모두 추가됨'); return; }
-              setData(prev => ({ ...prev, tasks: [...prev.tasks, ...toAdd] }));
+              setData(prev => {
+                const tasks = [...prev.tasks];
+                const remaining = [...toAdd];
+                for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
+                  if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
+                }
+                return { ...prev, tasks: [...tasks, ...remaining] };
+              });
               setToast(`${toAdd.length}개 추가됨`);
             } catch { setToast('캘린더 가져오기 실패'); }
           }} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, cursor: 'pointer', color: 'var(--dm-sub)' }}>

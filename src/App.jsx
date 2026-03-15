@@ -258,7 +258,14 @@ export default function App() {
       .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
       .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
     if (toAdd.length === 0) return 0;
-    setTodayData(prev => ({ ...prev, tasks: [...(prev.tasks || []), ...toAdd] }));
+    setTodayData(prev => {
+      const tasks = [...(prev.tasks || [])];
+      const remaining = [...toAdd];
+      for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
+        if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
+      }
+      return { ...prev, tasks: [...tasks, ...remaining] };
+    });
     return toAdd.length;
   };
 
