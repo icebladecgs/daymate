@@ -89,6 +89,7 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
   const gcalRefreshTimerRef = useRef(null);
+  const driveRefreshTimerRef = useRef(null);
 
   const [gcalToken, setGcalToken] = useState(() => store.get('dm_gcal_token', null));
   const [gcalTokenExp, setGcalTokenExp] = useState(() => store.get('dm_gcal_token_exp', 0));
@@ -155,14 +156,24 @@ export default function App() {
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
 
-  // 구글 캘린더 토큰 자동 갱신 예약 (앱 시작 시)
+  // 구글 캘린더/드라이브 토큰 자동 갱신 예약 (앱 시작 시)
   useEffect(() => {
-    const e = store.get('dm_gcal_token_exp', 0);
-    if (!e) return;
-    const delay = e - Date.now() - 5 * 60 * 1000;
-    if (delay <= 0) { connectGcal(); return; }
-    gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
-    return () => clearTimeout(gcalRefreshTimerRef.current);
+    const gcalExp = store.get('dm_gcal_token_exp', 0);
+    if (gcalExp) {
+      const delay = gcalExp - Date.now() - 5 * 60 * 1000;
+      if (delay <= 0) connectGcal();
+      else gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
+    }
+    const driveExp = store.get('dm_drive_token_exp', 0);
+    if (driveExp) {
+      const delay = driveExp - Date.now() - 5 * 60 * 1000;
+      if (delay <= 0) connectDrive();
+      else driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
+    }
+    return () => {
+      clearTimeout(gcalRefreshTimerRef.current);
+      clearTimeout(driveRefreshTimerRef.current);
+    };
   }, []); // eslint-disable-line
 
   // Drive 자동 백업 (하루 1회)
@@ -267,6 +278,9 @@ export default function App() {
       store.set('dm_drive_token_exp', expiresAt);
       setDriveToken(accessToken);
       setDriveTokenExp(expiresAt);
+      if (driveRefreshTimerRef.current) clearTimeout(driveRefreshTimerRef.current);
+      const delay = expiresAt - Date.now() - 5 * 60 * 1000;
+      if (delay > 0) driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
       return accessToken;
     } catch { return null; }
   };
