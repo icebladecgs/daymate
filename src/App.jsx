@@ -158,21 +158,20 @@ export default function App() {
 
   // 구글 캘린더/드라이브 토큰 자동 갱신 예약 (앱 시작 시)
   useEffect(() => {
-    const waitForGis = (fn) => {
+    const waitForGis = (fn, timerRef) => {
       if (window.google?.accounts?.oauth2) { fn(); return; }
-      const t = setTimeout(() => waitForGis(fn), 500);
-      gcalRefreshTimerRef.current = t;
+      timerRef.current = setTimeout(() => waitForGis(fn, timerRef), 500);
     };
     const gcalExp = store.get('dm_gcal_token_exp', 0);
     if (gcalExp) {
       const delay = gcalExp - Date.now() - 5 * 60 * 1000;
-      if (delay <= 0) waitForGis(connectGcal);
+      if (delay <= 0) waitForGis(connectGcal, gcalRefreshTimerRef);
       else gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
     }
     const driveExp = store.get('dm_drive_token_exp', 0);
     if (driveExp) {
       const delay = driveExp - Date.now() - 5 * 60 * 1000;
-      if (delay <= 0) waitForGis(connectDrive);
+      if (delay <= 0) waitForGis(connectDrive, driveRefreshTimerRef);
       else driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
     }
     return () => {
