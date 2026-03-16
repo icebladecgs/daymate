@@ -99,6 +99,18 @@ async function askClaude(userMessage, today) {
         required: ['content'],
       },
     },
+    {
+      name: 'toggle_habit',
+      description: '습관을 완료 또는 취소 처리합니다',
+      input_schema: {
+        type: 'object',
+        properties: {
+          habit_name: { type: 'string', description: '습관 이름 (부분 일치 가능)' },
+          done: { type: 'boolean', description: '완료 여부 (true=완료, false=취소)' },
+        },
+        required: ['habit_name', 'done'],
+      },
+    },
   ];
 
   const response = await anthropic.messages.create({
@@ -190,6 +202,16 @@ async function executeTool(name, input, today, todayData) {
     return `메모 추가됨`;
   }
 
+  if (name === 'toggle_habit') {
+    const settingsSnap = await db.doc(`users/${UID}/data/settings`).get();
+    const habits = settingsSnap.data()?.habits || [];
+    const target = habits.find(h => h.name.toLowerCase().includes(input.habit_name.toLowerCase()));
+    if (!target) return `"${input.habit_name}" 습관을 찾을 수 없습니다`;
+    const cur = todayData.habitChecks || {};
+    await db.doc(`users/${UID}/days/${today}`).set({ ...todayData, habitChecks: { ...cur, [target.id]: input.done } }, { merge: true });
+    return `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`;
+  }
+
   return '알 수 없는 도구';
 }
 
@@ -247,15 +269,33 @@ export default async function handler(req, res) {
         reply += tasks.length > 0 && done === tasks.length ? '🌟\n' : '\n';
       });
       await send(reply);
+    } else if (text === '/habit' || text === '/습관') {
+      const snap = await db.doc(`users/${UID}/days/${today}`).get();
+      const d = snap.data() || {};
+      const settingsSnap = await db.doc(`users/${UID}/data/settings`).get();
+      const habits = settingsSnap.data()?.habits || [];
+      if (habits.length === 0) {
+        await send('🎯 등록된 습관이 없어요. DayMate 앱에서 습관을 추가해보세요!');
+      } else {
+        const habitChecks = d.habitChecks || {};
+        const done = habits.filter(h => habitChecks[h.id]).length;
+        let reply = `🎯 <b>오늘 습관</b> (${done}/${habits.length} 완료)\n\n`;
+        habits.forEach((h, i) => {
+          reply += `${habitChecks[h.id] ? '✅' : `${i + 1}️⃣`} ${h.icon || ''} ${h.name}\n`;
+        });
+        await send(reply);
+      }
     } else if (text === '/help' || text === '/도움') {
       await send(
         `🤖 <b>DayMate AI 어시스턴트</b>\n\n` +
         `자연어로 말씀해주세요!\n` +
         `예) "운동하기 추가해줘"\n` +
         `예) "1번 완료해줘"\n` +
-        `예) "오늘 할일 알려줘"\n\n` +
+        `예) "오늘 할일 알려줘"\n` +
+        `예) "운동 습관 완료해줘"\n\n` +
         `<b>명령어</b>\n` +
         `/today — 오늘 할일 조회\n` +
+        `/habit — 오늘 습관 조회\n` +
         `/done N — N번 완료 처리\n` +
         `/stats — 최근 7일 통계\n` +
         `/help — 도움말`

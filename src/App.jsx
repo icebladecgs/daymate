@@ -224,6 +224,33 @@ export default function App() {
     }
   }, []); // eslint-disable-line
 
+  // 오늘 점수 변경 시 랭킹 실시간 반영 (debounce 10초)
+  const rankingTimerRef = useRef(null);
+  useEffect(() => {
+    if (!authUser) return;
+    clearTimeout(rankingTimerRef.current);
+    rankingTimerRef.current = setTimeout(() => {
+      const todayScore = calcDayScore(plans[todayStr], habits);
+      const total = Object.values(scores).reduce((a, b) => a + b, 0) + todayScore + (store.get('dm_invite_bonus', 0));
+      const lvInfo = calcLevel(total);
+      const monthlyScores = {};
+      Object.entries(scores).forEach(([ds, score]) => {
+        const ym = ds.slice(0, 7);
+        monthlyScores[ym] = (monthlyScores[ym] || 0) + score;
+      });
+      const todayYm = todayStr.slice(0, 7);
+      monthlyScores[todayYm] = (monthlyScores[todayYm] || 0) + todayScore;
+      updateRanking(authUser.uid, {
+        email: authUser.email,
+        totalScore: total,
+        level: lvInfo.level,
+        daysCount: Object.keys(scores).length,
+        monthlyScores,
+        updatedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }, 10000);
+  }, [plans[todayStr], habits, scores, authUser]); // eslint-disable-line
+
   const [openDate, setOpenDate] = useState(null);
   const [scrollToMemo, setScrollToMemo] = useState(false);
 
@@ -650,6 +677,8 @@ export default function App() {
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS} event={event} inviteBonus={inviteBonus}
           onOpenChat={() => changeScreen("chat")}
+          isDark={isDark} setIsDark={setIsDark}
+          getValidGcalToken={getValidGcalToken}
         />
       );
     }
@@ -725,6 +754,7 @@ export default function App() {
       return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")}
         onSetTodayTasks={onSetTodayTasks}
         onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
+        onToggleHabit={onToggleHabit}
       />;
     }
     return null;

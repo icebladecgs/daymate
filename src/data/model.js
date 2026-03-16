@@ -32,9 +32,6 @@ export function listAllDays() {
     return Object.keys(localStorage)
       .filter((k) => k.startsWith("dm_day_"))
       .map((k) => k.replace("dm_day_", ""))
-      .filter((ds) => {
-        try { return !!loadDay(ds); } catch { return false; }
-      })
       .sort((a, b) => b.localeCompare(a));
   } catch {
     return [];

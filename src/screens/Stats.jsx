@@ -111,6 +111,37 @@ const last30 = useMemo(() => {
   };
 
 
+  // 월간 리포트 계산 (현재 보는 달)
+  const monthlyReport = useMemo(() => {
+    const ym = `${viewYear}-${pad2(viewMonth + 1)}`;
+    const daysInM = new Date(viewYear, viewMonth + 1, 0).getDate();
+    let totalTasks = 0, doneTasks = 0, perfectDaysCount = 0, filledDaysCount = 0;
+    let habitTotals = {}, habitDones = {};
+    let bestStreak = 0, curStreak = 0;
+    for (let day = 1; day <= daysInM; day++) {
+      const ds = `${ym}-${pad2(day)}`;
+      const d = plans[ds];
+      const tasks = d ? (d.tasks || []).filter(t => t.title.trim()) : [];
+      if (tasks.length > 0) {
+        filledDaysCount++;
+        const done = tasks.filter(t => t.done).length;
+        totalTasks += tasks.length;
+        doneTasks += done;
+        if (isPerfectDay(d)) { perfectDaysCount++; curStreak++; bestStreak = Math.max(bestStreak, curStreak); }
+        else curStreak = 0;
+        (habits || []).forEach(h => {
+          habitTotals[h.id] = (habitTotals[h.id] || 0) + 1;
+          if (d.habitChecks?.[h.id]) habitDones[h.id] = (habitDones[h.id] || 0) + 1;
+        });
+      } else curStreak = 0;
+    }
+    const completionRate = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
+    const habitStats = (habits || []).map(h => ({
+      ...h, rate: habitTotals[h.id] ? Math.round(((habitDones[h.id] || 0) / habitTotals[h.id]) * 100) : 0,
+    })).sort((a, b) => b.rate - a.rate);
+    return { filledDaysCount, perfectDaysCount, completionRate, bestStreak, habitStats, totalTasks, doneTasks };
+  }, [plans, habits, viewYear, viewMonth]);
+
   const prev = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
     else setViewMonth(m => m - 1);
@@ -216,6 +247,41 @@ const last30 = useMemo(() => {
             </div>
           ))}
         </div>
+      </div>
+
+      <div style={S.sectionTitle}>📝 월간 리포트 — {viewMonth + 1}월</div>
+      <div style={{ ...S.card, margin: "0 0 10px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: monthlyReport.habitStats.length > 0 ? 14 : 0 }}>
+          {[
+            { label: '기록한 날', value: `${monthlyReport.filledDaysCount}일`, color: '#6C8EFF' },
+            { label: '완벽한 날', value: `${monthlyReport.perfectDaysCount}일`, color: '#4ADE80' },
+            { label: '할일 완료율', value: `${monthlyReport.completionRate}%`, color: monthlyReport.completionRate >= 80 ? '#4ADE80' : monthlyReport.completionRate >= 50 ? '#FCD34D' : '#F87171' },
+            { label: '최고 연속', value: `${monthlyReport.bestStreak}일`, color: '#FCD34D' },
+          ].map(item => (
+            <div key={item.label} style={{ background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: item.color }}>{item.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+        {monthlyReport.habitStats.length > 0 && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 8 }}>🎯 습관 달성률</div>
+            {monthlyReport.habitStats.map(h => (
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{h.icon}</span>
+                <div style={{ fontSize: 13, flex: 1, color: 'var(--dm-text)' }}>{h.name}</div>
+                <div style={{ width: 80, height: 6, background: 'var(--dm-row)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 3, background: h.rate >= 80 ? '#4ADE80' : h.rate >= 50 ? '#FCD34D' : '#F87171', width: `${h.rate}%` }} />
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-sub)', width: 30, textAlign: 'right' }}>{h.rate}%</div>
+              </div>
+            ))}
+          </>
+        )}
+        {monthlyReport.filledDaysCount === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>이달 기록이 없어요</div>
+        )}
       </div>
 
       <div style={S.sectionTitle}>📊 최근 30일</div>

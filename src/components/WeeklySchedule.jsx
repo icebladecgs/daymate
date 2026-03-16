@@ -3,7 +3,7 @@ import S from "../styles.js";
 
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
-export default function WeeklySchedule({ plans, habits, onOpenDate }) {
+export default function WeeklySchedule({ plans, habits, onOpenDate, gcalEvents = {} }) {
   const today = toDateStr();
   const weekDates = getWeekDates();
 
@@ -20,6 +20,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate }) {
         const habitDone = (habits || []).filter(h => habitChecks[h.id]).length;
         const hasHabits = (habits || []).length > 0;
         const allDone = tasks.length > 0 && done === tasks.length;
+        const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
 
         return (
           <div key={ds} onClick={() => onOpenDate(ds)}
@@ -46,6 +47,11 @@ export default function WeeklySchedule({ plans, habits, onOpenDate }) {
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {dayGcalEvents.length > 0 && (
+                  <span style={{ fontSize: 11, color: '#4B9EFF', fontWeight: 700 }}>
+                    📅{dayGcalEvents.length}
+                  </span>
+                )}
                 {hasHabits && d && (
                   <span style={{ fontSize: 11, color: habitDone === (habits||[]).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>
                     🎯{habitDone}/{(habits||[]).length}

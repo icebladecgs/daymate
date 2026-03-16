@@ -47,7 +47,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const removeTask = (id) => {
     const token = getValidGcalToken?.();
     const task = data.tasks.find(t => t.id === id);
-    if (token && task?.gcalEventId) gcalDeleteEvent(token, task.gcalEventId).catch(() => {});
+    if (token && task?.gcalEventId) gcalDeleteEvent(token, task.gcalEventId).catch(() => setToast('캘린더 삭제 실패'));
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   };
 
@@ -142,7 +142,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 const title = e.target.value.trim();
                 if (!token || !title) return;
                 if (t.gcalEventId) {
-                  gcalUpdateEvent(token, t.gcalEventId, title).catch(() => {});
+                  gcalUpdateEvent(token, t.gcalEventId, title).catch(() => setToast('캘린더 수정 실패'));
                 } else if (!pendingGcalRef.current.has(t.id)) {
                   pendingGcalRef.current.add(t.id);
                   gcalCreateEvent(token, dateStr, { ...t, title })

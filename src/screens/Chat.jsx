@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 
-export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo }) {
+export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo, onToggleHabit }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `안녕하세요 ${user?.name || ''}님! 오늘 하루 어떻게 도와드릴까요?` }
   ]);
@@ -38,6 +38,12 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
         if (target) tasks = tasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
       } else if (action.type === 'add_memo') {
         memo = memo ? `${memo}\n${action.content}` : action.content;
+      } else if (action.type === 'toggle_habit') {
+        const target = (habits || []).find(h => h.name.toLowerCase().includes(action.habit_name.toLowerCase()));
+        if (target) {
+          const cur = !!(todayData?.habitChecks?.[target.id]);
+          if (action.done !== cur) onToggleHabit?.(target.id);
+        }
       } else if (action.type === 'set_tasks') {
         const newTasks = action.titles.map((title, i) => ({ id: `t${Date.now()}_${i}`, title, done: false, checkedAt: null, priority: false }));
         // 빈 슬롯 채우고 나머지 추가
@@ -71,6 +77,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
             tasks: todayData?.tasks || [],
             memo: todayData?.memo || '',
             habits: habits || [],
+            habitChecks: todayData?.habitChecks || {},
             scores: scores || {},
             userName: user?.name || '사용자',
           },

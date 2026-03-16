@@ -50,6 +50,18 @@ const tools = [
       required: ['titles'],
     },
   },
+  {
+    name: 'toggle_habit',
+    description: '습관을 완료 또는 취소 처리합니다',
+    input_schema: {
+      type: 'object',
+      properties: {
+        habit_name: { type: 'string', description: '습관 이름 (부분 일치 가능)' },
+        done: { type: 'boolean', description: '완료 여부 (true=완료, false=취소)' },
+      },
+      required: ['habit_name', 'done'],
+    },
+  },
 ];
 
 export default async function handler(req, res) {
@@ -58,19 +70,19 @@ export default async function handler(req, res) {
   const { message, history = [], context = {} } = req.body || {};
   if (!message) return res.status(400).json({ error: '메시지가 없어요' });
 
-  const { tasks = [], memo = '', habits = [], userName = '사용자' } = context;
+  const { tasks = [], memo = '', habits = [], habitChecks = {}, userName = '사용자' } = context;
   const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
   const filledTasks = tasks.filter(t => t.title?.trim());
   const doneCount = filledTasks.filter(t => t.done).length;
 
   const systemPrompt = `당신은 DayMate 앱의 AI 어시스턴트입니다. ${userName}님의 하루 관리를 돕습니다.
 한국어로 친근하고 간결하게 답변하세요. 불필요한 서두 없이 바로 답변하세요.
-할일 추가/완료/삭제, 메모 추가 등을 요청하면 도구를 사용해 실제로 처리해주세요.
+할일 추가/완료/삭제, 메모 추가, 습관 완료/취소 등을 요청하면 도구를 사용해 실제로 처리해주세요.
 
 오늘(${today}) 현황:
 - 할일(${doneCount}/${filledTasks.length} 완료): ${filledTasks.length === 0 ? '없음' : filledTasks.map((t, i) => `${i+1}. ${t.title}[${t.done ? '완료' : '미완료'}]`).join(', ')}
 - 메모: ${memo?.trim() || '없음'}
-- 습관: ${habits.length === 0 ? '없음' : habits.map(h => h.name).join(', ')}`;
+- 습관: ${habits.length === 0 ? '없음' : habits.map(h => `${h.name}[${habitChecks[h.id] ? '완료' : '미완료'}]`).join(', ')}`;
 
   try {
     const messages = [

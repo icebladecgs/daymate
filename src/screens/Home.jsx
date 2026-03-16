@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toDateStr, formatKoreanDate } from "../utils/date.js";
+import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
 import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
+import { gcalFetchWeekEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus, onOpenChat }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -48,6 +49,13 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     deleteSomeday(item.id);
   };
 
+  const [gcalWeekEvents, setGcalWeekEvents] = useState({});
+  useEffect(() => {
+    const token = getValidGcalToken?.();
+    if (!token) return;
+    gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
+  }, []); // eslint-disable-line
+
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
   const [editingGoals, setEditingGoals] = useState(false);
@@ -56,6 +64,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [swipedId, setSwipedId] = useState(null);
+  const [checkedId, setCheckedId] = useState(null);
   const swipeStartX = useRef(0);
 
   useEffect(() => {
@@ -107,9 +116,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
-        <button onClick={onOpenChat} style={{ ...S.btnGhost, marginTop: 0, width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          ✦
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setIsDark?.(d => !d)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
+          <button onClick={onOpenChat} style={{ ...S.btnGhost, marginTop: 0, width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ✦
+          </button>
+        </div>
       </div>
 
       {showInstallBanner && (
@@ -239,12 +253,13 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 width: `${(doneCount / filledCount) * 100}%`,
               }} />
             </div>
-            {(todayData?.tasks || []).map((task, i) => {
+            {[...(todayData?.tasks || [])].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).map((task, i, arr) => {
               if (!task.title.trim()) return null;
               const isSwiped = swipedId === task.id;
+              const isChecked = checkedId === task.id;
               return (
                 <div key={task.id} style={{ position: "relative", overflow: "hidden",
-                  borderBottom: i < (todayData.tasks.length - 1) ? `1px solid var(--dm-row)` : "none" }}>
+                  borderBottom: i < arr.length - 1 ? `1px solid var(--dm-row)` : "none" }}>
                   <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
                     style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 70,
                       background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
@@ -257,7 +272,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       if (dx < -60) setSwipedId(task.id);
                       else if (dx > 10) setSwipedId(null);
                     }}
-                    onClick={() => { if (isSwiped) { setSwipedId(null); return; } onToggleTask(task.id); }}
+                    onClick={() => {
+                      if (isSwiped) { setSwipedId(null); return; }
+                      if (!task.done) { setCheckedId(task.id); setTimeout(() => setCheckedId(null), 400); }
+                      onToggleTask(task.id);
+                    }}
                     style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
                       cursor: "pointer", background: "var(--dm-card)",
                       transform: isSwiped ? "translateX(-70px)" : "translateX(0)",
@@ -267,6 +286,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       border: task.done ? "none" : "2px solid #3A4260",
                       background: task.done ? "#4B6FFF" : "transparent",
                       display: "flex", alignItems: "center", justifyContent: "center",
+                      transform: isChecked ? "scale(1.4)" : "scale(1)",
+                      transition: "transform 0.2s, background 0.2s",
                     }}>
                       {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                     </div>
@@ -274,7 +295,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       fontSize: 14, fontWeight: 700, flex: 1,
                       color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
                       textDecoration: task.done ? "line-through" : "none",
-                    }}>{task.title}</div>
+                    }}>{task.priority ? '⭐ ' : ''}{task.title}</div>
                   </div>
                 </div>
               );
@@ -461,7 +482,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               {habits.map((h, i) => {
                 const checked = !!habitChecks[h.id];
                 return (
-                  <div key={h.id} onClick={() => onToggleHabit(h.id)}
+                  <div key={h.id} onClick={() => { navigator.vibrate?.(50); onToggleHabit(h.id); }}
                     style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
                       borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
                       cursor: "pointer" }}>
@@ -487,9 +508,20 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         );
       })()}
 
-      <div style={S.sectionTitle}>📅 이번주 일정</div>
+      <div style={{ ...S.sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }}>
+        <span>📅 이번주 일정</span>
+        {getValidGcalToken?.() && (
+          <button onClick={() => {
+            const token = getValidGcalToken();
+            if (!token) return;
+            gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
+          }} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+            🔄 캘린더 동기화
+          </button>
+        )}
+      </div>
       <div style={{ padding: "0 16px" }}>
-        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />
+        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} gcalEvents={gcalWeekEvents} />
       </div>
 
       <div style={{ height: 12 }} />

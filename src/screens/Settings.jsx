@@ -649,7 +649,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             <button onClick={async () => {
               setDriveStatus('백업 중...');
               try { await onDriveBackup?.(driveToken); setToast('Drive 백업 완료 ✅'); setDriveStatus(''); }
-              catch { setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
+              catch (e) { setToast('Drive 백업 실패 ❌'); setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
             }} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
               ☁️ 지금 백업하기
             </button>
