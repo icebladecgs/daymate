@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -142,6 +142,16 @@ export default function App() {
   const [driveTokenExp, setDriveTokenExp] = useState(() => store.get("dm_drive_token_exp", 0));
   const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
+  const [myRank, setMyRank] = useState(null);
+
+  useEffect(() => {
+    if (!authUser) return;
+    loadRankings().then(list => {
+      const sorted = list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+      const idx = sorted.findIndex(r => r.uid === authUser.uid);
+      if (idx >= 0) setMyRank({ rank: idx + 1, total: sorted.length });
+    }).catch(() => {});
+  }, [authUser]);
 
   const todayStr = toDateStr();
 
@@ -699,6 +709,7 @@ export default function App() {
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
+          myRank={myRank} onOpenStats={() => changeScreen("stats")}
         />
       );
     }

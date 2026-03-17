@@ -7,7 +7,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -174,24 +174,37 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         );
       })()}
 
-      <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.06))", border: "1.5px solid rgba(108,142,255,.3)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ textAlign: "center", minWidth: 52 }}>
-            <div style={{ fontSize: 28 }}>{levelInfo.icon}</div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF", marginTop: 2 }}>Lv.{levelInfo.level}</div>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
-              <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
-            </div>
-            <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 3, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
-            </div>
-            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4, textAlign: "right" }}>
-              {totalScore.toLocaleString()} / {levelInfo.nextFloor.toLocaleString()} XP → Lv.{levelInfo.level + 1}
+      <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "16px" }}>
+        {/* 상단: 레벨 아이콘 + 이름 + 번호 */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 32 }}>{levelInfo.icon}</div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", lineHeight: 1.2 }}>{levelInfo.title}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</div>
             </div>
           </div>
+          {myRank && (
+            <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
+            </button>
+          )}
+        </div>
+        {/* 중앙: 총 XP 크게 */}
+        <div style={{ textAlign: "center", margin: "4px 0 12px" }}>
+          <span style={{ fontSize: 34, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
+          <span style={{ fontSize: 14, color: "#6C8EFF", fontWeight: 700, marginLeft: 4 }}>XP</span>
+        </div>
+        {/* 진행바 */}
+        <div style={{ height: 7, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+        </div>
+        {/* 하단 요약 */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
+          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
         </div>
       </div>
 
