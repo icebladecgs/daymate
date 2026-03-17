@@ -7,7 +7,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -66,6 +66,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [swipedId, setSwipedId] = useState(null);
   const [checkedId, setCheckedId] = useState(null);
   const swipeStartX = useRef(0);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
 
   useEffect(() => {
     if (allDone && !prevAllDone) {
@@ -74,6 +77,41 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     }
     setPrevAllDone(allDone);
   }, [allDone]);
+
+  const fetchAiSuggestions = async () => {
+    setAiLoading(true);
+    setAiSuggestions([]);
+    try {
+      const recentTasks = Object.entries(plans || {})
+        .filter(([ds]) => ds < toDateStr())
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 7)
+        .flatMap(([, d]) => (d.tasks || []).filter(t => t.title?.trim()).map(t => t.title));
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: '오늘 할 일 3가지만 추천해줘. 최근 패턴 참고해서 간결하게. 반드시 set_tasks 액션으로만 응답해.',
+          history: [],
+          context: { tasks: todayData?.tasks || [], habits: habits || [], habitChecks: todayData?.habitChecks || {}, scores: {}, userName: user?.name || '사용자', recentTasks },
+        }),
+      });
+      const data = await res.json();
+      const setTasksAction = data.actions?.find(a => a.type === 'set_tasks');
+      if (setTasksAction?.titles?.length) setAiSuggestions(setTasksAction.titles.slice(0, 3));
+    } catch {}
+    finally { setAiLoading(false); }
+  };
+
+  const addAiSuggestion = (title) => {
+    const tasks = [...(todayData?.tasks || [])];
+    const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+    const newTask = { id: `t${Date.now()}`, title, done: false, checkedAt: null, priority: false };
+    if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+    else tasks.push(newTask);
+    onSetTodayTasks(tasks);
+    setAiSuggestions(prev => prev.filter(s => s !== title));
+  };
 
   const startEditTasks = () => {
     setDraftTasks((todayData?.tasks || []).map(t => ({ ...t })));
@@ -203,18 +241,49 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
         {/* 하단 요약 */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
+          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
+            {streak > 0 && <span style={{ color: "#F97316", fontWeight: 900 }}>🔥 {streak}일 연속 · </span>}
+            다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
+          </span>
           <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
         </div>
       </div>
 
+      {/* 바로가기 팁 (PWA 설치된 경우 1회만) */}
+      {isStandalone && !shortcutTipDismissed && (
+        <div style={{ margin: "0 16px 10px", borderRadius: 12, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>💡</span>
+          <span style={{ flex: 1, fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.5 }}>홈 화면 아이콘을 <b style={{ color: "var(--dm-text)" }}>꾹 누르면</b> 오늘 할 일 바로가기가 있어요!</span>
+          <button onClick={() => { setShortcutTipDismissed(true); store.set('dm_shortcut_tip_dismissed', true); }}
+            style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4 }}>✕</button>
+        </div>
+      )}
+
       <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
         <span>✅ 오늘 할일</span>
-        <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
-          style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingTasks ? "완료 ✓" : "✏️ 편집"}
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button onClick={fetchAiSuggestions} disabled={aiLoading}
+            style={{ fontSize: 11, fontWeight: 900, color: "#A78BFA", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+            {aiLoading ? "..." : "✨ AI 추천"}
+          </button>
+          <button onClick={editingTasks ? saveTaskEdits : startEditTasks}
+            style={{ fontSize: 11, fontWeight: 900, color: editingTasks ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+            {editingTasks ? "완료 ✓" : "✏️ 편집"}
+          </button>
+        </div>
       </div>
+      {aiSuggestions.length > 0 && (
+        <div style={{ margin: "0 16px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {aiSuggestions.map((s, i) => (
+            <button key={i} onClick={() => addAiSuggestion(s)}
+              style={{ textAlign: "left", padding: "9px 14px", borderRadius: 10, border: "1px dashed #A78BFA", background: "rgba(167,139,250,.08)", color: "var(--dm-text)", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#A78BFA", fontWeight: 900 }}>+</span> {s}
+            </button>
+          ))}
+          <button onClick={() => setAiSuggestions([])}
+            style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0" }}>닫기</button>
+        </div>
+      )}
       <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
         {editingTasks ? (
           <>

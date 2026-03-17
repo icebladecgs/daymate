@@ -705,7 +705,7 @@ export default function App() {
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
-          isIOS={isIOS} isKakao={isKakao} event={event} inviteBonus={inviteBonus}
+          isIOS={isIOS} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
