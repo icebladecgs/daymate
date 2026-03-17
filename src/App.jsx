@@ -324,6 +324,11 @@ export default function App() {
       if (driveRefreshTimerRef.current) clearTimeout(driveRefreshTimerRef.current);
       const delay = expiresAt - Date.now() - 5 * 60 * 1000;
       if (delay > 0) driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
+      // 오늘 백업이 아직 안 됐으면 토큰 갱신 직후 실행
+      const today = toDateStr();
+      if (store.get('dm_last_drive_backup', '')?.slice(0, 10) !== today) {
+        performDriveBackup(accessToken).catch(() => {});
+      }
       return accessToken;
     } catch {
       driveRefreshTimerRef.current = setTimeout(connectDrive, 5 * 60 * 1000);
