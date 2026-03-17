@@ -14,6 +14,10 @@ import {
   collection,
   getDocs,
   getCountFromServer,
+  query,
+  where,
+  deleteDoc,
+  orderBy,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -159,6 +163,61 @@ export async function checkIsAdmin(uid) {
   const snap = await getDoc(doc(db, 'admin', 'config')); // 에러는 caller에서 처리
   if (!snap.exists()) return false;
   return (snap.data().uids || []).includes(uid);
+}
+
+// ---------- Community ----------
+
+export async function createCommunity(uid, name, nickname) {
+  const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const ref = doc(collection(db, 'communities'));
+  await setDoc(ref, { name, createdBy: uid, inviteCode: code, createdAt: new Date().toISOString(), memberCount: 1 });
+  await setDoc(doc(db, 'communities', ref.id, 'members', uid), { nickname, joinedAt: new Date().toISOString(), isAdmin: true });
+  return { communityId: ref.id, inviteCode: code };
+}
+
+export async function findCommunityByCode(code) {
+  const q = query(collection(db, 'communities'), where('inviteCode', '==', code.toUpperCase()));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { communityId: d.id, ...d.data() };
+}
+
+export async function joinCommunity(uid, communityId, nickname) {
+  const memberRef = doc(db, 'communities', communityId, 'members', uid);
+  const existing = await getDoc(memberRef);
+  if (existing.exists()) return; // 이미 가입됨
+  await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), isAdmin: false });
+  const ref = doc(db, 'communities', communityId);
+  const snap = await getDoc(ref);
+  await setDoc(ref, { memberCount: (snap.data()?.memberCount || 0) + 1 }, { merge: true });
+}
+
+export async function loadCommunityData(communityId) {
+  const snap = await getDoc(doc(db, 'communities', communityId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function loadCommunityMembers(communityId) {
+  const snap = await getDocs(collection(db, 'communities', communityId, 'members'));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function addCommunityEvent(communityId, event) {
+  const ref = doc(collection(db, 'communities', communityId, 'events'));
+  await setDoc(ref, { ...event, createdAt: new Date().toISOString() });
+  return ref.id;
+}
+
+export async function deleteCommunityEvent(communityId, eventId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'events', eventId));
+}
+
+export async function leaveCommunity(communityId, uid) {
+  await deleteDoc(doc(db, 'communities', communityId, 'members', uid));
+  const ref = doc(db, 'communities', communityId);
+  const snap = await getDoc(ref);
+  await setDoc(ref, { memberCount: Math.max((snap.data()?.memberCount || 1) - 1, 0) }, { merge: true });
 }
 
 // ---------- Firestore (local → cloud) ----------
