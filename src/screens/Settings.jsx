@@ -17,7 +17,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                     isDark, setIsDark,
                     event, setEvent, onAddInviteBonus,
                     driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
-                    onOpenAdmin }) {
+                    onOpenAdmin, onOpenStats }) {
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -266,6 +266,18 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           {isDark ? "☀️" : "🌙"}
         </button>
       </div>
+
+      <button
+        onClick={onOpenStats}
+        style={{ ...S.card, display: "flex", alignItems: "center", gap: 12,
+          cursor: "pointer", color: "var(--dm-text)", textAlign: "left" }}>
+        <span style={{ fontSize: 24 }}>📊</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>통계 보기</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>레벨, XP, 습관 달성률 등</div>
+        </div>
+        <span style={{ marginLeft: "auto", color: "var(--dm-sub)", fontSize: 18 }}>›</span>
+      </button>
 
       <div style={S.sectionTitle}>프로필</div>
       <div style={S.card}>

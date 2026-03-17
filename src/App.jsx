@@ -788,6 +788,7 @@ export default function App() {
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
           lastDriveBackup={lastDriveBackup}
           onOpenAdmin={() => changeScreen("admin")}
+          onOpenStats={() => changeScreen("stats")}
         />
       );
     }

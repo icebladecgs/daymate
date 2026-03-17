@@ -4,8 +4,8 @@ export default function BottomNav({ screen, setScreen, badge = {} }) {
   const items = [
     { id: "home", icon: "🏠", label: "홈" },
     { id: "today", icon: "📖", label: "일기/메모" },
+    { id: "history", icon: "📅", label: "기록" },
     { id: "community", icon: "👥", label: "커뮤니티" },
-    { id: "stats", icon: "📊", label: "통계" },
     { id: "settings", icon: "⚙️", label: "설정" },
   ];
   return (
