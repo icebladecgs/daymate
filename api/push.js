@@ -20,8 +20,8 @@ export default async function handler(req, res) {
   if (!uid || !title) return res.status(400).json({ ok: false });
 
   try {
-    const snap = await db.doc(`users/${uid}/data/pushSubscription`).get();
-    const sub = snap.data()?.subscription;
+    const snap = await db.doc(`users/${uid}/data/settings`).get();
+    const sub = snap.data()?.pushSubscription;
     if (!sub) return res.status(200).json({ ok: false, reason: 'no subscription' });
 
     await webpush.sendNotification(sub, JSON.stringify({ title, body }));
