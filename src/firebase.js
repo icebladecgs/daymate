@@ -76,11 +76,13 @@ export async function loadAllFromFirestore(uid) {
 // Google Calendar OAuth (Calendar scope)
 export function googleSignInWithCalendarScope() {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), 30000);
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: '9221676076-5ceja00ivoodlv4sqf045sv5poqousi8.apps.googleusercontent.com',
       scope: 'https://www.googleapis.com/auth/calendar',
       prompt: '',
       callback: (response) => {
+        clearTimeout(timer);
         if (response.error) { reject(new Error(response.error)); return; }
         resolve({ accessToken: response.access_token, expiresAt: Date.now() + response.expires_in * 1000 });
       },
@@ -92,11 +94,13 @@ export function googleSignInWithCalendarScope() {
 // Google Drive OAuth (drive.file scope — only files created by this app)
 export function googleSignInWithDriveScope() {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), 30000);
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: '9221676076-5ceja00ivoodlv4sqf045sv5poqousi8.apps.googleusercontent.com',
       scope: 'https://www.googleapis.com/auth/drive.file',
       prompt: '',
       callback: (response) => {
+        clearTimeout(timer);
         if (response.error) { reject(new Error(response.error)); return; }
         resolve({ accessToken: response.access_token, expiresAt: Date.now() + response.expires_in * 1000 });
       },

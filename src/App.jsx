@@ -277,6 +277,10 @@ export default function App() {
 
   const connectGcal = async () => {
     try {
+      if (!window.google?.accounts?.oauth2) {
+        gcalRefreshTimerRef.current = setTimeout(connectGcal, 500);
+        return null;
+      }
       const { accessToken, expiresAt } = await googleSignInWithCalendarScope();
       store.set('dm_gcal_token', accessToken);
       store.set('dm_gcal_token_exp', expiresAt);
@@ -286,7 +290,10 @@ export default function App() {
       const delay = expiresAt - Date.now() - 5 * 60 * 1000;
       if (delay > 0) gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
       return accessToken;
-    } catch { return null; }
+    } catch {
+      gcalRefreshTimerRef.current = setTimeout(connectGcal, 5 * 60 * 1000);
+      return null;
+    }
   };
 
   const disconnectGcal = () => {
@@ -304,6 +311,10 @@ export default function App() {
 
   const connectDrive = async () => {
     try {
+      if (!window.google?.accounts?.oauth2) {
+        driveRefreshTimerRef.current = setTimeout(connectDrive, 500);
+        return null;
+      }
       const { accessToken, expiresAt } = await googleSignInWithDriveScope();
       store.set('dm_drive_token', accessToken);
       store.set('dm_drive_token_exp', expiresAt);
@@ -313,7 +324,10 @@ export default function App() {
       const delay = expiresAt - Date.now() - 5 * 60 * 1000;
       if (delay > 0) driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
       return accessToken;
-    } catch { return null; }
+    } catch {
+      driveRefreshTimerRef.current = setTimeout(connectDrive, 5 * 60 * 1000);
+      return null;
+    }
   };
 
   const performDriveBackup = async (token) => {
