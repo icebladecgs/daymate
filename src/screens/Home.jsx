@@ -7,7 +7,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -128,7 +128,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
       {showInstallBanner && (
         <div style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid #4B6FFF", padding: "12px 14px", boxShadow: "0 2px 12px rgba(75,111,255,.2)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: installPrompt || isIOS ? 10 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 22 }}>📲</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
@@ -136,10 +136,17 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             <button onClick={dismissInstallBanner} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
           </div>
-          {installPrompt && (
+          {isKakao ? (
+            <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.8 }}>
+              <div style={{ fontWeight: 700, color: "var(--dm-text)", marginBottom: 4 }}>카카오톡에서는 설치가 안 돼요 😢</div>
+              {isIOS
+                ? <>1️⃣ 우측 하단 <b style={{color:"var(--dm-text)"}}>⋯</b> → <b style={{color:"var(--dm-text)"}}>Safari로 열기</b><br/>2️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> → <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>
+                : <>1️⃣ 우측 상단 <b style={{color:"var(--dm-text)"}}>⋯</b> → <b style={{color:"var(--dm-text)"}}>다른 브라우저로 열기</b> → Chrome 선택<br/>2️⃣ Chrome에서 <b style={{color:"var(--dm-text)"}}>설치하기</b> 버튼 탭</>
+              }
+            </div>
+          ) : installPrompt ? (
             <button onClick={handleInstall} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
-          )}
-          {!installPrompt && (
+          ) : (
             <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
               {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
             </div>
