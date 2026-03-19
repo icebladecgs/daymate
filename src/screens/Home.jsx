@@ -348,7 +348,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
-              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
+              {allDone
+                ? <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>
+                : <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>← 밀면 이동/삭제</div>
+              }
             </div>
             <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
               <div style={{
@@ -373,7 +376,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       }
                       setSwipedId(null);
                     }} style={{ flex: 1, background: "#6C8EFF", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 11, lineHeight: 1.3 }}>
-                      나중에<br/>할일
+                      언젠가<br/>할일
                     </button>
                     <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
                       style={{ flex: 1, background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
@@ -417,6 +420,43 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             })}
           </>
         )}
+      </div>
+
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📋</span>언젠가 할일</div>
+      <div style={S.card}>
+        {someday.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>언제 할지 모르지만 해야 할 일을 적어두세요.</div>
+        )}
+        {someday.map(item => (
+          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <button onClick={() => toggleSomeday(item.id)} style={{
+              width: 22, height: 22, borderRadius: 6, border: `2px solid ${item.done ? "#4ADE80" : "var(--dm-border)"}`,
+              background: item.done ? "#4ADE80" : "transparent", flexShrink: 0, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
+            }}>{item.done ? "✓" : ""}</button>
+            <div style={{ flex: 1, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none" }}>
+              {item.title}
+            </div>
+            <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
+              background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6,
+              color: "#4B6FFF", fontSize: 10, fontWeight: 900, cursor: "pointer", padding: "3px 6px", flexShrink: 0,
+            }}>오늘로↑</button>
+            <button onClick={() => deleteSomeday(item.id)} style={{
+              background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1,
+            }}>✕</button>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, marginTop: someday.length > 0 ? 8 : 0 }}>
+          <input
+            style={{ ...S.input, flex: 1, marginBottom: 0 }}
+            value={somedayInput}
+            onChange={e => setSomedayInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addSomeday()}
+            placeholder="언젠가 할 일 추가..."
+            maxLength={60}
+          />
+          <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
+        </div>
       </div>
 
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
@@ -536,43 +576,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
           </div>
-        </div>
-      </div>
-
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📋</span>언젠가 할일</div>
-      <div style={S.card}>
-        {someday.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>언제 할지 모르지만 해야 할 일을 적어두세요.</div>
-        )}
-        {someday.map(item => (
-          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <button onClick={() => toggleSomeday(item.id)} style={{
-              width: 22, height: 22, borderRadius: 6, border: `2px solid ${item.done ? "#4ADE80" : "var(--dm-border)"}`,
-              background: item.done ? "#4ADE80" : "transparent", flexShrink: 0, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-            }}>{item.done ? "✓" : ""}</button>
-            <div style={{ flex: 1, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none" }}>
-              {item.title}
-            </div>
-            <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
-              background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6,
-              color: "#4B6FFF", fontSize: 10, fontWeight: 900, cursor: "pointer", padding: "3px 6px", flexShrink: 0,
-            }}>오늘로↑</button>
-            <button onClick={() => deleteSomeday(item.id)} style={{
-              background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1,
-            }}>✕</button>
-          </div>
-        ))}
-        <div style={{ display: "flex", gap: 8, marginTop: someday.length > 0 ? 8 : 0 }}>
-          <input
-            style={{ ...S.input, flex: 1, marginBottom: 0 }}
-            value={somedayInput}
-            onChange={e => setSomedayInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addSomeday()}
-            placeholder="언젠가 할 일 추가..."
-            maxLength={60}
-          />
-          <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
         </div>
       </div>
 
