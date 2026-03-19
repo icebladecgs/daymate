@@ -84,6 +84,26 @@ export const triggerVibration = () => {
   try { navigator.vibrate?.([200, 100, 200]); } catch { /* ignore */ }
 };
 
+export const TTS_DEFAULT_MESSAGES = {
+  morning:     '좋은 아침이에요! 오늘 하루도 화이팅!',
+  morningWork: '오늘 할 일을 입력할 시간이에요.',
+  noon:        '점심 체크인! 오전 할 일 얼마나 완료했나요?',
+  evening:     '저녁 체크인! 오늘 하루 잘 보내고 있나요?',
+  night:       '하루 마무리할 시간이에요. 일기도 써보세요.',
+};
+
+export const speakTTS = (text) => {
+  try {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'ko-KR';
+    utter.rate = 0.95;
+    utter.pitch = 1.05;
+    window.speechSynthesis.speak(utter);
+  } catch { /* ignore */ }
+};
+
 export const sendNotification = (title, body, iconEmoji = "✅") => {
   if (!hasNotification()) return null;
   if (Notification.permission !== "granted") return null;

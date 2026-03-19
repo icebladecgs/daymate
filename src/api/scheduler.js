@@ -1,4 +1,4 @@
-import { sendNotification, getPermission, playNotifSound, triggerVibration } from '../utils/notification.js';
+import { sendNotification, getPermission, playNotifSound, triggerVibration, speakTTS, TTS_DEFAULT_MESSAGES } from '../utils/notification.js';
 import { toDateStr } from '../utils/date.js';
 import { store } from '../utils/storage.js';
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText } from './telegram.js';
@@ -27,12 +27,17 @@ class NotifScheduler {
     return t.getTime() - now.getTime();
   }
 
-  schedule(id, timeStr, title, body, iconEmoji = "🔔", onFire = null) {
+  schedule(id, timeStr, title, body, iconEmoji = "🔔", onFire = null, alarmKey = null) {
     clearTimeout(this.timers[id]);
     const fire = async () => {
       try {
         if (localStorage.getItem('dm_notif_sound') !== 'false') playNotifSound();
         if (localStorage.getItem('dm_notif_vibration') !== 'false') triggerVibration();
+        if (localStorage.getItem('dm_notif_tts') === 'true' && alarmKey) {
+          const msgs = JSON.parse(localStorage.getItem('dm_notif_tts_messages') || '{}');
+          const text = msgs[alarmKey] || TTS_DEFAULT_MESSAGES[alarmKey] || '';
+          if (text) speakTTS(text);
+        }
       } catch { /* ignore */ }
       sendNotification(title, body, iconEmoji);
       if (onFire) {
@@ -131,7 +136,8 @@ class NotifScheduler {
         }
         text += `\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
         await sendTelegramMessage(botToken, chatId, text);
-      } : null
+      } : null,
+      'morning'
     );
 
     this.schedule(
@@ -149,7 +155,8 @@ class NotifScheduler {
           text += `아직 오늘 할 일을 입력하지 않았어요.\n지금 바로 입력해보세요! 📝\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
         }
         await sendTelegramMessage(botToken, chatId, text);
-      } : null
+      } : null,
+      'morningWork'
     );
 
     this.schedule(
@@ -163,7 +170,8 @@ class NotifScheduler {
         await sendTelegramMessage(botToken, chatId,
           `🕛 <b>${userName}님 점심 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n오후도 화이팅! 💪`
         );
-      } : null
+      } : null,
+      'noon'
     );
 
     this.schedule(
@@ -177,7 +185,8 @@ class NotifScheduler {
         await sendTelegramMessage(botToken, chatId,
           `🌆 <b>${userName}님 저녁 체크인!</b>\n\n✅ 완료: ${done}/${total}\n\n마무리 잘 해요! 🎯`
         );
-      } : null
+      } : null,
+      'evening'
     );
 
     this.schedule(
@@ -197,7 +206,8 @@ class NotifScheduler {
           text += `\n\n📝 <b>이번 주 회고</b>\n이번 주 잘한 점 하나와 다음 주 목표를 DayMate에 기록해보세요!`;
         }
         await sendTelegramMessage(botToken, chatId, text);
-      } : null
+      } : null,
+      'night'
     );
   }
 }

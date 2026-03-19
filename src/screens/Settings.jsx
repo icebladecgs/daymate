@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
-import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, SOUND_STYLES } from "../utils/notification.js";
+import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
@@ -161,6 +161,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
+  const [ttsEnabled, setTtsEnabled] = useState(() => localStorage.getItem('dm_notif_tts') === 'true');
+  const [ttsMessages, setTtsMessages] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dm_notif_tts_messages') || '{}'); } catch { return {}; }
+  });
+  const saveTtsMessages = (msgs) => { setTtsMessages(msgs); localStorage.setItem('dm_notif_tts_messages', JSON.stringify(msgs)); };
   const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
   const [morningWorkTime, setMorningWorkTime] = useState(alarmTimes.morningWork || '09:00');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
@@ -482,6 +487,45 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </div>
         ))}
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
+      </div>
+
+      <div style={S.sectionTitle}>🗣 음성 알람 (TTS)</div>
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 14 }}>음성 알람</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>알람 시 문구를 음성으로 읽어줘요</div>
+          </div>
+          <div onClick={() => { const v = !ttsEnabled; setTtsEnabled(v); localStorage.setItem('dm_notif_tts', v); if (v) speakTTS('음성 알람이 켜졌어요!'); }}
+            style={{ width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer', background: ttsEnabled ? '#6C8EFF' : 'var(--dm-border)', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 4, left: ttsEnabled ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+          </div>
+        </div>
+        {ttsEnabled && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              { key: 'morning',     label: '🌅 기상 알람' },
+              { key: 'morningWork', label: '☀️ 아침 할일 알람' },
+              { key: 'noon',        label: '🕛 점심 체크인' },
+              { key: 'evening',     label: '🌆 저녁 체크인' },
+              { key: 'night',       label: '🌙 밤 마감 알람' },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 6 }}>{label}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13 }}
+                    value={ttsMessages[key] ?? TTS_DEFAULT_MESSAGES[key]}
+                    onChange={e => saveTtsMessages({ ...ttsMessages, [key]: e.target.value })}
+                    placeholder={TTS_DEFAULT_MESSAGES[key]}
+                  />
+                  <button onClick={() => speakTTS(ttsMessages[key] || TTS_DEFAULT_MESSAGES[key])}
+                    style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 0, flexShrink: 0, fontSize: 18 }}>▶</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div style={{ height: 12 }} />
     </div>
