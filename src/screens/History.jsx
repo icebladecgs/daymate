@@ -194,17 +194,6 @@ export default function History({ plans, onOpenDate, habits }) {
                 ) : (
                   <div style={{ fontSize: 14, color: "var(--dm-muted)", textAlign: "center", padding: "16px 0" }}>기록 없음</div>
                 )}
-                {dayHabits.length > 0 && d && (
-                  <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                    {dayHabits.map(h => (
-                      <span key={h.id} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 999,
-                        background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-row)",
-                        color: habitChecks[h.id] ? "#A78BFA" : "var(--dm-muted)" }}>
-                        {h.icon} {habitChecks[h.id] ? "✓" : "-"}
-                      </span>
-                    ))}
-                  </div>
-                )}
                 {d?.memo?.trim() && (
                   <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
                     background: "var(--dm-row)", borderRadius: 8, padding: "8px 10px",
