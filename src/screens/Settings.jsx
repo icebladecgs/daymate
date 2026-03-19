@@ -8,16 +8,69 @@ import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
+function MenuRow({ icon, title, sub, right, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      padding: '13px 16px', cursor: onClick ? 'pointer' : 'default',
+      borderBottom: '1px solid var(--dm-row)',
+      background: 'var(--dm-card)',
+    }}>
+      <span style={{ fontSize: 19, width: 26, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)' }}>{title}</div>
+        {sub && <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 1 }}>{sub}</div>}
+      </div>
+      {right !== undefined ? right : (onClick && <span style={{ color: 'var(--dm-muted)', fontSize: 20, lineHeight: 1 }}>›</span>)}
+    </div>
+  );
+}
+
+function MenuGroup({ label, children }) {
+  return (
+    <>
+      {label && <div style={S.sectionTitle}>{label}</div>}
+      <div style={{ margin: '0 16px 6px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
+        {children}
+      </div>
+    </>
+  );
+}
+
+function SubHeader({ title, onBack }) {
+  return (
+    <div style={{ ...S.topbar }}>
+      <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
+      <div style={{ flex: 1, fontSize: 18, fontWeight: 900, marginLeft: 8 }}>{title}</div>
+    </div>
+  );
+}
+
+function Toggle({ value, onChange, disabled }) {
+  return (
+    <div onClick={() => !disabled && onChange(!value)} style={{
+      width: 52, height: 28, borderRadius: 999,
+      background: value && !disabled ? '#6C8EFF' : 'var(--dm-border)',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      position: 'relative', opacity: disabled ? 0.5 : 1, flexShrink: 0,
+    }}>
+      <div style={{ position: 'absolute', top: 4, left: value && !disabled ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+    </div>
+  );
+}
+
 export default function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
-                    telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
-                    authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
-                    habits, setHabits, recurringTasks, setRecurringTasks,
-                    installPrompt, handleInstall, setShowInstallBanner,
-                    gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
-                    isDark, setIsDark,
-                    event, setEvent, onAddInviteBonus,
-                    driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
-                    onOpenAdmin, onOpenStats }) {
+  telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
+  authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
+  habits, setHabits, recurringTasks, setRecurringTasks,
+  installPrompt, handleInstall, setShowInstallBanner,
+  gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
+  isDark, setIsDark,
+  event, setEvent, onAddInviteBonus,
+  driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
+  onOpenAdmin, onOpenStats }) {
+
+  const [subPage, setSubPage] = useState(null);
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [permission, setPermission] = useState(getPermission());
@@ -27,7 +80,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const gcalConnected = !!(gcalToken && Date.now() < gcalTokenExp);
   const fileInputRef = useRef(null);
 
-  // Feature 4: 초대 코드
+  // 초대 코드
   const [myCode] = useState(() => {
     const ex = store.get('dm_invite_code');
     if (ex) return ex;
@@ -39,13 +92,14 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [codeStatus, setCodeStatus] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
 
-  // Feature 6: 이벤트 배너
+  // 이벤트 배너
   const [eventName, setEventName] = useState(event?.name || '');
   const [eventStart, setEventStart] = useState(event?.startDate || '');
   const [eventEnd, setEventEnd] = useState(event?.endDate || '');
   const [eventActive, setEventActive] = useState(event?.active || false);
+  const [showEventAdvanced, setShowEventAdvanced] = useState(false);
 
-  // Feature 9: Drive
+  // Drive
   const driveConnected = !!(driveToken && Date.now() < driveTokenExp);
   const [driveStatus, setDriveStatus] = useState('');
 
@@ -248,45 +302,19 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     reader.readAsText(file);
   };
 
-  return (
+  // ── 서브페이지: 프로필 ──────────────────────────────────────
+  if (subPage === 'profile') return (
     <div style={S.content}>
-      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="프로필 & 목표" onBack={() => setSubPage(null)} />
 
-      <div style={S.topbar}>
-        <div style={{ flex: 1 }}>
-          <div style={S.title}>설정</div>
-          <div style={S.sub}>이름 · 목표 · 알림 · 백업</div>
-        </div>
-        <button
-          onClick={() => setIsDark(v => !v)}
-          style={{ width:38, height:38, borderRadius:999,
-            border:"1.5px solid var(--dm-border)", background:"var(--dm-input)", fontSize:18,
-            cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-            flexShrink: 0 }}>
-          {isDark ? "☀️" : "🌙"}
-        </button>
-      </div>
-
-      <button
-        onClick={onOpenStats}
-        style={{ ...S.card, display: "flex", alignItems: "center", gap: 12,
-          cursor: "pointer", color: "var(--dm-text)", textAlign: "left" }}>
-        <span style={{ fontSize: 24 }}>📊</span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>통계 보기</div>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>레벨, XP, 습관 달성률 등</div>
-        </div>
-        <span style={{ marginLeft: "auto", color: "var(--dm-sub)", fontSize: 18 }}>›</span>
-      </button>
-
-      <div style={S.sectionTitle}>프로필</div>
+      <div style={S.sectionTitle}>이름</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>이름</div>
         <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
         <button style={S.btn} onClick={save}>저장</button>
       </div>
 
-      <div style={S.sectionTitle}>목표</div>
+      <div style={S.sectionTitle}>연간 목표</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
           👑 연간 목표 (최대 5개)
@@ -303,83 +331,21 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
         <button style={S.btn} onClick={save}>저장</button>
       </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
 
-      <div style={S.sectionTitle}>🎯 습관 관리</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          매일 반복할 습관을 등록하면 홈 화면에서 체크할 수 있어요. (최대 10개)
-        </div>
-        {(habits || []).map((h) => (
-          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <input
-              style={{ ...S.input, width: 48, textAlign: "center", marginBottom: 0, padding: "8px 4px" }}
-              value={h.icon}
-              maxLength={2}
-              placeholder="🎯"
-              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
-            />
-            <input
-              style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              value={h.name}
-              maxLength={20}
-              placeholder="습관 이름 (예: 운동, 독서)"
-              onChange={(e) => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
-            />
-            <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
-              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0, lineHeight: 1 }}>✕</button>
-          </div>
-        ))}
-        {(habits || []).length < 10 && (
-          <button style={{ ...S.btn, marginTop: (habits || []).length > 0 ? 4 : 0 }}
-            onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: "", icon: "🎯" }])}>
-            ➕ 습관 추가
-          </button>
-        )}
-        {(habits || []).length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>아직 등록된 습관이 없어요.</div>
-        )}
-      </div>
+  // ── 서브페이지: 알림 ──────────────────────────────────────
+  if (subPage === 'notifications') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="알림 설정" onBack={() => setSubPage(null)} />
 
-      <div style={S.sectionTitle}>🔁 반복 할일</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          매일 또는 특정 요일에 자동으로 추가되는 할일을 설정해요.
-        </div>
-        {(recurringTasks || []).map((t) => (
-          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <select
-              value={t.days}
-              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
-              style={{ ...S.input, width: 80, marginBottom: 0, padding: "8px 6px", fontSize: 12 }}>
-              <option value="daily">매일</option>
-              <option value="1">월</option><option value="2">화</option><option value="3">수</option>
-              <option value="4">목</option><option value="5">금</option>
-              <option value="6">토</option><option value="0">일</option>
-            </select>
-            <input
-              style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              value={t.title}
-              maxLength={40}
-              placeholder="반복 할일 이름"
-              onChange={(e) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, title: e.target.value} : x))}
-            />
-            <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
-              style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 20, flexShrink: 0 }}>✕</button>
-          </div>
-        ))}
-        {(recurringTasks || []).length < 10 && (
-          <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
-            onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: "", days: "daily" }])}>
-            ➕ 반복 할일 추가
-          </button>
-        )}
-      </div>
-
-      <div style={S.sectionTitle}>알림</div>
+      <div style={S.sectionTitle}>알림 ON/OFF</div>
       <div style={S.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900 }}>알림 ON/OFF</div>
+            <div style={{ fontWeight: 900 }}>알림</div>
             {permission === "denied" && (
               <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
                 브라우저 알림이 차단되어 있어요. (사이트 설정에서 허용)
@@ -469,233 +435,195 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         ))}
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
 
-      <div style={S.sectionTitle}>텔레그램 자동화</div>
-      <div style={S.card}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
-          <button onClick={() => setShowBotHelp(v => !v)}
-            style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
-            {showBotHelp ? "▲ 닫기" : "❓ 얻는 방법"}
-          </button>
-        </div>
-        {showBotHelp && (
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
-            <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 <b>@BotFather</b> 검색 후 시작<br />
-            <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
-            <b style={{ color: "#6C8EFF" }}>3.</b> 봇 이름 지정 → 사용자명(봇ID) 지정<br />
-            <b style={{ color: "#6C8EFF" }}>4.</b> BotFather가 전송한 <b>HTTP API token</b> 복사<br />
-            <span style={{ color: "var(--dm-muted)" }}>예) <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
+  // ── 서브페이지: 텔레그램 ──────────────────────────────────────
+  if (subPage === 'telegram') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="텔레그램 자동화" onBack={() => setSubPage(null)} />
+
+      <div style={{ margin: '0 16px' }}>
+        <div style={S.card}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
+            <button onClick={() => setShowBotHelp(v => !v)}
+              style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
+              {showBotHelp ? "▲ 닫기" : "❓ 얻는 방법"}
+            </button>
           </div>
-        )}
-        <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
+          {showBotHelp && (
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
+              <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 <b>@BotFather</b> 검색 후 시작<br />
+              <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
+              <b style={{ color: "#6C8EFF" }}>3.</b> 봇 이름 지정 → 사용자명(봇ID) 지정<br />
+              <b style={{ color: "#6C8EFF" }}>4.</b> BotFather가 전송한 <b>HTTP API token</b> 복사<br />
+              <span style={{ color: "var(--dm-muted)" }}>예) <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
+            </div>
+          )}
+          <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
 
-        <div style={{ height: 10 }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
-          <button onClick={() => setShowChatHelp(v => !v)}
-            style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
-            {showChatHelp ? "▲ 닫기" : "❓ 얻는 방법"}
-          </button>
-        </div>
-        {showChatHelp && (
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
-            <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 내가 만든 봇을 찾아 메시지 전송<br />
-            <b style={{ color: "#6C8EFF" }}>2.</b> 브라우저에서 아래 URL 접속:<br />
-            <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
-            <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>"chat":{"{"}"id": <b>숫자</b>{"}"}</code> 확인<br />
-            <span style={{ color: "var(--dm-muted)" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
+          <div style={{ height: 10 }} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
+            <button onClick={() => setShowChatHelp(v => !v)}
+              style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
+              {showChatHelp ? "▲ 닫기" : "❓ 얻는 방법"}
+            </button>
           </div>
-        )}
-        <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
+          {showChatHelp && (
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
+              <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 내가 만든 봇을 찾아 메시지 전송<br />
+              <b style={{ color: "#6C8EFF" }}>2.</b> 브라우저에서 아래 URL 접속:<br />
+              <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
+              <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>"chat":{"{\"id\": "}<b>숫자</b>{"}"}</code> 확인<br />
+              <span style={{ color: "var(--dm-muted)" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
+            </div>
+          )}
+          <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
 
-        <div style={{ height: 10 }} />
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
-          Finnhub API Key <span style={{ color: "var(--dm-muted)", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
-        </div>
-        <div style={{ fontSize: 12, color: "var(--dm-muted)", padding: "10px 12px", background: "var(--dm-deep)", borderRadius: 8, border: "1px solid var(--dm-border)" }}>
-          🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
-        </div>
-
-        <div style={{ height: 10 }} />
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
-        <input style={S.input} value={telegramCfg.weatherCity || ''}
-          onChange={(e) => setTelegramCfg(prev => ({...prev, weatherCity: e.target.value}))}
-          placeholder="서울 (기본값)" />
-
-        <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>자산 브리핑</div>
-            <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
+          <div style={{ height: 10 }} />
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
+            Finnhub API Key <span style={{ color: "var(--dm-muted)", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
-            <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", padding: "10px 12px", background: "var(--dm-deep)", borderRadius: 8, border: "1px solid var(--dm-border)" }}>
+            🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
           </div>
-        </div>
 
-        <div style={{ height: 14 }} />
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {Object.entries(ASSET_META).map(([sym, meta]) => {
-            const on = selectedAssets.includes(sym);
-            return (
-              <button
-                key={sym}
-                onClick={() => toggleAsset(sym)}
-                style={{
-                  padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: on ? "#4B6FFF" : "var(--dm-row)",
-                  color: on ? "#fff" : "var(--dm-muted)",
-                }}
-              >
-                {sym} <span style={{ fontWeight: 400 }}>{meta.label}</span>
-              </button>
-            );
-          })}
-        </div>
+          <div style={{ height: 10 }} />
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
+          <input style={S.input} value={telegramCfg.weatherCity || ''}
+            onChange={(e) => setTelegramCfg(prev => ({...prev, weatherCity: e.target.value}))}
+            placeholder="서울 (기본값)" />
 
-        {customAssets.length > 0 && (
-          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {customAssets.map(a => (
-              <div key={a.sym} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "var(--dm-row)",
-                color: selectedAssets.includes(a.sym) ? "#fff" : "var(--dm-muted)",
-              }}>
-                <span onClick={() => toggleAsset(a.sym)} style={{ cursor: "pointer" }}>
-                  {a.sym} <span style={{ fontWeight: 400 }}>{a.label}</span>
-                </span>
-                <span
-                  onClick={() => removeCustomAsset(a.sym)}
-                  style={{ cursor: "pointer", color: "#F87171", fontWeight: 900, marginLeft: 2 }}
-                >×</span>
-              </div>
-            ))}
+          <div style={{ height: 14 }} />
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>자산 브리핑</div>
+              <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
+              <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
+            </div>
           </div>
-        )}
 
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {[
-              { id: 'stock', label: '해외주식/ETF' },
-              { id: 'korean', label: '국내주식' },
-              { id: 'crypto', label: '코인' },
-            ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => { setSearchMode(id); setSearchResults([]); setAssetSearch(''); }}
-                style={{
-                  padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-                  background: searchMode === id ? "#4B6FFF" : "var(--dm-row)",
-                  color: searchMode === id ? "#fff" : "var(--dm-muted)",
-                }}
-              >{label}</button>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              style={{ ...S.input, flex: 1, marginBottom: 0 }}
-              placeholder={searchMode === 'stock' ? 'AAPL, NVDA, SPY...' : searchMode === 'korean' ? '삼성전자, 카카오...' : 'SOL, XRP, DOGE...'}
-              value={assetSearch}
-              onChange={e => doAssetSearch(e.target.value)}
-            />
-            {searching && <span style={{ color: "var(--dm-sub)", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
-          </div>
-          {searchResults.length > 0 && (
-            <div style={{
-              marginTop: 8, background: "var(--dm-deep)", border: "1px solid var(--dm-border)",
-              borderRadius: 10, overflow: "hidden",
-            }}>
-              {searchResults.map(item => (
-                <div
-                  key={item.sym + item.src}
+          <div style={{ height: 14 }} />
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {Object.entries(ASSET_META).map(([sym, meta]) => {
+              const on = selectedAssets.includes(sym);
+              return (
+                <button
+                  key={sym}
+                  onClick={() => toggleAsset(sym)}
                   style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "8px 12px", borderBottom: "1px solid var(--dm-card)", cursor: "pointer",
+                    padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    background: on ? "#4B6FFF" : "var(--dm-row)",
+                    color: on ? "#fff" : "var(--dm-muted)",
                   }}
-                  onClick={() => addCustomAsset(item)}
                 >
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "var(--dm-text)" }}>{item.sym}</span>
-                    <span style={{ fontSize: 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
+                  {sym} <span style={{ fontWeight: 400 }}>{meta.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {customAssets.length > 0 && (
+            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {customAssets.map(a => (
+                <div key={a.sym} style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "var(--dm-row)",
+                  color: selectedAssets.includes(a.sym) ? "#fff" : "var(--dm-muted)",
+                }}>
+                  <span onClick={() => toggleAsset(a.sym)} style={{ cursor: "pointer" }}>
+                    {a.sym} <span style={{ fontWeight: 400 }}>{a.label}</span>
+                  </span>
+                  <span
+                    onClick={() => removeCustomAsset(a.sym)}
+                    style={{ cursor: "pointer", color: "#F87171", fontWeight: 900, marginLeft: 2 }}
+                  >×</span>
                 </div>
               ))}
             </div>
           )}
-        </div>
 
-        <div style={{ height: 14 }} />
-        <button style={S.btn} onClick={saveTelegram}>저장</button>
-        <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
-        <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
-          ⚠️ 탭이 열려 있을 때만 동작해요.
-        </div>
-      </div>
-
-      <div style={S.sectionTitle}>백업</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
-          • 이 앱 데이터는 각 기기 브라우저에 저장됩니다.<br />
-          • JSON으로 백업하면 다른 기기에서 복구할 수 있어요.
-        </div>
-        <button style={S.btn} onClick={exportData}>📦 데이터 내보내기 (백업)</button>
-        <button style={S.btnGhost} onClick={() => fileInputRef.current?.click()}>📥 데이터 가져오기 (복구)</button>
-        <input ref={fileInputRef} type="file" accept="application/json" onChange={importData} style={{ display: "none" }} />
-
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--dm-row)" }}>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>☁️ 구글 드라이브 자동 백업</div>
-          {lastDriveBackup && (
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8 }}>
-              마지막 백업: {new Date(lastDriveBackup).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              {[
+                { id: 'stock', label: '해외주식/ETF' },
+                { id: 'korean', label: '국내주식' },
+                { id: 'crypto', label: '코인' },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => { setSearchMode(id); setSearchResults([]); setAssetSearch(''); }}
+                  style={{
+                    padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    background: searchMode === id ? "#4B6FFF" : "var(--dm-row)",
+                    color: searchMode === id ? "#fff" : "var(--dm-muted)",
+                  }}
+                >{label}</button>
+              ))}
             </div>
-          )}
-          {driveConnected ? (
-            <button onClick={async () => {
-              setDriveStatus('백업 중...');
-              try { await onDriveBackup?.(driveToken); setToast('Drive 백업 완료 ✅'); setDriveStatus(''); }
-              catch (e) { setToast('Drive 백업 실패 ❌'); setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
-            }} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
-              ☁️ 지금 백업하기
-            </button>
-          ) : (
-            <button onClick={handleDriveConnect} style={{ ...S.btn, marginTop: 0, fontSize: 13 }}>
-              🔗 구글 드라이브 연동
-            </button>
-          )}
-          {driveStatus && (
-            <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: driveStatus.startsWith('✓') ? '#4ADE80' : driveStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
-              {driveStatus}
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                placeholder={searchMode === 'stock' ? 'AAPL, NVDA, SPY...' : searchMode === 'korean' ? '삼성전자, 카카오...' : 'SOL, XRP, DOGE...'}
+                value={assetSearch}
+                onChange={e => doAssetSearch(e.target.value)}
+              />
+              {searching && <span style={{ color: "var(--dm-sub)", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
             </div>
-          )}
-          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
-            💡 연동하면 매일 자동으로 구글 드라이브에 백업돼요.<br/>
-            ⚠️ 1시간마다 재연동이 필요해요.
+            {searchResults.length > 0 && (
+              <div style={{
+                marginTop: 8, background: "var(--dm-deep)", border: "1px solid var(--dm-border)",
+                borderRadius: 10, overflow: "hidden",
+              }}>
+                {searchResults.map(item => (
+                  <div
+                    key={item.sym + item.src}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "8px 12px", borderBottom: "1px solid var(--dm-card)", cursor: "pointer",
+                    }}
+                    onClick={() => addCustomAsset(item)}
+                  >
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--dm-text)" }}>{item.sym}</span>
+                      <span style={{ fontSize: 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
+                    </div>
+                    <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: 14 }} />
+          <button style={S.btn} onClick={saveTelegram}>저장</button>
+          <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
+          <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
+          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
+            ⚠️ 탭이 열려 있을 때만 동작해요.
           </div>
         </div>
-        <button
-          style={{ ...S.btnGhost, borderColor: "rgba(248,113,113,.35)", color: "#F87171" }}
-          onClick={() => {
-            if (!window.confirm("모든 데이터를 삭제할까요?")) return;
-            if (!window.confirm("정말 삭제하시겠어요? (복구 불가)")) return;
-            try {
-              Object.keys(localStorage)
-                .filter((k) => k.startsWith("dm_"))
-                .forEach((k) => localStorage.removeItem(k));
-            } catch {}
-            window.location.reload();
-          }}
-        >
-          🗑️ 모든 데이터 삭제
-        </button>
       </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
+  // ── 서브페이지: Google 연동 ──────────────────────────────────────
+  if (subPage === 'integrations') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="Google 연동" onBack={() => setSubPage(null)} />
 
       <div style={S.sectionTitle}>계정 동기화</div>
       <div style={S.card}>
@@ -732,7 +660,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
-      <div style={S.sectionTitle}>🗓️ 구글 캘린더 연동</div>
+      <div style={S.sectionTitle}>🗓️ 구글 캘린더</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
           {gcalConnected
@@ -771,22 +699,45 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       </div>
 
-      <div style={S.sectionTitle}>📲 앱 설치</div>
+      <div style={S.sectionTitle}>☁️ 구글 드라이브</div>
       <div style={S.card}>
-        <button onClick={() => {
-            if (installPrompt) { handleInstall(); }
-            else { store.set('dm_install_dismissed', false); setShowInstallBanner(true); setShowInstallGuide(v => !v); }
-          }}
-          style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
-          앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
-        </button>
-        {!installPrompt && showInstallGuide && (
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
-            📱 <b>iOS Safari:</b> 하단 공유(□↑) 버튼 → <b>홈 화면에 추가</b><br />
-            🤖 <b>Android Chrome:</b> 주소창 오른쪽 ⋮ 메뉴 → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>
+        {lastDriveBackup && (
+          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8 }}>
+            마지막 백업: {new Date(lastDriveBackup).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </div>
         )}
+        {driveConnected ? (
+          <button onClick={async () => {
+            setDriveStatus('백업 중...');
+            try { await onDriveBackup?.(driveToken); setToast('Drive 백업 완료 ✅'); setDriveStatus(''); }
+            catch (e) { setToast('Drive 백업 실패 ❌'); setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
+          }} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
+            ☁️ 지금 백업하기
+          </button>
+        ) : (
+          <button onClick={handleDriveConnect} style={{ ...S.btn, marginTop: 0, fontSize: 13 }}>
+            🔗 구글 드라이브 연동
+          </button>
+        )}
+        {driveStatus && (
+          <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: driveStatus.startsWith('✓') ? '#4ADE80' : driveStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
+            {driveStatus}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
+          💡 연동하면 매일 자동으로 구글 드라이브에 백업돼요.<br/>
+          ⚠️ 1시간마다 재연동이 필요해요.
+        </div>
       </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
+  // ── 서브페이지: 친구 & 공유 ──────────────────────────────────────
+  if (subPage === 'friends') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="친구 & 공유" onBack={() => setSubPage(null)} />
 
       <div style={S.sectionTitle}>🎁 친구 초대</div>
       <div style={S.card}>
@@ -822,36 +773,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
-      <div style={S.sectionTitle}>🏆 이벤트 배너 설정</div>
-      <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          홈 화면에 이벤트 배너를 표시해요. 기간 내에만 노출되고 D-day가 카운트다운돼요.
-        </div>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>이벤트 이름</div>
-        <input style={S.input} value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="예: 3월 챌린지 🔥" maxLength={30} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>시작일</div>
-            <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종료일</div>
-            <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} />
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ fontWeight: 900, fontSize: 13 }}>배너 활성화</div>
-          <div onClick={() => setEventActive(v => !v)} style={{
-            width: 52, height: 28, borderRadius: 999,
-            background: eventActive ? "#6C8EFF" : "var(--dm-border)",
-            cursor: "pointer", position: "relative", flexShrink: 0,
-          }}>
-            <div style={{ position: "absolute", top: 4, left: eventActive ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
-          </div>
-        </div>
-        <button style={S.btn} onClick={saveEvent}>이벤트 저장</button>
-      </div>
-
       <div style={S.sectionTitle}>🔗 친구에게 공유하기</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
@@ -884,18 +805,165 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </button>
         </div>
       </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
+  // ── 서브페이지: 앱 관리 ──────────────────────────────────────
+  if (subPage === 'app') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="앱 관리" onBack={() => setSubPage(null)} />
+
+      <div style={S.sectionTitle}>📲 앱 설치</div>
+      <div style={S.card}>
+        <button onClick={() => {
+            if (installPrompt) { handleInstall(); }
+            else { store.set('dm_install_dismissed', false); setShowInstallBanner(true); setShowInstallGuide(v => !v); }
+          }}
+          style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
+          앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
+        </button>
+        {!installPrompt && showInstallGuide && (
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
+            📱 <b>iOS Safari:</b> 하단 공유(□↑) 버튼 → <b>홈 화면에 추가</b><br />
+            🤖 <b>Android Chrome:</b> 주소창 오른쪽 ⋮ 메뉴 → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>
+          </div>
+        )}
+      </div>
+
+      <div style={S.sectionTitle}>백업 & 복구</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+          • 이 앱 데이터는 각 기기 브라우저에 저장됩니다.<br />
+          • JSON으로 백업하면 다른 기기에서 복구할 수 있어요.
+        </div>
+        <button style={S.btn} onClick={exportData}>📦 데이터 내보내기 (백업)</button>
+        <button style={S.btnGhost} onClick={() => fileInputRef.current?.click()}>📥 데이터 가져오기 (복구)</button>
+        <input ref={fileInputRef} type="file" accept="application/json" onChange={importData} style={{ display: "none" }} />
+      </div>
+
+      <div style={S.sectionTitle}>고급 설정</div>
+      <div style={S.card}>
+        <button onClick={() => setShowEventAdvanced(v => !v)}
+          style={{ ...S.btnGhost, marginTop: 0, fontSize: 13, textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>🏆 이벤트 배너 설정</span>
+          <span style={{ color: 'var(--dm-muted)', fontSize: 14 }}>{showEventAdvanced ? '▲' : '▼'}</span>
+        </button>
+        {showEventAdvanced && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+              홈 화면에 이벤트 배너를 표시해요. 기간 내에만 노출되고 D-day가 카운트다운돼요.
+            </div>
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>이벤트 이름</div>
+            <input style={S.input} value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="예: 3월 챌린지 🔥" maxLength={30} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>시작일</div>
+                <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종료일</div>
+                <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ fontWeight: 900, fontSize: 13 }}>배너 활성화</div>
+              <div onClick={() => setEventActive(v => !v)} style={{
+                width: 52, height: 28, borderRadius: 999,
+                background: eventActive ? "#6C8EFF" : "var(--dm-border)",
+                cursor: "pointer", position: "relative", flexShrink: 0,
+              }}>
+                <div style={{ position: "absolute", top: 4, left: eventActive ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+              </div>
+            </div>
+            <button style={S.btn} onClick={saveEvent}>이벤트 저장</button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ margin: '0 16px 16px' }}>
+        <button
+          style={{ ...S.btnGhost, borderColor: "rgba(248,113,113,.35)", color: "#F87171", width: '100%' }}
+          onClick={() => {
+            if (!window.confirm("모든 데이터를 삭제할까요?")) return;
+            if (!window.confirm("정말 삭제하시겠어요? (복구 불가)")) return;
+            try {
+              Object.keys(localStorage)
+                .filter((k) => k.startsWith("dm_"))
+                .forEach((k) => localStorage.removeItem(k));
+            } catch {}
+            window.location.reload();
+          }}
+        >
+          🗑️ 모든 데이터 삭제
+        </button>
+      </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
+  // ── 메인 메뉴 ──────────────────────────────────────
+  return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+
+      <div style={S.topbar}>
+        <div style={{ flex: 1 }}>
+          <div style={S.title}>설정</div>
+        </div>
+        <button
+          onClick={() => setIsDark(v => !v)}
+          style={{ width: 38, height: 38, borderRadius: 999,
+            border: "1.5px solid var(--dm-border)", background: "var(--dm-input)", fontSize: 18,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0 }}>
+          {isDark ? "☀️" : "🌙"}
+        </button>
+      </div>
+
+      <button
+        onClick={onOpenStats}
+        style={{ ...S.card, display: "flex", alignItems: "center", gap: 12,
+          cursor: "pointer", color: "var(--dm-text)", textAlign: "left", marginBottom: 16 }}>
+        <span style={{ fontSize: 24 }}>📊</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>통계 보기</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>레벨, XP, 습관 달성률 등</div>
+        </div>
+        <span style={{ marginLeft: "auto", color: "var(--dm-sub)", fontSize: 18 }}>›</span>
+      </button>
+
+      <MenuGroup label="개인">
+        <MenuRow icon="👤" title="프로필 & 목표" sub={user.name} onClick={() => setSubPage('profile')} />
+      </MenuGroup>
+
+      <MenuGroup label="알림">
+        <MenuRow icon="🔔" title="알림 설정" sub={notifEnabled ? '켜짐' : '꺼짐'} onClick={() => setSubPage('notifications')} />
+        <MenuRow icon="📨" title="텔레그램 자동화" sub={telegramCfg.botToken ? '설정됨' : '미설정'} onClick={() => setSubPage('telegram')} />
+      </MenuGroup>
+
+      <MenuGroup label="연동">
+        <MenuRow icon="🔗" title="Google 연동" sub="계정 · 캘린더 · 드라이브" onClick={() => setSubPage('integrations')} />
+      </MenuGroup>
+
+      <MenuGroup label="앱">
+        <MenuRow icon="⚙️" title="앱 관리" sub="설치 · 백업 · 데이터" onClick={() => setSubPage('app')} />
+      </MenuGroup>
+
+      <MenuGroup label="소셜">
+        <MenuRow icon="👥" title="친구 & 공유" onClick={() => setSubPage('friends')} />
+      </MenuGroup>
 
       {authUser && onOpenAdmin && (
-        <div style={{ padding: "0 18px 8px" }}>
-          <button onClick={onOpenAdmin} style={{ ...S.btn, background: "transparent", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)", boxShadow: "none", fontSize: 12 }}>
+        <div style={{ padding: '8px 16px' }}>
+          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12 }}>
             🛠 관리자 페이지
           </button>
         </div>
       )}
 
-      <div style={{ padding: "16px 18px", textAlign: "center", color: "var(--dm-muted)", fontSize: 12 }}>
-        DayMate Lite v44 · 2026-03-14
-      </div>
+      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite v63</div>
       <div style={{ height: 12 }} />
     </div>
   );

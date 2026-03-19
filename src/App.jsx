@@ -704,7 +704,8 @@ export default function App() {
           }))}
           goalChecks={goalChecks} onToggleGoal={onToggleGoal}
           onSetTodayTasks={onSetTodayTasks} onSaveMonthGoals={onSaveMonthGoals}
-          habits={habits} onToggleHabit={onToggleHabit}
+          habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
+          recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}

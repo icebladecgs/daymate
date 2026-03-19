@@ -7,7 +7,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -56,6 +56,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
   }, []); // eslint-disable-line
 
+  const [editingHabits, setEditingHabits] = useState(false);
+  const [editingRecurring, setEditingRecurring] = useState(false);
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
   const [editingGoals, setEditingGoals] = useState(false);
@@ -550,52 +552,124 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       </div>
 
-      {habits.length > 0 && (() => {
+      {(editingHabits || habits.length > 0) && (() => {
         const habitChecks = todayData?.habitChecks || {};
         const doneHabits = habits.filter(h => habitChecks[h.id]).length;
-        const allHabitsDone = doneHabits === habits.length;
+        const allHabitsDone = habits.length > 0 && doneHabits === habits.length;
         return (
           <>
             <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
               <span>🎯 오늘 습관</span>
-              <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>
-            </div>
-            <div style={{ ...S.card, border: allHabitsDone ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
-              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
-                <div style={{
-                  height: "100%", borderRadius: 3, transition: "width 0.3s",
-                  background: allHabitsDone ? "#4ADE80" : "#A78BFA",
-                  width: habits.length === 0 ? "0%" : `${(doneHabits / habits.length) * 100}%`,
-                }} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>
+                <button onClick={() => setEditingHabits(v => !v)}
+                  style={{ fontSize: 11, fontWeight: 900, color: editingHabits ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+                  {editingHabits ? "완료 ✓" : "⚙️ 편집"}
+                </button>
               </div>
-              {habits.map((h, i) => {
-                const checked = !!habitChecks[h.id];
-                return (
-                  <div key={h.id} onClick={() => { navigator.vibrate?.(50); onToggleHabit(h.id); }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
-                      cursor: "pointer" }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                      border: checked ? "none" : "2px solid #3A4260",
-                      background: checked ? "#A78BFA" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+            </div>
+            <div style={{ ...S.card, border: allHabitsDone && !editingHabits ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
+              {editingHabits ? (
+                <>
+                  {(habits || []).map(h => (
+                    <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
+                        value={h.icon} maxLength={2} placeholder="🎯"
+                        onChange={e => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))} />
+                      <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                        value={h.name} maxLength={20} placeholder="습관 이름"
+                        onChange={e => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))} />
+                      <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
+                        style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
                     </div>
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{h.icon}</span>
+                  ))}
+                  {(habits || []).length < 10 && (
+                    <button style={{ ...S.btn, marginTop: (habits||[]).length > 0 ? 4 : 0 }}
+                      onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: '', icon: '🎯' }])}>
+                      ➕ 습관 추가
+                    </button>
+                  )}
+                  {(habits || []).length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 등록된 습관이 없어요.</div>}
+                </>
+              ) : (
+                <>
+                  <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
                     <div style={{
-                      fontSize: 14, fontWeight: 700, flex: 1,
-                      color: checked ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: checked ? "line-through" : "none",
-                    }}>{h.name || "(이름 없음)"}</div>
+                      height: "100%", borderRadius: 3, transition: "width 0.3s",
+                      background: allHabitsDone ? "#4ADE80" : "#A78BFA",
+                      width: habits.length === 0 ? "0%" : `${(doneHabits / habits.length) * 100}%`,
+                    }} />
                   </div>
-                );
-              })}
+                  {habits.map((h, i) => {
+                    const checked = !!habitChecks[h.id];
+                    return (
+                      <div key={h.id} onClick={() => { navigator.vibrate?.(50); onToggleHabit(h.id); }}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                          borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
+                          cursor: "pointer" }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                          border: checked ? "none" : "2px solid #3A4260",
+                          background: checked ? "#A78BFA" : "transparent",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>{h.icon}</span>
+                        <div style={{
+                          fontSize: 14, fontWeight: 700, flex: 1,
+                          color: checked ? "var(--dm-muted)" : "var(--dm-text)",
+                          textDecoration: checked ? "line-through" : "none",
+                        }}>{h.name || "(이름 없음)"}</div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </>
         );
       })()}
+
+      {/* 반복 할일 관리 */}
+      {(editingRecurring || (recurringTasks && recurringTasks.length > 0)) && (
+        <div style={{ ...S.sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }}>
+          <span>🔁 반복 할일</span>
+          <button onClick={() => setEditingRecurring(v => !v)}
+            style={{ fontSize: 11, fontWeight: 900, color: editingRecurring ? '#4ADE80' : 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+            {editingRecurring ? '완료 ✓' : '⚙️ 편집'}
+          </button>
+        </div>
+      )}
+      {editingRecurring && (
+        <div style={S.card}>
+          <div style={{ fontSize: 12, color: 'var(--dm-sub)', marginBottom: 10 }}>매일 또는 특정 요일에 자동으로 추가되는 할일이에요.</div>
+          {(recurringTasks || []).map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <select value={t.days}
+                onChange={e => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
+                style={{ ...S.input, width: 80, marginBottom: 0, padding: '8px 6px', fontSize: 12 }}>
+                <option value="daily">매일</option>
+                <option value="1">월</option><option value="2">화</option><option value="3">수</option>
+                <option value="4">목</option><option value="5">금</option>
+                <option value="6">토</option><option value="0">일</option>
+              </select>
+              <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={t.title} maxLength={40} placeholder="반복 할일 이름"
+                onChange={e => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, title: e.target.value} : x))} />
+              <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
+                style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+          {(recurringTasks || []).length < 10 && (
+            <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
+              onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: '', days: 'daily' }])}>
+              ➕ 반복 할일 추가
+            </button>
+          )}
+          {(recurringTasks || []).length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 등록된 반복 할일이 없어요.</div>}
+        </div>
+      )}
 
       <div style={{ ...S.sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }}>
         <span>📅 이번주 일정</span>
