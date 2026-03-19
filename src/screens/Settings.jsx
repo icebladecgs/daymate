@@ -742,7 +742,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.sectionTitle}>🎁 친구 초대</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          내 초대 코드를 친구에게 공유하세요. 친구가 코드를 입력하면 <b style={{ color: "#6C8EFF" }}>+100 XP</b>를 받아요!
+          내 코드/링크로 친구가 가입하면 <b style={{ color: "#6C8EFF" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
         </div>
         <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>내 초대 코드</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
@@ -756,7 +756,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             {codeCopied ? '✓' : '복사'}
           </button>
         </div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>친구 코드 입력</div>
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 4 }}>친구 코드 입력</div>
+        <div style={{ fontSize: 11, color: "var(--dm-sub)", marginBottom: 8, lineHeight: 1.5 }}>친구에게 코드를 직접 받았다면 여기 입력 → <b style={{ color: "#4ADE80" }}>내가 +100 XP</b> 획득!</div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             style={{ ...S.input, flex: 1, marginBottom: 0, letterSpacing: 2, textTransform: "uppercase" }}
@@ -776,7 +777,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.sectionTitle}>🔗 친구에게 공유하기</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          DayMate를 친구에게 소개해보세요!
+          링크로 접속하면 내 초대 코드가 자동 적용돼요. 친구가 +100 XP를 받고, 나는 초대 랭킹이 올라가요! 🎉
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {navigator.share && (
