@@ -622,8 +622,10 @@ export default function App() {
     return (
       <div style={S.app}>
         <div style={S.phone}>
+          <div className="dm-blob dm-blob-1" />
+          <div className="dm-blob dm-blob-2" />
           {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-          <div style={{ padding: "44px 22px 24px" }}>
+          <div style={{ padding: "44px 22px 24px", position: "relative", zIndex: 1 }}>
             {iconBox}
             {stepDots}
 
@@ -833,6 +835,8 @@ export default function App() {
   return (
     <div style={S.app}>
       <div style={{...S.phone, ...phoneStyleOverride}}>
+        <div className="dm-blob dm-blob-1" />
+        <div className="dm-blob dm-blob-2" />
         {renderScreen()}
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,

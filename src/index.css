@@ -15,39 +15,70 @@
 
 /* ===== DayMate theme variables ===== */
 [data-theme="dark"] {
-  --dm-bg:        #0F1117;
-  --dm-phone:     #181C27;
-  --dm-card:      #1E2336;
-  --dm-border:    #2D344A;
-  --dm-border2:   #363D54;
-  --dm-input:     #252B3E;
-  --dm-text:      #F0F2F8;
-  --dm-sub:       #A8AFCA;
-  --dm-muted:     #5C6480;
-  --dm-row:       #1E2235;
-  --dm-nav:       #181C27;
-  --dm-toast-bg:  #1A2E20;
-  --dm-toast-bd:  #2E7D52;
-  --dm-pill-off:  #1E2336;
-  --dm-deep:      #1A1F2E;
+  --dm-bg:        #10131d;
+  --dm-phone:     rgba(16, 19, 29, 0.45);
+  --dm-card:      rgba(26, 31, 46, 0.7);
+  --dm-border:    rgba(184, 195, 255, 0.1);
+  --dm-border2:   rgba(184, 195, 255, 0.18);
+  --dm-input:     rgba(184, 195, 255, 0.07);
+  --dm-text:      #e0e2f0;
+  --dm-sub:       #c4c5d8;
+  --dm-muted:     #8e90a1;
+  --dm-row:       rgba(184, 195, 255, 0.05);
+  --dm-nav:       rgba(12, 15, 25, 0.82);
+  --dm-toast-bg:  rgba(26, 46, 32, 0.92);
+  --dm-toast-bd:  rgba(46, 125, 82, 0.8);
+  --dm-pill-off:  rgba(184, 195, 255, 0.06);
+  --dm-deep:      rgba(20, 24, 40, 0.85);
 }
 
 [data-theme="light"] {
-  --dm-bg:        #F0F2F8;
-  --dm-phone:     #FFFFFF;
-  --dm-card:      #FFFFFF;
-  --dm-border:    #D8DDEF;
-  --dm-border2:   #C8CCDC;
-  --dm-input:     #F4F5FA;
-  --dm-text:      #1A1F2E;
-  --dm-sub:       #5C6480;
-  --dm-muted:     #9CA3BC;
-  --dm-row:       #F0F2F8;
-  --dm-nav:       #FFFFFF;
-  --dm-toast-bg:  #F0FFF4;
-  --dm-toast-bd:  #4ADE80;
-  --dm-pill-off:  #F0F2F8;
-  --dm-deep:      #F4F5FA;
+  --dm-bg:        #f0f2f8;
+  --dm-phone:     rgba(255, 255, 255, 0.55);
+  --dm-card:      rgba(255, 255, 255, 0.82);
+  --dm-border:    rgba(0, 0, 0, 0.08);
+  --dm-border2:   rgba(0, 0, 0, 0.13);
+  --dm-input:     rgba(0, 0, 0, 0.05);
+  --dm-text:      #1a1f2e;
+  --dm-sub:       #5c6480;
+  --dm-muted:     #9ca3bc;
+  --dm-row:       rgba(0, 0, 0, 0.04);
+  --dm-nav:       rgba(255, 255, 255, 0.88);
+  --dm-toast-bg:  rgba(240, 255, 244, 0.95);
+  --dm-toast-bd:  rgba(74, 222, 128, 0.8);
+  --dm-pill-off:  rgba(0, 0, 0, 0.04);
+  --dm-deep:      rgba(240, 242, 248, 0.88);
+}
+
+/* ===== Ambient blob decorations ===== */
+.dm-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .dm-blob-1 {
+  top: -8%;
+  right: -18%;
+  width: 450px;
+  height: 450px;
+  background: rgba(75, 111, 255, 0.18);
+  filter: blur(100px);
+}
+
+[data-theme="dark"] .dm-blob-2 {
+  bottom: 8%;
+  left: -15%;
+  width: 380px;
+  height: 380px;
+  background: rgba(108, 142, 255, 0.13);
+  filter: blur(90px);
+}
+
+[data-theme="light"] .dm-blob-1,
+[data-theme="light"] .dm-blob-2 {
+  display: none;
 }
 
 a {
