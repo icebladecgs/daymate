@@ -15,20 +15,68 @@ export const requestPermission = async () => {
   }
 };
 
-export const playNotifSound = () => {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+export const SOUND_STYLES = [
+  { id: 'beep',   label: '비프',       desc: '짧은 단음' },
+  { id: 'dingdong', label: '딩동',     desc: '두 음 차임벨' },
+  { id: 'triple', label: '트리플',     desc: '세 번 띵띵띵' },
+  { id: 'soft',   label: '부드러운',   desc: '페이드인 종소리' },
+];
+
+const _beep = (ctx) => {
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+  g.gain.setValueAtTime(0.3, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+};
+
+const _dingdong = (ctx) => {
+  [[523, 0], [392, 0.25]].forEach(([freq, delay]) => {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+    g.gain.setValueAtTime(0, ctx.currentTime + delay);
+    g.gain.linearRampToValueAtTime(0.35, ctx.currentTime + delay + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.5);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.5);
+  });
+};
+
+const _triple = (ctx) => {
+  [0, 0.2, 0.4].forEach(delay => {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, ctx.currentTime + delay);
+    g.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.15);
+  });
+};
+
+const _soft = (ctx) => {
+  const osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.connect(g); g.connect(ctx.destination);
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(528, ctx.currentTime);
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.8);
+};
+
+export const playNotifSound = (style) => {
+  try {
+    const s = style || localStorage.getItem('dm_notif_sound_style') || 'beep';
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (s === 'dingdong') _dingdong(ctx);
+    else if (s === 'triple') _triple(ctx);
+    else if (s === 'soft') _soft(ctx);
+    else _beep(ctx);
   } catch { /* ignore */ }
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
-import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration } from "../utils/notification.js";
+import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, SOUND_STYLES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
@@ -160,6 +160,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searching, setSearching] = useState(false);
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
+  const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
   const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
   const [morningWorkTime, setMorningWorkTime] = useState(alarmTimes.morningWork || '09:00');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
@@ -420,7 +421,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.sectionTitle}>소리 / 진동</div>
       <div style={S.card}>
         {[
-          { label: '알림 소리', sub: '알림 시 비프음 재생', value: notifSound, onChange: (v) => { setNotifSound(v); localStorage.setItem('dm_notif_sound', v); if (v) playNotifSound(); } },
+          { label: '알림 소리', sub: '알림 시 소리 재생', value: notifSound, onChange: (v) => { setNotifSound(v); localStorage.setItem('dm_notif_sound', v); if (v) playNotifSound(soundStyle); } },
           { label: '진동', sub: 'Android에서만 동작', value: notifVibration, onChange: (v) => { setNotifVibration(v); localStorage.setItem('dm_notif_vibration', v); if (v) triggerVibration(); } },
         ].map(({ label, sub, value, onChange }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
@@ -436,6 +437,26 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             </div>
           </div>
         ))}
+        {notifSound && (
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 8 }}>소리 스타일</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {SOUND_STYLES.map(s => (
+                <button key={s.id} onClick={() => { setSoundStyle(s.id); localStorage.setItem('dm_notif_sound_style', s.id); playNotifSound(s.id); }}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, border: '1.5px solid',
+                    borderColor: soundStyle === s.id ? '#6C8EFF' : 'var(--dm-border)',
+                    background: soundStyle === s.id ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+                    color: soundStyle === s.id ? '#6C8EFF' : 'var(--dm-text)',
+                    fontSize: 13, fontWeight: soundStyle === s.id ? 900 : 400, cursor: 'pointer',
+                  }}>
+                  {s.label}
+                  <span style={{ fontSize: 10, color: 'var(--dm-muted)', marginLeft: 4 }}>{s.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={S.sectionTitle}>알림 시간 설정</div>
