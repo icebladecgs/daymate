@@ -809,6 +809,7 @@ export default function App() {
         onSetTodayTasks={onSetTodayTasks}
         onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
         onToggleHabit={onToggleHabit}
+        someday={someday} setSomeday={setSomeday}
       />;
     }
     return null;

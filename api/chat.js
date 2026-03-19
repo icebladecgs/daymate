@@ -62,6 +62,42 @@ const tools = [
       required: ['habit_name', 'done'],
     },
   },
+  {
+    name: 'add_someday',
+    description: '언젠가 할일 목록에 항목을 추가합니다',
+    input_schema: {
+      type: 'object',
+      properties: { title: { type: 'string', description: '언젠가 할일 제목' } },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'delete_someday',
+    description: '언젠가 할일 목록에서 항목을 삭제합니다',
+    input_schema: {
+      type: 'object',
+      properties: { number: { type: 'number', description: '언젠가 할일 번호 (1부터 시작)' } },
+      required: ['number'],
+    },
+  },
+  {
+    name: 'move_someday_to_task',
+    description: '언젠가 할일 항목을 오늘 할일로 이동합니다',
+    input_schema: {
+      type: 'object',
+      properties: { number: { type: 'number', description: '언젠가 할일 번호 (1부터 시작)' } },
+      required: ['number'],
+    },
+  },
+  {
+    name: 'move_task_to_someday',
+    description: '오늘 할일 항목을 언젠가 할일로 내립니다',
+    input_schema: {
+      type: 'object',
+      properties: { number: { type: 'number', description: '할일 번호 (1부터 시작)' } },
+      required: ['number'],
+    },
+  },
 ];
 
 export default async function handler(req, res) {
@@ -70,19 +106,20 @@ export default async function handler(req, res) {
   const { message, history = [], context = {} } = req.body || {};
   if (!message) return res.status(400).json({ error: '메시지가 없어요' });
 
-  const { tasks = [], memo = '', habits = [], habitChecks = {}, userName = '사용자' } = context;
+  const { tasks = [], memo = '', habits = [], habitChecks = {}, someday = [], userName = '사용자' } = context;
   const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
   const filledTasks = tasks.filter(t => t.title?.trim());
   const doneCount = filledTasks.filter(t => t.done).length;
 
   const systemPrompt = `당신은 DayMate 앱의 AI 어시스턴트입니다. ${userName}님의 하루 관리를 돕습니다.
 한국어로 친근하고 간결하게 답변하세요. 불필요한 서두 없이 바로 답변하세요.
-할일 추가/완료/삭제, 메모 추가, 습관 완료/취소 등을 요청하면 도구를 사용해 실제로 처리해주세요.
+할일 추가/완료/삭제, 메모 추가, 습관 완료/취소, 언젠가 할일 추가/삭제/이동 등을 요청하면 도구를 사용해 실제로 처리해주세요.
 
 오늘(${today}) 현황:
 - 할일(${doneCount}/${filledTasks.length} 완료): ${filledTasks.length === 0 ? '없음' : filledTasks.map((t, i) => `${i+1}. ${t.title}[${t.done ? '완료' : '미완료'}]`).join(', ')}
 - 메모: ${memo?.trim() || '없음'}
-- 습관: ${habits.length === 0 ? '없음' : habits.map(h => `${h.name}[${habitChecks[h.id] ? '완료' : '미완료'}]`).join(', ')}`;
+- 습관: ${habits.length === 0 ? '없음' : habits.map(h => `${h.name}[${habitChecks[h.id] ? '완료' : '미완료'}]`).join(', ')}
+- 언젠가 할일: ${someday.length === 0 ? '없음' : someday.map((s, i) => `${i+1}. ${s.title}`).join(', ')}`;
 
   try {
     const messages = [

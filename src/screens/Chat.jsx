@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 
-export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo, onToggleHabit }) {
+export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo, onToggleHabit, someday, setSomeday }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `안녕하세요 ${user?.name || ''}님! 오늘 하루 어떻게 도와드릴까요?` }
   ]);
@@ -46,9 +46,32 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
         }
       } else if (action.type === 'set_tasks') {
         const newTasks = action.titles.map((title, i) => ({ id: `t${Date.now()}_${i}`, title, done: false, checkedAt: null, priority: false }));
-        // 빈 슬롯 채우고 나머지 추가
         tasks = tasks.map(t => !t.title?.trim() && newTasks.length > 0 ? newTasks.shift() : t);
         tasks = [...tasks, ...newTasks];
+      } else if (action.type === 'add_someday') {
+        setSomeday?.(prev => [...(prev || []), { id: `sd${Date.now()}`, title: action.title, done: false }]);
+      } else if (action.type === 'delete_someday') {
+        setSomeday?.(prev => {
+          const items = (prev || []);
+          const target = items[action.number - 1];
+          return target ? items.filter(s => s.id !== target.id) : items;
+        });
+      } else if (action.type === 'move_someday_to_task') {
+        const item = (someday || [])[action.number - 1];
+        if (item) {
+          setSomeday?.(prev => prev.filter(s => s.id !== item.id));
+          const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false };
+          const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+          if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+          else tasks = [...tasks, newTask];
+        }
+      } else if (action.type === 'move_task_to_someday') {
+        const filled = tasks.filter(t => t.title?.trim());
+        const target = filled[action.number - 1];
+        if (target) {
+          tasks = tasks.filter(t => t.id !== target.id);
+          setSomeday?.(prev => [...(prev || []), { id: `sd${Date.now()}`, title: target.title, done: false }]);
+        }
       }
     }
 
@@ -79,6 +102,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
             habits: habits || [],
             habitChecks: todayData?.habitChecks || {},
             scores: scores || {},
+            someday: someday || [],
             userName: user?.name || '사용자',
           },
         }),
