@@ -139,7 +139,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       </div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
-          <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
+          <div key={t.id} style={{ marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
+          <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => toggleDone(t.id)}
               style={{
@@ -193,6 +194,20 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             >
               ✕
             </button>
+          </div>
+          {t.title?.trim() && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 52 }}>
+              <span style={{ fontSize: 13, color: t.time ? '#6C8EFF' : 'var(--dm-muted)' }}>⏰</span>
+              <input type="time" value={t.time || ''}
+                onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
+                style={{ ...S.input, width: 110, padding: '4px 8px', fontSize: 12, marginBottom: 0, color: t.time ? 'var(--dm-text)' : 'var(--dm-muted)' }} />
+              {t.time && (
+                <button onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 13 }}>✕</button>
+              )}
+              {t.time && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>알림 예약됨</span>}
+            </div>
+          )}
           </div>
         ))}
         <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>

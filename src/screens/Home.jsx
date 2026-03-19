@@ -289,16 +289,30 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         {editingTasks ? (
           <>
             {draftTasks.map((t, idx) => (
-              <div key={t.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={t.title}
-                  onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
-                  placeholder={`할 일 ${idx + 1}`}
-                  maxLength={60}
-                />
-                <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+              <div key={t.id} style={{ marginBottom: 10 }}>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <input
+                    style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                    value={t.title}
+                    onChange={(e) => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))}
+                    placeholder={`할 일 ${idx + 1}`}
+                    maxLength={60}
+                  />
+                  <button onClick={() => setDraftTasks(prev => prev.filter(x => x.id !== t.id))}
+                    style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
+                </div>
+                {t.title?.trim() && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <span style={{ fontSize: 13, color: t.time ? '#6C8EFF' : 'var(--dm-muted)' }}>⏰</span>
+                    <input type="time" value={t.time || ''}
+                      onChange={e => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x))}
+                      style={{ ...S.input, width: 110, padding: '4px 8px', fontSize: 12, marginBottom: 0 }} />
+                    {t.time && (
+                      <button onClick={() => setDraftTasks(prev => prev.map(x => x.id === t.id ? { ...x, time: undefined } : x))}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 13 }}>✕</button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             <button style={{ ...S.btn, marginTop: 4 }}

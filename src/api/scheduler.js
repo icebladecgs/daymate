@@ -39,6 +39,28 @@ class NotifScheduler {
     this.timers[id] = setTimeout(fire, this.msUntil(timeStr));
   }
 
+  scheduleTaskAlarms(tasks, userName, enabled) {
+    // 기존 task_ 타이머 제거
+    Object.keys(this.timers).filter(k => k.startsWith('task_')).forEach(k => {
+      clearTimeout(this.timers[k]);
+      delete this.timers[k];
+    });
+    if (!enabled || getPermission() !== 'granted') return;
+    const now = new Date();
+    tasks.filter(t => t.title?.trim() && t.time && !t.done).forEach(t => {
+      const [hh, mm] = t.time.split(':').map(Number);
+      const fireAt = new Date();
+      fireAt.setHours(hh, mm, 0, 0);
+      const ms = fireAt.getTime() - now.getTime();
+      if (ms > 0) {
+        this.timers[`task_${t.id}`] = setTimeout(() => {
+          sendNotification('DayMate ⏰', `할 일: ${t.title}`, '⏰');
+          delete this.timers[`task_${t.id}`];
+        }, ms);
+      }
+    });
+  }
+
   apply(enabled, userName, telegramCfg = {}, alarmTimes = {}) {
     this.cancelAll();
     if (!enabled) return;

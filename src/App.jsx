@@ -424,6 +424,9 @@ export default function App() {
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
+            if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
+            const ym = todayStr.slice(0, 7);
+            if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
           }
           if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
           if (Object.keys(remote.days).length > 0) {
@@ -471,12 +474,24 @@ export default function App() {
     store.set("dm_someday", someday);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { someday }).catch(() => {});
   }, [someday, authUser]);
+  useEffect(() => {
+    const ym = todayStr.slice(0, 7);
+    store.set(`dm_goal_checks_${ym}`, goalChecks);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { [`goalChecks_${ym}`]: goalChecks }).catch(() => {});
+  }, [goalChecks, authUser]); // eslint-disable-line
+  useEffect(() => {
+    store.set("dm_invite_bonus", inviteBonus);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { inviteBonus }).catch(() => {});
+  }, [inviteBonus, authUser]);
 
   useEffect(() => {
     scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
     return () => scheduler.cancelAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifEnabled, user.name, telegramCfg, alarmTimes]);
+  useEffect(() => {
+    scheduler.scheduleTaskAlarms(todayData?.tasks || [], user.name || "사용자", notifEnabled);
+  }, [todayData, notifEnabled]); // eslint-disable-line
 
   useEffect(() => {
     if (screen === "today") ensureToday();
