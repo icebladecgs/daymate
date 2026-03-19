@@ -145,6 +145,7 @@ export default function App() {
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
   const [myRank, setMyRank] = useState(null);
   const [communityId, setCommunityIdState] = useState(() => store.get('dm_community_id', null));
+  const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
   const setCommunityId = (id) => { setCommunityIdState(id); store.set('dm_community_id', id); };
 
   useEffect(() => {
@@ -422,6 +423,7 @@ export default function App() {
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
+            if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
           }
           if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
           if (Object.keys(remote.days).length > 0) {
@@ -465,6 +467,10 @@ export default function App() {
     store.set("dm_recurring", recurringTasks);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { recurringTasks }).catch(() => {});
   }, [recurringTasks, authUser]);
+  useEffect(() => {
+    store.set("dm_someday", someday);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { someday }).catch(() => {});
+  }, [someday, authUser]);
 
   useEffect(() => {
     scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
@@ -706,6 +712,7 @@ export default function App() {
           onSetTodayTasks={onSetTodayTasks} onSaveMonthGoals={onSaveMonthGoals}
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+          someday={someday} setSomeday={setSomeday}
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
