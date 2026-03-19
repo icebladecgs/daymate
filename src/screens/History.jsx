@@ -148,10 +148,9 @@ export default function History({ plans, onOpenDate, habits }) {
             }} />
             <div style={{
               position: "fixed", left: 0, right: 0, bottom: 0,
-              background: "var(--dm-deep)", borderRadius: "20px 20px 0 0",
-              zIndex: 201, boxShadow: "0 -4px 24px rgba(0,0,0,.4)",
-              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-              border: "1px solid var(--dm-border)",
+              background: "var(--dm-bg)", borderRadius: "20px 20px 0 0",
+              zIndex: 201, boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
+              borderTop: "1px solid var(--dm-border2)",
               display: "flex", flexDirection: "column", maxHeight: "72vh",
             }}>
               {/* 고정 헤더 */}
@@ -201,13 +200,13 @@ export default function History({ plans, onOpenDate, habits }) {
                 )}
               </div>
               {/* 고정 버튼 영역 */}
-              <div style={{ display: "flex", gap: 10, padding: "12px 20px 36px", flexShrink: 0, borderTop: "1px solid var(--dm-border)" }}>
+              <div style={{ display: "flex", gap: 10, padding: "12px 20px 36px", flexShrink: 0, borderTop: "1px solid var(--dm-border2)" }}>
                 <button onClick={() => setPreview(null)}
-                  style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--dm-input)", border: "1px solid var(--dm-border)", color: "var(--dm-sub)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--dm-card)", border: "1.5px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
                   닫기
                 </button>
                 <button onClick={() => { onOpenDate(preview); setPreview(null); }}
-                  style={{ flex: 2, padding: 12, borderRadius: 10, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  style={{ flex: 2, padding: 12, borderRadius: 10, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 14, boxShadow: "0 4px 16px rgba(75,111,255,.4)" }}>
                   상세보기 →
                 </button>
               </div>
