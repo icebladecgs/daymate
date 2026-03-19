@@ -394,6 +394,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           style={S.btnGhost}
           onClick={async () => {
             if (permission === "granted") {
+              if (notifSound) playNotifSound();
+              if (notifVibration) triggerVibration();
               sendNotification("DayMate Lite", "테스트 알림입니다. ✅", "🔔");
               setToast("테스트 알림 발송 ✅");
             } else if (permission === "denied") {

@@ -1,4 +1,4 @@
-import { sendNotification, getPermission } from '../utils/notification.js';
+import { sendNotification, getPermission, playNotifSound, triggerVibration } from '../utils/notification.js';
 import { toDateStr } from '../utils/date.js';
 import { store } from '../utils/storage.js';
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText } from './telegram.js';
@@ -30,6 +30,10 @@ class NotifScheduler {
   schedule(id, timeStr, title, body, iconEmoji = "🔔", onFire = null) {
     clearTimeout(this.timers[id]);
     const fire = async () => {
+      try {
+        if (localStorage.getItem('dm_notif_sound') !== 'false') playNotifSound();
+        if (localStorage.getItem('dm_notif_vibration') !== 'false') triggerVibration();
+      } catch { /* ignore */ }
       sendNotification(title, body, iconEmoji);
       if (onFire) {
         try { await onFire(); } catch {}

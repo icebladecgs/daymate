@@ -57,14 +57,6 @@ export const sendNotification = (title, body, iconEmoji = "✅") => {
       try { n.close(); } catch { /* ignore */ }
     };
 
-    // 소리/진동 (localStorage에서 직접 읽기)
-    try {
-      const sound = localStorage.getItem('dm_notif_sound');
-      const vibration = localStorage.getItem('dm_notif_vibration');
-      if (sound !== 'false') playNotifSound();
-      if (vibration !== 'false') triggerVibration();
-    } catch { /* ignore */ }
-
     return n;
   } catch {
     return null;
