@@ -64,6 +64,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [newGoalInput, setNewGoalInput] = useState('');
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [goalsExpanded, setGoalsExpanded] = useState(false);
   const [swipedId, setSwipedId] = useState(null);
   const [checkedId, setCheckedId] = useState(null);
   const swipeStartX = useRef(0);
@@ -459,14 +460,31 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       </div>
 
-      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🎯</span>이달 목표</span>
-        <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
-          style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-          {editingGoals ? "완료 ✓" : "✏️ 편집"}
-        </button>
+      <div
+        onClick={() => { if (!editingGoals) setGoalsExpanded(v => !v); }}
+        style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>🎯</span>이달 목표
+          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>
+            {goalsExpanded ? "▾" : "▸"}
+          </span>
+          {!goalsExpanded && (() => {
+            const mg = goals.month || [];
+            const dg = mg.filter((_, i) => goalChecks[i]).length;
+            return mg.length > 0
+              ? <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{dg}/{mg.length} 달성</span>
+              : <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>탭하여 펼치기</span>;
+          })()}
+        </span>
+        {goalsExpanded && (
+          <button onClick={e => { e.stopPropagation(); editingGoals ? saveGoalEdits() : startEditGoals(); }}
+            style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+            {editingGoals ? "완료 ✓" : "✏️ 편집"}
+          </button>
+        )}
       </div>
-      <div style={S.card}>
+      {(goalsExpanded || editingGoals) && <div style={S.card}>
         {editingGoals ? (
           <>
             {draftGoals.map((g, i) => (
@@ -577,7 +595,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {(editingHabits || habits.length > 0) && (() => {
         const habitChecks = todayData?.habitChecks || {};
