@@ -97,8 +97,8 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
         </div>
       )}
 
-      <div style={{ ...S.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: 16 }}>
-        <span>📝 오늘 메모</span>
+      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>오늘 메모</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
           <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>수시로 기록해요</span>
@@ -136,7 +136,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
         </div>
       </div>
 
-      <div style={S.sectionTitle}>일기 (22:00 이후 추천)</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📖</span>일기 (22:00 이후 추천)</div>
       <div style={S.card}>
         <textarea
           rows={10}

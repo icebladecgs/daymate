@@ -489,7 +489,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
 
-      <div style={S.sectionTitle}>🗣 음성 알람 (TTS)</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🗣</span> 음성 알람 (TTS)</div>
       <div style={S.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
           <div>
@@ -752,7 +752,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
-      <div style={S.sectionTitle}>🗓️ 구글 캘린더</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🗓️</span> 구글 캘린더</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
           {gcalConnected
@@ -791,7 +791,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       </div>
 
-      <div style={S.sectionTitle}>☁️ 구글 드라이브</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>☁️</span> 구글 드라이브</div>
       <div style={S.card}>
         {lastDriveBackup && (
           <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8 }}>
@@ -831,7 +831,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <SubHeader title="친구 & 공유" onBack={() => setSubPage(null)} />
 
-      <div style={S.sectionTitle}>🎁 친구 초대</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🎁</span> 친구 초대</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           내 코드/링크로 친구가 가입하면 <b style={{ color: "#6C8EFF" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
@@ -866,7 +866,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
-      <div style={S.sectionTitle}>🔗 친구에게 공유하기</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🔗</span> 친구에게 공유하기</div>
       <div style={S.card}>
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           링크로 접속하면 내 초대 코드가 자동 적용돼요. 친구가 +100 XP를 받고, 나는 초대 랭킹이 올라가요! 🎉
@@ -908,7 +908,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <SubHeader title="앱 관리" onBack={() => setSubPage(null)} />
 
-      <div style={S.sectionTitle}>📲 앱 설치</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📲</span> 앱 설치</div>
       <div style={S.card}>
         <button onClick={() => {
             if (installPrompt) { handleInstall(); }

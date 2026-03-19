@@ -241,7 +241,7 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       {/* 다가오는 일정 */}
       {upcomingDates.length > 0 && (
         <>
-          <div style={S.sectionTitle}>📅 다가오는 일정</div>
+          <div style={S.sectionTitle}><span style={S.sectionEmoji}>📅</span> 다가오는 일정</div>
           {upcomingDates.map(date => (
             <div key={date}>
               <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 900, color: date === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
@@ -258,7 +258,7 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       {/* 지난 일정 */}
       {pastDates.length > 0 && (
         <>
-          <div style={S.sectionTitle}>🗂 지난 일정</div>
+          <div style={S.sectionTitle}><span style={S.sectionEmoji}>🗂</span> 지난 일정</div>
           {pastDates.map(date => (
             <div key={date}>
               <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 700, color: 'var(--dm-muted)' }}>

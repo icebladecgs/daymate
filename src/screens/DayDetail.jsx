@@ -97,8 +97,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         <div />
       </div>
 
-      <div style={{ ...S.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>할 일 ({data.tasks.length}개)</span>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>할 일 ({data.tasks.length}개)</span>
         {getValidGcalToken && (getValidGcalToken() ? (
           <button onClick={async () => {
             const token = getValidGcalToken();
@@ -220,7 +220,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
 
       {someday && someday.length > 0 && (
         <>
-          <div style={S.sectionTitle}>📋 언젠가 할일</div>
+          <div style={S.sectionTitle}><span style={S.sectionEmoji}>📋</span>언젠가 할일</div>
           <div style={S.card}>
             {someday.map((item) => (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--dm-row)' }}
@@ -236,7 +236,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         </>
       )}
 
-      <div style={S.sectionTitle}>체크</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>☑️</span>체크</div>
       <div style={S.card}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {CHECK_TIMES.map((t) => (
@@ -263,7 +263,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         });
         return (
           <>
-            <div style={S.sectionTitle}>🎯 습관</div>
+            <div style={S.sectionTitle}><span style={S.sectionEmoji}>🎯</span>습관</div>
             <div style={S.card}>
               {(habits || []).map((h, i) => {
                 const checked = !!habitChecks[h.id];
@@ -294,7 +294,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         );
       })()}
 
-      <div ref={memoRef} style={S.sectionTitle}>📝 메모</div>
+      <div ref={memoRef} style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span>메모</div>
       <div style={S.card}>
         <textarea
           rows={3}
@@ -320,7 +320,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         </div>
       </div>
 
-      <div style={S.sectionTitle}>일기</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📖</span>일기</div>
       <div style={S.card}>
         <textarea
           rows={6}

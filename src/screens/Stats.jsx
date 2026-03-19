@@ -169,7 +169,7 @@ const last30 = useMemo(() => {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>🔥 연속기록 · 이번주</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🔥</span> 연속기록 · 이번주</div>
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
           <div style={{ textAlign: "center", minWidth: 56 }}>
@@ -206,7 +206,7 @@ const last30 = useMemo(() => {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>이달 완벽한 날</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🌟</span>이달 완벽한 날</div>
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 42, fontWeight: 900, color: perfectRate >= 80 ? "#4ADE80" : perfectRate >= 50 ? "#FCD34D" : "#F87171", marginBottom: 8 }}>
@@ -229,7 +229,7 @@ const last30 = useMemo(() => {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>연간 월별 진행도</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📈</span>연간 월별 진행도</div>
       <div style={{ ...S.card, margin: "0 0 10px", padding: "10px 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(50px,1fr))", gap: 6 }}>
           {monthStats.map((m) => (
@@ -254,7 +254,7 @@ const last30 = useMemo(() => {
         </div>
       </div>
 
-      <div style={S.sectionTitle}>📝 월간 리포트 — {viewMonth + 1}월</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span> 월간 리포트 — {viewMonth + 1}월</div>
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: monthlyReport.habitStats.length > 0 ? 14 : 0 }}>
           {[
@@ -289,7 +289,7 @@ const last30 = useMemo(() => {
         )}
       </div>
 
-      <div style={S.sectionTitle}>📊 최근 30일</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📊</span> 최근 30일</div>
       <div style={{ ...S.card, padding: "14px 12px" }}>
         {/* 바 차트 */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 72 }}>
@@ -337,7 +337,7 @@ const last30 = useMemo(() => {
 
       {(habits || []).length > 0 && (
         <>
-          <div style={S.sectionTitle}>🎯 습관 달성률</div>
+          <div style={S.sectionTitle}><span style={S.sectionEmoji}>🎯</span> 습관 달성률</div>
           <div style={{ ...S.card, margin: "0 0 10px" }}>
             {(habits || []).map(h => {
               let done = 0, total = 0;
@@ -373,7 +373,7 @@ const last30 = useMemo(() => {
       )}
 
       {/* 전체 랭킹 */}
-      <div style={S.sectionTitle}>🏆 랭킹</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🏆</span> 랭킹</div>
       <div style={S.card}>
         {/* 탭 */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>

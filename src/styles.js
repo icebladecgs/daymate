@@ -45,12 +45,19 @@ const S = {
     boxSizing: "border-box",
   },
   sectionTitle: {
-    padding: "18px 16px 8px",
-    fontSize: 14,
-    letterSpacing: "0.02em",
+    padding: "22px 16px 8px",
+    fontSize: 17,
+    letterSpacing: "0.01em",
     color: "var(--dm-text)",
     fontWeight: 900,
     textTransform: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionEmoji: {
+    fontSize: 22,
+    lineHeight: 1,
   },
   input: {
     width: "100%",

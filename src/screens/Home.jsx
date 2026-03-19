@@ -260,8 +260,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>✅ 오늘 할일</span>
+      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>오늘 할일</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={fetchAiSuggestions} disabled={aiLoading}
             style={{ fontSize: 11, fontWeight: 900, color: "#A78BFA", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
@@ -408,8 +408,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         )}
       </div>
 
-      <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-        <span>🎯 이달 목표</span>
+      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🎯</span>이달 목표</span>
         <button onClick={editingGoals ? saveGoalEdits : startEditGoals}
           style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
           {editingGoals ? "완료 ✓" : "✏️ 편집"}
@@ -528,7 +528,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       </div>
 
-      <div style={S.sectionTitle}>📋 언젠가 할일</div>
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📋</span>언젠가 할일</div>
       <div style={S.card}>
         {someday.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>언제 할지 모르지만 해야 할 일을 적어두세요.</div>
@@ -571,8 +571,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         const allHabitsDone = habits.length > 0 && doneHabits === habits.length;
         return (
           <>
-            <div style={{ ...S.sectionTitle, display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 16 }}>
-              <span>🎯 오늘 습관</span>
+            <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🎯</span>오늘 습관</span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>
                 <button onClick={() => setEditingHabits(v => !v)}
@@ -646,8 +646,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
       {/* 반복 할일 관리 */}
       {(editingRecurring || (recurringTasks && recurringTasks.length > 0)) && (
-        <div style={{ ...S.sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }}>
-          <span>🔁 반복 할일</span>
+        <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🔁</span>반복 할일</span>
           <button onClick={() => setEditingRecurring(v => !v)}
             style={{ fontSize: 11, fontWeight: 900, color: editingRecurring ? '#4ADE80' : 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
             {editingRecurring ? '완료 ✓' : '⚙️ 편집'}
@@ -684,8 +684,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      <div style={{ ...S.sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }}>
-        <span>📅 이번주 일정</span>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>이번주 일정</span>
         {getValidGcalToken?.() && (
           <button onClick={() => {
             const token = getValidGcalToken();
