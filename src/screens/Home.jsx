@@ -359,6 +359,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 height: "100%", borderRadius: 3, transition: "width 0.3s",
                 background: allDone ? "#4ADE80" : "#4B6FFF",
                 width: `${(doneCount / filledCount) * 100}%`,
+                boxShadow: allDone ? "0 0 10px rgba(74,222,128,0.5)" : "0 0 10px rgba(75,111,255,0.5)",
               }} />
             </div>
             {[...(todayData?.tasks || [])].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).map((task, i, arr) => {
@@ -367,7 +368,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               const isChecked = checkedId === task.id;
               return (
                 <div key={task.id} style={{ position: "relative", overflow: "hidden",
-                  borderBottom: i < arr.length - 1 ? `1px solid var(--dm-row)` : "none" }}>
+                  borderBottom: i < arr.length - 1 ? `1px solid var(--dm-row)` : "none",
+                  borderLeft: task.priority ? "3px solid #4B6FFF" : "3px solid transparent" }}>
                   <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 140, display: "flex" }}>
                     <button onClick={() => {
                       const item = (todayData?.tasks || []).find(t => t.id === task.id);
@@ -410,11 +412,17 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                     }}>
                       {task.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                     </div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, flex: 1,
-                      color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: task.done ? "line-through" : "none",
-                    }}>{task.priority ? '⭐ ' : ''}{task.title}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                      {task.priority && (
+                        <span style={{ fontSize: 9, fontWeight: 900, color: "#6C8EFF", background: "rgba(75,111,255,0.12)", border: "1px solid rgba(75,111,255,0.3)", borderRadius: 4, padding: "1px 5px", flexShrink: 0, letterSpacing: "0.04em" }}>중요</span>
+                      )}
+                      <span style={{
+                        fontSize: 14, fontWeight: 700,
+                        color: task.done ? "var(--dm-muted)" : "var(--dm-text)",
+                        textDecoration: task.done ? "line-through" : "none",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{task.title}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -538,6 +546,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   height: "100%", borderRadius: 3, transition: "width 0.3s",
                   background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
                   width: `${(doneGoals / monthGoals.length) * 100}%`,
+                  boxShadow: allGoalsDone ? "0 0 10px rgba(74,222,128,0.5)" : "0 0 10px rgba(75,111,255,0.5)",
                 }} />
               </div>
               {monthGoals.map((g, i) => {
