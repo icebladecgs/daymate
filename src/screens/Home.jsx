@@ -152,7 +152,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>DayMate Lite</div>
+          <div style={S.title}>DayMate Lite (t)</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
