@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
@@ -65,9 +65,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [goalsExpanded, setGoalsExpanded] = useState(false);
-  const [swipedId, setSwipedId] = useState(null);
   const [checkedId, setCheckedId] = useState(null);
-  const swipeStartX = useRef(0);
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
@@ -350,10 +348,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneCount}/{filledCount} 완료</div>
-              {allDone
-                ? <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>
-                : <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>← 밀면 이동/삭제</div>
-              }
+              {allDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 모두 완료!</div>}
             </div>
             <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
               <div style={{
@@ -365,44 +360,16 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             {[...(todayData?.tasks || [])].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).map((task, i, arr) => {
               if (!task.title.trim()) return null;
-              const isSwiped = swipedId === task.id;
               const isChecked = checkedId === task.id;
               return (
-                <div key={task.id} style={{ position: "relative", overflow: "hidden",
+                <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0",
                   borderBottom: i < arr.length - 1 ? `1px solid var(--dm-row)` : "none",
                   borderLeft: task.priority ? "3px solid #4B6FFF" : "3px solid transparent" }}>
-                  <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 140, display: "flex" }}>
-                    <button onClick={() => {
-                      const item = (todayData?.tasks || []).find(t => t.id === task.id);
-                      if (item?.title?.trim()) {
-                        setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: item.title.trim(), done: false }]);
-                        onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id));
-                      }
-                      setSwipedId(null);
-                    }} style={{ flex: 1, background: "#6C8EFF", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 11, lineHeight: 1.3 }}>
-                      언젠가<br/>할일
-                    </button>
-                    <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
-                      style={{ flex: 1, background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
-                      삭제
-                    </button>
-                  </div>
-                  <div
-                    onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
-                    onTouchEnd={(e) => {
-                      const dx = e.changedTouches[0].clientX - swipeStartX.current;
-                      if (dx < -60) setSwipedId(task.id);
-                      else if (dx > 10) setSwipedId(null);
-                    }}
-                    onClick={() => {
-                      if (isSwiped) { setSwipedId(null); return; }
-                      if (!task.done) { setCheckedId(task.id); setTimeout(() => setCheckedId(null), 400); }
-                      onToggleTask(task.id);
-                    }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      cursor: "pointer", background: "var(--dm-card)",
-                      transform: isSwiped ? "translateX(-140px)" : "translateX(0)",
-                      transition: "transform 0.2s" }}>
+                  {/* 체크박스 + 제목 클릭 영역 */}
+                  <div onClick={() => {
+                    if (!task.done) { setCheckedId(task.id); setTimeout(() => setCheckedId(null), 400); }
+                    onToggleTask(task.id);
+                  }} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer", minWidth: 0 }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                       border: task.done ? "none" : "2px solid #3A4260",
@@ -425,6 +392,17 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       }}>{task.title}</span>
                     </div>
                   </div>
+                  {/* 언젠가할일로 이동 */}
+                  <button onClick={() => {
+                    const item = (todayData?.tasks || []).find(t => t.id === task.id);
+                    if (item?.title?.trim()) {
+                      setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: item.title.trim(), done: false }]);
+                      onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id));
+                    }
+                  }} style={{ background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6, color: "#6C8EFF", fontSize: 14, fontWeight: 900, cursor: "pointer", padding: "3px 7px", flexShrink: 0 }}>↓</button>
+                  {/* 삭제 */}
+                  <button onClick={() => onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id))}
+                    style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 18, flexShrink: 0, lineHeight: 1, padding: "0 2px" }}>✕</button>
                 </div>
               );
             })}
