@@ -769,6 +769,7 @@ export default function App() {
           toast={toast} setToast={setToast}
           habits={habits} scrollToMemo={scrollToMemo}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
+          someday={someday} setSomeday={setSomeday}
         />
       );
     }

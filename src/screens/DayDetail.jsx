@@ -6,7 +6,7 @@ import { CHECK_TIMES } from "../data/model.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
-export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect }) {
+export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, someday, setSomeday }) {
   const isToday = dateStr === toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
@@ -49,6 +49,25 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     const task = data.tasks.find(t => t.id === id);
     if (token && task?.gcalEventId) gcalDeleteEvent(token, task.gcalEventId).catch(() => setToast('캘린더 삭제 실패'));
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
+  };
+
+  const moveToSomeday = (id) => {
+    const task = data.tasks.find(t => t.id === id);
+    if (!task?.title?.trim()) return;
+    removeTask(id);
+    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false }]);
+    setToast('언젠가 할일로 이동 ✅');
+  };
+
+  const moveToTask = (sdId) => {
+    const item = (someday || []).find(s => s.id === sdId);
+    if (!item) return;
+    setSomeday(prev => prev.filter(s => s.id !== sdId));
+    setData(prev => ({
+      ...prev,
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false }],
+    }));
+    setToast('할일로 이동 ✅');
   };
 
   const saveJournal = () => {
@@ -161,8 +180,14 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
               style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:18, flexShrink:0, opacity: t.priority ? 1 : 0.3 }}>
               ⭐
             </button>
+            {setSomeday && t.title?.trim() && (
+              <button onClick={() => moveToSomeday(t.id)} title="언젠가 할일로"
+                style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:14, flexShrink:0, color:'var(--dm-muted)', opacity:0.6 }}>
+                ↓
+              </button>
+            )}
             <button
-              style={{ marginLeft: 6, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
+              style={{ marginLeft: 2, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
               onClick={() => removeTask(t.id)}
               title="삭제"
             >
@@ -177,6 +202,24 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           </div>
         )}
       </div>
+
+      {someday && someday.length > 0 && (
+        <>
+          <div style={S.sectionTitle}>📋 언젠가 할일</div>
+          <div style={S.card}>
+            {someday.map((item) => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--dm-row)' }}
+                className="someday-row">
+                <div style={{ flex: 1, fontSize: 14, color: 'var(--dm-sub)' }}>{item.title}</div>
+                <button onClick={() => moveToTask(item.id)}
+                  style={{ background: 'rgba(75,111,255,.12)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '4px 10px', color: '#6C8EFF', fontSize: 12, fontWeight: 900, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  ↑ 할일로
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={S.sectionTitle}>체크</div>
       <div style={S.card}>
