@@ -15,6 +15,27 @@ export const requestPermission = async () => {
   }
 };
 
+export const playNotifSound = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch { /* ignore */ }
+};
+
+export const triggerVibration = () => {
+  try { navigator.vibrate?.([200, 100, 200]); } catch { /* ignore */ }
+};
+
 export const sendNotification = (title, body, iconEmoji = "✅") => {
   if (!hasNotification()) return null;
   if (Notification.permission !== "granted") return null;
@@ -35,6 +56,15 @@ export const sendNotification = (title, body, iconEmoji = "✅") => {
       try { window.focus(); } catch { /* ignore */ }
       try { n.close(); } catch { /* ignore */ }
     };
+
+    // 소리/진동 (localStorage에서 직접 읽기)
+    try {
+      const sound = localStorage.getItem('dm_notif_sound');
+      const vibration = localStorage.getItem('dm_notif_vibration');
+      if (sound !== 'false') playNotifSound();
+      if (vibration !== 'false') triggerVibration();
+    } catch { /* ignore */ }
+
     return n;
   } catch {
     return null;

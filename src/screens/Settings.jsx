@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
-import { getPermission, requestPermission, sendNotification } from "../utils/notification.js";
+import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
@@ -158,6 +158,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searchMode, setSearchMode] = useState('stock');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
+  const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
   const [morningWorkTime, setMorningWorkTime] = useState(alarmTimes.morningWork || '09:00');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
@@ -411,6 +413,27 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         >
           🔔 알림 권한 허용 / 테스트
         </button>
+      </div>
+
+      <div style={S.sectionTitle}>소리 / 진동</div>
+      <div style={S.card}>
+        {[
+          { label: '알림 소리', sub: '알림 시 비프음 재생', value: notifSound, onChange: (v) => { setNotifSound(v); localStorage.setItem('dm_notif_sound', v); if (v) playNotifSound(); } },
+          { label: '진동', sub: 'Android에서만 동작', value: notifVibration, onChange: (v) => { setNotifVibration(v); localStorage.setItem('dm_notif_vibration', v); if (v) triggerVibration(); } },
+        ].map(({ label, sub, value, onChange }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 14 }}>{label}</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{sub}</div>
+            </div>
+            <div onClick={() => onChange(!value)} style={{
+              width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer',
+              background: value ? '#6C8EFF' : 'var(--dm-border)', position: 'relative',
+            }}>
+              <div style={{ position: 'absolute', top: 4, left: value ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+            </div>
+          </div>
+        ))}
       </div>
 
       <div style={S.sectionTitle}>알림 시간 설정</div>
