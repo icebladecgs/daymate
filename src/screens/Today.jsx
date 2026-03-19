@@ -2,15 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
-import MemoViewer from "./MemoViewer.jsx";
-import JournalViewer from "./JournalViewer.jsx";
+import SearchViewer from "./SearchViewer.jsx";
 
-export default function Today({ dateStr, data, setData, toast, setToast, plans }) {
+export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
-  const [showMemoViewer, setShowMemoViewer] = useState(false);
-  const [showJournalViewer, setShowJournalViewer] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
   const recognitionRef = useRef(null);
   const memoRef = useRef(null);
@@ -59,8 +57,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
     setRecording(field);
   };
 
-  if (showMemoViewer) return <MemoViewer plans={plans} onClose={() => setShowMemoViewer(false)} />;
-  if (showJournalViewer) return <JournalViewer plans={plans} onClose={() => setShowJournalViewer(false)} />;
+  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
 
   return (
     <div style={S.content}>
@@ -71,14 +68,9 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans }
           <div style={S.title}>오늘 일기</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => setShowMemoViewer(true)} style={{
-            ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto',
-          }}>전체메모</button>
-          <button onClick={() => setShowJournalViewer(true)} style={{
-            ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto',
-          }}>전체일기</button>
-        </div>
+        <button onClick={() => setShowSearch(true)} style={{
+          ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 11, width: 'auto',
+        }}>🔍 검색</button>
       </div>
 
       {isPerfect && (

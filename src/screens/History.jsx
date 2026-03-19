@@ -3,12 +3,12 @@ import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js"
 import { isPerfectDay } from "../data/stats.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
-import MemoViewer from "./MemoViewer.jsx";
+import SearchViewer from "./SearchViewer.jsx";
 
 export default function History({ plans, onOpenDate, habits }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
-  const [showMemoViewer, setShowMemoViewer] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -41,7 +41,7 @@ export default function History({ plans, onOpenDate, habits }) {
     else setMonth0((m) => m + 1);
   };
 
-  if (showMemoViewer) return <MemoViewer plans={plans} onClose={() => setShowMemoViewer(false)} />;
+  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
 
   return (
     <div style={S.content}>
@@ -51,6 +51,7 @@ export default function History({ plans, onOpenDate, habits }) {
           <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto' }}>🔍</button>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
