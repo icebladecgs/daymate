@@ -148,50 +148,60 @@ export default function History({ plans, onOpenDate, habits }) {
             }} />
             <div style={{
               position: "fixed", left: 0, right: 0, bottom: 0,
-              background: "var(--dm-card)", borderRadius: "20px 20px 0 0",
-              padding: "20px 20px 36px", zIndex: 201, boxShadow: "0 -4px 24px rgba(0,0,0,.3)",
+              background: "var(--dm-deep)", borderRadius: "20px 20px 0 0",
+              zIndex: 201, boxShadow: "0 -4px 24px rgba(0,0,0,.4)",
+              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid var(--dm-border)",
+              display: "flex", flexDirection: "column", maxHeight: "72vh",
             }}>
-              <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--dm-border)", margin: "0 auto 16px" }} />
-              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", marginBottom: 12 }}>
-                {formatKoreanDate(preview)}
+              {/* 고정 헤더 */}
+              <div style={{ padding: "16px 20px 12px", flexShrink: 0 }}>
+                <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--dm-border)", margin: "0 auto 14px" }} />
+                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)" }}>
+                  {formatKoreanDate(preview)}
+                </div>
               </div>
-              {tasks.length > 0 ? (
-                <>
-                  <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
-                    {done}/{tasks.length} 완료
-                    <div style={{ height: 4, background: "var(--dm-input)", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
-                      <div style={{ height: "100%", borderRadius: 2, background: done === tasks.length ? "#4ADE80" : "#4B6FFF", width: `${Math.round(done / tasks.length * 100)}%` }} />
+              {/* 스크롤 가능한 내용 */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
+                {tasks.length > 0 ? (
+                  <>
+                    <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+                      {done}/{tasks.length} 완료
+                      <div style={{ height: 4, background: "var(--dm-input)", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
+                        <div style={{ height: "100%", borderRadius: 2, background: done === tasks.length ? "#4ADE80" : "#4B6FFF", width: `${Math.round(done / tasks.length * 100)}%` }} />
+                      </div>
                     </div>
+                    {tasks.slice(0, 3).map((t, i) => (
+                      <div key={i} style={{ fontSize: 13, color: t.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: t.done ? "line-through" : "none", padding: "3px 0" }}>
+                        {t.done ? "✓ " : "○ "}{t.title}
+                      </div>
+                    ))}
+                    {tasks.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{tasks.length - 3}개 더</div>}
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 8 }}>기록 없음</div>
+                )}
+                {dayHabits.length > 0 && d && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                    {dayHabits.map(h => (
+                      <span key={h.id} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 999,
+                        background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-input)",
+                        color: habitChecks[h.id] ? "#A78BFA" : "var(--dm-muted)" }}>
+                        {h.icon} {habitChecks[h.id] ? "✓" : "-"}
+                      </span>
+                    ))}
                   </div>
-                  {tasks.slice(0, 3).map((t, i) => (
-                    <div key={i} style={{ fontSize: 13, color: t.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: t.done ? "line-through" : "none", padding: "3px 0" }}>
-                      {t.done ? "✓ " : "○ "}{t.title}
-                    </div>
-                  ))}
-                  {tasks.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{tasks.length - 3}개 더</div>}
-                </>
-              ) : (
-                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 8 }}>기록 없음</div>
-              )}
-              {dayHabits.length > 0 && d && (
-                <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                  {dayHabits.map(h => (
-                    <span key={h.id} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 999,
-                      background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-input)",
-                      color: habitChecks[h.id] ? "#A78BFA" : "var(--dm-muted)" }}>
-                      {h.icon} {habitChecks[h.id] ? "✓" : "-"}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {d?.memo?.trim() && (
-                <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
-                  background: "var(--dm-input)", borderRadius: 8, padding: "6px 10px",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  📝 {d.memo.trim()}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                )}
+                {d?.memo?.trim() && (
+                  <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
+                    background: "var(--dm-input)", borderRadius: 8, padding: "6px 10px",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    📝 {d.memo.trim()}
+                  </div>
+                )}
+              </div>
+              {/* 고정 버튼 영역 */}
+              <div style={{ display: "flex", gap: 10, padding: "12px 20px 36px", flexShrink: 0, borderTop: "1px solid var(--dm-border)" }}>
                 <button onClick={() => setPreview(null)}
                   style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--dm-input)", border: "1px solid var(--dm-border)", color: "var(--dm-sub)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
                   닫기

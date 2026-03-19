@@ -364,11 +364,22 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               return (
                 <div key={task.id} style={{ position: "relative", overflow: "hidden",
                   borderBottom: i < arr.length - 1 ? `1px solid var(--dm-row)` : "none" }}>
-                  <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
-                    style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 70,
-                      background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
-                    삭제
-                  </button>
+                  <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 140, display: "flex" }}>
+                    <button onClick={() => {
+                      const item = (todayData?.tasks || []).find(t => t.id === task.id);
+                      if (item?.title?.trim()) {
+                        setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: item.title.trim(), done: false }]);
+                        onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id));
+                      }
+                      setSwipedId(null);
+                    }} style={{ flex: 1, background: "#6C8EFF", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 11, lineHeight: 1.3 }}>
+                      나중에<br/>할일
+                    </button>
+                    <button onClick={() => { onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id)); setSwipedId(null); }}
+                      style={{ flex: 1, background: "#F87171", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 13 }}>
+                      삭제
+                    </button>
+                  </div>
                   <div
                     onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; }}
                     onTouchEnd={(e) => {
@@ -383,7 +394,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                     }}
                     style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
                       cursor: "pointer", background: "var(--dm-card)",
-                      transform: isSwiped ? "translateX(-70px)" : "translateX(0)",
+                      transform: isSwiped ? "translateX(-140px)" : "translateX(0)",
                       transition: "transform 0.2s" }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0,

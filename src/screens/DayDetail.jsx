@@ -11,10 +11,13 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const memoRef = useRef(null);
+  const contentRef = useRef(null);
   const pendingGcalRef = useRef(new Set());
   useEffect(() => {
     if (scrollToMemo && memoRef.current) {
       setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    } else {
+      setTimeout(() => { if (contentRef.current) contentRef.current.scrollTop = 0; }, 50);
     }
   }, [scrollToMemo]);
 
@@ -81,7 +84,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
 
   return (
-    <div style={S.content}>
+    <div ref={contentRef} style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
@@ -139,75 +142,75 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       </div>
       <div style={S.card}>
         {data.tasks.map((t, idx) => (
-          <div key={t.id} style={{ marginBottom: idx < data.tasks.length - 1 ? 10 : 0 }}>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={() => toggleDone(t.id)}
-              style={{
-                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-                border: `1.5px solid ${t.done ? "#4ADE80" : "var(--dm-border)"}`,
-                background: t.done ? "rgba(74,222,128,.12)" : "var(--dm-input)",
-                color: t.done ? "#4ADE80" : "var(--dm-sub)",
-                fontSize: 18, cursor: "pointer",
-              }}
-            >
-              {t.done ? "✓" : idx + 1}
-            </button>
-            <input
-              style={S.input}
-              value={t.title}
-              onChange={(e) => setTitle(t.id, e.target.value)}
-              onBlur={(e) => {
-                const token = getValidGcalToken?.();
-                const title = e.target.value.trim();
-                if (!token || !title) return;
-                if (t.gcalEventId) {
-                  gcalUpdateEvent(token, t.gcalEventId, title).catch(() => setToast('캘린더 수정 실패'));
-                } else if (!pendingGcalRef.current.has(t.id)) {
-                  pendingGcalRef.current.add(t.id);
-                  gcalCreateEvent(token, dateStr, { ...t, title })
-                    .then(gcalEventId => setData(prev => ({
-                      ...prev,
-                      tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
-                    })))
-                    .catch(() => {})
-                    .finally(() => pendingGcalRef.current.delete(t.id));
-                }
-              }}
-              placeholder={`할 일 ${idx + 1}`}
-              maxLength={60}
-            />
-            <button onClick={() => setData(prev => ({...prev, tasks: prev.tasks.map(x => x.id === t.id ? {...x, priority: !x.priority} : x)}))}
-              style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:18, flexShrink:0, opacity: t.priority ? 1 : 0.3 }}>
-              ⭐
-            </button>
-            {setSomeday && t.title?.trim() && (
-              <button onClick={() => moveToSomeday(t.id)} title="언젠가 할일로"
-                style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:14, flexShrink:0, color:'var(--dm-muted)', opacity:0.6 }}>
-                ↓
+          <div key={t.id} style={{ marginBottom: idx < data.tasks.length - 1 ? 12 : 0 }}>
+            {/* 1행: 체크버튼 + 입력창 (풀 너비) */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={() => toggleDone(t.id)}
+                style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  border: `1.5px solid ${t.done ? "#4ADE80" : "var(--dm-border)"}`,
+                  background: t.done ? "rgba(74,222,128,.12)" : "var(--dm-input)",
+                  color: t.done ? "#4ADE80" : "var(--dm-sub)",
+                  fontSize: 14, cursor: "pointer",
+                }}
+              >
+                {t.done ? "✓" : idx + 1}
               </button>
-            )}
-            <button
-              style={{ marginLeft: 2, background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}
-              onClick={() => removeTask(t.id)}
-              title="삭제"
-            >
-              ✕
-            </button>
-          </div>
-          {t.title?.trim() && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 52 }}>
-              <span style={{ fontSize: 13, color: t.time ? '#6C8EFF' : 'var(--dm-muted)' }}>⏰</span>
-              <input type="time" value={t.time || ''}
-                onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
-                style={{ ...S.input, width: 110, padding: '4px 8px', fontSize: 12, marginBottom: 0, color: t.time ? 'var(--dm-text)' : 'var(--dm-muted)' }} />
-              {t.time && (
-                <button onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 13 }}>✕</button>
-              )}
-              {t.time && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>알림 예약됨</span>}
+              <input
+                style={{ ...S.input, flex: 1 }}
+                value={t.title}
+                onChange={(e) => setTitle(t.id, e.target.value)}
+                onBlur={(e) => {
+                  const token = getValidGcalToken?.();
+                  const title = e.target.value.trim();
+                  if (!token || !title) return;
+                  if (t.gcalEventId) {
+                    gcalUpdateEvent(token, t.gcalEventId, title).catch(() => setToast('캘린더 수정 실패'));
+                  } else if (!pendingGcalRef.current.has(t.id)) {
+                    pendingGcalRef.current.add(t.id);
+                    gcalCreateEvent(token, dateStr, { ...t, title })
+                      .then(gcalEventId => setData(prev => ({
+                        ...prev,
+                        tasks: prev.tasks.map(x => x.id === t.id ? { ...x, gcalEventId } : x),
+                      })))
+                      .catch(() => {})
+                      .finally(() => pendingGcalRef.current.delete(t.id));
+                  }
+                }}
+                placeholder={`할 일 ${idx + 1}`}
+                maxLength={60}
+              />
             </div>
-          )}
+            {/* 2행: 액션 버튼들 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, paddingLeft: 44 }}>
+              <button onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, priority: !x.priority } : x) }))}
+                style={{ background: t.priority ? 'rgba(252,211,77,.15)' : 'transparent', border: `1px solid ${t.priority ? 'rgba(252,211,77,.4)' : 'var(--dm-border)'}`, borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, color: t.priority ? '#FCD34D' : 'var(--dm-muted)', flexShrink: 0 }}>
+                ⭐ 중요
+              </button>
+              {setSomeday && t.title?.trim() && (
+                <button onClick={() => moveToSomeday(t.id)}
+                  style={{ background: 'transparent', border: '1px solid var(--dm-border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
+                  ↓ 나중에
+                </button>
+              )}
+              <button onClick={() => removeTask(t.id)}
+                style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.3)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, color: '#F87171', flexShrink: 0 }}>
+                ✕ 삭제
+              </button>
+              {t.title?.trim() && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                  <span style={{ fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)' }}>⏰</span>
+                  <input type="time" value={t.time || ''}
+                    onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
+                    style={{ ...S.input, width: 95, padding: '3px 6px', fontSize: 11, color: t.time ? 'var(--dm-text)' : 'var(--dm-muted)' }} />
+                  {t.time && (
+                    <button onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         ))}
         <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>
