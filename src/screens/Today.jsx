@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -11,24 +11,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
   const [showSearch, setShowSearch] = useState(false);
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
   const recognitionRef = useRef(null);
-  const memoRef = useRef(null);
-  useEffect(() => {
-    setTimeout(() => {
-      const el = memoRef.current;
-      if (!el) return;
-      if (data.memo?.trim()) {
-        // 기존 메모가 있으면 두 줄 내려서 커서 위치
-        const appended = data.memo.trimEnd() + '\n\n';
-        setData(prev => ({ ...prev, memo: appended }));
-        setTimeout(() => {
-          el.focus();
-          el.setSelectionRange(appended.length, appended.length);
-        }, 50);
-      } else {
-        el.focus();
-      }
-    }, 100);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startRecording = (field) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -98,7 +80,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
       </div>
       <div style={S.card}>
         <textarea
-          ref={memoRef}
           rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
           value={data.memo ?? ""}
