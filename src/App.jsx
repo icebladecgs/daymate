@@ -738,7 +738,7 @@ export default function App() {
       return <History plans={plans} onOpenDate={openDetail} habits={habits} />;
     }
     if (screen === "stats") {
-      return <Stats plans={plans} habits={habits} authUser={authUser} />;
+      return <Stats plans={plans} habits={habits} authUser={authUser} onBack={() => history.back()} />;
     }
     if (screen === "detail") {
       const d = plans[openDate];

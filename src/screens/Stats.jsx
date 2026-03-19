@@ -13,7 +13,7 @@ function maskEmail(email) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function Stats({ plans, habits, authUser }) {
+export default function Stats({ plans, habits, authUser, onBack }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [barTooltip, setBarTooltip] = useState(null);
@@ -154,9 +154,14 @@ const last30 = useMemo(() => {
   return (
     <div style={S.content}>
       <div style={S.topbar}>
-        <div>
-          <div style={S.title}>통계</div>
-          <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+          {onBack && (
+            <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
+          )}
+          <div>
+            <div style={S.title}>통계</div>
+            <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
