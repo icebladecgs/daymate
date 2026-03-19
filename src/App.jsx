@@ -85,8 +85,6 @@ export default function App() {
     store.set('dm_install_dismissed', true);
   };
 
-  const phoneStyleOverride = {};
-
   const [authUser, setAuthUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
@@ -834,7 +832,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <div style={{...S.phone, ...phoneStyleOverride}}>
+      <div style={S.phone}>
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
         {renderScreen()}

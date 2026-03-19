@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { playSuccessSound } from "../utils/sound.js";
 import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "../api/gcal.js";
-import { CHECK_TIMES } from "../data/model.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
@@ -239,25 +238,6 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         </>
       )}
 
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>☑️</span>체크</div>
-      <div style={S.card}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {CHECK_TIMES.map((t) => (
-            <div
-              key={t}
-              style={{
-                padding: "7px 10px", borderRadius: 999, border: "1.5px solid var(--dm-border)",
-                background: data.checks[t] ? "rgba(108,142,255,.12)" : "var(--dm-input)",
-                color: data.checks[t] ? "#6C8EFF" : "var(--dm-sub)",
-                fontSize: 12, fontWeight: 900,
-              }}
-            >
-              {data.checks[t] ? "✅" : "⏱️"} {t}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {(habits || []).length > 0 && (() => {
         const habitChecks = data.habitChecks || {};
         const toggleHabit = (id) => setData(prev => {
@@ -339,9 +319,19 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           maxLength={1200}
         />
         <button style={S.btn} onClick={saveJournal}>일기 저장</button>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, textAlign: "right" }}>
-          {(data.journal?.body || "").length} / 1200
-        </div>
+        {(() => {
+          const len = (data.journal?.body || "").length;
+          const pct = Math.min(100, Math.round(len / 1200 * 100));
+          const color = len >= 500 ? "#4ADE80" : len >= 150 ? "#4B6FFF" : "var(--dm-border2)";
+          return (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ height: 3, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden", marginBottom: 4 }}>
+                <div style={{ height: "100%", borderRadius: 2, background: color, width: `${pct}%`, transition: "width 0.2s" }} />
+              </div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", textAlign: "right" }}>{len} / 1200</div>
+            </div>
+          );
+        })()}
       </div>
       <div style={{ height: 12 }} />
     </div>

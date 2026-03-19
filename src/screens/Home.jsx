@@ -127,6 +127,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     setDraftGoals([...(goals.month || [])]);
     setNewGoalInput('');
     setEditingGoals(true);
+    setGoalsExpanded(true);
   };
   const saveGoalEdits = () => {
     const final = [...draftGoals, ...(newGoalInput.trim() ? [newGoalInput.trim()] : [])].filter(g => g.trim());
