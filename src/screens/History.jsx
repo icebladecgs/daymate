@@ -142,49 +142,63 @@ export default function History({ plans, onOpenDate, habits }) {
         const dayHabits = habits || [];
         const habitChecks = d?.habitChecks || {};
         return (
-          <>
-            <div onClick={() => setPreview(null)} style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200,
-            }} />
-            <div style={{
-              position: "fixed", left: 0, right: 0, bottom: 0,
-              background: "var(--dm-bg)", borderRadius: "20px 20px 0 0",
-              zIndex: 201, boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
-              borderTop: "1px solid var(--dm-border2)",
-              display: "flex", flexDirection: "column", maxHeight: "72vh",
+          <div onClick={() => setPreview(null)} style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
+            zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: "var(--dm-bg)",
+              border: "1px solid var(--dm-border2)",
+              borderRadius: 22,
+              width: "100%", maxWidth: 360,
+              maxHeight: "70vh",
+              display: "flex", flexDirection: "column",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+              animation: "modalPop 0.18s ease-out",
+              overflow: "hidden",
             }}>
-              {/* 고정 헤더 */}
-              <div style={{ padding: "16px 20px 12px", flexShrink: 0 }}>
-                <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--dm-border)", margin: "0 auto 14px" }} />
-                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)" }}>
+              {/* 헤더 */}
+              <div style={{ padding: "22px 22px 14px", borderBottom: "1px solid var(--dm-border)" }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--dm-text)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   {formatKoreanDate(preview)}
                 </div>
               </div>
-              {/* 스크롤 가능한 내용 */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
+              {/* 내용 */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
                 {tasks.length > 0 ? (
                   <>
-                    <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>
                       {done}/{tasks.length} 완료
-                      <div style={{ height: 4, background: "var(--dm-input)", borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
-                        <div style={{ height: "100%", borderRadius: 2, background: done === tasks.length ? "#4ADE80" : "#4B6FFF", width: `${Math.round(done / tasks.length * 100)}%` }} />
+                      <div style={{ height: 5, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginTop: 6 }}>
+                        <div style={{ height: "100%", borderRadius: 3, transition: "width 0.3s",
+                          background: done === tasks.length ? "#4ADE80" : "#4B6FFF",
+                          width: `${Math.round(done / tasks.length * 100)}%` }} />
                       </div>
                     </div>
-                    {tasks.slice(0, 3).map((t, i) => (
-                      <div key={i} style={{ fontSize: 13, color: t.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: t.done ? "line-through" : "none", padding: "3px 0" }}>
-                        {t.done ? "✓ " : "○ "}{t.title}
+                    {tasks.slice(0, 4).map((t, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+                        borderBottom: i < Math.min(tasks.length, 4) - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                        <div style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                          background: t.done ? "#4B6FFF" : "transparent",
+                          border: t.done ? "none" : "2px solid var(--dm-border2)",
+                          display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {t.done && <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                          textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.title}</div>
                       </div>
                     ))}
-                    {tasks.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{tasks.length - 3}개 더</div>}
+                    {tasks.length > 4 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6 }}>+{tasks.length - 4}개 더</div>}
                   </>
                 ) : (
-                  <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 8 }}>기록 없음</div>
+                  <div style={{ fontSize: 14, color: "var(--dm-muted)", textAlign: "center", padding: "16px 0" }}>기록 없음</div>
                 )}
                 {dayHabits.length > 0 && d && (
-                  <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
                     {dayHabits.map(h => (
                       <span key={h.id} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 999,
-                        background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-input)",
+                        background: habitChecks[h.id] ? "rgba(167,139,250,.2)" : "var(--dm-row)",
                         color: habitChecks[h.id] ? "#A78BFA" : "var(--dm-muted)" }}>
                         {h.icon} {habitChecks[h.id] ? "✓" : "-"}
                       </span>
@@ -193,25 +207,25 @@ export default function History({ plans, onOpenDate, habits }) {
                 )}
                 {d?.memo?.trim() && (
                   <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
-                    background: "var(--dm-input)", borderRadius: 8, padding: "6px 10px",
+                    background: "var(--dm-row)", borderRadius: 8, padding: "8px 10px",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     📝 {d.memo.trim()}
                   </div>
                 )}
               </div>
-              {/* 고정 버튼 영역 */}
-              <div style={{ display: "flex", gap: 10, padding: "12px 20px 36px", flexShrink: 0, borderTop: "1px solid var(--dm-border2)" }}>
+              {/* 버튼 */}
+              <div style={{ display: "flex", gap: 10, padding: "14px 22px 22px", borderTop: "1px solid var(--dm-border)" }}>
                 <button onClick={() => setPreview(null)}
-                  style={{ flex: 1, padding: 12, borderRadius: 10, background: "var(--dm-card)", border: "1.5px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  style={{ flex: 1, padding: 14, borderRadius: 12, background: "var(--dm-row)", border: "1.5px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
                   닫기
                 </button>
                 <button onClick={() => { onOpenDate(preview); setPreview(null); }}
-                  style={{ flex: 2, padding: 12, borderRadius: 10, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 14, boxShadow: "0 4px 16px rgba(75,111,255,.4)" }}>
+                  style={{ flex: 2, padding: 14, borderRadius: 12, background: "linear-gradient(135deg,#4B6FFF,#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 16, boxShadow: "0 6px 20px rgba(75,111,255,.45)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   상세보기 →
                 </button>
               </div>
             </div>
-          </>
+          </div>
         );
       })()}
     </div>
