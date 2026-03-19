@@ -25,6 +25,7 @@ export default function Community({ user, authUser, communityId, setCommunityId,
   const [evEnd, setEvEnd] = useState('');
   const [evDesc, setEvDesc] = useState('');
   const [addingEvent, setAddingEvent] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // 실시간 커뮤니티 데이터
   useEffect(() => {
@@ -197,7 +198,15 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       <div style={S.topbar}>
         <div style={{ flex: 1 }}>
           <div style={S.title}>{community?.name || '커뮤니티'}</div>
-          <div style={S.sub}>멤버 {community?.memberCount || 0}명 · 초대코드: <b style={{ color: 'var(--dm-text)', letterSpacing: 2 }}>{community?.inviteCode}</b></div>
+          <div style={{ ...S.sub, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            멤버 {community?.memberCount || 0}명 · 초대코드: <b style={{ color: 'var(--dm-text)', letterSpacing: 2 }}>{community?.inviteCode}</b>
+            <button onClick={() => {
+              const text = `DayMate 커뮤니티 초대 코드: ${community?.inviteCode}`;
+              navigator.clipboard?.writeText(text).then(() => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); });
+            }} style={{ background: codeCopied ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, color: codeCopied ? '#4ADE80' : 'var(--dm-sub)', cursor: 'pointer' }}>
+              {codeCopied ? '✓ 복사됨' : '복사'}
+            </button>
+          </div>
         </div>
         <button onClick={() => setShowAdd(v => !v)}
           style={{ background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', border: 'none', borderRadius: 20, padding: '8px 16px', color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
