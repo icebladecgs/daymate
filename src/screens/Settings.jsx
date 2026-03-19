@@ -159,6 +159,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [morningTime, setMorningTime] = useState(alarmTimes.morning || '07:30');
+  const [morningWorkTime, setMorningWorkTime] = useState(alarmTimes.morningWork || '09:00');
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
@@ -232,7 +233,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   };
 
   const saveAlarmTimes = () => {
-    const times = { morning: morningTime, noon: noonTime, evening: eveningTime, night: nightTime };
+    const times = { morning: morningTime, morningWork: morningWorkTime, noon: noonTime, evening: eveningTime, night: nightTime };
     setAlarmTimes(times);
     store.set('dm_alarm_times', times);
     if (authUser) saveSettings(authUser.uid, { alarmTimes: times }).catch(() => {});
@@ -419,6 +420,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
         {[
           { label: "아침 기상 알람", value: morningTime, set: setMorningTime },
+          { label: "아침 할일 알람", value: morningWorkTime, set: setMorningWorkTime },
           { label: "점심 체크인", value: noonTime, set: setNoonTime },
           { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
           { label: "밤 마감 알람", value: nightTime, set: setNightTime },

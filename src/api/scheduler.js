@@ -70,6 +70,7 @@ class NotifScheduler {
     const customAssetsArr = rawCustomAssets || [];
     const customRegistry = Object.fromEntries(customAssetsArr.map(a => [a.sym, a]));
     const morningTime = alarmTimes.morning || '07:30';
+    const morningWorkTime = alarmTimes.morningWork || '09:00';
     const noonTime = alarmTimes.noon || '12:00';
     const eveningTime = alarmTimes.evening || '18:00';
     const nightTime = alarmTimes.night || '23:00';
@@ -125,6 +126,24 @@ class NotifScheduler {
           text += `오늘 할 일을 아직 입력하지 않았어요.\nDayMate에서 하루를 계획해보세요 📝`;
         }
         text += `\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
+        await sendTelegramMessage(botToken, chatId, text);
+      } : null
+    );
+
+    this.schedule(
+      'm_morning_work', morningWorkTime,
+      'DayMate ☀️', `${userName}님, 오늘 할 일을 입력해볼까요?`, '☀️',
+      hasTg ? async () => {
+        const d = store.get(DAY_KEY(toDateStr()));
+        const tasks = (d?.tasks || []).filter(t => t.title.trim());
+        let text = `☀️ <b>${userName}님, 오늘 할 일을 정리해볼 시간이에요!</b>\n\n`;
+        if (tasks.length > 0) {
+          text += `📋 입력된 할일\n`;
+          tasks.forEach((t, i) => { text += `  ${i + 1}. ${t.title}\n`; });
+          text += `\n화이팅! 💪`;
+        } else {
+          text += `아직 오늘 할 일을 입력하지 않았어요.\n지금 바로 입력해보세요! 📝\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
+        }
         await sendTelegramMessage(botToken, chatId, text);
       } : null
     );
