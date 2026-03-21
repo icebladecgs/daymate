@@ -124,7 +124,24 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
           placeholder="오늘 하루를 한 줄이라도 기록해봐요."
           maxLength={1200}
         />
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        {/* 무드 셀렉터 */}
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--dm-border)" }}>
+          <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}>오늘 기분은?</div>
+          <div style={{ display: "flex", justifyContent: "space-around" }}>
+            {[["😊","행복"],["😌","평온"],["🤔","보통"],["😴","피곤"],["😔","우울"]].map(([emoji, label]) => {
+              const selected = data.journal?.mood === label;
+              return (
+                <button key={label}
+                  onClick={() => setData(prev => ({ ...prev, journal: { ...prev.journal, mood: selected ? null : label } }))}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: selected ? "rgba(184,195,255,0.12)" : "transparent", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: 12, transition: "all 0.2s", boxShadow: selected ? "inset 0 0 0 1px rgba(184,195,255,0.25)" : "none" }}>
+                  <span style={{ fontSize: 24, display: "inline-block", filter: selected ? "none" : "grayscale(0.6)", transform: selected ? "scale(1.15)" : "scale(1)", transition: "all 0.2s" }}>{emoji}</span>
+                  <span style={{ fontSize: 10, color: selected ? "#b8c3ff" : "var(--dm-muted)", fontWeight: selected ? 700 : 400, transition: "color 0.2s" }}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <button
             style={{ ...S.btn, marginTop: 0, flex: 1 }}
             onClick={() => {

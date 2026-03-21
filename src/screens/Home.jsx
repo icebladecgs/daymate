@@ -152,7 +152,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>DayMate Lite (t)</div>
+          <div style={S.title}>DayMate Lite</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -231,10 +231,43 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </button>
           )}
         </div>
-        {/* 중앙: 총 XP 크게 */}
-        <div style={{ textAlign: "center", margin: "4px 0 12px" }}>
-          <span style={{ fontSize: 34, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
-          <span style={{ fontSize: 14, color: "#6C8EFF", fontWeight: 700, marginLeft: 4 }}>XP</span>
+        {/* 중앙: 원형 링 + XP */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "4px 0 12px" }}>
+          {/* 원형 완료율 링 */}
+          {(() => {
+            const pct = filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0;
+            const r = 26;
+            const circ = 2 * Math.PI * r;
+            const dash = (pct / 100) * circ;
+            return (
+              <svg width="68" height="68" viewBox="0 0 68 68" style={{ flexShrink: 0 }}>
+                <defs>
+                  <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#4B6FFF" />
+                    <stop offset="100%" stopColor="#b8c3ff" />
+                  </linearGradient>
+                </defs>
+                <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(75,111,255,0.15)" strokeWidth="6" />
+                <circle cx="34" cy="34" r={r} fill="none" stroke="url(#ringGrad)" strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${dash} ${circ}`}
+                  transform="rotate(-90 34 34)"
+                  style={{ transition: "stroke-dasharray 0.5s ease" }}
+                />
+                <text x="34" y="37" textAnchor="middle" fill="var(--dm-text)" fontSize="13" fontWeight="900" fontFamily="'Plus Jakarta Sans',sans-serif">{pct}%</text>
+              </svg>
+            );
+          })()}
+          {/* XP 정보 */}
+          <div style={{ flex: 1 }}>
+            <div>
+              <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
+              <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700, marginLeft: 4 }}>XP</span>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
+              오늘 {doneCount}/{filledCount || 3} 완료
+            </div>
+          </div>
         </div>
         {/* 진행바 */}
         <div style={{ height: 7, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
