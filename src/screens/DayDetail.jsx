@@ -132,8 +132,26 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             if (!onGcalConnect) return;
             setToast('구글 로그인 중...');
             const token = await onGcalConnect();
-            if (token) setToast('캘린더 연동 완료 ✅');
-            else setToast('연동 실패');
+            if (!token) { setToast('연동 실패'); return; }
+            try {
+              const events = await gcalFetchTodayEvents(token, dateStr);
+              const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
+              if (external.length === 0) { setToast('연동 완료 · 가져올 일정 없음'); return; }
+              const existingTitles = new Set(data.tasks.map(t => t.title.trim().toLowerCase()));
+              const toAdd = external
+                .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
+                .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
+              if (toAdd.length === 0) { setToast('연동 완료 · 이미 모두 추가됨'); return; }
+              setData(prev => {
+                const tasks = [...prev.tasks];
+                const remaining = [...toAdd];
+                for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
+                  if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
+                }
+                return { ...prev, tasks: [...tasks, ...remaining] };
+              });
+              setToast(`연동 완료 · ${toAdd.length}개 가져왔어요 ✅`);
+            } catch { setToast('연동 완료 · 일정 가져오기 실패'); }
           }} style={{ fontSize: 12, padding: '3px 8px', background: 'rgba(75,111,255,.12)', border: '1px solid #4B6FFF', borderRadius: 6, cursor: 'pointer', color: '#6C8EFF', fontWeight: 900 }}>
             📅 캘린더 연동하기
           </button>
