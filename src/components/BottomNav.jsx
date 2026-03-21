@@ -16,7 +16,7 @@ export default function BottomNav({ screen, setScreen, badge = {} }) {
           style={{ ...S.navItem(screen === it.id), position: "relative" }}
           onClick={() => setScreen(it.id)}
         >
-          <span style={{ fontSize: 20, position: "relative", display: "inline-block" }}>
+          <span style={{ fontSize: screen === it.id ? 22 : 20, position: "relative", display: "inline-block", transition: "font-size 0.2s ease" }}>
             {it.icon}
             {badge[it.id] > 0 && (
               <span style={{
@@ -28,7 +28,7 @@ export default function BottomNav({ screen, setScreen, badge = {} }) {
               }}>{badge[it.id]}</span>
             )}
           </span>
-          <span>{it.label}</span>
+          <span style={{ letterSpacing: "0.01em" }}>{it.label}</span>
         </button>
       ))}
     </div>

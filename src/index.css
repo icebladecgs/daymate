@@ -61,24 +61,46 @@
 [data-theme="dark"] .dm-blob-1 {
   top: -8%;
   right: -18%;
-  width: 450px;
-  height: 450px;
-  background: rgba(75, 111, 255, 0.18);
-  filter: blur(100px);
+  width: 500px;
+  height: 500px;
+  background: rgba(75, 111, 255, 0.14);
+  filter: blur(120px);
 }
 
 [data-theme="dark"] .dm-blob-2 {
   bottom: 8%;
   left: -15%;
-  width: 380px;
-  height: 380px;
-  background: rgba(108, 142, 255, 0.13);
+  width: 400px;
+  height: 400px;
+  background: rgba(184, 195, 255, 0.08);
+  filter: blur(110px);
+}
+
+[data-theme="light"] .dm-blob-1 {
+  top: -8%;
+  right: -18%;
+  width: 400px;
+  height: 400px;
+  background: rgba(109, 136, 255, 0.07);
+  filter: blur(100px);
+}
+
+[data-theme="light"] .dm-blob-2 {
+  bottom: 8%;
+  left: -15%;
+  width: 340px;
+  height: 340px;
+  background: rgba(184, 195, 255, 0.06);
   filter: blur(90px);
 }
 
-[data-theme="light"] .dm-blob-1,
-[data-theme="light"] .dm-blob-2 {
-  display: none;
+/* ===== Card hover effect ===== */
+.dm-card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.dm-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.09);
 }
 
 a {
