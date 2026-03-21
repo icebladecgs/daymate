@@ -180,7 +180,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               <div style={{ fontWeight: 700, color: "var(--dm-text)", marginBottom: 4 }}>카카오톡에서는 설치가 안 돼요 😢</div>
               {isIOS
                 ? <>1️⃣ 우측 하단 <b style={{color:"var(--dm-text)"}}>⋯</b> → <b style={{color:"var(--dm-text)"}}>Safari로 열기</b><br/>2️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> → <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>
-                : <>1️⃣ 우측 상단 <b style={{color:"var(--dm-text)"}}>⋯</b> → <b style={{color:"var(--dm-text)"}}>다른 브라우저로 열기</b> → Chrome 선택<br/>2️⃣ Chrome에서 <b style={{color:"var(--dm-text)"}}>설치하기</b> 버튼 탭</>
+                : <button
+                    onClick={() => {
+                      const url = window.location.href;
+                      const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+                      window.location.href = intentUrl;
+                    }}
+                    style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer", marginTop: 8 }}
+                  >Chrome으로 열기</button>
               }
             </div>
           ) : installPrompt ? (
