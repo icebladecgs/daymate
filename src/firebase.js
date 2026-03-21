@@ -167,12 +167,30 @@ export async function checkIsAdmin(uid) {
 
 // ---------- Community ----------
 
-export async function createCommunity(uid, name, nickname) {
+export async function createCommunity(uid, name, nickname, isPublic = false, password = null) {
   const code = Math.random().toString(36).slice(2, 8).toUpperCase();
   const ref = doc(collection(db, 'communities'));
-  await setDoc(ref, { name, createdBy: uid, inviteCode: code, createdAt: new Date().toISOString(), memberCount: 1 });
+  await setDoc(ref, {
+    name, createdBy: uid, inviteCode: code,
+    createdAt: new Date().toISOString(), memberCount: 1,
+    isPublic, password: isPublic ? (password || null) : null,
+  });
   await setDoc(doc(db, 'communities', ref.id, 'members', uid), { nickname, joinedAt: new Date().toISOString(), isAdmin: true });
   return { communityId: ref.id, inviteCode: code };
+}
+
+export async function loadPublicCommunities() {
+  const q = query(collection(db, 'communities'), where('isPublic', '==', true));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function joinPublicCommunity(uid, communityId, nickname, password) {
+  const snap = await getDoc(doc(db, 'communities', communityId));
+  if (!snap.exists()) throw new Error('not found');
+  const data = snap.data();
+  if (data.password && data.password !== password) throw new Error('wrong password');
+  await joinCommunity(uid, communityId, nickname);
 }
 
 export async function findCommunityByCode(code) {

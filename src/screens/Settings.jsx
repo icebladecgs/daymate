@@ -1056,7 +1056,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       )}
 
-      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite v85 · 2026-03-21 10:30</div>
+      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite v86 · 2026-03-21 11:00</div>
       <div style={{ height: 12 }} />
     </div>
   );

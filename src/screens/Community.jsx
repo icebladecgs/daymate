@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import S from "../styles.js";
 
@@ -18,6 +18,15 @@ export default function Community({ user, authUser, communityId, setCommunityId,
   const [codeInput, setCodeInput] = useState('');
   const [nicknameInput, setNicknameInput] = useState(() => user?.name || '');
   const [submitting, setSubmitting] = useState(false);
+  // 공개/비공개 생성
+  const [isPublic, setIsPublic] = useState(false);
+  const [createPassword, setCreatePassword] = useState('');
+  // 공개 커뮤니티 가입
+  const [joinTab, setJoinTab] = useState('public'); // 'public' | 'code'
+  const [publicList, setPublicList] = useState([]);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [selectedPublic, setSelectedPublic] = useState(null);
+  const [pubPassword, setPubPassword] = useState('');
 
   // 이벤트 추가 UI
   const [showAdd, setShowAdd] = useState(false);
@@ -54,11 +63,18 @@ export default function Community({ user, authUser, communityId, setCommunityId,
     return () => { unsubCom(); unsubEv(); unsubCheckins(); };
   }, [communityId]); // eslint-disable-line
 
+  useEffect(() => {
+    if (mode === 'join' && joinTab === 'public') {
+      setPublicLoading(true);
+      loadPublicCommunities().then(list => { setPublicList(list); setPublicLoading(false); }).catch(() => setPublicLoading(false));
+    }
+  }, [mode, joinTab]);
+
   const handleCreate = async () => {
     if (!nameInput.trim() || !nicknameInput.trim()) return;
     setSubmitting(true);
     try {
-      const { communityId: id } = await createCommunity(authUser.uid, nameInput.trim(), nicknameInput.trim());
+      const { communityId: id } = await createCommunity(authUser.uid, nameInput.trim(), nicknameInput.trim(), isPublic, createPassword.trim() || null);
       setCommunityId(id);
       setMode(null);
     } catch { setToast('생성 실패 ❌'); }
@@ -75,6 +91,19 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       setCommunityId(result.communityId);
       setMode(null);
     } catch { setToast('가입 실패 ❌'); }
+    setSubmitting(false);
+  };
+
+  const handleJoinPublic = async () => {
+    if (!selectedPublic || !nicknameInput.trim()) return;
+    setSubmitting(true);
+    try {
+      await joinPublicCommunity(authUser.uid, selectedPublic.id, nicknameInput.trim(), pubPassword.trim());
+      setCommunityId(selectedPublic.id);
+      setMode(null);
+    } catch (e) {
+      setToast(e.message === 'wrong password' ? '비밀번호가 틀렸어요 ❌' : '가입 실패 ❌');
+    }
     setSubmitting(false);
   };
 
@@ -190,6 +219,22 @@ export default function Community({ user, authUser, communityId, setCommunityId,
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>새 커뮤니티 만들기</div>
           <input style={S.input} placeholder="커뮤니티 이름 (예: 우리 팀)" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={30} />
           <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
+          {/* 공개/비공개 선택 */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[{ v: false, label: '🔒 비공개', desc: '초대코드로만 입장' }, { v: true, label: '🌐 공개', desc: '목록에 표시됨' }].map(({ v, label, desc }) => (
+              <button key={String(v)} onClick={() => setIsPublic(v)} style={{
+                flex: 1, padding: '10px 8px', borderRadius: 12, border: `1.5px solid ${isPublic === v ? '#6C8EFF' : 'var(--dm-border)'}`,
+                background: isPublic === v ? 'rgba(108,142,255,.12)' : 'var(--dm-input)',
+                color: isPublic === v ? '#6C8EFF' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit',
+              }}>
+                <div>{label}</div>
+                <div style={{ fontSize: 10, fontWeight: 400, marginTop: 2, color: 'var(--dm-muted)' }}>{desc}</div>
+              </button>
+            ))}
+          </div>
+          {isPublic && (
+            <input style={S.input} placeholder="입장 비밀번호 (없으면 빈칸)" value={createPassword} onChange={e => setCreatePassword(e.target.value)} maxLength={20} />
+          )}
           <button style={S.btn} onClick={handleCreate} disabled={submitting || !nameInput.trim() || !nicknameInput.trim()}>
             {submitting ? '생성 중...' : '만들기'}
           </button>
@@ -198,14 +243,62 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       )}
 
       {mode === 'join' && (
-        <div style={{ padding: '24px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>초대 코드로 가입</div>
-          <input style={{ ...S.input, textTransform: 'uppercase', letterSpacing: 4, fontSize: 18, textAlign: 'center' }}
-            placeholder="A1B2C3" value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} maxLength={6} />
-          <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
-          <button style={S.btn} onClick={handleJoin} disabled={submitting || codeInput.length < 6 || !nicknameInput.trim()}>
-            {submitting ? '가입 중...' : '가입하기'}
-          </button>
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>커뮤니티 가입</div>
+          {/* 탭 */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+            {[{ v: 'public', label: '🌐 공개 목록' }, { v: 'code', label: '🔒 초대코드' }].map(({ v, label }) => (
+              <button key={v} onClick={() => { setJoinTab(v); setSelectedPublic(null); setPubPassword(''); }} style={{
+                flex: 1, padding: '8px', borderRadius: 10, border: `1.5px solid ${joinTab === v ? '#6C8EFF' : 'var(--dm-border)'}`,
+                background: joinTab === v ? 'rgba(108,142,255,.12)' : 'var(--dm-input)',
+                color: joinTab === v ? '#6C8EFF' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {joinTab === 'public' && (
+            <>
+              {publicLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 12 }}>불러오는 중...</div>}
+              {!publicLoading && publicList.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 12 }}>공개 커뮤니티가 없어요</div>
+              )}
+              {publicList.map(c => (
+                <button key={c.id} onClick={() => setSelectedPublic(selectedPublic?.id === c.id ? null : c)} style={{
+                  textAlign: 'left', padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1.5px solid ${selectedPublic?.id === c.id ? '#6C8EFF' : 'var(--dm-border)'}`,
+                  background: selectedPublic?.id === c.id ? 'rgba(108,142,255,.1)' : 'var(--dm-input)',
+                }}>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--dm-text)' }}>{c.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
+                    멤버 {c.memberCount}명 {c.password ? '· 🔑 비밀번호 있음' : '· 자유 입장'}
+                  </div>
+                </button>
+              ))}
+              {selectedPublic && (
+                <>
+                  {selectedPublic.password && (
+                    <input style={S.input} placeholder="비밀번호" type="password" value={pubPassword} onChange={e => setPubPassword(e.target.value)} maxLength={20} />
+                  )}
+                  <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
+                  <button style={S.btn} onClick={handleJoinPublic} disabled={submitting || !nicknameInput.trim()}>
+                    {submitting ? '가입 중...' : `"${selectedPublic.name}" 가입하기`}
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          {joinTab === 'code' && (
+            <>
+              <input style={{ ...S.input, textTransform: 'uppercase', letterSpacing: 4, fontSize: 18, textAlign: 'center' }}
+                placeholder="A1B2C3" value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} maxLength={6} />
+              <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
+              <button style={S.btn} onClick={handleJoin} disabled={submitting || codeInput.length < 6 || !nicknameInput.trim()}>
+                {submitting ? '가입 중...' : '가입하기'}
+              </button>
+            </>
+          )}
+
           <button style={S.btnGhost} onClick={() => setMode(null)}>취소</button>
         </div>
       )}
