@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import S from "../styles.js";
 
-export default function Community({ user, authUser, communityId, setCommunityId, getValidGcalToken, onGcalConnect, setToast }) {
+export default function Community({ user, authUser, communityId, setCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion }) {
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
+  const [checkins, setCheckins] = useState([]);
+  const [checkingIn, setCheckingIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // 생성/가입 UI
@@ -45,7 +47,11 @@ export default function Community({ user, authUser, communityId, setCommunityId,
       setLoading(false);
     }, () => setLoading(false));
 
-    return () => { unsubCom(); unsubEv(); };
+    const unsubCheckins = onSnapshot(collection(db, 'communities', communityId, 'checkins'), (snap) => {
+      setCheckins(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+    }, () => {});
+
+    return () => { unsubCom(); unsubEv(); unsubCheckins(); };
   }, [communityId]); // eslint-disable-line
 
   const handleCreate = async () => {
@@ -132,13 +138,27 @@ export default function Community({ user, authUser, communityId, setCommunityId,
     catch { setToast('삭제 실패 ❌'); }
   };
 
+  const today = toDateStr();
+  const todayCheckins = checkins.filter(c => c.date === today);
+  const myCheckin = todayCheckins.find(c => c.uid === authUser?.uid);
+
+  const handleCheckin = async () => {
+    if (myCheckin || checkingIn) return;
+    setCheckingIn(true);
+    try {
+      const nickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
+      await checkinCommunity(communityId, authUser.uid, nickname, todayCompletion);
+      setToast('출석 완료 ✅');
+    } catch { setToast('출석 실패 ❌'); }
+    setCheckingIn(false);
+  };
+
   // 날짜별 그룹핑
   const grouped = events.reduce((acc, ev) => {
     if (!acc[ev.date]) acc[ev.date] = [];
     acc[ev.date].push(ev);
     return acc;
   }, {});
-  const today = toDateStr();
   const upcomingDates = Object.keys(grouped).filter(d => d >= today).sort();
   const pastDates = Object.keys(grouped).filter(d => d < today).sort().reverse();
 
@@ -235,6 +255,54 @@ export default function Community({ user, authUser, communityId, setCommunityId,
           </div>
         </div>
       )}
+
+      {/* 오늘 출석 현황 */}
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>✋</span>오늘 출석</div>
+      <div style={S.card}>
+        {/* 출석 버튼 */}
+        <button onClick={handleCheckin} disabled={!!myCheckin || checkingIn} style={{
+          width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: myCheckin ? 'default' : 'pointer', fontWeight: 900, fontSize: 14, fontFamily: 'inherit',
+          background: myCheckin ? 'rgba(74,222,128,.12)' : 'linear-gradient(135deg,#4B6FFF,#6C8EFF)',
+          color: myCheckin ? '#4ADE80' : '#fff',
+          boxShadow: myCheckin ? 'none' : '0 4px 16px rgba(75,111,255,.3)',
+        }}>
+          {myCheckin
+            ? `✅ 출석 완료${myCheckin.streak > 1 ? ` · 🔥 ${myCheckin.streak}일 연속` : ''}${myCheckin.completionRate != null ? ` · ${myCheckin.completionRate}%` : ''}`
+            : checkingIn ? '출석 중...' : '✋ 오늘 출석하기'}
+        </button>
+
+        {/* 오늘 출석 멤버 현황 */}
+        {todayCheckins.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              오늘 {todayCheckins.length}명 출석
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {todayCheckins.map(c => (
+                <div key={c.uid} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                    {c.nickname?.[0] || '?'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{c.nickname}</span>
+                    {c.streak > 1 && <span style={{ fontSize: 11, color: '#F97316', marginLeft: 6, fontWeight: 900 }}>🔥 {c.streak}일</span>}
+                  </div>
+                  {c.completionRate != null && (
+                    <div style={{ fontSize: 13, fontWeight: 900, color: c.completionRate >= 100 ? '#4ADE80' : c.completionRate >= 50 ? '#6C8EFF' : 'var(--dm-muted)' }}>
+                      {c.completionRate}%
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {todayCheckins.length === 0 && !myCheckin && (
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center' }}>
+            아직 아무도 출석하지 않았어요
+          </div>
+        )}
+      </div>
 
       {loading && <div style={{ padding: 32, textAlign: 'center', color: 'var(--dm-muted)' }}>불러오는 중...</div>}
 

@@ -213,6 +213,20 @@ export async function deleteCommunityEvent(communityId, eventId) {
   await deleteDoc(doc(db, 'communities', communityId, 'events', eventId));
 }
 
+export async function checkinCommunity(communityId, uid, nickname, completionRate) {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const ref = doc(db, 'communities', communityId, 'checkins', uid);
+  const existing = await getDoc(ref);
+  const prev = existing.exists() ? existing.data() : {};
+  const streak = prev.lastCheckin === yesterday
+    ? (prev.streak || 1) + 1
+    : prev.lastCheckin === today
+      ? (prev.streak || 1)
+      : 1;
+  await setDoc(ref, { uid, nickname, date: today, completionRate: completionRate ?? null, streak, lastCheckin: today, checkedAt: new Date().toISOString() });
+}
+
 export async function leaveCommunity(communityId, uid) {
   await deleteDoc(doc(db, 'communities', communityId, 'members', uid));
   const ref = doc(db, 'communities', communityId);

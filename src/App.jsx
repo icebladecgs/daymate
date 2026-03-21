@@ -747,12 +747,16 @@ export default function App() {
       );
     }
     if (screen === "community") {
+      const _filled = (todayData?.tasks || []).filter(t => t.title.trim()).length;
+      const _done = (todayData?.tasks || []).filter(t => t.done && t.title.trim()).length;
+      const todayCompletion = _filled > 0 ? Math.round((_done / _filled) * 100) : null;
       return (
         <Community
           user={user} authUser={authUser}
           communityId={communityId} setCommunityId={setCommunityId}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           setToast={setToast}
+          todayCompletion={todayCompletion}
         />
       );
     }
