@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
 import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
+import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
@@ -12,6 +13,43 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
   const allDone = filledCount > 0 && doneCount === filledCount;
+
+  // ── 포커스 모드 ──────────────────────────────────────────────
+  const POMODORO_SEC = 25 * 60;
+  const [focusTask, setFocusTask] = useState(null);   // 현재 집중 중인 task 객체
+  const [focusSec, setFocusSec] = useState(POMODORO_SEC);
+  const [focusRunning, setFocusRunning] = useState(false);
+  const [focusDone, setFocusDone] = useState(false);
+  const focusInterval = useRef(null);
+
+  useEffect(() => {
+    if (focusRunning && focusSec > 0) {
+      focusInterval.current = setInterval(() => setFocusSec(s => s - 1), 1000);
+    } else if (focusSec === 0 && focusRunning) {
+      setFocusRunning(false);
+      setFocusDone(true);
+      // 완료 효과음 (3번 울림)
+      [0, 300, 600].forEach(d => setTimeout(() => playSound(880, 400), d));
+    }
+    return () => clearInterval(focusInterval.current);
+  }, [focusRunning, focusSec]);
+
+  const startFocus = (task) => {
+    setFocusTask(task);
+    setFocusSec(POMODORO_SEC);
+    setFocusRunning(true);
+    setFocusDone(false);
+  };
+  const closeFocus = () => {
+    clearInterval(focusInterval.current);
+    setFocusTask(null);
+    setFocusRunning(false);
+    setFocusDone(false);
+    setFocusSec(POMODORO_SEC);
+  };
+  const focusMin = String(Math.floor(focusSec / 60)).padStart(2, "0");
+  const focusSs  = String(focusSec % 60).padStart(2, "0");
+  const focusPct = ((POMODORO_SEC - focusSec) / POMODORO_SEC) * 100;
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
@@ -136,6 +174,84 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   return (
     <div style={S.content}>
+      {/* ── 포커스 모드 모달 ─────────────────────────────────── */}
+      {focusTask && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(10,12,30,0.97)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: 24,
+        }}>
+          {/* 닫기 */}
+          <button onClick={closeFocus} style={{
+            position: "absolute", top: 20, right: 20,
+            background: "transparent", border: "none", color: "var(--dm-muted)",
+            fontSize: 28, cursor: "pointer", lineHeight: 1,
+          }}>✕</button>
+
+          {/* 할일 이름 */}
+          <div style={{ fontSize: 15, color: "var(--dm-sub)", marginBottom: 8, fontWeight: 700, textAlign: "center" }}>집중 중</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--dm-text)", marginBottom: 40, textAlign: "center", maxWidth: 280 }}>
+            {focusTask.title}
+          </div>
+
+          {/* 원형 타이머 */}
+          <div style={{ position: "relative", width: 220, height: 220, marginBottom: 40 }}>
+            <svg width="220" height="220" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="110" cy="110" r="100" fill="none" stroke="var(--dm-input)" strokeWidth="10" />
+              <circle cx="110" cy="110" r="100" fill="none"
+                stroke={focusDone ? "#4ADE80" : "#A78BFA"} strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 100}`}
+                strokeDashoffset={`${2 * Math.PI * 100 * (1 - focusPct / 100)}`}
+                style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
+              />
+            </svg>
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            }}>
+              {focusDone ? (
+                <div style={{ fontSize: 48 }}>🎉</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 48, fontWeight: 900, color: "var(--dm-text)", letterSpacing: 2 }}>
+                    {focusMin}:{focusSs}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>남음</div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 완료 시 */}
+          {focusDone ? (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#4ADE80", marginBottom: 20 }}>25분 집중 완료! 🌟</div>
+              <button onClick={() => { onToggleTask(focusTask.id); closeFocus(); }}
+                style={{ ...S.btn, marginBottom: 10, background: "linear-gradient(135deg,#4ADE80,#22c55e)" }}>
+                ✅ 할일 완료로 체크
+              </button>
+              <button onClick={closeFocus} style={{ ...S.btnGhost }}>닫기</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setFocusRunning(r => !r)} style={{
+                ...S.btn, width: 120, background: focusRunning
+                  ? "linear-gradient(135deg,#F87171,#ef4444)"
+                  : "linear-gradient(135deg,#A78BFA,#7c3aed)",
+              }}>
+                {focusRunning ? "⏸ 일시정지" : "▶ 시작"}
+              </button>
+              <button onClick={() => { setFocusSec(POMODORO_SEC); setFocusRunning(false); setFocusDone(false); }}
+                style={{ ...S.btnGhost, width: 80 }}>
+                🔄 초기화
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {showConfetti && (
         <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, pointerEvents:'none', zIndex:500, overflow:'hidden' }}>
           {Array(20).fill(null).map((_,i) => (
@@ -432,6 +548,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       }}>{task.title}</span>
                     </div>
                   </div>
+                  {/* 포커스 모드 */}
+                  {!task.done && (
+                    <button onClick={() => startFocus(task)}
+                      title="포커스 모드 (25분)"
+                      style={{ background: "transparent", border: "1px solid #A78BFA", borderRadius: 6, color: "#A78BFA", fontSize: 13, cursor: "pointer", padding: "3px 7px", flexShrink: 0 }}>
+                      ▶
+                    </button>
+                  )}
                   {/* 언젠가할일로 이동 */}
                   <button onClick={() => {
                     const item = (todayData?.tasks || []).find(t => t.id === task.id);
