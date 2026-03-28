@@ -1,0 +1,55 @@
+name: Deploy Notify
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment
+        id: wait
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "Waiting for Vercel deployment..."
+          for i in $(seq 1 20); do
+            sleep 15
+            STATUS=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_fUbr6XPCP6zRUVVi3e8IkMDlbczf&limit=1" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" | \
+              python3 -c "import sys,json; d=json.load(sys.stdin); print(d['deployments'][0]['state'])" 2>/dev/null)
+            echo "Attempt $i: $STATUS"
+            if [ "$STATUS" = "READY" ]; then
+              echo "status=success" >> $GITHUB_OUTPUT
+              break
+            elif [ "$STATUS" = "ERROR" ]; then
+              echo "status=error" >> $GITHUB_OUTPUT
+              break
+            fi
+          done
+
+      - name: Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          STATUS: ${{ steps.wait.outputs.status }}
+        run: |
+          if [ "$STATUS" = "success" ]; then
+            ICON="✅"
+            TEXT="${ICON} <b>DayMate 배포 완료!</b>
+
+${COMMIT_MSG}
+
+<a href=\"https://daymate-beta.vercel.app\">📱 앱 열기</a>"
+          else
+            ICON="❌"
+            TEXT="${ICON} <b>DayMate 배포 실패</b>
+
+${COMMIT_MSG}"
+          fi
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": $(echo "$TEXT" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"parse_mode\": \"HTML\"}"
