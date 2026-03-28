@@ -2,7 +2,8 @@
   "crons": [
     { "path": "/api/notify?type=briefing", "schedule": "0 22 * * *" },
     { "path": "/api/notify?type=todo",     "schedule": "5 22 * * *" },
-    { "path": "/api/push-cron",            "schedule": "0 12 * * *" }
+    { "path": "/api/push-cron",            "schedule": "0 12 * * *" },
+    { "path": "/api/smart-notify",         "schedule": "0 12 * * *" }
   ],
   "routes": [
     { "src": "/api/telegram-webhook", "dest": "/api/telegram-webhook.js" }
