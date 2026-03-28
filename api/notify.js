@@ -117,6 +117,39 @@ function buildTodoReminderText(userName) {
   return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
 }
 
+async function handleInvestReview(botToken, chatId, uid) {
+  if (!botToken || !chatId || !uid) return { ok: false, error: '환경변수 누락' };
+  const db = getDb();
+  const snap = await db.collection('users').doc(uid).collection('invest_logs').get();
+  const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const now = Date.now();
+  const needReview3 = logs.filter(l => {
+    if (l.review) return false;
+    const diff = (now - new Date(l.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return diff >= 3 && diff < 4;
+  });
+  const needReview7 = logs.filter(l => {
+    if (l.review) return false;
+    const diff = (now - new Date(l.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return diff >= 7 && diff < 8;
+  });
+  if (needReview3.length === 0 && needReview7.length === 0) return { ok: true, reason: 'no pending reviews' };
+  let msg = `📊 <b>투자일기 복기 알림</b>\n\n`;
+  if (needReview3.length > 0) {
+    msg += `⏰ <b>3일 경과 — 복기할 시간이에요!</b>\n`;
+    needReview3.forEach(l => { msg += `  • ${l.date} ${l.asset} <b>${l.action}</b> — ${l.reason}\n`; });
+    msg += `\n`;
+  }
+  if (needReview7.length > 0) {
+    msg += `🔔 <b>7일 경과 — 마지막 복기 기회!</b>\n`;
+    needReview7.forEach(l => { msg += `  • ${l.date} ${l.asset} <b>${l.action}</b> — ${l.reason}\n`; });
+    msg += `\n`;
+  }
+  msg += `<a href="https://daymate-beta.vercel.app">📱 DayMate에서 복기하기</a>`;
+  await sendTelegramMessage(botToken, chatId, msg);
+  return { ok: true, review3: needReview3.length, review7: needReview7.length };
+}
+
 export default async function handler(req, res) {
   // cron 보안: Vercel이 보내는 Authorization 헤더 확인
   const authHeader = req.headers['authorization'];
@@ -166,6 +199,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (notifyType === 'invest-review') {
+      const uid = process.env.FIREBASE_USER_UID;
+      const result = await handleInvestReview(botToken, chatId, uid);
+      return res.status(200).json(result);
+    }
     let text;
     if (notifyType === 'todo') {
       text = buildTodoReminderText(userName);
