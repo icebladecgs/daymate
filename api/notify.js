@@ -117,6 +117,35 @@ function buildTodoReminderText(userName) {
   return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
 }
 
+async function handleMorningGreeting(botToken, chatId, uid, userName) {
+  if (!botToken || !chatId || !uid) return { ok: false, error: '환경변수 누락' };
+  const db = getDb();
+
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const pad2 = n => String(n).padStart(2, '0');
+  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+  const dateLabel = `${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+  const snap = await db.doc(`users/${uid}/days/${todayStr}`).get();
+  const tasks = (snap.data()?.tasks || []).filter(t => t.title?.trim());
+
+  let msg = `🌅 <b>좋은 아침이에요, ${userName}님!</b> (${dateLabel})\n\n`;
+
+  if (tasks.length === 0) {
+    msg += `📋 오늘 할일이 아직 없어요.\n오늘 뭐 할 예정인지 알려주세요!`;
+  } else {
+    const done = tasks.filter(t => t.done).length;
+    msg += `📋 <b>오늘 할일</b> (${done}/${tasks.length})\n`;
+    tasks.forEach((t, i) => {
+      msg += `${t.done ? '✅' : `${i + 1}.`} ${t.title}\n`;
+    });
+    msg += `\n추가할 내용이 있으면 바로 말씀해주세요!`;
+  }
+
+  await sendTelegramMessage(botToken, chatId, msg);
+  return { ok: true, tasks: tasks.length };
+}
+
 async function handleInvestReview(botToken, chatId, uid) {
   if (!botToken || !chatId || !uid) return { ok: false, error: '환경변수 누락' };
   const db = getDb();
@@ -199,6 +228,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (notifyType === 'morning') {
+      const result = await handleMorningGreeting(botToken, chatId, uid, userName);
+      return res.status(200).json(result);
+    }
     if (notifyType === 'invest-review') {
       const uid = process.env.FIREBASE_USER_UID;
       const result = await handleInvestReview(botToken, chatId, uid);
