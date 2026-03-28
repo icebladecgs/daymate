@@ -19,6 +19,7 @@ import Settings from "./screens/Settings.jsx";
 import Admin from "./screens/Admin.jsx";
 import Chat from "./screens/Chat.jsx";
 import Community from "./screens/Community.jsx";
+import InvestDiary from "./screens/InvestDiary.jsx";
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
@@ -743,7 +744,17 @@ export default function App() {
       const d = plans[todayStr] || newDay(todayStr);
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
-          toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} />
+          toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail}
+          onOpenInvest={() => changeScreen("invest")} />
+      );
+    }
+    if (screen === "invest") {
+      return (
+        <InvestDiary
+          uid={authUser?.uid}
+          telegramCfg={telegramCfg}
+          onBack={() => history.back()}
+        />
       );
     }
     if (screen === "community") {

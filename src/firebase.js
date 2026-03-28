@@ -252,6 +252,30 @@ export async function leaveCommunity(communityId, uid) {
   await setDoc(ref, { memberCount: Math.max((snap.data()?.memberCount || 1) - 1, 0) }, { merge: true });
 }
 
+// ---------- 투자일기 ----------
+
+export async function saveInvestLog(uid, log) {
+  const ref = doc(collection(db, 'users', uid, 'invest_logs'));
+  const id = ref.id;
+  await setDoc(ref, { ...log, id, createdAt: new Date().toISOString() });
+  return id;
+}
+
+export async function loadInvestLogs(uid) {
+  const snap = await getDocs(collection(db, 'users', uid, 'invest_logs'));
+  return snap.docs
+    .map(d => ({ ...d.data(), id: d.id }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function updateInvestLog(uid, logId, patch) {
+  await setDoc(doc(db, 'users', uid, 'invest_logs', logId), patch, { merge: true });
+}
+
+export async function deleteInvestLog(uid, logId) {
+  await deleteDoc(doc(db, 'users', uid, 'invest_logs', logId));
+}
+
 // ---------- Firestore (local → cloud) ----------
 
 // localStorage 데이터를 Firestore로 최초 업로드 (Firestore가 비어있을 때)

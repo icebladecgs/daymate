@@ -4,7 +4,7 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate }) {
+export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate, onOpenInvest }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
@@ -68,6 +68,25 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
           <div style={{ fontSize: 12, textAlign: "center", color: "var(--dm-sub)", marginTop: 6 }}>
             3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥
           </div>
+        </div>
+      )}
+
+      {/* 투자일기 바로가기 */}
+      {onOpenInvest && (
+        <div onClick={onOpenInvest} style={{
+          ...S.card, marginBottom: 10, cursor: "pointer",
+          background: "linear-gradient(135deg,rgba(167,139,250,0.12),rgba(108,142,255,0.08))",
+          border: "1.5px solid rgba(167,139,250,0.25)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>💹</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>투자일기</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>판단을 기록하고 복기하세요</div>
+            </div>
+          </div>
+          <span style={{ fontSize: 18, color: "var(--dm-muted)" }}>›</span>
         </div>
       )}
 
