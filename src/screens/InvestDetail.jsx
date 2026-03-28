@@ -33,7 +33,7 @@ export default function InvestDetail({ log, uid, onBack, onDelete, onReviewSaved
     setGenerating(true);
     setContent("");
     try {
-      const res = await fetch("/api/invest-content", {
+      const res = await fetch("/api/chat?action=invest-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ log }),

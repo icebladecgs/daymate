@@ -148,7 +148,7 @@ export async function searchFinnhub(_key, query) {
 
 export async function searchKoreanStock(query) {
   try {
-    const r = await fetch(`/api/ksearch?q=${encodeURIComponent(query)}`);
+    const r = await fetch(`/api/search?q=${encodeURIComponent(query)}&src=kr`);
     const j = await r.json();
     return j.result || [];
   } catch { return []; }

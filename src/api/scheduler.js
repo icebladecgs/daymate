@@ -91,7 +91,7 @@ class NotifScheduler {
         'DayMate 📊', '아침 자산 브리핑을 텔레그램으로 전송 중...',
         '📊',
         async () => {
-          const weatherRes = await fetch(`/api/weather?city=${encodeURIComponent(telegramCfg.weatherCity || 'Seoul')}`).then(r => r.json()).catch(() => null);
+          const weatherRes = await fetch(`/api/market?type=weather&city=${encodeURIComponent(telegramCfg.weatherCity || 'Seoul')}`).then(r => r.json()).catch(() => null);
           const weather = weatherRes?.ok ? weatherRes : null;
           const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
           const text = buildBriefingText(marketData, userName, weather);

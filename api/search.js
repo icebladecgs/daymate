@@ -1,20 +1,44 @@
-// Vercel Serverless — Finnhub 주식 심볼 검색 프록시
-// 클라이언트에 FINNHUB_KEY를 노출하지 않기 위한 서버사이드 프록시
+// Vercel Serverless — 주식 검색 프록시
+// ?src=kr → Yahoo Finance 한국 주식
+// (기본)   → Finnhub 글로벌 주식
 
 export default async function handler(req, res) {
   const q = (req.query.q || '').trim();
-  if (!q) return res.status(200).json({ result: [], count: 0 });
+  const src = req.query.src || '';
+  if (!q) return res.status(200).json({ result: [] });
 
-  const key = process.env.FINNHUB_KEY || '';
-  if (!key) return res.status(200).json({ result: [], count: 0 });
-
-  try {
-    const r = await fetch(
-      `https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`
-    );
-    const j = await r.json();
-    res.status(200).json(j);
-  } catch {
-    res.status(200).json({ result: [], count: 0 });
+  if (src === 'kr') {
+    // 한국 주식 (Yahoo Finance)
+    try {
+      const r = await fetch(
+        `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&newsCount=0&quotesCount=10`,
+        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+      );
+      const j = await r.json();
+      const result = (j.quotes || [])
+        .filter(q => q.quoteType === 'EQUITY' && /\.(KS|KQ)$/.test(q.symbol))
+        .slice(0, 6)
+        .map(q => ({
+          sym: q.symbol,
+          label: q.shortname || q.longname || q.symbol,
+          src: 'yahoo',
+        }));
+      res.status(200).json({ result });
+    } catch {
+      res.status(200).json({ result: [] });
+    }
+  } else {
+    // 글로벌 주식 (Finnhub)
+    const key = process.env.FINNHUB_KEY || '';
+    if (!key) return res.status(200).json({ result: [], count: 0 });
+    try {
+      const r = await fetch(
+        `https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`
+      );
+      const j = await r.json();
+      res.status(200).json(j);
+    } catch {
+      res.status(200).json({ result: [], count: 0 });
+    }
   }
 }
