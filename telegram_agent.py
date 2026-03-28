@@ -19,8 +19,15 @@ import io
 import json
 import os
 import subprocess
+import sys
 import urllib.request
 from pathlib import Path
+
+# Windows 콘솔 UTF-8 인코딩 설정
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8":
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 import anthropic
 from telegram import Update
