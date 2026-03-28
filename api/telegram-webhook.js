@@ -22,8 +22,15 @@ async function send(text) {
 }
 
 function pad2(n) { return String(n).padStart(2, '0'); }
-function toDateStr(d = new Date()) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+function toDateStr() {
+  // 한국 시간 기준
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
+// 명령어 파싱: "/today@BotName" → "/today", "/done 1@BotName" → "/done 1"
+function parseCommand(rawText) {
+  return rawText.replace(/@\S+/, '').trim();
 }
 
 async function getTodayData(today) {
@@ -31,7 +38,7 @@ async function getTodayData(today) {
   return snap.data() || {};
 }
 
-async function getRecentStats(today) {
+async function getRecentStats() {
   const snaps = await db.collection(`users/${UID}/days`).orderBy('__name__', 'desc').limit(7).get();
   return snaps.docs.map(doc => {
     const d = doc.data();
@@ -44,9 +51,8 @@ async function getRecentStats(today) {
 // Claude tool use로 DayMate 데이터 조작
 async function askClaude(userMessage, today) {
   const todayData = await getTodayData(today);
-  const recentStats = await getRecentStats(today);
+  const recentStats = await getRecentStats();
   const tasks = (todayData.tasks || []).filter(t => t.title?.trim());
-  const habits = todayData.habitChecks || {};
 
   const systemPrompt = `당신은 DayMate 앱의 AI 어시스턴트입니다. 사용자의 하루 관리를 돕습니다.
 한국어로 간결하게 답변하세요. HTML 태그 없이 일반 텍스트로만 응답하세요.
@@ -170,7 +176,6 @@ async function executeTool(name, input, today, todayData) {
       checkedAt: null,
       priority: false,
     };
-    // 빈 슬롯 먼저 채우기
     const tasks = [...allTasks];
     const emptyIdx = tasks.findIndex(t => !t.title?.trim());
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
@@ -225,8 +230,11 @@ export default async function handler(req, res) {
   // 보안: 내 채팅에서 온 메시지만 처리
   if (String(msg.chat?.id) !== CHAT_ID) return res.status(200).send('ok');
 
-  const text = (msg.text || '').trim();
+  const rawText = (msg.text || '').trim();
+  const text = parseCommand(rawText);  // @봇이름 제거
   const today = toDateStr();
+
+  console.log(`[telegram] raw="${rawText}" parsed="${text}" today=${today}`);
 
   try {
     if (text === '/today' || text === '/할일') {
@@ -285,7 +293,7 @@ export default async function handler(req, res) {
         });
         await send(reply);
       }
-    } else if (text === '/help' || text === '/도움') {
+    } else if (text === '/help' || text === '/도움' || text === '/start') {
       await send(
         `🤖 <b>DayMate AI 어시스턴트</b>\n\n` +
         `자연어로 말씀해주세요!\n` +
@@ -300,6 +308,9 @@ export default async function handler(req, res) {
         `/stats — 최근 7일 통계\n` +
         `/help — 도움말`
       );
+    } else if (text.startsWith('/')) {
+      // 알 수 없는 명령어 → 안내
+      await send(`❓ 알 수 없는 명령어예요.\n/help 로 사용법을 확인해보세요.`);
     } else {
       // 자연어 → Claude
       await send('⏳ 처리 중...');
@@ -307,6 +318,7 @@ export default async function handler(req, res) {
       await send(reply);
     }
   } catch (e) {
+    console.error('[telegram] error:', e);
     await send(`⚠️ 오류가 발생했어요: ${e.message}`);
   }
 
