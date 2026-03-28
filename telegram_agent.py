@@ -164,7 +164,7 @@ def execute_tool(name: str, inputs: dict) -> tuple[str, bool]:
     return "알 수 없는 도구", False
 
 
-SYSTEM_PROMPT = f"""You are a coding assistant for the DayMate project running on a Mac mini.
+SYSTEM_PROMPT = f"""You are a coding assistant for the DayMate project running on Windows.
 Project directory: {PROJECT_DIR}
 
 ## 프로젝트 구조
@@ -242,7 +242,7 @@ async def run_claude(update: Update, context: ContextTypes.DEFAULT_TYPE, user_co
 
     # 최신 코드 자동 pull
     try:
-        subprocess.run(["git", "pull", "origin", "main"], cwd=WORK_DIR, capture_output=True)
+        subprocess.run(["git", "pull", "origin", "main"], cwd=PROJECT_DIR, capture_output=True)
     except Exception:
         pass
 
