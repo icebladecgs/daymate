@@ -21,6 +21,25 @@ export const calcStreak = (plans) => {
   return streak;
 };
 
+export const calcHabitStreak = (plans, habitId) => {
+  let streak = 0;
+  const today = new Date();
+  const todayStr = toDateStr(today);
+  const todayChecked = !!plans[todayStr]?.habitChecks?.[habitId];
+
+  // 오늘 체크 안 했으면 어제부터 카운트 (오늘 기회 남아있으므로)
+  let current = new Date(today);
+  if (!todayChecked) current.setDate(current.getDate() - 1);
+
+  while (streak < 365) {
+    const dateStr = toDateStr(current);
+    if (!plans[dateStr]?.habitChecks?.[habitId]) break;
+    streak++;
+    current.setDate(current.getDate() - 1);
+  }
+  return streak;
+};
+
 export const calcWeeklyStats = (plans) => {
   const days = [];
   let current = new Date();

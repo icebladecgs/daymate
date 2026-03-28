@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
-import { isPerfectDay, calcStreak, calcWeeklyStats } from "../data/stats.js";
+import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../data/stats.js";
 import { loadRankings } from "../firebase.js";
 import S from "../styles.js";
 
@@ -48,6 +48,11 @@ export default function Stats({ plans, habits, authUser, onBack }) {
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
+  const habitStreaks = useMemo(() => {
+    const map = {};
+    (habits || []).forEach(h => { map[h.id] = calcHabitStreak(plans, h.id); });
+    return map;
+  }, [plans, habits]);
   const weeklyAvg = useMemo(() =>
     Math.round(weeklyStats.reduce((a, d) => a + d.rate, 0) / 7),
     [weeklyStats]
@@ -353,6 +358,11 @@ const last30 = useMemo(() => {
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 18 }}>{h.icon}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{h.name}</span>
+                      {habitStreaks[h.id] > 0 && (
+                        <span style={{ fontSize: 11, fontWeight: 900, color: "#FCD34D", background: "rgba(252,211,77,0.12)", borderRadius: 6, padding: "1px 6px" }}>
+                          🔥 {habitStreaks[h.id]}일
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 900, color: rate >= 80 ? "#4ADE80" : rate >= 50 ? "#FCD34D" : "#F87171" }}>
                       {total === 0 ? "-" : `${done}/${total}일 · ${rate}%`}
