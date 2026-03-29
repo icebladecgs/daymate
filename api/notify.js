@@ -1,9 +1,10 @@
 // Vercel Serverless Function — DayMate Telegram 알림
-// 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, FINNHUB_KEY, USER_NAME, SELECTED_ASSETS, NOTIFY_TYPE
+// 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, FINNHUB_KEY, USER_NAME, SELECTED_ASSETS, NOTIFY_TYPE, ANTHROPIC_API_KEY
 // Firebase Admin 연동: FIREBASE_SERVICE_ACCOUNT (JSON), FIREBASE_USER_UID
 
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import Anthropic from '@anthropic-ai/sdk';
 
 const ASSET_META = {
   BTC:  { label: '비트코인',      src: 'coingecko' },
@@ -117,6 +118,73 @@ function buildTodoReminderText(userName) {
   return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
 }
 
+const CRYPTO_KEYWORDS = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'MATIC', 'AVAX', 'DOT', 'LINK'];
+function isCrypto(sym) { return CRYPTO_KEYWORDS.includes(sym.toUpperCase()); }
+
+async function fetchNewsDigest(finnhubKey, uid) {
+  if (!finnhubKey || !uid) return null;
+  const db = getDb();
+
+  // 투자일기에서 보유 종목 추출
+  const snap = await db.collection('users').doc(uid).collection('invest_logs').get();
+  const symbols = [...new Set(snap.docs.map(d => d.data().asset).filter(Boolean))];
+  if (symbols.length === 0) return null;
+
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const toDate = today.toISOString().slice(0, 10);
+  const fromDate = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  // 종목별 뉴스 수집
+  const newsMap = {};
+  for (const sym of symbols) {
+    try {
+      let articles = [];
+      if (isCrypto(sym)) {
+        const r = await fetch(`https://finnhub.io/api/v1/news?category=crypto&token=${finnhubKey}`);
+        const j = await r.json();
+        articles = (Array.isArray(j) ? j : [])
+          .filter(a => a.headline?.toLowerCase().includes(sym.toLowerCase()))
+          .slice(0, 2);
+      } else {
+        const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${fromDate}&to=${toDate}&token=${finnhubKey}`);
+        const j = await r.json();
+        articles = (Array.isArray(j) ? j : []).slice(0, 2);
+      }
+      if (articles.length > 0) newsMap[sym] = articles.map(a => a.headline);
+    } catch {}
+  }
+  if (Object.keys(newsMap).length === 0) return null;
+
+  // Claude로 한국어 한 줄 요약
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const lines = Object.entries(newsMap)
+      .flatMap(([sym, headlines]) => headlines.map(h => `[${sym}] ${h}`))
+      .join('\n');
+    const res = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: `다음 영문 주식/코인 뉴스 헤드라인들을 각각 한국어로 한 줄씩 간결하게 번역/요약해줘. 형식: "[심볼] 요약"\n\n${lines}` }],
+    });
+    const summaryText = res.content.find(b => b.type === 'text')?.text || '';
+    const summaryLines = summaryText.trim().split('\n').filter(Boolean);
+
+    // 심볼별로 재매핑
+    const result = {};
+    for (const line of summaryLines) {
+      const m = line.match(/\[(\w+)\]\s*(.+)/);
+      if (m) {
+        if (!result[m[1]]) result[m[1]] = [];
+        result[m[1]].push(m[2].trim());
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  } catch {
+    // Claude 실패 시 원문 그대로
+    return Object.fromEntries(Object.entries(newsMap).map(([sym, h]) => [sym, h.slice(0, 1)]));
+  }
+}
+
 async function handleMorningGreeting(botToken, chatId, uid, userName) {
   if (!botToken || !chatId || !uid) return { ok: false, error: '환경변수 누락' };
   const db = getDb();
@@ -141,6 +209,18 @@ async function handleMorningGreeting(botToken, chatId, uid, userName) {
     });
     msg += `\n추가할 내용이 있으면 바로 말씀해주세요!`;
   }
+
+  // 뉴스 브리핑 추가
+  try {
+    const newsDigest = await fetchNewsDigest(process.env.FINNHUB_KEY, uid);
+    if (newsDigest && Object.keys(newsDigest).length > 0) {
+      msg += `\n\n📰 <b>관심 종목 뉴스</b>\n`;
+      for (const [sym, summaries] of Object.entries(newsDigest)) {
+        msg += `\n🔹 <b>${sym}</b>\n`;
+        summaries.forEach(s => { msg += `  · ${s}\n`; });
+      }
+    }
+  } catch {}
 
   await sendTelegramMessage(botToken, chatId, msg);
   return { ok: true, tasks: tasks.length };
