@@ -75,19 +75,35 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [luckyResult, setLuckyResult] = useState(null);
   const luckyInterval = useRef(null);
 
+  // 오늘 운세 점수 (캐시에서 읽기)
+  const todayFortuneScore = (() => {
+    try {
+      const cached = store.get(`dm_fortune_${today}`, null);
+      return cached?.overall ?? null;
+    } catch { return null; }
+  })();
+
   const openLucky = () => {
     if (luckyDone) return;
     setLuckyResult(null);
     setLuckyOpen(true);
     luckyInterval.current = setInterval(() => {
-      setLuckyNum(Math.floor(Math.random() * 100) + 1);
+      if (todayFortuneScore !== null) {
+        // 운세 점수 ±35% 범위 내에서 랜덤
+        const min = Math.max(1, Math.round(todayFortuneScore - 35));
+        const max = Math.min(100, Math.round(todayFortuneScore + 35));
+        setLuckyNum(Math.floor(Math.random() * (max - min + 1)) + min);
+      } else {
+        setLuckyNum(Math.floor(Math.random() * 100) + 1);
+      }
     }, 80);
   };
 
   const stopLucky = () => {
     clearInterval(luckyInterval.current);
     const xp = Math.max(1, Math.round(luckyNum / 10));
-    setLuckyResult({ num: luckyNum, xp });
+    const fortLinked = todayFortuneScore !== null;
+    setLuckyResult({ num: luckyNum, xp, fortLinked, fortuneScore: todayFortuneScore });
     setLuckyDone({ num: luckyNum, xp });
     store.set(luckyKey, { num: luckyNum, xp });
     onLuckyXp?.(xp);
@@ -397,9 +413,19 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <button onClick={stopLucky} style={{ ...S.btn, background: "linear-gradient(135deg,#F59E0B,#FBBF24)", boxShadow: "0 4px 20px rgba(251,191,36,.4)", fontSize: 16 }}>
                   멈추기!
                 </button>
+                {!todayFortuneScore && (
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 14, lineHeight: 1.6 }}>
+                    🔮 운세를 보면 더 좋은 점수를 받을 수 있어요
+                  </div>
+                )}
               </>
             ) : (
               <>
+                {luckyResult.fortLinked && luckyResult.fortuneScore >= 80 && luckyResult.num >= 70 && (
+                  <div style={{ fontSize: 12, fontWeight: 900, color: "#FBBF24", background: "rgba(251,191,36,.12)", border: "1px solid rgba(251,191,36,.3)", borderRadius: 20, padding: "4px 12px", marginBottom: 12, display: "inline-block" }}>
+                    🔥 오늘은 강운의 날! 도전해봐요
+                  </div>
+                )}
                 <div style={{ fontSize: 72, fontWeight: 900, lineHeight: 1, marginBottom: 8,
                   color: luckyResult.num >= 76 ? "#4ADE80" : luckyResult.num >= 51 ? "#6C8EFF" : luckyResult.num >= 26 ? "#FBBF24" : "#F87171" }}>
                   {luckyResult.num}
@@ -407,7 +433,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 4 }}>
                   {luckyResult.num >= 76 ? "대박 운!! 🍀" : luckyResult.num >= 51 ? "좋은 운 😊" : luckyResult.num >= 26 ? "보통 운 😐" : "오늘은 조심... 😅"}
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#4ADE80", marginBottom: 24 }}>+{luckyResult.xp} XP</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#4ADE80", marginBottom: 12 }}>+{luckyResult.xp} XP</div>
+                {luckyResult.fortLinked && (
+                  <div style={{ fontSize: 11, color: "#A78BFA", marginBottom: 16 }}>🔮 오늘 운세 점수가 반영됐어요</div>
+                )}
                 <button onClick={() => setLuckyOpen(false)} style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }}>
                   확인
                 </button>
