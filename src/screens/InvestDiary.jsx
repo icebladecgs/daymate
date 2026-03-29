@@ -39,6 +39,35 @@ export default function InvestDiary({ uid, telegramCfg, onBack }) {
   const [toast, setToast] = useState("");
   const [selectedLog, setSelectedLog] = useState(null);
 
+  // 포트폴리오 시세
+  const todayStr = toDateStr();
+  const portfolioCacheKey = `dm_portfolio_${todayStr}`;
+  const [portfolioData, setPortfolioData] = useState(() => { try { return JSON.parse(localStorage.getItem(portfolioCacheKey) || 'null'); } catch { return null; } });
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+
+  const loadPortfolio = async () => {
+    const selectedAssets = telegramCfg?.assets || [];
+    const customAssets = telegramCfg?.customAssets || [];
+    if (selectedAssets.length === 0) return;
+    setPortfolioLoading(true);
+    try {
+      const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
+      const res = await fetch('/api/market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assets: selectedAssets, customRegistry }),
+      });
+      const data = await res.json();
+      localStorage.setItem(portfolioCacheKey, JSON.stringify(data));
+      setPortfolioData(data);
+    } catch {}
+    setPortfolioLoading(false);
+  };
+
+  useEffect(() => {
+    if (!portfolioData && (telegramCfg?.assets?.length > 0)) loadPortfolio();
+  }, []); // eslint-disable-line
+
   // 입력 폼 상태
   const [asset, setAsset] = useState("BTC");
   const [action, setAction] = useState("BUY");
@@ -142,6 +171,46 @@ export default function InvestDiary({ uid, telegramCfg, onBack }) {
           </div>
         </div>
       </div>
+
+      {/* 포트폴리오 시세 */}
+      {(telegramCfg?.assets?.length > 0) && (
+        <div style={{ ...S.card, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>📈 관심 종목</div>
+            <button onClick={() => { localStorage.removeItem(portfolioCacheKey); setPortfolioData(null); loadPortfolio(); }}
+              style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer" }}>
+              🔄 새로고침
+            </button>
+          </div>
+          {portfolioLoading && <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "8px 0" }}>시세 불러오는 중...</div>}
+          {!portfolioLoading && portfolioData && Object.entries(portfolioData).map(([sym, d], i, arr) => {
+            const chg = d.changePercent ?? d.change ?? 0;
+            const isUp = chg > 0;
+            const isDown = chg < 0;
+            const color = isUp ? "#4ADE80" : isDown ? "#F87171" : "var(--dm-muted)";
+            return (
+              <div key={sym} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+                borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{d.label || sym}</div>
+                  <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{sym}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>
+                    ${Number(d.price || 0).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color }}>
+                    {isUp ? "▲" : isDown ? "▼" : "—"} {Math.abs(chg).toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {!portfolioLoading && !portfolioData && (
+            <button onClick={loadPortfolio} style={{ ...S.btn, fontSize: 12, marginTop: 0 }}>시세 불러오기</button>
+          )}
+        </div>
+      )}
 
       {/* 통계 헤더 */}
       <div style={{ ...S.card, marginBottom: 10 }}>

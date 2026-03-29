@@ -8,7 +8,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, telegramCfg }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -162,36 +162,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   const starRating = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-  // ── 포트폴리오 카드 ──────────────────────────────────────────
-  const [portfolioData, setPortfolioData] = useState(() => store.get('dm_portfolio_cache', null));
-  const [portfolioLoading, setPortfolioLoading] = useState(false);
-  const [portfolioOpen, setPortfolioOpen] = useState(false);
-  const portfolioCacheKey = `dm_portfolio_${todayStr}`;
-
-  const loadPortfolio = async () => {
-    const assets = telegramCfg?.assets || [];
-    const customAssets = telegramCfg?.customAssets || [];
-    if (assets.length === 0) return;
-    const cached = store.get(portfolioCacheKey, null);
-    if (cached) { setPortfolioData(cached); return; }
-    setPortfolioLoading(true);
-    try {
-      const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
-      const res = await fetch('/api/market', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assets, customRegistry }),
-      });
-      const data = await res.json();
-      store.set(portfolioCacheKey, data);
-      setPortfolioData(data);
-    } catch {}
-    setPortfolioLoading(false);
-  };
-
-  useEffect(() => {
-    if (portfolioOpen && !portfolioData) loadPortfolio();
-  }, [portfolioOpen]); // eslint-disable-line
 
   // ── 오늘의 명언 ──────────────────────────────────────────────
   const QUOTES = [
@@ -735,73 +705,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
       </div>
 
-      {/* ── 포트폴리오 카드 ─────────────────────────────────────── */}
-      {(telegramCfg?.assets?.length > 0) && (
-        <>
-          <div onClick={() => setPortfolioOpen(v => !v)}
-            style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={S.sectionEmoji}>📈</span>포트폴리오
-              <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{portfolioOpen ? "▾" : "▸"}</span>
-            </span>
-            {portfolioOpen && (
-              <button onClick={e => { e.stopPropagation(); store.remove(portfolioCacheKey); setPortfolioData(null); loadPortfolio(); }}
-                style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-                🔄 새로고침
-              </button>
-            )}
-          </div>
-
-          {portfolioOpen && (
-            <div style={{ paddingBottom: 4 }}>
-              {portfolioLoading && (
-                <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>
-                  📊 시세 불러오는 중...
-                </div>
-              )}
-              {!portfolioLoading && portfolioData && (() => {
-                const entries = Object.entries(portfolioData);
-                if (entries.length === 0) return (
-                  <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13 }}>데이터 없음</div>
-                );
-                return (
-                  <div style={S.card}>
-                    {entries.map(([sym, d], i) => {
-                      const chg = d.changePercent ?? d.change ?? 0;
-                      const isUp = chg > 0;
-                      const isDown = chg < 0;
-                      const color = isUp ? "#4ADE80" : isDown ? "#F87171" : "var(--dm-muted)";
-                      const arrow = isUp ? "▲" : isDown ? "▼" : "—";
-                      return (
-                        <div key={sym} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
-                          borderBottom: i < entries.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)" }}>{d.label || sym}</div>
-                            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>{sym}</div>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)" }}>
-                              {d.price != null ? (d.src === 'finnhub' ? `$${Number(d.price).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${Number(d.price).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`) : '—'}
-                            </div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color, marginTop: 1 }}>
-                              {arrow} {Math.abs(chg).toFixed(2)}%
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-              {!portfolioLoading && !portfolioData && (
-                <div style={{ ...S.card, textAlign: "center", padding: "20px 16px" }}>
-                  <button onClick={loadPortfolio} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>📊 시세 불러오기</button>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
 
       {/* ── 운세 섹션 ───────────────────────────────────────────── */}
       <div onClick={() => {
