@@ -811,6 +811,7 @@ export default function App() {
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
           onOpenSettings={() => changeScreen("settings")}
           levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
+          telegramCfg={telegramCfg}
         />
       );
     }
