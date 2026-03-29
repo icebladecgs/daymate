@@ -47,7 +47,7 @@ export default function History({ plans, onOpenDate, habits }) {
     <div style={S.content}>
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>기록</div>
+          <div style={S.title}>달력</div>
           <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

@@ -1390,22 +1390,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>이번주 일정</span>
-        {getValidGcalToken?.() && (
-          <button onClick={() => {
-            const token = getValidGcalToken();
-            if (!token) return;
-            gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
-          }} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
-            🔄 캘린더 동기화
-          </button>
-        )}
-      </div>
-      <div style={{ padding: "0 16px" }}>
-        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} gcalEvents={gcalWeekEvents} />
-      </div>
-
       <div style={{ height: 12 }} />
     </div>
   );
