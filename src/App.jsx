@@ -6,7 +6,7 @@ import { driveBackup } from "./api/drive.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
-import { calcDayScore, calcLevel } from "./data/stats.js";
+import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
@@ -145,6 +145,7 @@ export default function App() {
   const [driveTokenExp, setDriveTokenExp] = useState(() => store.get("dm_drive_token_exp", 0));
   const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
+  const [levelUpInfo, setLevelUpInfo] = useState(null); // { level, title, icon, badge }
   const [myRank, setMyRank] = useState(null);
   const [communityIds, setCommunityIdsState] = useState(() => {
     const arr = store.get('dm_community_ids', null);
@@ -275,6 +276,32 @@ export default function App() {
       }
     }
   }, []); // eslint-disable-line
+
+  // 레벨업 감지 + 스트릭 보너스
+  const prevLevelRef = useRef(null);
+  const prevStreakRef = useRef(null);
+  useEffect(() => {
+    const todayScore = calcDayScore(plans[todayStr], habits);
+    const bonus = store.get('dm_invite_bonus', 0);
+    const total = Object.values(scores).reduce((a, b) => a + b, 0) + todayScore + bonus;
+    const lvInfo = calcLevel(total);
+
+    // 레벨업 감지
+    if (prevLevelRef.current !== null && lvInfo.level > prevLevelRef.current) {
+      setLevelUpInfo({ level: lvInfo.level, title: lvInfo.title, icon: lvInfo.icon, badge: lvInfo.badge });
+    }
+    prevLevelRef.current = lvInfo.level;
+
+    // 스트릭 보너스 (7일 배수 달성 시 1회만)
+    const streak = calcStreak(plans);
+    const bonusKey = `dm_streak_bonus_${streak}`;
+    if (streak > 0 && streak % 7 === 0 && prevStreakRef.current !== null && streak > prevStreakRef.current && !store.get(bonusKey)) {
+      const bonusPts = calcStreakBonus(streak);
+      store.set(bonusKey, true);
+      setInviteBonus(prev => { const next = prev + bonusPts; store.set('dm_invite_bonus', next); return next; });
+    }
+    prevStreakRef.current = streak;
+  }, [plans[todayStr], habits, scores]); // eslint-disable-line
 
   // 오늘 점수 변경 시 랭킹 실시간 반영 (debounce 10초)
   const rankingTimerRef = useRef(null);
@@ -783,6 +810,7 @@ export default function App() {
           onLuckyXp={addInviteBonus}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
           onOpenSettings={() => changeScreen("settings")}
+          levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
         />
       );
     }

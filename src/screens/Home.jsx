@@ -8,7 +8,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -154,6 +154,36 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   };
 
   const starRating = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+  // ── 오늘의 명언 ──────────────────────────────────────────────
+  const QUOTES = [
+    { text: "작은 행동이 큰 꿈을 만든다.", author: "마틴 루터 킹" },
+    { text: "오늘 할 수 있는 일을 내일로 미루지 말라.", author: "벤자민 프랭클린" },
+    { text: "성공은 준비된 자에게 기회가 왔을 때 만들어진다.", author: "세네카" },
+    { text: "천 리 길도 한 걸음부터.", author: "노자" },
+    { text: "당신이 할 수 있다고 생각하든, 없다고 생각하든, 당신이 옳다.", author: "헨리 포드" },
+    { text: "인생은 자전거 타기와 같다. 균형을 유지하려면 계속 움직여야 한다.", author: "알버트 아인슈타인" },
+    { text: "실패는 포기할 때 일어난다. 그 전까지는 그저 과정이다.", author: "익명" },
+    { text: "지금 이 순간이 당신이 가진 전부다. 최선을 다하라.", author: "오프라 윈프리" },
+    { text: "규율 있는 삶이 자유로운 삶을 만든다.", author: "익명" },
+    { text: "한 번에 한 걸음씩. 그것이 산을 오르는 유일한 방법이다.", author: "익명" },
+    { text: "당신의 시간은 한정되어 있다. 다른 사람의 삶을 사느라 낭비하지 말라.", author: "스티브 잡스" },
+    { text: "성공한 사람이 되려 하기보다 가치 있는 사람이 되려 하라.", author: "알버트 아인슈타인" },
+    { text: "어제의 나보다 나은 오늘의 내가 되어라.", author: "익명" },
+    { text: "부자가 되는 가장 빠른 길은 천천히 꾸준히 가는 것이다.", author: "워런 버핏" },
+    { text: "투자의 핵심은 손실을 피하는 것이다.", author: "워런 버핏" },
+    { text: "미래를 예측하는 가장 좋은 방법은 미래를 만드는 것이다.", author: "피터 드러커" },
+    { text: "건강이 최고의 재산이다.", author: "랄프 왈도 에머슨" },
+    { text: "시스템을 만들어라. 그 시스템이 당신 대신 일하게 하라.", author: "익명" },
+    { text: "습관은 제2의 천성이다.", author: "키케로" },
+    { text: "작은 습관들이 모여 인생을 바꾼다.", author: "제임스 클리어" },
+    { text: "당신이 집중하는 것이 성장한다.", author: "익명" },
+    { text: "가족이 있는 한 실패는 없다.", author: "익명" },
+  ];
+  const todayQuote = useMemo(() => {
+    const idx = Math.floor(new Date(todayStr).getTime() / 86400000) % QUOTES.length;
+    return QUOTES[idx];
+  }, [todayStr]); // eslint-disable-line
 
   // ── 인생 목표 ────────────────────────────────────────────────
   const [lifeGoalOpen, setLifeGoalOpen] = useState(false);
@@ -315,6 +345,33 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   return (
     <div style={S.content}>
+      {/* ── 레벨업 모달 ─────────────────────────────────────── */}
+      {levelUpInfo && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.8)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={onDismissLevelUp}>
+          <div style={{ background: "var(--dm-card)", border: "1.5px solid rgba(108,142,255,.5)", borderRadius: 28, padding: "40px 32px", textAlign: "center", minWidth: 260, maxWidth: 320, position: "relative" }}
+            onClick={e => e.stopPropagation()}>
+            {/* 배경 빛 효과 */}
+            <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "radial-gradient(circle at 50% 30%, rgba(108,142,255,.15), transparent 70%)", pointerEvents: "none" }} />
+            <div style={{ fontSize: 64, marginBottom: 8, filter: "drop-shadow(0 0 16px rgba(252,211,77,.6))" }}>{levelUpInfo.icon}</div>
+            <div style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 900, letterSpacing: 2, marginBottom: 4 }}>LEVEL UP!</div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>Lv.{levelUpInfo.level}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#FCD34D", marginBottom: 16 }}>{levelUpInfo.title}</div>
+            {levelUpInfo.badge && (
+              <div style={{ background: "linear-gradient(135deg, rgba(252,211,77,.2), rgba(108,142,255,.2))", border: "1px solid rgba(252,211,77,.4)", borderRadius: 14, padding: "10px 20px", marginBottom: 16, display: "inline-block" }}>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 4 }}>🏅 뱃지 획득</div>
+                <div style={{ fontSize: 15, fontWeight: 900 }}>{levelUpInfo.badge.icon} {levelUpInfo.badge.label}</div>
+              </div>
+            )}
+            <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.6, marginBottom: 20 }}>
+              꾸준한 실천이 당신을<br />한 단계 성장시켰어요 🎉
+            </div>
+            <button onClick={onDismissLevelUp}
+              style={{ ...S.btn, width: "auto", padding: "12px 32px", fontSize: 15 }}>확인</button>
+          </div>
+        </div>
+      )}
+
       {/* ── 오늘의 운 모달 ───────────────────────────────────── */}
       {luckyOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -592,6 +649,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
             {streak > 0 && <span style={{ color: "#F97316", fontWeight: 900 }}>🔥 {streak}일 연속 · </span>}
+            {streak > 0 && streak % 7 !== 0 && <span style={{ color: "#FCD34D", fontWeight: 700 }}>({7 - (streak % 7)}일 후 보너스) · </span>}
             다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
           </span>
           <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
@@ -607,6 +665,13 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
       )}
+
+      {/* ── 오늘의 명언 ─────────────────────────────────────────── */}
+      <div style={{ margin: "0 16px 10px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "14px 16px" }}>
+        <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>✨ 오늘의 명언</div>
+        <div style={{ fontSize: 14, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.6, marginBottom: 6 }}>"{todayQuote.text}"</div>
+        <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
+      </div>
 
       {/* ── 운세 섹션 ───────────────────────────────────────────── */}
       <div onClick={() => {
