@@ -8,7 +8,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -87,6 +87,50 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   };
 
   useEffect(() => () => clearInterval(luckyInterval.current), []);
+
+  // ── 인생 목표 ────────────────────────────────────────────────
+  const [lifeGoalOpen, setLifeGoalOpen] = useState(false);
+  const [lgForm, setLgForm] = useState(null); // null | { id?, title, deadline, emoji, actions }
+  const [lgActionInput, setLgActionInput] = useState('');
+
+  const daysLeft = (deadline) => {
+    if (!deadline) return null;
+    const diff = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
+  const saveLgForm = () => {
+    if (!lgForm?.title?.trim()) return;
+    const goal = {
+      id: lgForm.id || `lg_${Date.now()}`,
+      title: lgForm.title.trim(),
+      deadline: lgForm.deadline || '',
+      emoji: lgForm.emoji || '🎯',
+      actions: lgForm.actions || [],
+    };
+    setLifeGoals(prev =>
+      lgForm.id ? prev.map(g => g.id === lgForm.id ? goal : g) : [...prev, goal]
+    );
+    setLgForm(null);
+    setLgActionInput('');
+  };
+
+  const addLgAction = () => {
+    if (!lgActionInput.trim()) return;
+    setLgForm(prev => ({ ...prev, actions: [...(prev.actions || []), { id: `la_${Date.now()}`, title: lgActionInput.trim() }] }));
+    setLgActionInput('');
+  };
+
+  const addTaskFromAction = (actionTitle) => {
+    const newTask = { id: `t${Date.now()}`, title: actionTitle, done: false, checkedAt: null, priority: false };
+    onSetTodayTasks(prev => {
+      const all = [...(prev || [])];
+      const emptyIdx = all.findIndex(t => !t.title?.trim());
+      if (emptyIdx >= 0) all[emptyIdx] = newTask;
+      else all.push(newTask);
+      return all;
+    });
+  };
 
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
@@ -689,6 +733,120 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
         </div>
       </div>
+
+      {/* ── 인생 목표 섹션 ───────────────────────────────────── */}
+      <div onClick={() => { if (!lgForm) setLifeGoalOpen(v => !v); }}
+        style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={S.sectionEmoji}>🚀</span>인생 목표
+          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{lifeGoalOpen ? "▾" : "▸"}</span>
+          {!lifeGoalOpen && lifeGoals.length > 0 && (
+            <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{lifeGoals.length}개</span>
+          )}
+        </span>
+        {lifeGoalOpen && (
+          <button onClick={e => { e.stopPropagation(); setLgForm({ title: '', deadline: '', emoji: '🎯', actions: [] }); }}
+            style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+            + 목표 추가
+          </button>
+        )}
+      </div>
+
+      {lifeGoalOpen && (
+        <div style={{ paddingBottom: 4 }}>
+          {lifeGoals.length === 0 && !lgForm && (
+            <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>
+              아직 목표가 없어요.<br />
+              <button onClick={() => setLgForm({ title: '', deadline: '', emoji: '🎯', actions: [] })}
+                style={{ marginTop: 10, ...S.btn, width: "auto", padding: "8px 20px", fontSize: 13 }}>
+                + 첫 목표 만들기
+              </button>
+            </div>
+          )}
+
+          {lifeGoals.map(goal => {
+            const dl = daysLeft(goal.deadline);
+            return (
+              <div key={goal.id} style={S.card}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>
+                      {goal.emoji} {goal.title}
+                    </div>
+                    {goal.deadline && (
+                      <div style={{ fontSize: 11, color: dl != null && dl < 30 ? "#F87171" : "var(--dm-muted)", marginTop: 3, fontWeight: 700 }}>
+                        {goal.deadline} {dl != null ? (dl > 0 ? `· D-${dl}` : dl === 0 ? '· 오늘!' : `· D+${Math.abs(dl)}`) : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setLgForm({ ...goal })}
+                      style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer" }}>✏️</button>
+                    <button onClick={() => { if (window.confirm('목표를 삭제할까요?')) setLifeGoals(prev => prev.filter(g => g.id !== goal.id)); }}
+                      style={{ fontSize: 11, color: "#F87171", background: "transparent", border: "none", cursor: "pointer" }}>✕</button>
+                  </div>
+                </div>
+                {goal.actions.length > 0 && (
+                  <div style={{ borderTop: "1px solid var(--dm-row)", paddingTop: 8 }}>
+                    {goal.actions.map(a => (
+                      <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
+                        <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>▸ {a.title}</div>
+                        <button onClick={() => addTaskFromAction(a.title)}
+                          style={{ fontSize: 11, fontWeight: 800, color: "#6C8EFF", background: "rgba(108,142,255,.1)", border: "1px solid rgba(108,142,255,.2)", borderRadius: 8, padding: "3px 8px", cursor: "pointer" }}>
+                          → 오늘 할일
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 목표 추가/편집 폼 */}
+          {lgForm && (
+            <div style={{ ...S.card, border: "1.5px solid rgba(108,142,255,.4)" }}>
+              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>
+                {lgForm.id ? '목표 편집' : '새 목표'}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <input style={{ ...S.input, width: 48, textAlign: "center", fontSize: 20, padding: "8px 4px" }}
+                  value={lgForm.emoji} onChange={e => setLgForm(p => ({ ...p, emoji: e.target.value }))} maxLength={2} />
+                <input style={{ ...S.input, flex: 1 }} placeholder="목표 제목"
+                  value={lgForm.title} onChange={e => setLgForm(p => ({ ...p, title: e.target.value }))} maxLength={40} autoFocus />
+              </div>
+              <input type="date" style={{ ...S.input, marginBottom: 10 }}
+                value={lgForm.deadline} onChange={e => setLgForm(p => ({ ...p, deadline: e.target.value }))} />
+
+              {(lgForm.actions || []).length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--dm-muted)", marginBottom: 6 }}>액션 플랜</div>
+                  {lgForm.actions.map((a, i) => (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <div style={{ flex: 1, fontSize: 13, color: "var(--dm-sub)" }}>▸ {a.title}</div>
+                      <button onClick={() => setLgForm(p => ({ ...p, actions: p.actions.filter((_, j) => j !== i) }))}
+                        style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 13 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input style={{ ...S.input, flex: 1 }} placeholder="액션 추가 (예: 매일 30분 운동)"
+                  value={lgActionInput} onChange={e => setLgActionInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addLgAction()} maxLength={40} />
+                <button onClick={addLgAction}
+                  style={{ ...S.btn, width: "auto", marginTop: 0, padding: "0 14px", fontSize: 18 }}>+</button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={{ ...S.btn, flex: 1, marginTop: 0 }} onClick={saveLgForm}>저장</button>
+                <button style={{ ...S.btnGhost, flex: 1, marginTop: 0 }} onClick={() => { setLgForm(null); setLgActionInput(''); }}>취소</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         onClick={() => { if (!editingGoals) setGoalsExpanded(v => !v); }}

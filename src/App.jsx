@@ -122,6 +122,8 @@ export default function App() {
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
+  const [lifeGoals, setLifeGoalsState] = useState(() => store.get("dm_life_goals", []));
+  const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
   const [telegramCfg, setTelegramCfg] = useState(() => {
     const saved = store.get("dm_telegram", {});
@@ -779,6 +781,7 @@ export default function App() {
           getValidGcalToken={getValidGcalToken}
           myRank={myRank} onOpenStats={() => changeScreen("stats")}
           onLuckyXp={addInviteBonus}
+          lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
         />
       );
     }
