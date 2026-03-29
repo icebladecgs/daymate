@@ -262,6 +262,23 @@ export async function deleteCommunityNotice(communityId, noticeId) {
   await deleteDoc(doc(db, 'communities', communityId, 'notices', noticeId));
 }
 
+export async function addNoticeComment(communityId, noticeId, comment) {
+  const ref = doc(collection(db, 'communities', communityId, 'notices', noticeId, 'comments'));
+  await setDoc(ref, { ...comment, createdAt: new Date().toISOString() });
+  // 공지 문서에 댓글 수 업데이트
+  const noticeRef = doc(db, 'communities', communityId, 'notices', noticeId);
+  const snap = await getDoc(noticeRef);
+  await setDoc(noticeRef, { commentCount: (snap.data()?.commentCount || 0) + 1 }, { merge: true });
+  return ref.id;
+}
+
+export async function deleteNoticeComment(communityId, noticeId, commentId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'notices', noticeId, 'comments', commentId));
+  const noticeRef = doc(db, 'communities', communityId, 'notices', noticeId);
+  const snap = await getDoc(noticeRef);
+  await setDoc(noticeRef, { commentCount: Math.max((snap.data()?.commentCount || 1) - 1, 0) }, { merge: true });
+}
+
 // ---------- 투자일기 ----------
 
 export async function saveInvestLog(uid, log) {

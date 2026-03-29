@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -98,6 +98,13 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const lastReadNotice = store.get(noticeReadKey, null);
   const unreadCount = notices.filter(n => !lastReadNotice || n.createdAt > lastReadNotice).length;
 
+  // 댓글
+  const [selectedNotice, setSelectedNotice] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const myNickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
+
   // 커뮤니티 이름 캐시 (스위처용)
   const [communityNames, setCommunityNames] = useState({});
   useEffect(() => {
@@ -175,6 +182,35 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       loadPublicCommunities().then(list => { setPublicList(list); setPublicLoading(false); }).catch(() => setPublicLoading(false));
     }
   }, [mode, joinTab]);
+
+  // 댓글 실시간 구독
+  useEffect(() => {
+    if (!selectedNotice) { setComments([]); return; }
+    const q = query(
+      collection(db, 'communities', communityId, 'notices', selectedNotice.id, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsub = onSnapshot(q, snap => setComments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
+    return () => unsub();
+  }, [selectedNotice, communityId]);
+
+  const handlePostComment = async () => {
+    if (!commentText.trim() || !selectedNotice) return;
+    setPostingComment(true);
+    try {
+      await addNoticeComment(communityId, selectedNotice.id, {
+        text: commentText.trim(), uid: authUser.uid, nickname: myNickname,
+      });
+      setCommentText('');
+    } catch { setToast('댓글 등록 실패 ❌'); }
+    setPostingComment(false);
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await deleteNoticeComment(communityId, selectedNotice.id, commentId);
+    } catch { setToast('삭제 실패 ❌'); }
+  };
 
   const handlePostNotice = async () => {
     if (!noticeTitle.trim()) return;
@@ -589,19 +625,25 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           {notices.length > 0 && (
             <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(108,142,255,.3)', background: 'linear-gradient(135deg,rgba(75,111,255,.06),rgba(108,142,255,.03))' }}>
               {notices.slice(0, 3).map((n, i) => (
-                <div key={n.id} style={{ padding: '12px 14px', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none' }}>
+                <div key={n.id} onClick={() => setSelectedNotice(n)}
+                  style={{ padding: '12px 14px', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: n.body ? 4 : 0 }}>
                         📢 {n.title}
                       </div>
                       {n.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
-                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginTop: 4 }}>
-                        {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                        <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                          {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {(n.commentCount > 0) && (
+                          <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount}</span>
+                        )}
                       </div>
                     </div>
                     {isAdmin && (
-                      <button onClick={() => handleDeleteNotice(n.id)}
+                      <button onClick={e => { e.stopPropagation(); handleDeleteNotice(n.id); }}
                         style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
                     )}
                   </div>
@@ -766,6 +808,86 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           커뮤니티 나가기
         </button>
       </div>
+
+      {/* ── 댓글 모달 ── */}
+      {selectedNotice && (
+        <div onClick={() => setSelectedNotice(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+          zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
+            width: '100%', maxWidth: 480, maxHeight: '80vh',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
+            animation: 'slideUp 0.22s ease-out',
+          }}>
+            {/* 헤더 */}
+            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid var(--dm-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 2 }}>📢 {selectedNotice.title}</div>
+                {selectedNotice.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6, marginTop: 4 }}>{selectedNotice.body}</div>}
+                <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginTop: 4 }}>
+                  {new Date(selectedNotice.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              <button onClick={() => setSelectedNotice(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
+            </div>
+
+            {/* 댓글 목록 */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+              {comments.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '24px 0' }}>
+                  아직 댓글이 없어요. 첫 댓글을 남겨보세요 💬
+                </div>
+              ) : (
+                comments.map((c, i) => {
+                  const isMine = c.uid === authUser?.uid;
+                  return (
+                    <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
+                        {(c.nickname || '?')[0]}
+                      </div>
+                      <div style={{ flex: 1, background: isMine ? 'rgba(75,111,255,.07)' : 'var(--dm-card)', border: `1px solid ${isMine ? 'rgba(108,142,255,.25)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                              {new Date(c.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {(isMine || isAdmin) && (
+                              <button onClick={() => handleDeleteComment(c.id)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>{c.text}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 댓글 입력 */}
+            <div style={{ padding: '10px 16px 20px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8 }}>
+              <input
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePostComment()}
+                placeholder="댓글을 입력하세요..."
+                maxLength={200}
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 14 }}
+              />
+              <button onClick={handlePostComment} disabled={postingComment || !commentText.trim()}
+                style={{ background: commentText.trim() ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)', border: 'none', borderRadius: 12, padding: '0 16px', color: commentText.trim() ? '#fff' : 'var(--dm-muted)', fontWeight: 900, fontSize: 14, cursor: commentText.trim() ? 'pointer' : 'default', flexShrink: 0 }}>
+                {postingComment ? '...' : '전송'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
