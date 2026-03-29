@@ -130,6 +130,29 @@ export default function History({ plans, onOpenDate, habits }) {
         </div>
       </div>
 
+      {/* 빈 상태: 이번 달 기록이 하나도 없을 때 */}
+      {(() => {
+        const hasAnyRecord = Array(daysInMonth).fill(null).some((_, i) => {
+          const ds = `${year}-${pad2(month0 + 1)}-${pad2(i + 1)}`;
+          return !!plans[ds];
+        });
+        if (hasAnyRecord) return null;
+        const isCurrentMonth = year === new Date().getFullYear() && month0 === new Date().getMonth();
+        return (
+          <div style={{ margin: "4px 16px 12px", borderRadius: 16, background: "var(--dm-card)", border: "1.5px dashed var(--dm-border)", padding: "22px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>📅</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 6 }}>
+              {isCurrentMonth ? "아직 이번 달 기록이 없어요" : "이 달은 기록이 없어요"}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.7 }}>
+              {isCurrentMonth
+                ? "오늘 할 일 3가지를 완료하면\n달력에 색이 채워져요 🌈"
+                : "할일을 완료하거나 일기를 쓰면\n달력에 기록이 남아요"}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={S.sectionTitle}>📅 이번주 일정</div>
       <div style={{ padding: "0 16px" }}>
         <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />

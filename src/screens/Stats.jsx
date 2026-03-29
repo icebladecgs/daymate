@@ -174,6 +174,17 @@ const last30 = useMemo(() => {
         </div>
       </div>
 
+      {/* 빈 상태: 기록이 거의 없는 신규 사용자 */}
+      {Object.keys(plans || {}).length === 0 && (
+        <div style={{ margin: "0 16px 14px", borderRadius: 16, background: "linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))", border: "1.5px dashed rgba(108,142,255,.3)", padding: "24px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 6 }}>아직 통계 데이터가 없어요</div>
+          <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.8 }}>
+            매일 할 일을 완료하고 일기를 쓰면<br/>여기에 나의 성장 기록이 쌓여요 🌱
+          </div>
+        </div>
+      )}
+
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>🔥</span> 연속기록 · 이번주</div>
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>

@@ -677,7 +677,7 @@ export default function App() {
     );
     const stepDots = (
       <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
-        {[1,2,3].map(n => (
+        {[1,2,3,4].map(n => (
           <div key={n} style={{ width: n === onboardStep ? 20 : 8, height: 8, borderRadius: 4, transition: "width .2s", background: n === onboardStep ? "#6C8EFF" : "var(--dm-border)" }} />
         ))}
       </div>
@@ -760,7 +760,49 @@ export default function App() {
                     <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>{lv}</div>
                   </div>
                 ))}
-                <button style={{ ...S.btn, marginTop: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
+                <button style={{ ...S.btn, marginTop: 20 }} onClick={() => setOnboardStep(4)}>다음 →</button>
+              </>
+            )}
+
+            {onboardStep === 4 && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>📲 앱으로 설치하기</div>
+                  <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 6, lineHeight: 1.7 }}>
+                    홈 화면에 추가하면 앱처럼 바로 실행돼요.<br/>알림도 받을 수 있어요!
+                  </div>
+                </div>
+
+                {isStandalone ? (
+                  <div style={{ background: "rgba(74,222,128,.1)", border: "1.5px solid rgba(74,222,128,.4)", borderRadius: 14, padding: "16px", textAlign: "center", marginBottom: 16 }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: "#4ADE80" }}>이미 앱으로 설치되어 있어요!</div>
+                  </div>
+                ) : installPrompt ? (
+                  <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={async () => {
+                    await handleInstall();
+                  }}>📲 홈 화면에 설치하기</button>
+                ) : isIOS ? (
+                  <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "16px", marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>iPhone / iPad 설치 방법</div>
+                    {[
+                      ["1", "Safari 하단의 공유 버튼(□↑)을 탭해요"],
+                      ["2", "스크롤해서 '홈 화면에 추가'를 탭해요"],
+                      ["3", "우측 상단 '추가'를 눌러 완료!"],
+                    ].map(([n, txt]) => (
+                      <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
+                        <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7 }}>
+                    💡 브라우저 주소창 오른쪽의 <b style={{ color: "var(--dm-text)" }}>설치(+) 버튼</b>을 눌러 홈 화면에 추가해보세요.
+                  </div>
+                )}
+
+                <button style={{ ...S.btn, marginTop: 8, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
                   store.set("dm_first_run_done", true);
                   setFirstRunDone(true);
                   setScreen("life-coach");

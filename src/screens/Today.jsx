@@ -71,6 +71,19 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
         </div>
       )}
 
+      {/* 빈 상태: 메모·일기 모두 없을 때 첫 안내 */}
+      {!data.memo?.trim() && !data.journal?.body?.trim() && (
+        <div style={{ margin: "0 16px 10px", borderRadius: 16, background: "linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))", border: "1.5px dashed rgba(108,142,255,.3)", padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <div style={{ fontSize: 28, flexShrink: 0 }}>✏️</div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>오늘 기록을 시작해볼까요?</div>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.7 }}>
+              메모는 수시로, 일기는 하루 끝에.<br/>한 줄도 좋아요 — 기록이 쌓이면 달라져요.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 투자일기 바로가기 */}
       {onOpenInvest && (
         <div onClick={onOpenInvest} style={{

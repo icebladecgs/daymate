@@ -647,9 +647,12 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           )}
 
           {!loading && events.length === 0 && (
-            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13 }}>
-              아직 공유된 일정이 없어요<br />
-              <span style={{ fontSize: 11, marginTop: 4, display: 'block' }}>+ 일정 버튼으로 추가해보세요</span>
+            <div style={{ margin: '8px 16px 16px', borderRadius: 16, background: 'var(--dm-card)', border: '1.5px dashed var(--dm-border)', padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🗓️</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>아직 공유된 일정이 없어요</div>
+              <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.7, marginBottom: 16 }}>
+                함께하고 싶은 일정을 추가해보세요.<br/>구글 캘린더에도 연동할 수 있어요.
+              </div>
             </div>
           )}
         </>
