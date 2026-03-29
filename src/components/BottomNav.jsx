@@ -3,8 +3,8 @@ import S from "../styles.js";
 export default function BottomNav({ screen, setScreen, badge = {} }) {
   const items = [
     { id: "home", icon: "🏠", label: "홈" },
-    { id: "today", icon: "📖", label: "일기/메모" },
     { id: "history", icon: "📅", label: "달력" },
+    { id: "today", icon: "📖", label: "일기/메모" },
     { id: "community", icon: "👥", label: "커뮤니티" },
     { id: "settings", icon: "⚙️", label: "설정" },
   ];
