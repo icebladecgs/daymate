@@ -88,6 +88,73 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   useEffect(() => () => clearInterval(luckyInterval.current), []);
 
+  // ── 운세 ────────────────────────────────────────────────────
+  const [fortuneOpen, setFortuneOpen] = useState(false);
+  const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
+  const [fortuneData, setFortuneData] = useState(null);
+  const [fortuneLoading, setFortuneLoading] = useState(false);
+  const [sajuData, setSajuData] = useState(() => store.get('dm_saju_result', null));
+  const [tojeongData, setTojeongData] = useState(() => store.get('dm_tojeong_result', null));
+
+  const birthDate = store.get('dm_birth_date', '');
+  const birthTime = store.get('dm_birth_time', '');
+
+  const todayStr = toDateStr();
+  const fortuneCacheKey = `dm_fortune_${todayStr}`;
+
+  const loadFortune = async () => {
+    if (!birthDate) return;
+    const cached = store.get(fortuneCacheKey, null);
+    if (cached) { setFortuneData(cached); return; }
+    setFortuneLoading(true);
+    try {
+      const res = await fetch('/api/chat?action=fortune', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', today: todayStr }),
+      });
+      const data = await res.json();
+      store.set(fortuneCacheKey, data);
+      setFortuneData(data);
+    } catch {}
+    setFortuneLoading(false);
+  };
+
+  const loadSaju = async () => {
+    if (!birthDate) return;
+    setFortuneLoading(true);
+    try {
+      const res = await fetch('/api/chat?action=saju', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자' }),
+      });
+      const data = await res.json();
+      store.set('dm_saju_result', data);
+      setSajuData(data);
+    } catch {}
+    setFortuneLoading(false);
+  };
+
+  const loadTojeong = async () => {
+    if (!birthDate) return;
+    setFortuneLoading(true);
+    try {
+      const year = new Date().getFullYear();
+      const res = await fetch('/api/chat?action=tojeong', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', year }),
+      });
+      const data = await res.json();
+      store.set('dm_tojeong_result', data);
+      setTojeongData(data);
+    } catch {}
+    setFortuneLoading(false);
+  };
+
+  const starRating = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+
   // ── 인생 목표 ────────────────────────────────────────────────
   const [lifeGoalOpen, setLifeGoalOpen] = useState(false);
   const [expandedGoalIds, setExpandedGoalIds] = useState({});
@@ -857,6 +924,182 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <button style={{ ...S.btnGhost, flex: 1, marginTop: 0 }} onClick={() => { setLgForm(null); setLgActionInput(''); }}>취소</button>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 운세 섹션 ───────────────────────────────────────────── */}
+      <div onClick={() => {
+        if (!fortuneOpen && birthDate && fortuneTab === 'daily' && !fortuneData) loadFortune();
+        setFortuneOpen(v => !v);
+      }}
+        style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={S.sectionEmoji}>🔮</span>운세
+          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{fortuneOpen ? "▾" : "▸"}</span>
+          {!birthDate && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 700 }}>생년월일 설정 필요</span>}
+        </span>
+      </div>
+
+      {fortuneOpen && (
+        <div style={{ paddingBottom: 4 }}>
+          {!birthDate ? (
+            <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>
+              설정 → 프로필에서 생년월일을 입력해주세요
+            </div>
+          ) : (
+            <>
+              {/* 탭 */}
+              <div style={{ display: "flex", gap: 6, padding: "0 16px", marginBottom: 8 }}>
+                {[{ key: 'daily', label: '오늘의 운세' }, { key: 'saju', label: '평생 사주' }, { key: 'tojeong', label: '토정비결' }].map(t => (
+                  <button key={t.key} onClick={() => {
+                    setFortuneTab(t.key);
+                    if (t.key === 'daily' && !fortuneData) loadFortune();
+                    if (t.key === 'saju' && !sajuData) loadSaju();
+                    if (t.key === 'tojeong' && !tojeongData) loadTojeong();
+                  }} style={{
+                    flex: 1, padding: "7px 0", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer",
+                    border: "none",
+                    background: fortuneTab === t.key ? "#6C8EFF" : "var(--dm-input)",
+                    color: fortuneTab === t.key ? "#fff" : "var(--dm-sub)",
+                  }}>{t.label}</button>
+                ))}
+              </div>
+
+              {fortuneLoading && (
+                <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>
+                  ✨ 운세를 보고 있어요...
+                </div>
+              )}
+
+              {/* 오늘의 운세 */}
+              {!fortuneLoading && fortuneTab === 'daily' && (
+                fortuneData ? (
+                  <div style={S.card}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      {[
+                        { label: "전체운", val: fortuneData.overall },
+                        { label: "금전운", val: fortuneData.money },
+                        { label: "건강운", val: fortuneData.health },
+                        { label: "인간관계", val: fortuneData.relation },
+                      ].map(item => (
+                        <div key={item.label} style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 12px" }}>
+                          <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 4 }}>{item.label}</div>
+                          <div style={{ fontSize: 15, color: "#FCD34D", letterSpacing: 1 }}>{starRating(item.val || 3)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7, marginBottom: 12 }}>{fortuneData.message}</div>
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF", marginBottom: 4 }}>💡 오늘의 조언</div>
+                      <div style={{ fontSize: 13, color: "var(--dm-text)" }}>{fortuneData.advice}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ flex: 1, background: "var(--dm-input)", borderRadius: 10, padding: "8px 12px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>행운의 색</div>
+                        <div style={{ fontSize: 14, fontWeight: 900, marginTop: 2 }}>{fortuneData.luckyColor}</div>
+                      </div>
+                      <div style={{ flex: 1, background: "var(--dm-input)", borderRadius: 10, padding: "8px 12px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>행운의 숫자</div>
+                        <div style={{ fontSize: 14, fontWeight: 900, marginTop: 2 }}>{fortuneData.luckyNumber}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => { store.remove?.(fortuneCacheKey); setFortuneData(null); loadFortune(); }}
+                      style={{ ...S.btnGhost, marginTop: 10, fontSize: 12 }}>🔄 다시 보기</button>
+                  </div>
+                ) : (
+                  <div style={{ ...S.card, textAlign: "center", padding: "20px 16px" }}>
+                    <button onClick={loadFortune} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>🔮 오늘의 운세 보기</button>
+                  </div>
+                )
+              )}
+
+              {/* 평생 사주 */}
+              {!fortuneLoading && fortuneTab === 'saju' && (
+                sajuData ? (
+                  <div style={S.card}>
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
+                      <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>사주팔자</div>
+                      <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: 2 }}>{sajuData.pillars}</div>
+                      <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 4 }}>일간: {sajuData.dayMaster}</div>
+                    </div>
+                    {[
+                      { label: "🧠 성격 & 기질", content: sajuData.personality },
+                      { label: "💼 적합한 직업", content: sajuData.career },
+                      { label: "💰 재물운", content: sajuData.wealth },
+                      { label: "❤️ 건강", content: sajuData.health },
+                      { label: "🌟 인생 조언", content: sajuData.lifeAdvice },
+                    ].map(sec => (
+                      <div key={sec.label} style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 4 }}>{sec.label}</div>
+                        <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7 }}>{sec.content}</div>
+                      </div>
+                    ))}
+                    {sajuData.strengths?.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 6 }}>✨ 강점</div>
+                        {sajuData.strengths.map((s, i) => (
+                          <div key={i} style={{ fontSize: 13, color: "var(--dm-text)", marginBottom: 3 }}>• {s}</div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                      {sajuData.luckyColors?.map((c, i) => (
+                        <div key={i} style={{ flex: 1, background: "var(--dm-input)", borderRadius: 10, padding: "8px 12px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>행운의 색 {i+1}</div>
+                          <div style={{ fontSize: 13, fontWeight: 900, marginTop: 2 }}>{c}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => { store.set('dm_saju_result', null); setSajuData(null); loadSaju(); }}
+                      style={{ ...S.btnGhost, fontSize: 12 }}>🔄 다시 분석</button>
+                  </div>
+                ) : (
+                  <div style={{ ...S.card, textAlign: "center", padding: "20px 16px" }}>
+                    <button onClick={loadSaju} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>🌟 평생 사주 보기</button>
+                  </div>
+                )
+              )}
+
+              {/* 토정비결 */}
+              {!fortuneLoading && fortuneTab === 'tojeong' && (
+                tojeongData ? (
+                  <div style={S.card}>
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, textAlign: "center" }}>
+                      <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>{new Date().getFullYear()}년 토정비결</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: "#FCD34D" }}>{tojeongData.hexagram}</div>
+                      <div style={{ fontSize: 13, color: "var(--dm-text)", marginTop: 6 }}>{tojeongData.summary}</div>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.8, marginBottom: 12 }}>{tojeongData.overall}</div>
+                    {tojeongData.monthly?.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>월별 운세</div>
+                        {tojeongData.monthly.map(m => (
+                          <div key={m.month} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--dm-row)", alignItems: "flex-start" }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF", minWidth: 28, flexShrink: 0 }}>{m.month}월</div>
+                            <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5 }}>{m.fortune}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#F87171", marginBottom: 4 }}>⚠️ 주의사항</div>
+                      <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.6 }}>{tojeongData.caution}</div>
+                    </div>
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF", marginBottom: 4 }}>💡 올해의 조언</div>
+                      <div style={{ fontSize: 13, color: "var(--dm-text)" }}>{tojeongData.advice}</div>
+                    </div>
+                    <button onClick={() => { store.set('dm_tojeong_result', null); setTojeongData(null); loadTojeong(); }}
+                      style={{ ...S.btnGhost, fontSize: 12 }}>🔄 다시 보기</button>
+                  </div>
+                ) : (
+                  <div style={{ ...S.card, textAlign: "center", padding: "20px 16px" }}>
+                    <button onClick={loadTojeong} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>📖 토정비결 보기</button>
+                  </div>
+                )
+              )}
+            </>
           )}
         </div>
       )}

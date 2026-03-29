@@ -139,6 +139,136 @@ ${qnaText}
     }
   }
 
+  // ?action=fortune → 오늘의 운세
+  if (req.query.action === 'fortune') {
+    const { birthDate, birthTime, userName = '사용자', today } = req.body || {};
+    if (!birthDate) return res.status(400).json({ error: 'birthDate 필요' });
+
+    const prompt = `당신은 전문 역술가입니다. 아래 정보를 바탕으로 오늘의 운세를 봐주세요.
+
+생년월일: ${birthDate}
+출생시간: ${birthTime || '미상'}
+오늘 날짜: ${today}
+이름: ${userName}
+
+아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+{
+  "overall": 1~5 숫자 (전체운),
+  "money": 1~5 숫자 (금전운),
+  "health": 1~5 숫자 (건강운),
+  "relation": 1~5 숫자 (인간관계운),
+  "message": "오늘 하루 전반적인 운세 메시지 (3~4문장, 구체적이고 실용적으로)",
+  "advice": "오늘의 핵심 조언 한 줄",
+  "luckyColor": "행운의 색",
+  "luckyNumber": 행운의 숫자(1~99)
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = response.content.find(b => b.type === 'text')?.text || '{}';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      return res.status(200).json(data);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ?action=saju → 평생 사주 분석
+  if (req.query.action === 'saju') {
+    const { birthDate, birthTime, userName = '사용자' } = req.body || {};
+    if (!birthDate) return res.status(400).json({ error: 'birthDate 필요' });
+
+    const prompt = `당신은 전문 사주 역술가입니다. 아래 생년월일시를 바탕으로 사주팔자를 분석해주세요.
+
+생년월일: ${birthDate}
+출생시간: ${birthTime || '미상'}
+이름: ${userName}
+
+아래 JSON 형식으로만 응답하세요:
+{
+  "pillars": "사주팔자 (년주·월주·일주·시주 천간지지)",
+  "dayMaster": "일간 (예: 갑목, 경금 등)",
+  "personality": "성격 및 기질 분석 (3~4문장)",
+  "strengths": ["강점 3가지"],
+  "weaknesses": ["약점 2가지"],
+  "career": "적합한 직업/분야 (2~3문장)",
+  "wealth": "재물운 분석 (2~3문장)",
+  "health": "건강 주의사항 (2~3문장)",
+  "lifeAdvice": "인생 전반적인 조언 (3~4문장)",
+  "luckyDirections": ["행운의 방향 2가지"],
+  "luckyColors": ["행운의 색 2가지"]
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = response.content.find(b => b.type === 'text')?.text || '{}';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      return res.status(200).json(data);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ?action=tojeong → 토정비결
+  if (req.query.action === 'tojeong') {
+    const { birthDate, birthTime, userName = '사용자', year } = req.body || {};
+    if (!birthDate) return res.status(400).json({ error: 'birthDate 필요' });
+
+    const prompt = `당신은 조선시대 토정비결 스타일의 역술가입니다. ${year || new Date().getFullYear()}년 한 해 운세를 봐주세요.
+
+생년월일: ${birthDate}
+출생시간: ${birthTime || '미상'}
+이름: ${userName}
+대상 연도: ${year || new Date().getFullYear()}년
+
+토정비결 특유의 고풍스럽고 함축적인 문체로, 아래 JSON 형식으로만 응답하세요:
+{
+  "hexagram": "괘 이름 (예: 수화기제, 건위천 등)",
+  "summary": "올해 총운 한 줄 요약",
+  "overall": "총운 (3~4문장, 토정비결 스타일로)",
+  "monthly": [
+    {"month": 1, "fortune": "1월 운세 한 줄"},
+    {"month": 2, "fortune": "2월 운세 한 줄"},
+    {"month": 3, "fortune": "3월 운세 한 줄"},
+    {"month": 4, "fortune": "4월 운세 한 줄"},
+    {"month": 5, "fortune": "5월 운세 한 줄"},
+    {"month": 6, "fortune": "6월 운세 한 줄"},
+    {"month": 7, "fortune": "7월 운세 한 줄"},
+    {"month": 8, "fortune": "8월 운세 한 줄"},
+    {"month": 9, "fortune": "9월 운세 한 줄"},
+    {"month": 10, "fortune": "10월 운세 한 줄"},
+    {"month": 11, "fortune": "11월 운세 한 줄"},
+    {"month": 12, "fortune": "12월 운세 한 줄"}
+  ],
+  "caution": "올해 주의할 점 (2문장)",
+  "advice": "올해의 핵심 조언 한 줄"
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = response.content.find(b => b.type === 'text')?.text || '{}';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      return res.status(200).json(data);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ?action=invest-content → 투자 기록 인사이트 생성
   if (req.query.action === 'invest-content') {
     const { log } = req.body || {};

@@ -74,6 +74,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [subPage, setSubPage] = useState(null);
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
+  const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
+  const [birthTime, setBirthTime] = useState(() => store.get('dm_birth_time', ''));
   const [permission, setPermission] = useState(getPermission());
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -273,6 +275,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     setGoals(nextGoals);
     store.set("dm_user", nextUser);
     store.set("dm_goals", nextGoals);
+    store.set("dm_birth_date", birthDate);
+    store.set("dm_birth_time", birthTime);
     if (authUser) saveSettings(authUser.uid, { name: nextUser.name }).catch(() => {});
     setToast("저장 완료 ✅");
   };
@@ -321,6 +325,24 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.sectionTitle}>이름</div>
       <div style={S.card}>
         <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
+        <button style={S.btn} onClick={save}>저장</button>
+      </div>
+
+      <div style={S.sectionTitle}>🔮 생년월일시 (운세용)</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+          오늘의 운세 · 사주 · 토정비결에 사용돼요
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>생년월일</div>
+            <input style={{ ...S.input, marginBottom: 0 }} type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>출생 시간 (선택)</div>
+            <input style={{ ...S.input, marginBottom: 0 }} type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} placeholder="예: 14:30" />
+          </div>
+        </div>
         <button style={S.btn} onClick={save}>저장</button>
       </div>
 
