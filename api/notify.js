@@ -118,17 +118,17 @@ function buildTodoReminderText(userName) {
   return `📋 <b>${userName}님, 오늘의 할일을 확인하세요!</b> (${dateStr})\n\nDayMate를 열어 오늘 하루를 계획해보세요. 💪\n\n<a href="https://daymate-beta.vercel.app">📱 DayMate 열기</a>`;
 }
 
-const CRYPTO_KEYWORDS = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'MATIC', 'AVAX', 'DOT', 'LINK'];
-function isCrypto(sym) { return CRYPTO_KEYWORDS.includes(sym.toUpperCase()); }
+const CRYPTO_KEYWORD_MAP = {
+  BTC: ['bitcoin', 'btc'], ETH: ['ethereum', 'eth'], SOL: ['solana', 'sol'],
+  XRP: ['xrp', 'ripple'], ADA: ['cardano', 'ada'], DOGE: ['dogecoin', 'doge'],
+  MATIC: ['polygon', 'matic'], AVAX: ['avalanche', 'avax'], DOT: ['polkadot', 'dot'],
+  LINK: ['chainlink', 'link'],
+};
+function isCrypto(sym) { return sym.toUpperCase() in CRYPTO_KEYWORD_MAP; }
+function cryptoKeywords(sym) { return CRYPTO_KEYWORD_MAP[sym.toUpperCase()] || [sym.toLowerCase()]; }
 
-async function fetchNewsDigest(finnhubKey, uid) {
-  if (!finnhubKey || !uid) return null;
-  const db = getDb();
-
-  // 투자일기에서 보유 종목 추출
-  const snap = await db.collection('users').doc(uid).collection('invest_logs').get();
-  const symbols = [...new Set(snap.docs.map(d => d.data().asset).filter(Boolean))];
-  if (symbols.length === 0) return null;
+async function fetchNewsDigest(finnhubKey, symbols) {
+  if (!finnhubKey || !symbols?.length) return null;
 
   const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   const toDate = today.toISOString().slice(0, 10);
@@ -142,8 +142,9 @@ async function fetchNewsDigest(finnhubKey, uid) {
       if (isCrypto(sym)) {
         const r = await fetch(`https://finnhub.io/api/v1/news?category=crypto&token=${finnhubKey}`);
         const j = await r.json();
+        const kws = cryptoKeywords(sym);
         articles = (Array.isArray(j) ? j : [])
-          .filter(a => a.headline?.toLowerCase().includes(sym.toLowerCase()))
+          .filter(a => kws.some(kw => a.headline?.toLowerCase().includes(kw)))
           .slice(0, 2);
       } else {
         const r = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${fromDate}&to=${toDate}&token=${finnhubKey}`);
@@ -185,7 +186,7 @@ async function fetchNewsDigest(finnhubKey, uid) {
   }
 }
 
-async function handleMorningGreeting(botToken, chatId, uid, userName) {
+async function handleMorningGreeting(botToken, chatId, uid, userName, selectedAssets = []) {
   if (!botToken || !chatId || !uid) return { ok: false, error: '환경변수 누락' };
   const db = getDb();
 
@@ -212,7 +213,7 @@ async function handleMorningGreeting(botToken, chatId, uid, userName) {
 
   // 뉴스 브리핑 추가
   try {
-    const newsDigest = await fetchNewsDigest(process.env.FINNHUB_KEY, uid);
+    const newsDigest = await fetchNewsDigest(process.env.FINNHUB_KEY, selectedAssets);
     if (newsDigest && Object.keys(newsDigest).length > 0) {
       msg += `\n\n📰 <b>관심 종목 뉴스</b>\n`;
       for (const [sym, summaries] of Object.entries(newsDigest)) {
@@ -309,7 +310,7 @@ export default async function handler(req, res) {
 
   try {
     if (notifyType === 'morning') {
-      const result = await handleMorningGreeting(botToken, chatId, uid, userName);
+      const result = await handleMorningGreeting(botToken, chatId, uid, userName, selectedAssets);
       return res.status(200).json(result);
     }
     if (notifyType === 'invest-review') {
@@ -325,9 +326,9 @@ export default async function handler(req, res) {
       text = buildBriefingText(marketData, userName);
 
       // 자산 브리핑에 뉴스 추가
-      if (uid) {
+      if (selectedAssets.length > 0) {
         try {
-          const newsDigest = await fetchNewsDigest(finnhubKey, uid);
+          const newsDigest = await fetchNewsDigest(finnhubKey, selectedAssets);
           if (newsDigest && Object.keys(newsDigest).length > 0) {
             text += `\n\n📰 <b>관심 종목 뉴스</b>\n`;
             for (const [sym, summaries] of Object.entries(newsDigest)) {
