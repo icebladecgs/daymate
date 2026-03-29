@@ -7,6 +7,7 @@ import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefi
 import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
+import { APP_VERSION, APP_BUILD } from "../version.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
   return (
@@ -1062,7 +1063,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       )}
 
-      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite v88 · 2026-03-28</div>
+      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
     </div>
   );
