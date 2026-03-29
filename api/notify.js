@@ -323,6 +323,20 @@ export default async function handler(req, res) {
     } else {
       const marketData = await fetchMarketData(finnhubKey, selectedAssets, customRegistry);
       text = buildBriefingText(marketData, userName);
+
+      // 자산 브리핑에 뉴스 추가
+      if (uid) {
+        try {
+          const newsDigest = await fetchNewsDigest(finnhubKey, uid);
+          if (newsDigest && Object.keys(newsDigest).length > 0) {
+            text += `\n\n📰 <b>관심 종목 뉴스</b>\n`;
+            for (const [sym, summaries] of Object.entries(newsDigest)) {
+              text += `\n🔹 <b>${sym}</b>\n`;
+              summaries.forEach(s => { text += `  · ${s}\n`; });
+            }
+          }
+        } catch {}
+      }
     }
 
     await sendTelegramMessage(botToken, chatId, text);
