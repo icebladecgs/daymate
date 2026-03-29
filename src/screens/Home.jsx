@@ -90,6 +90,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   // ── 인생 목표 ────────────────────────────────────────────────
   const [lifeGoalOpen, setLifeGoalOpen] = useState(false);
+  const [expandedGoalIds, setExpandedGoalIds] = useState({});
+  const toggleGoalExpand = (id) => setExpandedGoalIds(prev => ({ ...prev, [id]: !prev[id] }));
   const [lgForm, setLgForm] = useState(null); // null | { id?, title, deadline, emoji, actions }
   const [lgActionInput, setLgActionInput] = useState('');
 
@@ -766,28 +768,34 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
           {lifeGoals.map(goal => {
             const dl = daysLeft(goal.deadline);
+            const isExpanded = !!expandedGoalIds[goal.id];
             return (
               <div key={goal.id} style={S.card}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                {/* 목표 헤더 — 클릭으로 펼치기/접기 */}
+                <div onClick={() => toggleGoalExpand(goal.id)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>
-                      {goal.emoji} {goal.title}
+                    <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>{goal.emoji} {goal.title}</span>
+                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{isExpanded ? "▾" : "▸"}</span>
                     </div>
                     {goal.deadline && (
-                      <div style={{ fontSize: 11, color: dl != null && dl < 30 ? "#F87171" : "var(--dm-muted)", marginTop: 3, fontWeight: 700 }}>
-                        {goal.deadline} {dl != null ? (dl > 0 ? `· D-${dl}` : dl === 0 ? '· 오늘!' : `· D+${Math.abs(dl)}`) : ''}
+                      <div style={{ fontSize: 11, color: dl != null && dl < 30 ? "#F87171" : "var(--dm-muted)", marginTop: 2, fontWeight: 700 }}>
+                        {goal.deadline}{dl != null ? (dl > 0 ? ` · D-${dl}` : dl === 0 ? ' · 오늘!' : ` · D+${Math.abs(dl)}`) : ''}
                       </div>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => setLgForm({ ...goal })}
                       style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer" }}>✏️</button>
                     <button onClick={() => { if (window.confirm('목표를 삭제할까요?')) setLifeGoals(prev => prev.filter(g => g.id !== goal.id)); }}
                       style={{ fontSize: 11, color: "#F87171", background: "transparent", border: "none", cursor: "pointer" }}>✕</button>
                   </div>
                 </div>
-                {goal.actions.length > 0 && (
-                  <div style={{ borderTop: "1px solid var(--dm-row)", paddingTop: 8 }}>
+
+                {/* 액션 목록 — 펼쳐졌을 때만 표시 */}
+                {isExpanded && goal.actions.length > 0 && (
+                  <div style={{ borderTop: "1px solid var(--dm-row)", marginTop: 10, paddingTop: 8 }}>
                     {goal.actions.map(a => (
                       <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
                         <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>▸ {a.title}</div>
@@ -797,6 +805,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+                {isExpanded && goal.actions.length === 0 && (
+                  <div style={{ borderTop: "1px solid var(--dm-row)", marginTop: 10, paddingTop: 8, fontSize: 12, color: "var(--dm-muted)", textAlign: "center" }}>
+                    액션플랜을 추가해보세요 ✏️
                   </div>
                 )}
               </div>
@@ -848,7 +861,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      <div
+      {false && <><div
         onClick={() => { if (!editingGoals) setGoalsExpanded(v => !v); }}
         style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}
       >
@@ -984,7 +997,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
           </div>
         </div>
-      </div>}
+      </div>}</>}
 
       {(editingHabits || habits.length > 0) && (() => {
         const habitChecks = todayData?.habitChecks || {};
