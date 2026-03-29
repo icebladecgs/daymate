@@ -68,7 +68,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   isDark, setIsDark,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
-  onOpenAdmin, onOpenStats }) {
+  onOpenAdmin, onOpenStats, onOpenLifeCoach }) {
 
   const [subPage, setSubPage] = useState(null);
   const [name, setName] = useState(user.name || "");
@@ -1047,6 +1047,12 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <MenuGroup label="소셜">
         <MenuRow icon="👥" title="친구 & 공유" onClick={() => setSubPage('friends')} />
       </MenuGroup>
+
+      <div style={{ padding: '8px 16px' }}>
+        <button onClick={onOpenLifeCoach} style={{ ...S.btnGhost, boxShadow: 'none', fontSize: 13 }}>
+          🧭 인생 플랜 다시 만들기
+        </button>
+      </div>
 
       {authUser && onOpenAdmin && (
         <div style={{ padding: '8px 16px' }}>

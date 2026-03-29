@@ -20,6 +20,7 @@ import Admin from "./screens/Admin.jsx";
 import Chat from "./screens/Chat.jsx";
 import Community from "./screens/Community.jsx";
 import InvestDiary from "./screens/InvestDiary.jsx";
+import LifeCoach from "./screens/LifeCoach.jsx";
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
@@ -698,8 +699,13 @@ export default function App() {
                 <button style={{ ...S.btn, marginTop: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
                   store.set("dm_first_run_done", true);
                   setFirstRunDone(true);
+                  setScreen("life-coach");
+                }}>🧭 인생 플랜 만들기 →</button>
+                <button style={S.btnGhost} onClick={() => {
+                  store.set("dm_first_run_done", true);
+                  setFirstRunDone(true);
                   setToast("시작합니다 ✅");
-                }}>🚀 시작하기</button>
+                }}>나중에 하기</button>
               </>
             )}
 
@@ -828,6 +834,7 @@ export default function App() {
           lastDriveBackup={lastDriveBackup}
           onOpenAdmin={() => changeScreen("admin")}
           onOpenStats={() => changeScreen("stats")}
+          onOpenLifeCoach={() => changeScreen("life-coach")}
         />
       );
     }
@@ -842,6 +849,45 @@ export default function App() {
         someday={someday} setSomeday={setSomeday}
       />;
     }
+    if (screen === "life-coach") {
+      return <LifeCoach
+        user={user}
+        onBack={() => changeScreen("home")}
+        onApplyPlan={(plan) => {
+          // 할일 등록
+          if (plan.tasks?.length) {
+            const newTasks = plan.tasks.map((title, i) => ({
+              id: `t${Date.now()}_lc${i}`,
+              title,
+              done: false,
+              checkedAt: null,
+              priority: false,
+            }));
+            setTodayData(prev => {
+              const all = [...(prev.tasks || [])];
+              newTasks.forEach(nt => {
+                const emptyIdx = all.findIndex(t => !t.title?.trim());
+                if (emptyIdx >= 0) all[emptyIdx] = nt;
+                else all.push(nt);
+              });
+              return { ...prev, tasks: all };
+            });
+          }
+          // 습관 등록
+          if (plan.habits?.length) {
+            const newHabits = plan.habits.map((name, i) => ({
+              id: `h_lc_${Date.now()}_${i}`,
+              name,
+              icon: "✨",
+              streak: 0,
+            }));
+            setHabits(prev => [...(prev || []), ...newHabits]);
+          }
+          setToast("플랜이 등록됐어요 🎯");
+          changeScreen("home");
+        }}
+      />;
+    }
     return null;
   };
 
@@ -851,7 +897,7 @@ export default function App() {
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
         {renderScreen()}
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
         }} />}
       </div>

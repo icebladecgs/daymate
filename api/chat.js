@@ -103,6 +103,42 @@ const tools = [
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+  // ?action=life-coach → 인생 코칭 액션플랜 생성
+  if (req.query.action === 'life-coach') {
+    const { answers = [], userName = '사용자' } = req.body || {};
+    if (!answers.length) return res.status(400).json({ error: 'answers 필요' });
+
+    const qnaText = answers.map((a, i) => `Q${i+1}. ${a.question}\nA: ${a.answer}`).join('\n\n');
+
+    const prompt = `다음은 ${userName}님이 답한 인생 질문입니다:
+
+${qnaText}
+
+위 답변을 분석해서 아래 JSON 형식으로 응답해줘. JSON만 출력하고 다른 텍스트는 없어야 해.
+
+{
+  "keywords": ["핵심 키워드 3개"],
+  "analysis": "이 사람의 현재 상태와 욕구를 2-3문장으로 날카롭게 분석",
+  "goals": ["이번 달 집중할 목표 3개 (구체적이고 실행 가능하게)"],
+  "habits": ["매일 할 습관 2-3개 (짧고 명확하게)"],
+  "tasks": ["오늘 바로 시작할 할일 3개 (아주 구체적인 첫 걸음)"]
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const text = response.content.find(b => b.type === 'text')?.text || '{}';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      return res.status(200).json(data);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ?action=invest-content → 투자 기록 인사이트 생성
   if (req.query.action === 'invest-content') {
     const { log } = req.body || {};
