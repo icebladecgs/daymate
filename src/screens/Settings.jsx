@@ -69,9 +69,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   isDark, setIsDark,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
-  onOpenAdmin, onOpenStats, onOpenLifeCoach }) {
+  onOpenAdmin, onOpenStats, onOpenLifeCoach, onChangeScreen }) {
 
   const [subPage, setSubPage] = useState(null);
+  const [menuSearch, setMenuSearch] = useState('');
+  const [showAllMenu, setShowAllMenu] = useState(false);
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState((goals.year || []).join("\n"));
   const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
@@ -1019,6 +1021,43 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     </div>
   );
 
+  // ── 전체 메뉴 데이터 ────────────────────────────────
+  const ALL_MENU = [
+    { category: '오늘 관리', items: [
+      { icon: '📋', title: '오늘 할일', sub: '오늘의 할일 추가 & 완료', action: () => onChangeScreen?.('today') },
+      { icon: '⏱️', title: '포커스 타이머', sub: '집중 타이머 챌린지', action: () => onChangeScreen?.('home') },
+      { icon: '✅', title: '습관 체크', sub: '매일 반복 습관 관리', action: () => onChangeScreen?.('home') },
+      { icon: '📝', title: '일기 & 메모', sub: '오늘 일기 & 메모 작성', action: () => onChangeScreen?.('today') },
+    ]},
+    { category: '기록 & 분석', items: [
+      { icon: '📅', title: '달력', sub: '월별 할일 달성 기록', action: () => onChangeScreen?.('history') },
+      { icon: '📊', title: '통계', sub: 'XP · 레벨 · 습관 달성률', action: () => onOpenStats?.() },
+      { icon: '💹', title: '투자 일기', sub: '투자 기록 & 포트폴리오', action: () => onChangeScreen?.('invest') },
+    ]},
+    { category: '동기부여', items: [
+      { icon: '⚡', title: 'XP & 레벨', sub: '경험치 & 등급 확인', action: () => onChangeScreen?.('home') },
+      { icon: '🔮', title: '오늘의 운세', sub: '운세 · 사주 · 토정비결', action: () => onChangeScreen?.('home') },
+      { icon: '💬', title: '오늘의 명언', sub: '날마다 바뀌는 명언', action: () => onChangeScreen?.('home') },
+    ]},
+    { category: '커뮤니티', items: [
+      { icon: '👥', title: '커뮤니티', sub: '일정 공유 & 소통', action: () => onChangeScreen?.('community') },
+      { icon: '🏆', title: '전체 랭킹', sub: '다른 사용자와 순위 비교', action: () => onOpenStats?.() },
+      { icon: '🎁', title: '친구 초대', sub: '초대 코드로 XP 획득', action: () => setSubPage('friends') },
+    ]},
+    { category: '설정', items: [
+      { icon: '👤', title: '프로필 & 목표', sub: '이름 · 생년월일 · 연간 목표', action: () => setSubPage('profile') },
+      { icon: '🔔', title: '알림 설정', sub: '알림 · 소리 · 진동', action: () => setSubPage('notifications') },
+      { icon: '📨', title: '텔레그램 자동화', sub: '봇 설정 · 아침 브리핑', action: () => setSubPage('telegram') },
+      { icon: '🔗', title: 'Google 연동', sub: '계정 · 캘린더 · 드라이브', action: () => setSubPage('integrations') },
+      { icon: '⚙️', title: '앱 관리', sub: '설치 · 백업 · 데이터 초기화', action: () => setSubPage('app') },
+      { icon: '🧭', title: '인생 플랜', sub: '라이프 코치와 목표 설정', action: () => onOpenLifeCoach?.() },
+    ]},
+  ];
+  const allItems = ALL_MENU.flatMap(g => g.items.map(it => ({ ...it, category: g.category })));
+  const menuSearchResults = menuSearch.trim()
+    ? allItems.filter(it => (it.title + it.sub + it.category).toLowerCase().includes(menuSearch.toLowerCase()))
+    : [];
+
   // ── 메인 메뉴 ──────────────────────────────────────
   return (
     <div style={S.content}>
@@ -1037,6 +1076,95 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           {isDark ? "☀️" : "🌙"}
         </button>
       </div>
+
+      {/* ── 검색바 ── */}
+      <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--dm-muted)', pointerEvents: 'none' }}>🔍</span>
+          <input
+            value={menuSearch}
+            onChange={e => setMenuSearch(e.target.value)}
+            placeholder="기능 검색..."
+            style={{ ...S.input, marginBottom: 0, paddingLeft: 34, fontSize: 14 }}
+          />
+        </div>
+        <button onClick={() => setShowAllMenu(true)} style={{
+          background: 'rgba(75,111,255,.12)', border: '1.5px solid rgba(108,142,255,.35)',
+          borderRadius: 12, padding: '0 14px', cursor: 'pointer', fontSize: 12,
+          fontWeight: 900, color: '#6C8EFF', whiteSpace: 'nowrap', flexShrink: 0,
+        }}>전체메뉴</button>
+      </div>
+
+      {/* ── 검색 결과 ── */}
+      {menuSearchResults.length > 0 && (
+        <div style={{ margin: '0 16px 12px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
+          {menuSearchResults.map((it, i) => (
+            <div key={i} onClick={() => { it.action(); setMenuSearch(''); }} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+              background: i % 2 === 0 ? 'var(--dm-card)' : 'var(--dm-row)',
+              borderBottom: i < menuSearchResults.length - 1 ? '1px solid var(--dm-border)' : 'none',
+              cursor: 'pointer',
+            }}>
+              <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{it.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)' }}>{it.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 1 }}>{it.category} · {it.sub}</div>
+              </div>
+              <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {menuSearch.trim() && menuSearchResults.length === 0 && (
+        <div style={{ margin: '0 16px 12px', padding: '14px 16px', textAlign: 'center', fontSize: 13, color: 'var(--dm-muted)', background: 'var(--dm-card)', borderRadius: 14, border: '1px solid var(--dm-border)' }}>
+          검색 결과가 없어요
+        </div>
+      )}
+
+      {/* ── 전체메뉴 모달 ── */}
+      {showAllMenu && (
+        <div onClick={() => setShowAllMenu(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+          zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
+            width: '100%', maxWidth: 480, maxHeight: '85vh',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
+            animation: 'slideUp 0.22s ease-out',
+          }}>
+            <div style={{ padding: '18px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--dm-border)' }}>
+              <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>📱 전체 메뉴</div>
+              <button onClick={() => setShowAllMenu(false)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
+              {ALL_MENU.map(group => (
+                <div key={group.category} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4 }}>{group.category}</div>
+                  <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
+                    {group.items.map((it, i) => (
+                      <div key={i} onClick={() => { it.action(); setShowAllMenu(false); }} style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                        background: i % 2 === 0 ? 'var(--dm-card)' : 'var(--dm-row)',
+                        borderBottom: i < group.items.length - 1 ? '1px solid var(--dm-border)' : 'none',
+                        cursor: 'pointer',
+                      }}>
+                        <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{it.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)' }}>{it.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 1 }}>{it.sub}</div>
+                        </div>
+                        <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={onOpenStats}

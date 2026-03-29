@@ -907,6 +907,7 @@ export default function App() {
           onOpenAdmin={() => changeScreen("admin")}
           onOpenStats={() => changeScreen("stats")}
           onOpenLifeCoach={() => changeScreen("life-coach")}
+          onChangeScreen={changeScreen}
         />
       );
     }
