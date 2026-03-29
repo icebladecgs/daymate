@@ -116,6 +116,27 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
   const [fortuneData, setFortuneData] = useState(null);
   const [fortuneLoading, setFortuneLoading] = useState(false);
+
+  // 로또 번호
+  const lottoKey = `dm_lotto_${today}`;
+  const [lottoNums, setLottoNums] = useState(() => store.get(lottoKey, null));
+  const [lottoAnim, setLottoAnim] = useState(false);
+  const drawLotto = () => {
+    if (lottoNums) return;
+    setLottoAnim(true);
+    setTimeout(() => {
+      const pool = Array.from({ length: 45 }, (_, i) => i + 1);
+      const picked = [];
+      while (picked.length < 6) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picked.push(pool.splice(idx, 1)[0]);
+      }
+      picked.sort((a, b) => a - b);
+      store.set(lottoKey, picked);
+      setLottoNums(picked);
+      setLottoAnim(false);
+    }, 900);
+  };
   const [sajuData, setSajuData] = useState(() => store.get('dm_saju_result', null));
   const [tojeongData, setTojeongData] = useState(() => store.get('dm_tojeong_result', null));
 
@@ -943,6 +964,41 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               )}
             </>
           )}
+
+          {/* ── 로또 번호 ── */}
+          <div style={{ margin: "8px 0 4px", borderTop: "1px solid var(--dm-border)", paddingTop: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+              🎱 오늘의 로또 번호
+              {lottoNums && <span style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 400 }}>· 오늘 1회 추출 완료</span>}
+            </div>
+            {lottoNums ? (
+              <>
+                {todayFortuneScore >= 80 && (
+                  <div style={{ fontSize: 11, color: "#FBBF24", fontWeight: 700, marginBottom: 8 }}>🍀 오늘 운이 좋으니 한번 사보세요!</div>
+                )}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {lottoNums.map((n, i) => {
+                    const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
+                    return (
+                      <div key={i} style={{
+                        width: 36, height: 36, borderRadius: 999,
+                        background: bg, color: "#fff",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 900,
+                        boxShadow: `0 2px 8px ${bg}66`,
+                      }}>{n}</div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8 }}>내일 새 번호를 뽑을 수 있어요</div>
+              </>
+            ) : (
+              <button onClick={drawLotto} disabled={lottoAnim}
+                style={{ ...S.btn, background: lottoAnim ? "var(--dm-input)" : "linear-gradient(135deg,#7C3AED,#A78BFA)", fontSize: 14, marginTop: 0 }}>
+                {lottoAnim ? "🎱 추출 중..." : "🎱 번호 뽑기"}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
