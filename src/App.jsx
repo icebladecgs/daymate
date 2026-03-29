@@ -144,9 +144,44 @@ export default function App() {
   const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
   const [myRank, setMyRank] = useState(null);
-  const [communityId, setCommunityIdState] = useState(() => store.get('dm_community_id', null));
+  const [communityIds, setCommunityIdsState] = useState(() => {
+    const arr = store.get('dm_community_ids', null);
+    if (arr) return arr;
+    const old = store.get('dm_community_id', null);
+    if (old) { store.set('dm_community_ids', [old]); return [old]; }
+    return [];
+  });
+  const [activeCommunityId, setActiveCommunityIdState] = useState(() =>
+    store.get('dm_active_community_id', store.get('dm_community_id', null))
+  );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
-  const setCommunityId = (id) => { setCommunityIdState(id); store.set('dm_community_id', id); };
+
+  const addCommunityId = (id) => {
+    setCommunityIdsState(prev => {
+      const next = prev.includes(id) ? prev : [...prev, id];
+      store.set('dm_community_ids', next);
+      return next;
+    });
+    setActiveCommunityIdState(id);
+    store.set('dm_active_community_id', id);
+  };
+  const removeCommunityId = (id) => {
+    setCommunityIdsState(prev => {
+      const next = prev.filter(c => c !== id);
+      store.set('dm_community_ids', next);
+      // 활성 커뮤니티가 제거된 경우 첫 번째로 전환
+      if (activeCommunityId === id) {
+        const fallback = next[0] || null;
+        setActiveCommunityIdState(fallback);
+        store.set('dm_active_community_id', fallback);
+      }
+      return next;
+    });
+  };
+  const setActiveCommunityId = (id) => {
+    setActiveCommunityIdState(id);
+    store.set('dm_active_community_id', id);
+  };
 
   useEffect(() => {
     if (!authUser) return;
@@ -770,7 +805,11 @@ export default function App() {
       return (
         <Community
           user={user} authUser={authUser}
-          communityId={communityId} setCommunityId={setCommunityId}
+          communityIds={communityIds}
+          activeCommunityId={activeCommunityId}
+          setActiveCommunityId={setActiveCommunityId}
+          addCommunityId={addCommunityId}
+          removeCommunityId={removeCommunityId}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           setToast={setToast}
           todayCompletion={todayCompletion}
