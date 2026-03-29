@@ -104,9 +104,9 @@ export default function History({ plans, onOpenDate, habits }) {
                   paddingBottom: hasHabitData ? 4 : 0,
                   ...st,
                 }}
-                title={perfect ? "완벽한 하루 ✓" : `${r}%`}
+                title={perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : undefined}
               >
-                <span>{perfect ? "✓" : day}</span>
+                <span>{day}</span>
                 {hasHabitData && (
                   <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", maxWidth: "90%" }}>
                     {habitDots.map(h => (
