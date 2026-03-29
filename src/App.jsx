@@ -782,6 +782,7 @@ export default function App() {
           myRank={myRank} onOpenStats={() => changeScreen("stats")}
           onLuckyXp={addInviteBonus}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+          onOpenSettings={() => changeScreen("settings")}
         />
       );
     }
