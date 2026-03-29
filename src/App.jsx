@@ -657,7 +657,14 @@ export default function App() {
   const onToggleHabit = (habitId) => {
     setTodayData(prev => {
       const cur = prev.habitChecks || {};
-      return { ...prev, habitChecks: { ...cur, [habitId]: !cur[habitId] } };
+      const nowChecked = !cur[habitId];
+      const next = { ...prev, habitChecks: { ...cur, [habitId]: nowChecked } };
+      if (nowChecked) {
+        const allHabitsDone = habits.length > 0 && habits.every(h => next.habitChecks[h.id]);
+        if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
+        else setToast(`✅ 습관 체크 · +5 XP`);
+      }
+      return next;
     });
   };
 
@@ -832,10 +839,19 @@ export default function App() {
       return (
         <Home
           user={user} goals={goals} todayData={todayData} plans={plans}
-          onToggleTask={(id) => setTodayData(prev => ({
-            ...prev,
-            tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t),
-          }))}
+          onToggleTask={(id) => {
+            setTodayData(prev => {
+              const next = { ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) };
+              const nowDone = next.tasks.find(t => t.id === id)?.done;
+              if (nowDone) {
+                const filled = next.tasks.filter(t => t.title.trim());
+                const allDone = filled.length > 0 && filled.every(t => t.done);
+                if (allDone) setToast(`🎉 할일 전부 완료! +${10 + 20} XP`);
+                else setToast(`✅ 할일 완료 · +10 XP`);
+              }
+              return next;
+            });
+          }}
           goalChecks={goalChecks} onToggleGoal={onToggleGoal}
           onSetTodayTasks={onSetTodayTasks} onSaveMonthGoals={onSaveMonthGoals}
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}

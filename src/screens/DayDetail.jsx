@@ -77,7 +77,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       ...prev,
       journal: { ...prev.journal, savedAt: new Date().toISOString() },
     }));
-    setToast("일기 저장 ✅");
+    setToast("일기 저장 ✅ · +15 XP");
   };
 
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();

@@ -126,7 +126,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
             style={{ ...S.btn, marginTop: 0, flex: 1 }}
             onClick={() => {
               setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
-              setToast("메모 저장 ✅");
+              setToast("메모 저장 ✅ · 내일도 기록해봐요");
             }}
           >
             메모 저장
@@ -181,7 +181,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
                 ...prev,
                 journal: { ...prev.journal, savedAt: new Date().toISOString() },
               }));
-              setToast("일기 저장 ✅");
+              setToast("일기 저장 ✅ · +15 XP");
             }}
           >
             일기 저장
