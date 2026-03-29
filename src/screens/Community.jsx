@@ -4,6 +4,79 @@ import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEv
 import { toDateStr } from "../utils/date.js";
 import S from "../styles.js";
 
+// ── 미니 달력 컴포넌트 ────────────────────────────────────────
+function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
+  const today = toDateStr();
+  const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=일
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const eventSet = new Set(eventDates);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const dateStr = (d) => `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
+
+  return (
+    <div style={{ margin: '0 16px 8px', borderRadius: 16, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', padding: '14px 12px' }}>
+      {/* 헤더 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <button onClick={prevMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>‹</button>
+        <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>
+          {viewYear}년 {viewMonth + 1}월
+        </div>
+        <button onClick={nextMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>›</button>
+      </div>
+      {/* 요일 헤더 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
+        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700,
+            color: i === 0 ? '#F87171' : i === 6 ? '#6C8EFF' : 'var(--dm-muted)', padding: '2px 0' }}>
+            {d}
+          </div>
+        ))}
+      </div>
+      {/* 날짜 그리드 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px 0' }}>
+        {cells.map((d, i) => {
+          if (!d) return <div key={`empty-${i}`} />;
+          const ds = dateStr(d);
+          const isToday = ds === today;
+          const hasEvent = eventSet.has(ds);
+          const isSelected = ds === selectedDate;
+          const dayOfWeek = (firstDay + d - 1) % 7;
+          return (
+            <div key={ds} onClick={() => onSelectDate(isSelected ? null : ds)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3px 0', cursor: hasEvent ? 'pointer' : 'default', borderRadius: 8,
+                background: isSelected ? 'rgba(108,142,255,.2)' : isToday ? 'rgba(75,111,255,.1)' : 'transparent' }}>
+              <div style={{ fontSize: 13, fontWeight: isToday ? 900 : 500, lineHeight: 1.4,
+                color: isSelected ? '#6C8EFF' : isToday ? '#4B6FFF' : dayOfWeek === 0 ? '#F87171' : dayOfWeek === 6 ? '#6C8EFF' : 'var(--dm-text)',
+                borderBottom: isToday ? '2px solid #4B6FFF' : 'none' }}>
+                {d}
+              </div>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', marginTop: 2,
+                background: hasEvent ? '#6C8EFF' : 'transparent' }} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Community({ user, authUser, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion }) {
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -26,16 +99,14 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   }, [communityIds]); // eslint-disable-line
 
   // 생성/가입 UI
-  const [mode, setMode] = useState(null); // 'create' | 'join'
+  const [mode, setMode] = useState(null);
   const [nameInput, setNameInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [nicknameInput, setNicknameInput] = useState(() => user?.name || '');
   const [submitting, setSubmitting] = useState(false);
-  // 공개/비공개 생성
   const [isPublic, setIsPublic] = useState(false);
   const [createPassword, setCreatePassword] = useState('');
-  // 공개 커뮤니티 가입
-  const [joinTab, setJoinTab] = useState('public'); // 'public' | 'code'
+  const [joinTab, setJoinTab] = useState('public');
   const [publicList, setPublicList] = useState([]);
   const [publicLoading, setPublicLoading] = useState(false);
   const [selectedPublic, setSelectedPublic] = useState(null);
@@ -49,7 +120,12 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const [evEnd, setEvEnd] = useState('');
   const [evDesc, setEvDesc] = useState('');
   const [addingEvent, setAddingEvent] = useState(false);
+  const [addToGcal, setAddToGcal] = useState(true); // ← 내 캘린더에도 추가 토글 (기본 ON)
   const [codeCopied, setCodeCopied] = useState(false);
+
+  // 달력/리스트 뷰 토글
+  const [calView, setCalView] = useState(false);
+  const [selectedCalDate, setSelectedCalDate] = useState(null);
 
   // 실시간 커뮤니티 데이터
   useEffect(() => {
@@ -58,7 +134,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
     const unsubCom = onSnapshot(doc(db, 'communities', communityId), (snap) => {
       if (snap.exists()) setCommunity({ id: snap.id, ...snap.data() });
-      else { setCommunityId(null); }
+      else { removeCommunityId?.(communityId); }
     });
 
     loadCommunityMembers(communityId).then(setMembers).catch(() => {});
@@ -134,9 +210,30 @@ export default function Community({ user, authUser, communityIds, activeCommunit
         createdBy: authUser.uid,
         creatorNickname: nickname,
       });
+      // 내 구글 캘린더에도 추가
+      if (addToGcal) {
+        let token = getValidGcalToken?.();
+        if (!token) token = await onGcalConnect?.();
+        if (token) {
+          try {
+            await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                summary: `[${community?.name}] ${evTitle.trim()}`,
+                description: evDesc.trim() || '',
+                ...(evStart
+                  ? { start: { dateTime: `${evDate}T${evStart}:00`, timeZone: 'Asia/Seoul' }, end: { dateTime: `${evDate}T${(evEnd || evStart)}:00`, timeZone: 'Asia/Seoul' } }
+                  : { start: { date: evDate }, end: { date: evDate } }
+                ),
+              }),
+            });
+          } catch {}
+        }
+      }
       setEvTitle(''); setEvDate(toDateStr()); setEvStart(''); setEvEnd(''); setEvDesc('');
       setShowAdd(false);
-      setToast('일정 추가 완료 ✅');
+      setToast(addToGcal ? '일정 추가 + 내 캘린더에도 저장 ✅' : '일정 추가 완료 ✅');
     } catch { setToast('추가 실패 ❌'); }
     setAddingEvent(false);
   };
@@ -201,8 +298,9 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     acc[ev.date].push(ev);
     return acc;
   }, {});
-  const upcomingDates = Object.keys(grouped).filter(d => d >= today).sort();
-  const pastDates = Object.keys(grouped).filter(d => d < today).sort().reverse();
+  const allEventDates = Object.keys(grouped);
+  const upcomingDates = allEventDates.filter(d => d >= today).sort();
+  const pastDates = allEventDates.filter(d => d < today).sort().reverse();
 
   if (!authUser) return (
     <div style={S.content}>
@@ -239,7 +337,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>새 커뮤니티 만들기</div>
           <input style={S.input} placeholder="커뮤니티 이름 (예: 우리 팀)" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={30} />
           <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
-          {/* 공개/비공개 선택 */}
           <div style={{ display: 'flex', gap: 8 }}>
             {[{ v: false, label: '🔒 비공개', desc: '초대코드로만 입장' }, { v: true, label: '🌐 공개', desc: '목록에 표시됨' }].map(({ v, label, desc }) => (
               <button key={String(v)} onClick={() => setIsPublic(v)} style={{
@@ -265,7 +362,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       {mode === 'join' && (
         <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>커뮤니티 가입</div>
-          {/* 탭 */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
             {[{ v: 'public', label: '🌐 공개 목록' }, { v: 'code', label: '🔒 초대코드' }].map(({ v, label }) => (
               <button key={v} onClick={() => { setJoinTab(v); setSelectedPublic(null); setPubPassword(''); }} style={{
@@ -324,6 +420,9 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       )}
     </div>
   );
+
+  // 달력 뷰에서 선택된 날짜의 일정
+  const calSelectedEvents = selectedCalDate ? (grouped[selectedCalDate] || []) : [];
 
   return (
     <div style={S.content}>
@@ -387,6 +486,22 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             <input type="time" style={{ ...S.input, flex: 1 }} placeholder="종료" value={evEnd} onChange={e => setEvEnd(e.target.value)} />
           </div>
           <input style={{ ...S.input, marginBottom: 10 }} placeholder="설명 (선택)" value={evDesc} onChange={e => setEvDesc(e.target.value)} maxLength={100} />
+
+          {/* 내 구글 캘린더에도 추가 토글 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '10px 14px', background: 'var(--dm-input)', borderRadius: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>📅 내 구글 캘린더에도 추가</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>커뮤니티 일정을 내 달력에서도 확인</div>
+            </div>
+            <div onClick={() => setAddToGcal(v => !v)} style={{
+              width: 48, height: 26, borderRadius: 999,
+              background: addToGcal ? '#6C8EFF' : 'var(--dm-border)',
+              cursor: 'pointer', position: 'relative', flexShrink: 0,
+            }}>
+              <div style={{ position: 'absolute', top: 3, left: addToGcal ? 25 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button style={{ ...S.btn, flex: 1, marginTop: 0 }} onClick={handleAddEvent} disabled={addingEvent || !evTitle.trim()}>
               {addingEvent ? '추가 중...' : '추가'}
@@ -399,7 +514,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       {/* 오늘 출석 현황 */}
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>✋</span>오늘 출석</div>
       <div style={S.card}>
-        {/* 출석 버튼 */}
         <button onClick={handleCheckin} disabled={!!myCheckin || checkingIn} style={{
           width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: myCheckin ? 'default' : 'pointer', fontWeight: 900, fontSize: 14, fontFamily: 'inherit',
           background: myCheckin ? 'rgba(74,222,128,.12)' : 'linear-gradient(135deg,#4B6FFF,#6C8EFF)',
@@ -411,7 +525,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             : checkingIn ? '출석 중...' : '✋ 오늘 출석하기'}
         </button>
 
-        {/* 오늘 출석 멤버 현황 */}
         {todayCheckins.length > 0 && (
           <div style={{ marginTop: 14 }}>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
@@ -446,45 +559,94 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
       {loading && <div style={{ padding: 32, textAlign: 'center', color: 'var(--dm-muted)' }}>불러오는 중...</div>}
 
-      {/* 다가오는 일정 */}
-      {upcomingDates.length > 0 && (
-        <>
-          <div style={S.sectionTitle}><span style={S.sectionEmoji}>📅</span> 다가오는 일정</div>
-          {upcomingDates.map(date => (
-            <div key={date}>
-              <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 900, color: date === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
-                {date === today ? '오늘' : new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
-              </div>
-              {grouped[date].map(ev => (
-                <EventCard key={ev.id} ev={ev} authUid={authUser.uid} onAddToGcal={() => handleAddToGcal(ev)} onDelete={() => handleDeleteEvent(ev.id)} />
-              ))}
-            </div>
+      {/* 일정 섹션 — 달력/리스트 탭 */}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>📅</span>커뮤니티 일정
+        </span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[{ v: false, label: '≡ 목록' }, { v: true, label: '📅 달력' }].map(({ v, label }) => (
+            <button key={String(v)} onClick={() => { setCalView(v); setSelectedCalDate(null); }} style={{
+              padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+              border: `1px solid ${calView === v ? '#6C8EFF' : 'var(--dm-border)'}`,
+              background: calView === v ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+              color: calView === v ? '#6C8EFF' : 'var(--dm-muted)',
+            }}>{label}</button>
           ))}
-        </>
-      )}
-
-      {/* 지난 일정 */}
-      {pastDates.length > 0 && (
-        <>
-          <div style={S.sectionTitle}><span style={S.sectionEmoji}>🗂</span> 지난 일정</div>
-          {pastDates.map(date => (
-            <div key={date}>
-              <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 700, color: 'var(--dm-muted)' }}>
-                {new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
-              </div>
-              {grouped[date].map(ev => (
-                <EventCard key={ev.id} ev={ev} authUid={authUser.uid} onAddToGcal={() => handleAddToGcal(ev)} onDelete={() => handleDeleteEvent(ev.id)} past />
-              ))}
-            </div>
-          ))}
-        </>
-      )}
-
-      {!loading && events.length === 0 && (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13 }}>
-          아직 공유된 일정이 없어요<br />
-          <span style={{ fontSize: 11, marginTop: 4, display: 'block' }}>+ 일정 버튼으로 추가해보세요</span>
         </div>
+      </div>
+
+      {/* 달력 뷰 */}
+      {calView && (
+        <>
+          <MiniCalendar
+            eventDates={allEventDates}
+            selectedDate={selectedCalDate}
+            onSelectDate={setSelectedCalDate}
+          />
+          {selectedCalDate && (
+            <div style={{ padding: '0 0 8px' }}>
+              <div style={{ padding: '4px 16px 6px', fontSize: 12, fontWeight: 900, color: selectedCalDate === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
+                {new Date(selectedCalDate + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+              </div>
+              {calSelectedEvents.length > 0
+                ? calSelectedEvents.map(ev => (
+                  <EventCard key={ev.id} ev={ev} authUid={authUser.uid} onAddToGcal={() => handleAddToGcal(ev)} onDelete={() => handleDeleteEvent(ev.id)} past={selectedCalDate < today} />
+                ))
+                : <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--dm-muted)' }}>이 날은 일정이 없어요</div>
+              }
+            </div>
+          )}
+          {!selectedCalDate && (
+            <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center' }}>
+              날짜를 탭하면 일정을 확인할 수 있어요
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 리스트 뷰 */}
+      {!calView && (
+        <>
+          {upcomingDates.length > 0 && (
+            <>
+              <div style={{ padding: '4px 16px 2px', fontSize: 12, fontWeight: 900, color: 'var(--dm-sub)' }}>다가오는 일정</div>
+              {upcomingDates.map(date => (
+                <div key={date}>
+                  <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 900, color: date === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
+                    {date === today ? '오늘' : new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                  </div>
+                  {grouped[date].map(ev => (
+                    <EventCard key={ev.id} ev={ev} authUid={authUser.uid} onAddToGcal={() => handleAddToGcal(ev)} onDelete={() => handleDeleteEvent(ev.id)} />
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {pastDates.length > 0 && (
+            <>
+              <div style={{ padding: '8px 16px 2px', fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)' }}>지난 일정</div>
+              {pastDates.map(date => (
+                <div key={date}>
+                  <div style={{ padding: '6px 16px 2px', fontSize: 12, fontWeight: 700, color: 'var(--dm-muted)' }}>
+                    {new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                  </div>
+                  {grouped[date].map(ev => (
+                    <EventCard key={ev.id} ev={ev} authUid={authUser.uid} onAddToGcal={() => handleAddToGcal(ev)} onDelete={() => handleDeleteEvent(ev.id)} past />
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {!loading && events.length === 0 && (
+            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13 }}>
+              아직 공유된 일정이 없어요<br />
+              <span style={{ fontSize: 11, marginTop: 4, display: 'block' }}>+ 일정 버튼으로 추가해보세요</span>
+            </div>
+          )}
+        </>
       )}
 
       {/* 커뮤니티 나가기 */}
