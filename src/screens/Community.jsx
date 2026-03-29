@@ -213,7 +213,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     </div>
   );
 
-  if (communityIds.length === 0 || mode === 'create' || mode === 'join') return (
+  if (communityIds.length === 0 || mode === 'create' || mode === 'join' || mode === 'add') return (
     <div style={S.content}>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={S.sub}>함께하는 일정 공유</div></div>
@@ -222,10 +222,12 @@ export default function Community({ user, authUser, communityIds, activeCommunit
         )}
       </div>
 
-      {mode === null && (
+      {(mode === null || mode === 'add') && (
         <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ textAlign: 'center', fontSize: 48, marginBottom: 8 }}>👥</div>
-          <div style={{ textAlign: 'center', fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>커뮤니티에 참여해보세요</div>
+          <div style={{ textAlign: 'center', fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>
+            {mode === 'add' ? '커뮤니티 추가' : '커뮤니티에 참여해보세요'}
+          </div>
           <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--dm-muted)', marginBottom: 20, lineHeight: 1.6 }}>멤버들과 일정을 공유하고<br/>서로의 캘린더에 추가할 수 있어요</div>
           <button style={S.btn} onClick={() => setMode('create')}>✨ 새 커뮤니티 만들기</button>
           <button style={S.btnGhost} onClick={() => setMode('join')}>🔗 커뮤니티 가입하기</button>
@@ -358,7 +360,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
               {communityNames[id] || '...'}
             </button>
           ))}
-          <button onClick={() => setMode('join')} style={{
+          <button onClick={() => setMode('add')} style={{
             flexShrink: 0, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
             border: '1.5px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-muted)',
           }}>+ 추가</button>
@@ -366,7 +368,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       )}
       {communityIds.length === 1 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 16px 0' }}>
-          <button onClick={() => setMode('join')} style={{
+          <button onClick={() => setMode('add')} style={{
             fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
           }}>+ 다른 커뮤니티 추가</button>
         </div>
