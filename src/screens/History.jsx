@@ -24,8 +24,9 @@ export default function History({ plans, onOpenDate, habits }) {
   };
 
   const styleOf = (r, isToday, isPerfect) => {
-    if (isPerfect) return { background: "rgba(74,222,128,.20)", color: "#4ADE80", fontWeight: 900, border: "1.5px solid #4ADE80" };
+    if (isToday && isPerfect) return { background: "#6C8EFF", color: "#fff", fontWeight: 900, border: "2px solid #4ADE80" };
     if (isToday) return { background: "#6C8EFF", color: "#fff", fontWeight: 900 };
+    if (isPerfect) return { background: "rgba(74,222,128,.20)", color: "#4ADE80", fontWeight: 900, border: "1.5px solid #4ADE80" };
     if (r === null) return { background: "transparent", color: "var(--dm-muted)" };
     if (r >= 80) return { background: "rgba(74,222,128,.18)", color: "#4ADE80", fontWeight: 900 };
     if (r >= 50) return { background: "rgba(252,211,77,.14)", color: "#FCD34D", fontWeight: 900 };
