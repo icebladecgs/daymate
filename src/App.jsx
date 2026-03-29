@@ -778,6 +778,7 @@ export default function App() {
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
           myRank={myRank} onOpenStats={() => changeScreen("stats")}
+          onLuckyXp={addInviteBonus}
         />
       );
     }

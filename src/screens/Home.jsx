@@ -8,7 +8,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -60,6 +60,34 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     const prefix = toDateStr().slice(0, 7);
     return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
   }, [scores, todayScore]);
+  // ── 오늘의 운 미니게임 ─────────────────────────────────────────
+  const luckyKey = `dm_lucky_${today}`;
+  const [luckyDone, setLuckyDone] = useState(() => store.get(luckyKey, null));
+  const [luckyOpen, setLuckyOpen] = useState(false);
+  const [luckyNum, setLuckyNum] = useState(1);
+  const [luckyResult, setLuckyResult] = useState(null);
+  const luckyInterval = useRef(null);
+
+  const openLucky = () => {
+    if (luckyDone) return;
+    setLuckyResult(null);
+    setLuckyOpen(true);
+    luckyInterval.current = setInterval(() => {
+      setLuckyNum(Math.floor(Math.random() * 100) + 1);
+    }, 80);
+  };
+
+  const stopLucky = () => {
+    clearInterval(luckyInterval.current);
+    const xp = Math.max(1, Math.round(luckyNum / 10));
+    setLuckyResult({ num: luckyNum, xp });
+    setLuckyDone({ num: luckyNum, xp });
+    store.set(luckyKey, { num: luckyNum, xp });
+    onLuckyXp?.(xp);
+  };
+
+  useEffect(() => () => clearInterval(luckyInterval.current), []);
+
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
@@ -174,6 +202,42 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   return (
     <div style={S.content}>
+      {/* ── 오늘의 운 모달 ───────────────────────────────────── */}
+      {luckyOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => { if (luckyResult) { setLuckyOpen(false); } }}>
+          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 24, padding: "36px 32px", textAlign: "center", minWidth: 240 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--dm-muted)", marginBottom: 16 }}>🎲 오늘의 운</div>
+
+            {!luckyResult ? (
+              <>
+                <div style={{ fontSize: 72, fontWeight: 900, color: "#FBBF24", lineHeight: 1, marginBottom: 24, fontVariantNumeric: "tabular-nums", minWidth: 120, display: "inline-block" }}>
+                  {String(luckyNum).padStart(3, "\u2007")}
+                </div>
+                <button onClick={stopLucky} style={{ ...S.btn, background: "linear-gradient(135deg,#F59E0B,#FBBF24)", boxShadow: "0 4px 20px rgba(251,191,36,.4)", fontSize: 16 }}>
+                  멈추기!
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 72, fontWeight: 900, lineHeight: 1, marginBottom: 8,
+                  color: luckyResult.num >= 76 ? "#4ADE80" : luckyResult.num >= 51 ? "#6C8EFF" : luckyResult.num >= 26 ? "#FBBF24" : "#F87171" }}>
+                  {luckyResult.num}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 4 }}>
+                  {luckyResult.num >= 76 ? "대박 운!! 🍀" : luckyResult.num >= 51 ? "좋은 운 😊" : luckyResult.num >= 26 ? "보통 운 😐" : "오늘은 조심... 😅"}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#4ADE80", marginBottom: 24 }}>+{luckyResult.xp} XP</div>
+                <button onClick={() => setLuckyOpen(false)} style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }}>
+                  확인
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── 포커스 모드 모달 ─────────────────────────────────── */}
       {focusTask && (
         <div style={{
@@ -346,13 +410,28 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</div>
             </div>
           </div>
-          {myRank && (
-            <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
-              <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {myRank && (
+              <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
+              </button>
+            )}
+            <button onClick={openLucky} style={{
+              background: luckyDone ? "rgba(74,222,128,.12)" : "rgba(251,191,36,.12)",
+              border: `1px solid ${luckyDone ? "rgba(74,222,128,.4)" : "rgba(251,191,36,.4)"}`,
+              borderRadius: 20, padding: "5px 12px", cursor: luckyDone ? "default" : "pointer", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: luckyDone ? "#4ADE80" : "#FBBF24" }}>
+                {luckyDone ? `${luckyDone.num}` : "🎲"}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>
+                {luckyDone ? `+${luckyDone.xp}pt` : "눌러보기"}
+              </div>
             </button>
-          )}
+          </div>
         </div>
         {/* 중앙: 원형 링 + XP */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "4px 0 12px" }}>
