@@ -286,6 +286,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
+  const [xpHelpOpen, setXpHelpOpen] = useState(false);
 
   useEffect(() => {
     if (allDone && !prevAllDone) {
@@ -664,9 +665,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           })()}
           {/* XP 정보 */}
           <div style={{ flex: 1 }}>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
-              <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700, marginLeft: 4 }}>XP</span>
+              <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
+              <button onClick={() => setXpHelpOpen(true)} style={{
+                background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
+                borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
+              }}>?</button>
             </div>
             <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
               오늘 {doneCount}/{filledCount || 3} 완료
@@ -1489,6 +1495,100 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       )}
 
       <div style={{ height: 12 }} />
+
+      {/* ── XP 도움말 모달 ──────────────────────────────────────── */}
+      {xpHelpOpen && (() => {
+        const LEVELS = Array.from({ length: 21 }, (_, i) => {
+          const lv = i + 1;
+          const icons  = ['🌱','🌱','🌱','🌿','🌿','⚡','⚡','🔥','🔥','🔥','👑','👑','👑','👑','👑','🌟','🌟','🌟','🌟','🌟','💎'];
+          const titles = ['새싹','새싹','새싹','성장','성장','도전자','도전자','실행가','실행가','실행가','마스터','마스터','마스터','마스터','마스터','전설','전설','전설','전설','전설','챔피언'];
+          const floor = Math.pow(lv - 1, 2) * 100;
+          return { lv, icon: icons[i], title: titles[i], floor };
+        });
+        const XP_ITEMS = [
+          { label: '할일 완료 1개', pt: '+10 XP' },
+          { label: '할일 전체 완료 보너스', pt: '+20 XP' },
+          { label: '습관 체크 1개', pt: '+5 XP' },
+          { label: '습관 전체 완료 보너스', pt: '+15 XP' },
+          { label: '일기/메모 작성', pt: '+15 XP' },
+          { label: '완벽한 하루 달성', pt: '+25 XP' },
+          { label: '7일 연속 보너스', pt: '+50 XP~' },
+          { label: '타이머 챌린지 (5/15/25/50분)', pt: '5·15·30·70 XP' },
+        ];
+        return (
+          <div onClick={() => setXpHelpOpen(false)} style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
+            zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: "var(--dm-bg)", border: "1px solid var(--dm-border2)",
+              borderRadius: 22, width: "100%", maxWidth: 360,
+              maxHeight: "80vh", display: "flex", flexDirection: "column",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+              animation: "modalPop 0.18s ease-out", overflow: "hidden",
+            }}>
+              {/* 헤더 */}
+              <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid var(--dm-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>⚡ XP & 레벨 안내</div>
+                <button onClick={() => setXpHelpOpen(false)} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
+              </div>
+              {/* 스크롤 내용 */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
+                {/* 내 현재 상태 */}
+                <div style={{ background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 36 }}>{levelInfo.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title} · Lv.{levelInfo.level}</div>
+                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
+                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP 남음</div>
+                  </div>
+                </div>
+
+                {/* XP 획득 방법 */}
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>📌 XP 획득 방법</div>
+                <div style={{ borderRadius: 12, border: "1px solid var(--dm-border)", overflow: "hidden", marginBottom: 18 }}>
+                  {XP_ITEMS.map((it, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px",
+                      background: i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                      borderBottom: i < XP_ITEMS.length - 1 ? "1px solid var(--dm-border)" : "none" }}>
+                      <span style={{ fontSize: 13, color: "var(--dm-text)" }}>{it.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>{it.pt}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 등급표 */}
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>🏆 전체 등급표</div>
+                <div style={{ borderRadius: 12, border: "1px solid var(--dm-border)", overflow: "hidden" }}>
+                  {LEVELS.map((lv, i) => {
+                    const isCurrent = lv.lv === levelInfo.level;
+                    return (
+                      <div key={lv.lv} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px",
+                        background: isCurrent ? "rgba(75,111,255,.15)" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                        borderBottom: i < LEVELS.length - 1 ? "1px solid var(--dm-border)" : "none",
+                        border: isCurrent ? "1.5px solid rgba(108,142,255,.5)" : undefined,
+                      }}>
+                        <span style={{ fontSize: 18 }}>{lv.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "#6C8EFF" : "var(--dm-text)" }}>
+                            Lv.{lv.lv} {lv.title}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 11, color: isCurrent ? "#6C8EFF" : "var(--dm-muted)", fontWeight: 700 }}>
+                          {lv.floor.toLocaleString()} XP~
+                        </span>
+                        {isCurrent && <span style={{ fontSize: 10, background: "#4B6FFF", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ height: 8 }} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
