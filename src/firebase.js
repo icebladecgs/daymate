@@ -252,6 +252,16 @@ export async function leaveCommunity(communityId, uid) {
   await setDoc(ref, { memberCount: Math.max((snap.data()?.memberCount || 1) - 1, 0) }, { merge: true });
 }
 
+export async function addCommunityNotice(communityId, notice) {
+  const ref = doc(collection(db, 'communities', communityId, 'notices'));
+  await setDoc(ref, { ...notice, createdAt: new Date().toISOString() });
+  return ref.id;
+}
+
+export async function deleteCommunityNotice(communityId, noticeId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'notices', noticeId));
+}
+
 // ---------- 투자일기 ----------
 
 export async function saveInvestLog(uid, log) {

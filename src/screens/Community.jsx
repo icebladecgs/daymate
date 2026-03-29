@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
+import { store } from "../utils/storage.js";
 import S from "../styles.js";
 
 // ── 미니 달력 컴포넌트 ────────────────────────────────────────
@@ -86,6 +87,17 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const [checkingIn, setCheckingIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 공지
+  const [notices, setNotices] = useState([]);
+  const [showNoticeForm, setShowNoticeForm] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeBody, setNoticeBody] = useState('');
+  const [postingNotice, setPostingNotice] = useState(false);
+  const isAdmin = community?.createdBy === authUser?.uid;
+  const noticeReadKey = `dm_notice_read_${communityId}`;
+  const lastReadNotice = store.get(noticeReadKey, null);
+  const unreadCount = notices.filter(n => !lastReadNotice || n.createdAt > lastReadNotice).length;
+
   // 커뮤니티 이름 캐시 (스위처용)
   const [communityNames, setCommunityNames] = useState({});
   useEffect(() => {
@@ -149,7 +161,12 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       setCheckins(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     }, () => {});
 
-    return () => { unsubCom(); unsubEv(); unsubCheckins(); };
+    const qNotices = query(collection(db, 'communities', communityId, 'notices'), orderBy('createdAt', 'desc'));
+    const unsubNotices = onSnapshot(qNotices, (snap) => {
+      setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+
+    return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); };
   }, [communityId]); // eslint-disable-line
 
   useEffect(() => {
@@ -158,6 +175,28 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       loadPublicCommunities().then(list => { setPublicList(list); setPublicLoading(false); }).catch(() => setPublicLoading(false));
     }
   }, [mode, joinTab]);
+
+  const handlePostNotice = async () => {
+    if (!noticeTitle.trim()) return;
+    setPostingNotice(true);
+    try {
+      await addCommunityNotice(communityId, { title: noticeTitle.trim(), body: noticeBody.trim(), uid: authUser.uid });
+      setNoticeTitle(''); setNoticeBody(''); setShowNoticeForm(false);
+      setToast('공지 등록 완료 ✅');
+    } catch { setToast('공지 등록 실패 ❌'); }
+    setPostingNotice(false);
+  };
+
+  const handleDeleteNotice = async (noticeId) => {
+    try {
+      await deleteCommunityNotice(communityId, noticeId);
+      setToast('공지 삭제됨');
+    } catch { setToast('삭제 실패 ❌'); }
+  };
+
+  const markNoticesRead = () => {
+    if (notices.length > 0) store.set(noticeReadKey, notices[0].createdAt);
+  };
 
   const handleCreate = async () => {
     if (!nameInput.trim() || !nicknameInput.trim()) return;
@@ -509,6 +548,68 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             <button style={{ ...S.btnGhost, flex: 1, marginTop: 0 }} onClick={() => setShowAdd(false)}>취소</button>
           </div>
         </div>
+      )}
+
+      {/* ── 공지사항 ── */}
+      {(notices.length > 0 || isAdmin) && (
+        <>
+          <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}
+            onClick={() => { markNoticesRead(); }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={S.sectionEmoji}>📢</span>공지사항
+              {unreadCount > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 7px' }}>{unreadCount}</span>
+              )}
+            </span>
+            {isAdmin && (
+              <button onClick={() => setShowNoticeForm(v => !v)}
+                style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+                {showNoticeForm ? '취소' : '+ 공지 작성'}
+              </button>
+            )}
+          </div>
+
+          {/* 공지 작성 폼 */}
+          {isAdmin && showNoticeForm && (
+            <div style={{ ...S.card, marginBottom: 8 }}>
+              <input value={noticeTitle} onChange={e => setNoticeTitle(e.target.value)}
+                placeholder="공지 제목 (필수)"
+                style={{ ...S.input, marginBottom: 8, fontWeight: 700 }} maxLength={60} />
+              <textarea value={noticeBody} onChange={e => setNoticeBody(e.target.value)}
+                placeholder="내용 (선택)"
+                rows={3} style={{ ...S.input, resize: 'none', marginBottom: 10 }} maxLength={300} />
+              <button onClick={handlePostNotice} disabled={postingNotice || !noticeTitle.trim()}
+                style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' }}>
+                {postingNotice ? '등록 중...' : '📢 공지 등록'}
+              </button>
+            </div>
+          )}
+
+          {/* 공지 목록 */}
+          {notices.length > 0 && (
+            <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(108,142,255,.3)', background: 'linear-gradient(135deg,rgba(75,111,255,.06),rgba(108,142,255,.03))' }}>
+              {notices.slice(0, 3).map((n, i) => (
+                <div key={n.id} style={{ padding: '12px 14px', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: n.body ? 4 : 0 }}>
+                        📢 {n.title}
+                      </div>
+                      {n.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
+                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginTop: 4 }}>
+                        {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <button onClick={() => handleDeleteNotice(n.id)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* 오늘 출석 현황 */}
