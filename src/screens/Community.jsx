@@ -586,8 +586,14 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           />
           {selectedCalDate && (
             <div style={{ padding: '0 0 8px' }}>
-              <div style={{ padding: '4px 16px 6px', fontSize: 12, fontWeight: 900, color: selectedCalDate === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
-                {new Date(selectedCalDate + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 6px' }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: selectedCalDate === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
+                  {new Date(selectedCalDate + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                </div>
+                <button onClick={() => { setEvDate(selectedCalDate); setShowAdd(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '4px 10px', color: '#6C8EFF', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  + 일정 추가
+                </button>
               </div>
               {calSelectedEvents.length > 0
                 ? calSelectedEvents.map(ev => (
