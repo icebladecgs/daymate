@@ -671,7 +671,10 @@ export default function App() {
   // 온보딩
   const [firstRunDone, setFirstRunDone] = useState(() => !!store.get("dm_first_run_done", false));
   const [nameInput, setNameInput] = useState("");
-  const [onboardStep, setOnboardStep] = useState(1);
+  const [onboardStep, setOnboardStep] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('from_kakao') === '1' ? 4 : 1;
+  });
 
   if (!firstRunDone) {
     const iconBox = (
@@ -785,6 +788,32 @@ export default function App() {
                     <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
                     <div style={{ fontSize: 14, fontWeight: 900, color: "#4ADE80" }}>이미 앱으로 설치되어 있어요!</div>
                   </div>
+                ) : isKakao ? (
+                  isIOS ? (
+                    <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "16px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>카카오톡에서는 Safari로 열어주세요</div>
+                      {[
+                        ["1", "우측 하단 ⋯ 버튼을 탭해요"],
+                        ["2", "'Safari로 열기'를 선택해요"],
+                        ["3", "공유 버튼(□↑) → '홈 화면에 추가'"],
+                      ].map(([n, txt]) => (
+                        <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                          <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
+                          <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('from_kakao', '1');
+                        const intentUrl = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;end`;
+                        window.location.href = intentUrl;
+                      }}>📲 크롬에서 열고 설치하기</button>
+                      <div style={{ fontSize: 12, color: "var(--dm-sub)", textAlign: "center", marginBottom: 12 }}>크롬 브라우저에서 바로 앱 설치가 가능해요</div>
+                    </>
+                  )
                 ) : installPrompt ? (
                   <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={async () => {
                     await handleInstall();
@@ -812,13 +841,7 @@ export default function App() {
                 <button style={{ ...S.btn, marginTop: 8, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
                   store.set("dm_first_run_done", true);
                   setFirstRunDone(true);
-                  setScreen("life-coach");
-                }}>🧭 인생 플랜 만들기 →</button>
-                <button style={S.btnGhost} onClick={() => {
-                  store.set("dm_first_run_done", true);
-                  setFirstRunDone(true);
-                  setToast("시작합니다 ✅");
-                }}>나중에 하기</button>
+                }}>시작하기 →</button>
               </>
             )}
 
