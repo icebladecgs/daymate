@@ -177,7 +177,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     const qNotices = query(collection(db, 'communities', communityId, 'notices'), orderBy('createdAt', 'desc'));
     const unsubNotices = onSnapshot(qNotices, (snap) => {
       setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    }, (err) => console.error('[notices onSnapshot]', err));
 
     return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); };
   }, [communityId]); // eslint-disable-line
@@ -243,7 +243,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       await addCommunityNotice(communityId, { title: noticeTitle.trim(), body: noticeBody.trim(), uid: authUser.uid });
       setNoticeTitle(''); setNoticeBody(''); setShowNoticeForm(false);
       setToast('공지 등록 완료 ✅');
-    } catch { setToast('공지 등록 실패 ❌'); }
+    } catch (e) { console.error('[addNotice]', e); setToast(`공지 등록 실패: ${e?.code || e?.message || '알 수 없는 오류'}`); }
     setPostingNotice(false);
   };
 
