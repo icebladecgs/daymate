@@ -4,7 +4,7 @@ import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
-import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount } from "../firebase.js";
+import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
@@ -76,6 +76,26 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   useEffect(() => {
     if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
   }, [authUser]); // eslint-disable-line
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
+  const [suggestionText, setSuggestionText] = useState('');
+  const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
+  const [suggestionDone, setSuggestionDone] = useState(false);
+  const maskEmail = (email) => {
+    if (!email) return '익명';
+    const [local, domain] = email.split('@');
+    const masked = local.slice(0, 2) + '*'.repeat(Math.max(2, local.length - 2));
+    return `${masked}@${domain}`;
+  };
+  const handleSubmitSuggestion = async () => {
+    if (!suggestionText.trim()) return;
+    setSubmittingSuggestion(true);
+    try {
+      await submitSuggestion(authUser.uid, maskEmail(authUser.email), suggestionText.trim());
+      setSuggestionDone(true);
+      setSuggestionText('');
+    } catch (e) { console.error(e); }
+    setSubmittingSuggestion(false);
+  };
   const [menuSearch, setMenuSearch] = useState('');
   const [showAllMenu, setShowAllMenu] = useState(false);
   const [name, setName] = useState(user.name || "");
@@ -1220,8 +1240,60 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       )}
 
+      {authUser && (
+        <div style={{ padding: '8px 16px' }}>
+          <button onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }}
+            style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12 }}>
+            💡 개선 제안하기
+          </button>
+        </div>
+      )}
+
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
+
+      {/* 제안 모달 */}
+      {suggestionOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          onClick={() => setSuggestionOpen(false)}>
+          <div style={{ background: 'var(--dm-card)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '24px 24px 0 0', padding: '20px 16px 36px', width: '100%' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 900 }}>💡 개선 제안하기</div>
+              <button onClick={() => setSuggestionOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>✕</button>
+            </div>
+            {suggestionDone ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>제안이 접수됐어요!</div>
+                <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 20 }}>검토 후 반영 여부를 알려드릴게요.</div>
+                <button onClick={() => setSuggestionOpen(false)} style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', width: 'auto', padding: '10px 28px' }}>확인</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>
+                  작성자: <span style={{ color: 'var(--dm-sub)', fontWeight: 700 }}>{maskEmail(authUser?.email)}</span>
+                </div>
+                <textarea
+                  value={suggestionText}
+                  onChange={e => setSuggestionText(e.target.value)}
+                  placeholder="개선 아이디어나 불편한 점을 자유롭게 작성해주세요"
+                  rows={5}
+                  maxLength={500}
+                  style={{ ...S.input, resize: 'none', marginBottom: 6 }}
+                />
+                <div style={{ fontSize: 11, color: 'var(--dm-muted)', textAlign: 'right', marginBottom: 12 }}>{suggestionText.length}/500</div>
+                <button onClick={handleSubmitSuggestion}
+                  disabled={submittingSuggestion || !suggestionText.trim()}
+                  style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', marginTop: 0 }}>
+                  {submittingSuggestion ? '제출 중...' : '💡 제안 제출하기'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

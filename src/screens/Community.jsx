@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, submitSuggestion } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -97,12 +97,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const noticeReadKey = `dm_notice_read_${communityId}`;
   const lastReadNotice = store.get(noticeReadKey, null);
   const unreadCount = notices.filter(n => !lastReadNotice || n.createdAt > lastReadNotice).length;
-
-  // 제안하기
-  const [suggestionOpen, setSuggestionOpen] = useState(false);
-  const [suggestionText, setSuggestionText] = useState('');
-  const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
-  const [suggestionDone, setSuggestionDone] = useState(false);
 
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -216,24 +210,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     try {
       await deleteNoticeComment(communityId, selectedNotice.id, commentId);
     } catch { setToast('삭제 실패 ❌'); }
-  };
-
-  const maskEmail = (email) => {
-    if (!email) return '익명';
-    const [local, domain] = email.split('@');
-    const masked = local.slice(0, 2) + '*'.repeat(Math.max(2, local.length - 2));
-    return `${masked}@${domain}`;
-  };
-
-  const handleSubmitSuggestion = async () => {
-    if (!suggestionText.trim()) return;
-    setSubmittingSuggestion(true);
-    try {
-      await submitSuggestion(authUser.uid, maskEmail(authUser.email), suggestionText.trim());
-      setSuggestionDone(true);
-      setSuggestionText('');
-    } catch (e) { console.error(e); }
-    setSubmittingSuggestion(false);
   };
 
   const handlePostNotice = async () => {
@@ -676,67 +652,6 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             </div>
           )}
         </>
-      )}
-
-      {/* 제안하기 */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>💡</span>제안하기
-        </span>
-        <button onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }}
-          style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
-          + 제안 작성
-        </button>
-      </div>
-      <div style={{ ...S.card, textAlign: 'center', padding: '14px 16px' }}>
-        <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.7 }}>앱 개선 아이디어나 불편한 점을 자유롭게 제안해주세요.<br />관리자가 검토 후 반영 여부를 알려드려요.</div>
-        <button onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }}
-          style={{ ...S.btn, marginTop: 12, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', width: 'auto', padding: '10px 24px', fontSize: 13 }}>
-          💡 제안하기
-        </button>
-      </div>
-
-      {/* 제안 모달 */}
-      {suggestionOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={() => setSuggestionOpen(false)}>
-          <div style={{ background: 'var(--dm-card)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '24px 24px 0 0', padding: '20px 16px 36px', width: '100%' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ fontSize: 15, fontWeight: 900 }}>💡 제안하기</div>
-              <button onClick={() => setSuggestionOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>✕</button>
-            </div>
-            {suggestionDone ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>제안이 접수됐어요!</div>
-                <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 20 }}>관리자가 검토 후 반영 여부를 알려드릴게요.</div>
-                <button onClick={() => setSuggestionOpen(false)} style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', width: 'auto', padding: '10px 28px' }}>확인</button>
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>
-                  작성자: <span style={{ color: 'var(--dm-sub)', fontWeight: 700 }}>{maskEmail(authUser?.email)}</span>
-                </div>
-                <textarea
-                  value={suggestionText}
-                  onChange={e => setSuggestionText(e.target.value)}
-                  placeholder="개선 아이디어나 불편한 점을 자유롭게 작성해주세요"
-                  rows={5}
-                  maxLength={500}
-                  style={{ ...S.input, resize: 'none', marginBottom: 6 }}
-                />
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', textAlign: 'right', marginBottom: 12 }}>{suggestionText.length}/500</div>
-                <button onClick={handleSubmitSuggestion}
-                  disabled={submittingSuggestion || !suggestionText.trim()}
-                  style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', marginTop: 0 }}>
-                  {submittingSuggestion ? '제출 중...' : '💡 제안 제출하기'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
       )}
 
       {/* 오늘 출석 현황 */}
