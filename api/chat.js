@@ -144,23 +144,48 @@ ${qnaText}
     const { birthDate, birthTime, userName = '사용자', today } = req.body || {};
     if (!birthDate) return res.status(400).json({ error: 'birthDate 필요' });
 
-    const prompt = `당신은 전문 역술가입니다. 아래 정보를 바탕으로 오늘의 운세를 봐주세요.
+    // 날짜 + 생년월일 기반 결정론적 점수 산출 (매일 다른 값)
+    const seedStr = `${today}_${birthDate}`;
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = ((hash << 5) - hash + seedStr.charCodeAt(i)) | 0;
+    }
+    const rng = (offset) => {
+      let h = ((hash + offset) ^ (hash >> 16)) >>> 0;
+      h = Math.imul(h, 0x9e3779b9) >>> 0;
+      return (h >>> 0) / 0xffffffff;
+    };
+    const scores = {
+      overall:  Math.floor(rng(1) * 5) + 1,
+      money:    Math.floor(rng(2) * 5) + 1,
+      health:   Math.floor(rng(3) * 5) + 1,
+      relation: Math.floor(rng(4) * 5) + 1,
+      luckyNumber: Math.floor(rng(5) * 99) + 1,
+    };
+
+    const prompt = `당신은 전문 역술가입니다. 아래 운세 점수를 바탕으로 오늘의 운세 메시지를 작성해주세요.
 
 생년월일: ${birthDate}
 출생시간: ${birthTime || '미상'}
 오늘 날짜: ${today}
 이름: ${userName}
 
+오늘의 운세 점수 (이 수치는 고정값입니다. 절대 바꾸지 마세요):
+- 전체운: ${scores.overall}/5
+- 금전운: ${scores.money}/5
+- 건강운: ${scores.health}/5
+- 인간관계: ${scores.relation}/5
+
 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-  "overall": 1~5 숫자 (전체운),
-  "money": 1~5 숫자 (금전운),
-  "health": 1~5 숫자 (건강운),
-  "relation": 1~5 숫자 (인간관계운),
-  "message": "오늘 하루 전반적인 운세 메시지 (3~4문장, 구체적이고 실용적으로)",
+  "overall": ${scores.overall},
+  "money": ${scores.money},
+  "health": ${scores.health},
+  "relation": ${scores.relation},
+  "message": "오늘 하루 전반적인 운세 메시지 (3~4문장, 위 점수에 맞게 구체적이고 실용적으로)",
   "advice": "오늘의 핵심 조언 한 줄",
   "luckyColor": "행운의 색",
-  "luckyNumber": 행운의 숫자(1~99)
+  "luckyNumber": ${scores.luckyNumber}
 }`;
 
     try {
@@ -172,7 +197,8 @@ ${qnaText}
       const text = response.content.find(b => b.type === 'text')?.text || '{}';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      return res.status(200).json(data);
+      // 점수는 항상 해시 계산값으로 덮어쓰기 (AI가 바꿀 수 없도록)
+      return res.status(200).json({ ...data, ...scores });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
