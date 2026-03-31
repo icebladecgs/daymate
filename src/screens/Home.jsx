@@ -611,6 +611,36 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 </div>
               )
             )}
+            {/* ── 로또 번호 (운세 탭 하단) ── */}
+            {fortuneTab === 'daily' && (
+              <div style={{ marginTop: 12, borderTop: "1px solid var(--dm-border)", paddingTop: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  🎱 오늘의 로또 번호
+                  {lottoNums && <span style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 400 }}>· 오늘 1회 추출 완료</span>}
+                </div>
+                {lottoNums ? (
+                  <>
+                    {todayFortuneScore >= 80 && (
+                      <div style={{ fontSize: 11, color: "#FBBF24", fontWeight: 700, marginBottom: 8 }}>🍀 오늘 운이 좋으니 한번 사보세요!</div>
+                    )}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {lottoNums.map((n, i) => {
+                        const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
+                        return (
+                          <div key={i} style={{ width: 36, height: 36, borderRadius: 999, background: bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, boxShadow: `0 2px 8px ${bg}66` }}>{n}</div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8 }}>내일 새 번호를 뽑을 수 있어요</div>
+                  </>
+                ) : (
+                  <button onClick={drawLotto} disabled={lottoAnim}
+                    style={{ ...S.btn, background: lottoAnim ? "var(--dm-input)" : "linear-gradient(135deg,#7C3AED,#A78BFA)", fontSize: 14, marginTop: 0 }}>
+                    {lottoAnim ? "🎱 추출 중..." : "🎱 번호 뽑기"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
