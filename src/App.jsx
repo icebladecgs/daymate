@@ -55,6 +55,7 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [toast, setToast] = useState("");
+  const [communityUnread, setCommunityUnread] = useState(0);
 
   // PWA 설치 프롬프트
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -927,6 +928,7 @@ export default function App() {
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           setToast={setToast}
           todayCompletion={todayCompletion}
+          onUnreadChange={setCommunityUnread}
         />
       );
     }
@@ -1053,6 +1055,7 @@ export default function App() {
         {renderScreen()}
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
+          community: screen !== "community" ? communityUnread : 0,
         }} />}
       </div>
     </div>

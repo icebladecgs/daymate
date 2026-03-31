@@ -486,7 +486,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             {/* 탭 */}
             {birthDate && (
-              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "var(--dm-input)", borderRadius: 999, padding: 4 }}>
                 {[{ key: 'daily', label: '오늘의 운세' }, { key: 'saju', label: '평생 사주' }, { key: 'tojeong', label: '토정비결' }].map(t => (
                   <button key={t.key} onClick={() => {
                     setFortuneTab(t.key);
@@ -494,10 +494,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                     if (t.key === 'saju' && !sajuData) loadSaju();
                     if (t.key === 'tojeong' && !tojeongData) loadTojeong();
                   }} style={{
-                    flex: 1, padding: "7px 0", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer",
-                    border: "none",
-                    background: fortuneTab === t.key ? "#6C8EFF" : "var(--dm-input)",
-                    color: fortuneTab === t.key ? "#fff" : "var(--dm-sub)",
+                    flex: 1, padding: "8px 0", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
+                    border: "none", transition: "all .2s",
+                    background: fortuneTab === t.key ? "#6C8EFF" : "transparent",
+                    color: fortuneTab === t.key ? "#fff" : "var(--dm-muted)",
+                    boxShadow: fortuneTab === t.key ? "0 2px 8px rgba(108,142,255,.4)" : "none",
                   }}>{t.label}</button>
                 ))}
               </div>
@@ -510,7 +511,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>⚙️ 설정에서 입력하기</button>
               </div>
             ) : fortuneLoading ? (
-              <div style={{ textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>✨ 운세를 보고 있어요...</div>
+              <div style={{ textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "28px 16px" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>🔮</div>
+                <div>운세를 불러오는 중<span style={{ display: "inline-block", animation: "dm-dots 1.2s steps(3,end) infinite", width: 18 }}>...</span></div>
+              </div>
             ) : fortuneTab === 'daily' ? (
               fortuneData ? (() => {
                 const cats = [
@@ -1421,12 +1425,25 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               </div>
             </div>
             {habits.length === 0 && !editingHabits && (
-              <div style={{ ...S.card, textAlign: "center", padding: "20px 16px", border: "1.5px dashed var(--dm-border)" }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>🎯</div>
-                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 700, marginBottom: 4 }}>등록된 습관이 없어요</div>
-                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 14 }}>매일 반복할 습관을 추가하면 XP를 얻을 수 있어요</div>
+              <div style={{ ...S.card, textAlign: "center", padding: "22px 16px", border: "1.5px dashed var(--dm-border)" }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🌱</div>
+                <div style={{ fontSize: 14, color: "var(--dm-text)", fontWeight: 900, marginBottom: 4 }}>오늘 첫 습관을 시작해볼까요?</div>
+                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 14, lineHeight: 1.6 }}>매일 작은 실천이 큰 변화를 만들어요<br/>아래 예시를 탭하면 바로 추가돼요</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", marginBottom: 16 }}>
+                  {[{ icon: "💧", name: "물 마시기" }, { icon: "🏃", name: "스트레칭" }, { icon: "📚", name: "독서 10분" }].map(ex => (
+                    <button key={ex.name} onClick={() => {
+                      setHabits(prev => [...prev, { id: `h${Date.now()}_${ex.name}`, name: ex.name, icon: ex.icon }]);
+                    }} style={{
+                      padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
+                      border: "1.5px solid rgba(108,142,255,.4)", background: "rgba(108,142,255,.1)",
+                      color: "#818cf8", display: "flex", alignItems: "center", gap: 5,
+                    }}>
+                      <span>{ex.icon}</span><span>{ex.name}</span>
+                    </button>
+                  ))}
+                </div>
                 <button onClick={() => setEditingHabits(true)}
-                  style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>➕ 습관 추가하기</button>
+                  style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>➕ 직접 추가하기</button>
               </div>
             )}
             <div style={{ ...S.card, border: allHabitsDone && !editingHabits ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)", display: habits.length === 0 && !editingHabits ? "none" : undefined }}>

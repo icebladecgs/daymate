@@ -78,7 +78,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion }) {
+export default function Community({ user, authUser, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange }) {
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
@@ -97,6 +97,8 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const noticeReadKey = `dm_notice_read_${communityId}`;
   const lastReadNotice = store.get(noticeReadKey, null);
   const unreadCount = notices.filter(n => !lastReadNotice || n.createdAt > lastReadNotice).length;
+
+  useEffect(() => { onUnreadChange?.(unreadCount); }, [unreadCount]); // eslint-disable-line
 
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -622,33 +624,51 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           )}
 
           {/* 공지 목록 */}
+          {loading && notices.length === 0 && (
+            <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
+              {[1, 2].map(i => (
+                <div key={i} style={{ padding: '14px', borderBottom: i < 2 ? '1px solid var(--dm-border)' : 'none' }}>
+                  <div style={{ height: 14, width: '60%', borderRadius: 6, background: 'var(--dm-input)', animation: 'dm-skeleton 1.4s ease-in-out infinite', marginBottom: 8 }} />
+                  <div style={{ height: 10, width: '40%', borderRadius: 6, background: 'var(--dm-input)', animation: 'dm-skeleton 1.4s ease-in-out infinite 0.2s' }} />
+                </div>
+              ))}
+            </div>
+          )}
           {notices.length > 0 && (
             <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(108,142,255,.3)', background: 'linear-gradient(135deg,rgba(75,111,255,.06),rgba(108,142,255,.03))' }}>
-              {notices.slice(0, 3).map((n, i) => (
-                <div key={n.id} onClick={() => setSelectedNotice(n)}
-                  style={{ padding: '12px 14px', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: n.body ? 4 : 0 }}>
-                        📢 {n.title}
-                      </div>
-                      {n.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                        <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
-                          {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {(n.commentCount > 0) && (
-                          <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount}</span>
+              {notices.slice(0, 3).map((n, i) => {
+                const isUnread = !lastReadNotice || n.createdAt > lastReadNotice;
+                return (
+                  <div key={n.id} onClick={() => setSelectedNotice(n)}
+                    style={{ display: 'flex', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
+                    {/* 미읽음 파란 바 */}
+                    <div style={{ width: 4, flexShrink: 0, background: isUnread ? '#6C8EFF' : 'transparent', borderRadius: i === 0 ? '14px 0 0 0' : i === Math.min(notices.length, 3) - 1 ? '0 0 0 14px' : '0', transition: 'background 0.2s' }} />
+                    <div style={{ flex: 1, padding: '12px 14px 12px 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: isUnread ? 900 : 700, color: isUnread ? 'var(--dm-text)' : 'var(--dm-sub)', marginBottom: n.body ? 4 : 0 }}>
+                            📢 {n.title}
+                          </div>
+                          {n.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                              {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {(n.commentCount > 0) && (
+                              <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount}</span>
+                            )}
+                            {isUnread && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900 }}>NEW</span>}
+                          </div>
+                        </div>
+                        {isAdmin && (
+                          <button onClick={e => { e.stopPropagation(); handleDeleteNotice(n.id); }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
                         )}
                       </div>
                     </div>
-                    {isAdmin && (
-                      <button onClick={e => { e.stopPropagation(); handleDeleteNotice(n.id); }}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>

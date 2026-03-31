@@ -24,10 +24,27 @@ function ToastContent({ msg }) {
   );
 }
 
+function getToastStyle(msg) {
+  const errorKeywords = /실패|오류|에러|error|없어|불가|차단|거부|denied|failed/i;
+  const warnKeywords = /주의|확인|경고|이미|불일치/i;
+  if (errorKeywords.test(msg)) {
+    return { color: "#F87171", border: "1px solid rgba(248,113,113,.4)", background: "rgba(30,10,10,.85)" };
+  }
+  if (warnKeywords.test(msg)) {
+    return { color: "#FBBF24", border: "1px solid rgba(251,191,36,.4)", background: "rgba(30,25,5,.85)" };
+  }
+  return {}; // 기본: 초록 (styles.js 기준)
+}
+
 export default function Toast({ msg, onDone }) {
   useEffect(() => {
     const t = setTimeout(onDone, 2400);
     return () => clearTimeout(t);
   }, [onDone]);
-  return <div style={S.toast}><ToastContent msg={msg} /></div>;
+  const extra = getToastStyle(msg);
+  return (
+    <div style={{ ...S.toast, ...extra }}>
+      <ToastContent msg={msg} />
+    </div>
+  );
 }
