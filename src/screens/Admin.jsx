@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, doc, getDoc } from "firebase/firestore";
-import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion } from "../firebase.js";
 import S from "../styles.js";
 
 const ADMIN_CONFIG_PATH = "admin/config";
@@ -39,6 +39,10 @@ export default function Admin({ authUser, onBack }) {
   const [daysMap, setDaysMap] = useState({});
   const [expandedUid, setExpandedUid] = useState(null);
   const [adminUid, setAdminUid] = useState(null);
+  const [activeTab, setActiveTab] = useState("users"); // users | suggestions
+  const [suggestions, setSuggestions] = useState([]);
+  const [replyTexts, setReplyTexts] = useState({});
+  const [replyingId, setReplyingId] = useState(null);
 
   useEffect(() => {
     if (!authUser) { setStatus("denied"); return; }
@@ -54,9 +58,10 @@ export default function Admin({ authUser, onBack }) {
       const isAdm = await checkIsAdmin(authUser.uid);
       if (!isAdm) { setStatus("denied"); return; }
       setStatus("loading");
-      const list = await loadAllUsersMeta();
+      const [list, suggs] = await Promise.all([loadAllUsersMeta(), loadSuggestions()]);
       list.sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
       setUsers(list);
+      setSuggestions(suggs);
       setStatus("ready");
       loadDaysCounts(list);
     } catch (e) {
@@ -185,35 +190,115 @@ match /users/{uid} {
             <StatCard key={c.label} {...c} />
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginBottom: 16 }}>
           {statCards.slice(3).map(c => (
             <StatCard key={c.label} {...c} />
           ))}
         </div>
 
-        {/* 유저 목록 */}
-        <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8, letterSpacing: 0.5 }}>
-          유저 목록 ({status === "loading" ? "로딩 중..." : `${totalUsers}명`})
-        </div>
+        {/* 탭 */}
+        {(() => {
+          const pendingCount = suggestions.filter(s => s.status === 'pending').length;
+          return (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {[
+                { key: 'users', label: `유저 목록 (${totalUsers}명)` },
+                { key: 'suggestions', label: '제안', badge: pendingCount },
+              ].map(t => (
+                <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+                  flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  border: 'none',
+                  background: activeTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
+                  color: activeTab === t.key ? '#fff' : 'var(--dm-sub)',
+                  position: 'relative',
+                }}>
+                  {t.label}
+                  {t.badge > 0 && (
+                    <span style={{ position: 'absolute', top: -4, right: 8, fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 6px' }}>{t.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
-        {status === "loading" ? (
-          <div style={{ textAlign: "center", color: "var(--dm-muted)", padding: 32, fontSize: 14 }}>유저 목록 로딩 중...</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 80 }}>
-            {users.map(u => (
-              <UserRow
-                key={u.uid}
-                u={u}
-                daysCount={daysMap[u.uid]}
-                expanded={expandedUid === u.uid}
-                onToggle={() => setExpandedUid(expandedUid === u.uid ? null : u.uid)}
-              />
-            ))}
-            {users.length === 0 && (
-              <div style={{ textAlign: "center", color: "var(--dm-muted)", padding: 32, fontSize: 14 }}>
-                등록된 유저가 없습니다.
+        {/* 유저 목록 탭 */}
+        {activeTab === 'users' && (
+          status === "loading" ? (
+            <div style={{ textAlign: "center", color: "var(--dm-muted)", padding: 32, fontSize: 14 }}>유저 목록 로딩 중...</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 80 }}>
+              {users.map(u => (
+                <UserRow
+                  key={u.uid}
+                  u={u}
+                  daysCount={daysMap[u.uid]}
+                  expanded={expandedUid === u.uid}
+                  onToggle={() => setExpandedUid(expandedUid === u.uid ? null : u.uid)}
+                />
+              ))}
+              {users.length === 0 && (
+                <div style={{ textAlign: "center", color: "var(--dm-muted)", padding: 32, fontSize: 14 }}>
+                  등록된 유저가 없습니다.
+                </div>
+              )}
+            </div>
+          )
+        )}
+
+        {/* 제안 탭 */}
+        {activeTab === 'suggestions' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 80 }}>
+            {suggestions.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 제안이 없습니다.</div>
+            ) : suggestions.map(s => (
+              <div key={s.id} style={{ background: 'var(--dm-card)', border: `1.5px solid ${s.status === 'pending' ? 'rgba(251,191,36,.4)' : 'var(--dm-border)'}`, borderRadius: 14, padding: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{s.maskedEmail}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: s.status === 'pending' ? 'rgba(251,191,36,.15)' : 'rgba(74,222,128,.15)', color: s.status === 'pending' ? '#FBBF24' : '#4ADE80' }}>
+                      {s.status === 'pending' ? '미답변' : '답변완료'}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{new Date(s.createdAt).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.7, marginBottom: 10 }}>{s.text}</div>
+                {s.adminReply && (
+                  <div style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 3 }}>관리자 답변</div>
+                    <div style={{ fontSize: 12, color: 'var(--dm-text)', lineHeight: 1.6 }}>{s.adminReply}</div>
+                  </div>
+                )}
+                {replyingId === s.id ? (
+                  <div>
+                    <textarea
+                      value={replyTexts[s.id] || ''}
+                      onChange={e => setReplyTexts(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      placeholder="답변을 입력하세요"
+                      rows={3}
+                      style={{ ...S.input, resize: 'none', marginBottom: 8, fontSize: 13 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={async () => {
+                        const reply = replyTexts[s.id]?.trim();
+                        if (!reply) return;
+                        await replySuggestion(s.id, reply);
+                        setSuggestions(prev => prev.map(x => x.id === s.id ? { ...x, adminReply: reply, status: 'answered' } : x));
+                        setReplyingId(null);
+                      }} style={{ ...S.btn, flex: 1, marginTop: 0, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', fontSize: 13 }}>
+                        답변 저장
+                      </button>
+                      <button onClick={() => setReplyingId(null)} style={{ ...S.btnGhost, flex: 1, marginTop: 0, fontSize: 13 }}>취소</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => { setReplyingId(s.id); setReplyTexts(prev => ({ ...prev, [s.id]: s.adminReply || '' })); }}
+                    style={{ ...S.btnGhost, marginTop: 0, fontSize: 12, padding: '8px 0' }}>
+                    {s.adminReply ? '✏️ 답변 수정' : '💬 답변하기'}
+                  </button>
+                )}
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>

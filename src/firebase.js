@@ -18,6 +18,7 @@ import {
   where,
   deleteDoc,
   orderBy,
+  addDoc,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -313,4 +314,36 @@ export async function uploadLocalToFirestore(uid, localData) {
   for (const [dateStr, dayData] of Object.entries(days)) {
     await saveDay(uid, dateStr, dayData);
   }
+}
+
+// ---------- 제안하기 ----------
+
+export async function submitSuggestion(uid, maskedEmail, text) {
+  await addDoc(collection(db, 'suggestions'), {
+    uid,
+    maskedEmail,
+    text,
+    status: 'pending',
+    adminReply: null,
+    createdAt: new Date().toISOString(),
+    repliedAt: null,
+  });
+}
+
+export async function loadSuggestions() {
+  const snap = await getDocs(query(collection(db, 'suggestions'), orderBy('createdAt', 'desc')));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+}
+
+export async function replySuggestion(id, reply) {
+  await setDoc(doc(db, 'suggestions', id), {
+    adminReply: reply,
+    status: 'answered',
+    repliedAt: new Date().toISOString(),
+  }, { merge: true });
+}
+
+export async function getPendingSuggestionsCount() {
+  const snap = await getCountFromServer(query(collection(db, 'suggestions'), where('status', '==', 'pending')));
+  return snap.data().count;
 }

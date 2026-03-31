@@ -4,7 +4,7 @@ import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
-import { saveSettings, saveGoals, recordInviteUse } from "../firebase.js";
+import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
@@ -72,6 +72,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   onOpenAdmin, onOpenStats, onOpenLifeCoach, onChangeScreen }) {
 
   const [subPage, setSubPage] = useState(null);
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
+  useEffect(() => {
+    if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
+  }, [authUser]); // eslint-disable-line
   const [menuSearch, setMenuSearch] = useState('');
   const [showAllMenu, setShowAllMenu] = useState(false);
   const [name, setName] = useState(user.name || "");
@@ -1207,8 +1211,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       {authUser && onOpenAdmin && (
         <div style={{ padding: '8px 16px' }}>
-          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12 }}>
+          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12, position: 'relative' }}>
             🛠 관리자 페이지
+            {pendingSuggestions > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
+            )}
           </button>
         </div>
       )}
