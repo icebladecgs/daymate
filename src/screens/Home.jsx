@@ -1608,23 +1608,37 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       </div>}</>}
 
-      {(editingHabits || habits.length > 0) && (() => {
+      {(() => {
         const habitChecks = todayData?.habitChecks || {};
         const doneHabits = habits.filter(h => habitChecks[h.id]).length;
         const allHabitsDone = habits.length > 0 && doneHabits === habits.length;
         return (
           <>
             <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🎯</span>오늘 습관</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={S.sectionEmoji}>🎯</span>오늘 습관
+                {habits.length === 0 && !editingHabits && (
+                  <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>매일 반복해야 하는 습관을 입력하세요</span>
+                )}
+              </span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>
+                {habits.length > 0 && <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>}
                 <button onClick={() => setEditingHabits(v => !v)}
                   style={{ fontSize: 11, fontWeight: 900, color: editingHabits ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
                   {editingHabits ? "완료 ✓" : "⚙️ 편집"}
                 </button>
               </div>
             </div>
-            <div style={{ ...S.card, border: allHabitsDone && !editingHabits ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
+            {habits.length === 0 && !editingHabits && (
+              <div style={{ ...S.card, textAlign: "center", padding: "20px 16px", border: "1.5px dashed var(--dm-border)" }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🎯</div>
+                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 700, marginBottom: 4 }}>등록된 습관이 없어요</div>
+                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 14 }}>매일 반복할 습관을 추가하면 XP를 얻을 수 있어요</div>
+                <button onClick={() => setEditingHabits(true)}
+                  style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>➕ 습관 추가하기</button>
+              </div>
+            )}
+            <div style={{ ...S.card, border: allHabitsDone && !editingHabits ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)", display: habits.length === 0 && !editingHabits ? "none" : undefined }}>
               {editingHabits ? (
                 <>
                   {(habits || []).map(h => (
