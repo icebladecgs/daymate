@@ -251,6 +251,10 @@ export async function checkinCommunity(communityId, uid, nickname, completionRat
 
 export async function updateMemberNickname(communityId, uid, nickname) {
   await setDoc(doc(db, 'communities', communityId, 'members', uid), { nickname }, { merge: true });
+  // 오늘 출석 기록에도 닉네임 반영 (문서가 없으면 무시)
+  const checkinRef = doc(db, 'communities', communityId, 'checkins', uid);
+  const snap = await getDoc(checkinRef);
+  if (snap.exists()) await setDoc(checkinRef, { nickname }, { merge: true });
 }
 
 export async function leaveCommunity(communityId, uid) {
