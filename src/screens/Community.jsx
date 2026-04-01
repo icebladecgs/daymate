@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -353,9 +353,17 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   };
 
   const handleLeave = async () => {
-    if (!window.confirm('커뮤니티에서 나가시겠어요?')) return;
+    const isLast = members.length <= 1;
+    const msg = isLast
+      ? '마지막 멤버입니다. 나가면 커뮤니티가 완전히 삭제돼요. 정말 나가시겠어요?'
+      : '커뮤니티에서 나가시겠어요?';
+    if (!window.confirm(msg)) return;
     try {
-      await leaveCommunity(communityId, authUser.uid);
+      if (isLast) {
+        await deleteCommunityFull(communityId);
+      } else {
+        await leaveCommunity(communityId, authUser.uid);
+      }
       removeCommunityId(communityId);
       setCommunity(null);
     } catch { setToast('오류가 발생했어요'); }

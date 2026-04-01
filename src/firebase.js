@@ -278,6 +278,21 @@ export async function leaveCommunity(communityId, uid) {
   await setDoc(ref, { memberCount: Math.max((snap.data()?.memberCount || 1) - 1, 0) }, { merge: true });
 }
 
+export async function deleteCommunityFull(communityId) {
+  const subcollections = ['members', 'events', 'checkins', 'notices'];
+  for (const sub of subcollections) {
+    const snap = await getDocs(collection(db, 'communities', communityId, sub));
+    for (const d of snap.docs) {
+      if (sub === 'notices') {
+        const commSnap = await getDocs(collection(db, 'communities', communityId, 'notices', d.id, 'comments'));
+        for (const c of commSnap.docs) await deleteDoc(c.ref);
+      }
+      await deleteDoc(d.ref);
+    }
+  }
+  await deleteDoc(doc(db, 'communities', communityId));
+}
+
 export async function addCommunityNotice(communityId, notice) {
   const ref = doc(collection(db, 'communities', communityId, 'notices'));
   await setDoc(ref, { ...notice, createdAt: new Date().toISOString() });
