@@ -8,7 +8,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -1096,6 +1096,30 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   {/* 삭제 */}
                   <button onClick={() => onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id))}
                     style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 18, flexShrink: 0, lineHeight: 1, padding: "0 2px" }}>✕</button>
+                </div>
+              );
+            })}
+            {communityEventsToday.map((ev, i) => {
+              const isDone = !!communityEventChecks[ev.id];
+              return (
+                <div key={ev.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0",
+                  borderTop: "1px solid var(--dm-row)", borderLeft: "3px solid rgba(108,142,255,0.4)" }}>
+                  <div onClick={() => onToggleCommunityEvent(ev.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer", minWidth: 0 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                      border: isDone ? "none" : "2px solid #3A4260",
+                      background: isDone ? "#4B6FFF" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {isDone && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 900, color: "#6C8EFF", background: "rgba(75,111,255,0.12)", border: "1px solid rgba(75,111,255,0.3)", borderRadius: 4, padding: "1px 5px", flexShrink: 0, whiteSpace: "nowrap" }}>👥 {ev.communityName}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700,
+                        color: isDone ? "var(--dm-muted)" : "var(--dm-text)",
+                        textDecoration: isDone ? "line-through" : "none",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })}

@@ -225,6 +225,20 @@ export async function loadCommunityMembers(communityId) {
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 
+export async function loadTodayCommunityEvents(communityIds, date) {
+  const results = [];
+  for (const communityId of communityIds) {
+    const [commSnap, evSnap] = await Promise.all([
+      getDoc(doc(db, 'communities', communityId)),
+      getDocs(query(collection(db, 'communities', communityId, 'events'), where('date', '==', date))),
+    ]);
+    if (!commSnap.exists()) continue;
+    const communityName = commSnap.data().name || '커뮤니티';
+    evSnap.docs.forEach(d => results.push({ id: d.id, ...d.data(), communityId, communityName }));
+  }
+  return results;
+}
+
 export async function addCommunityEvent(communityId, event) {
   const ref = doc(collection(db, 'communities', communityId, 'events'));
   await setDoc(ref, { ...event, createdAt: new Date().toISOString() });
