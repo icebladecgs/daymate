@@ -249,6 +249,10 @@ export async function checkinCommunity(communityId, uid, nickname, completionRat
   await setDoc(ref, { uid, nickname, date: today, completionRate: completionRate ?? null, streak, lastCheckin: today, checkedAt: new Date().toISOString() });
 }
 
+export async function updateMemberNickname(communityId, uid, nickname) {
+  await setDoc(doc(db, 'communities', communityId, 'members', uid), { nickname }, { merge: true });
+}
+
 export async function leaveCommunity(communityId, uid) {
   await deleteDoc(doc(db, 'communities', communityId, 'members', uid));
   const ref = doc(db, 'communities', communityId);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -106,6 +106,8 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
   const myNickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameEdit, setNicknameEdit] = useState('');
 
   // 커뮤니티 이름 캐시 (스위처용)
   const [communityNames, setCommunityNames] = useState({});
@@ -212,6 +214,17 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     try {
       await deleteNoticeComment(communityId, selectedNotice.id, commentId);
     } catch { setToast('삭제 실패 ❌'); }
+  };
+
+  const handleUpdateNickname = async () => {
+    const trimmed = nicknameEdit.trim();
+    if (!trimmed || trimmed === myNickname) { setEditingNickname(false); return; }
+    try {
+      await updateMemberNickname(communityId, authUser.uid, trimmed);
+      loadCommunityMembers(communityId).then(setMembers).catch(() => {});
+      setToast('닉네임 변경 완료 ✅');
+    } catch { setToast('변경 실패 ❌'); }
+    setEditingNickname(false);
   };
 
   const handlePostNotice = async () => {
@@ -550,6 +563,27 @@ export default function Community({ user, authUser, communityIds, activeCommunit
         </div>
       )}
 
+      {/* 내 닉네임 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px 2px' }}>
+        <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>내 닉네임</span>
+        {editingNickname ? (
+          <input
+            value={nicknameEdit}
+            onChange={e => setNicknameEdit(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleUpdateNickname(); if (e.key === 'Escape') setEditingNickname(false); }}
+            onBlur={handleUpdateNickname}
+            autoFocus
+            maxLength={20}
+            style={{ ...S.input, fontSize: 12, padding: '3px 8px', marginBottom: 0, width: 120 }}
+          />
+        ) : (
+          <button onClick={() => { setNicknameEdit(myNickname); setEditingNickname(true); }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {myNickname} <span style={{ fontSize: 11 }}>✏️</span>
+          </button>
+        )}
+      </div>
+
       {/* 일정 추가 폼 */}
       {showAdd && (
         <div style={{ ...S.card, border: '1.5px solid #4B6FFF' }}>
@@ -654,9 +688,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
                             <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
                               {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            {(n.commentCount > 0) && (
-                              <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount}</span>
-                            )}
+                            <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount || 0}</span>
                             {isUnread && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900 }}>NEW</span>}
                           </div>
                         </div>
@@ -891,19 +923,16 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             </div>
 
             {/* 댓글 입력 */}
-            <div style={{ padding: '10px 16px 20px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8 }}>
+            <div style={{ padding: '10px 16px 20px', borderTop: '1px solid var(--dm-border)' }}>
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePostComment()}
-                placeholder="댓글을 입력하세요..."
+                placeholder={postingComment ? '등록 중...' : '댓글을 입력하고 Enter ↵'}
                 maxLength={200}
-                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 14 }}
+                disabled={postingComment}
+                style={{ ...S.input, width: '100%', marginBottom: 0, fontSize: 14, boxSizing: 'border-box' }}
               />
-              <button onClick={handlePostComment} disabled={postingComment || !commentText.trim()}
-                style={{ background: commentText.trim() ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)', border: 'none', borderRadius: 12, padding: '0 16px', color: commentText.trim() ? '#fff' : 'var(--dm-muted)', fontWeight: 900, fontSize: 14, cursor: commentText.trim() ? 'pointer' : 'default', flexShrink: 0 }}>
-                {postingComment ? '...' : '전송'}
-              </button>
             </div>
           </div>
         </div>
