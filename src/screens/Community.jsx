@@ -359,14 +359,11 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       : '커뮤니티에서 나가시겠어요?';
     if (!window.confirm(msg)) return;
     try {
-      if (isLast) {
-        await deleteCommunityFull(communityId);
-      } else {
-        await leaveCommunity(communityId, authUser.uid);
-      }
-      removeCommunityId(communityId);
-      setCommunity(null);
+      await leaveCommunity(communityId, authUser.uid);
+      if (isLast) deleteCommunityFull(communityId).catch(() => {});
     } catch { setToast('오류가 발생했어요'); }
+    removeCommunityId(communityId);
+    setCommunity(null);
   };
 
   const handleDeleteEvent = async (eventId) => {
