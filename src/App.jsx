@@ -212,21 +212,24 @@ export default function App() {
 
   // 구글 캘린더/드라이브 토큰 자동 갱신 예약 (앱 시작 시)
   useEffect(() => {
-    const waitForGis = (fn, timerRef) => {
-      if (window.google?.accounts?.oauth2) { fn(); return; }
-      timerRef.current = setTimeout(() => waitForGis(fn, timerRef), 500);
-    };
+    // 만료된 토큰은 즉시 초기화 — 사용자 제스처 없이 requestAccessToken() 호출 시
+    // 브라우저/PWA 보안 정책으로 팝업이 차단되거나 반복 표시될 수 있어서
+    const now = Date.now();
     const gcalExp = store.get('dm_gcal_token_exp', 0);
     if (gcalExp) {
-      const delay = gcalExp - Date.now() - 5 * 60 * 1000;
-      if (delay <= 0) waitForGis(connectGcal, gcalRefreshTimerRef);
-      else gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
+      if (gcalExp <= now) disconnectGcal();
+      else {
+        const delay = gcalExp - now - 5 * 60 * 1000;
+        if (delay > 0) gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
+      }
     }
     const driveExp = store.get('dm_drive_token_exp', 0);
     if (driveExp) {
-      const delay = driveExp - Date.now() - 5 * 60 * 1000;
-      if (delay <= 0) waitForGis(connectDrive, driveRefreshTimerRef);
-      else driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
+      if (driveExp <= now) disconnectDrive();
+      else {
+        const delay = driveExp - now - 5 * 60 * 1000;
+        if (delay > 0) driveRefreshTimerRef.current = setTimeout(connectDrive, delay);
+      }
     }
     return () => {
       clearTimeout(gcalRefreshTimerRef.current);
@@ -371,7 +374,7 @@ export default function App() {
       if (delay > 0) gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
       return accessToken;
     } catch {
-      gcalRefreshTimerRef.current = setTimeout(connectGcal, 5 * 60 * 1000);
+      // 자동 재시도 금지 — 반복 팝업 방지. 사용자가 Settings에서 수동 재연결
       return null;
     }
   };
@@ -381,6 +384,13 @@ export default function App() {
     store.remove('dm_gcal_token_exp');
     setGcalToken(null);
     setGcalTokenExp(0);
+  };
+
+  const disconnectDrive = () => {
+    store.remove('dm_drive_token');
+    store.remove('dm_drive_token_exp');
+    setDriveToken(null);
+    setDriveTokenExp(0);
   };
 
   const getValidDriveToken = () => {
@@ -410,7 +420,7 @@ export default function App() {
       }
       return accessToken;
     } catch {
-      driveRefreshTimerRef.current = setTimeout(connectDrive, 5 * 60 * 1000);
+      // 자동 재시도 금지 — 반복 팝업 방지. 사용자가 Settings에서 수동 재연결
       return null;
     }
   };
