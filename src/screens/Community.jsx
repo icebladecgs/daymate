@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
 import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
 import { toDateStr } from "../utils/date.js";
@@ -100,6 +100,28 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
   useEffect(() => { onUnreadChange?.(unreadCount); }, [unreadCount]); // eslint-disable-line
 
+  // 알림 소리
+  const [soundOn, setSoundOn] = useState(() => store.get('dm_community_sound', true));
+  const soundOnRef = useRef(soundOn);
+  useEffect(() => { soundOnRef.current = soundOn; store.set('dm_community_sound', soundOn); }, [soundOn]);
+  const noticeInitRef = useRef(false);
+  const commentInitRef = useRef(false);
+  const playNotifySound = (type = 'notice') => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = type === 'notice' ? 880 : 660;
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {}
+  };
+
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [comments, setComments] = useState([]);
@@ -172,8 +194,15 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       setCheckins(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     }, () => {});
 
+    noticeInitRef.current = false;
     const qNotices = query(collection(db, 'communities', communityId, 'notices'), orderBy('createdAt', 'desc'));
     const unsubNotices = onSnapshot(qNotices, (snap) => {
+      if (noticeInitRef.current) {
+        const hasNew = snap.docChanges().some(ch => ch.type === 'added' && ch.doc.data().createdBy !== authUser?.uid);
+        if (hasNew && soundOnRef.current) playNotifySound('notice');
+      } else {
+        noticeInitRef.current = true;
+      }
       setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.error('[notices onSnapshot]', err));
 
@@ -190,13 +219,22 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   // 댓글 실시간 구독
   useEffect(() => {
     if (!selectedNotice) { setComments([]); return; }
+    commentInitRef.current = false;
     const q = query(
       collection(db, 'communities', communityId, 'notices', selectedNotice.id, 'comments'),
       orderBy('createdAt', 'asc')
     );
-    const unsub = onSnapshot(q, snap => setComments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
+    const unsub = onSnapshot(q, snap => {
+      if (commentInitRef.current) {
+        const hasNew = snap.docChanges().some(ch => ch.type === 'added' && ch.doc.data().uid !== authUser?.uid);
+        if (hasNew && soundOnRef.current) playNotifySound('comment');
+      } else {
+        commentInitRef.current = true;
+      }
+      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
     return () => unsub();
-  }, [selectedNotice, communityId]);
+  }, [selectedNotice, communityId]); // eslint-disable-line
 
   const handlePostComment = async () => {
     if (!commentText.trim() || !selectedNotice) return;
@@ -536,6 +574,11 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             </button>
           </div>
         </div>
+        <button onClick={() => setSoundOn(v => !v)}
+          title={soundOn ? '알림 소리 끄기' : '알림 소리 켜기'}
+          style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', padding: '4px 8px', opacity: soundOn ? 1 : 0.4 }}>
+          {soundOn ? '🔔' : '🔕'}
+        </button>
         <button onClick={() => setShowAdd(v => !v)}
           style={{ background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', border: 'none', borderRadius: 20, padding: '8px 16px', color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
           + 일정
