@@ -922,8 +922,8 @@ export default function Community({ user, authUser, communityIds, activeCommunit
               )}
             </div>
 
-            {/* 댓글 입력 */}
-            <div style={{ padding: '10px 16px 20px', borderTop: '1px solid var(--dm-border)' }}>
+            {/* 댓글 입력 — paddingBottom으로 하단 네비바 위로 띄움 */}
+            <div style={{ padding: '10px 16px 76px', borderTop: '1px solid var(--dm-border)' }}>
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
