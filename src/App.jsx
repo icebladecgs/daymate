@@ -159,23 +159,6 @@ export default function App() {
     store.get('dm_active_community_id', store.get('dm_community_id', null))
   );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
-  const [communityEventsToday, setCommunityEventsToday] = useState([]);
-  const [communityEventChecks, setCommunityEventChecks] = useState(() =>
-    store.get(`dm_community_event_checks_${todayStr}`, {})
-  );
-
-  useEffect(() => {
-    if (!communityIds.length) { setCommunityEventsToday([]); return; }
-    loadTodayCommunityEvents(communityIds, todayStr).then(setCommunityEventsToday).catch(() => {});
-  }, [communityIds, todayStr]);
-
-  const onToggleCommunityEvent = (eventId) => {
-    setCommunityEventChecks(prev => {
-      const next = { ...prev, [eventId]: !prev[eventId] };
-      store.set(`dm_community_event_checks_${todayStr}`, next);
-      return next;
-    });
-  };
 
   const addCommunityId = (id) => {
     setCommunityIdsState(prev => {
@@ -214,6 +197,24 @@ export default function App() {
   }, [authUser]);
 
   const todayStr = toDateStr();
+
+  const [communityEventsToday, setCommunityEventsToday] = useState([]);
+  const [communityEventChecks, setCommunityEventChecks] = useState(() =>
+    store.get(`dm_community_event_checks_${todayStr}`, {})
+  );
+
+  useEffect(() => {
+    if (!communityIds.length) { setCommunityEventsToday([]); return; }
+    loadTodayCommunityEvents(communityIds, todayStr).then(setCommunityEventsToday).catch(() => {});
+  }, [communityIds, todayStr]);
+
+  const onToggleCommunityEvent = (eventId) => {
+    setCommunityEventChecks(prev => {
+      const next = { ...prev, [eventId]: !prev[eventId] };
+      store.set(`dm_community_event_checks_${todayStr}`, next);
+      return next;
+    });
+  };
 
   const [plans, setPlans] = useState(() => {
     const all = {};
