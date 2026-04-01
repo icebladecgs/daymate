@@ -476,7 +476,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       {fortuneModalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
           onClick={() => setFortuneModalOpen(false)}>
-          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "24px 24px 0 0", padding: "20px 16px 36px", width: "100%", maxHeight: "85vh", overflowY: "auto" }}
+          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "24px 24px 0 0", padding: "20px 16px 24px", width: "100%", maxHeight: "calc(90vh - 84px)", marginBottom: 84, overflowY: "auto" }}
             onClick={e => e.stopPropagation()}>
             {/* 헤더 */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
