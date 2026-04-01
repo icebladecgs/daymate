@@ -513,6 +513,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
   // 달력 뷰에서 선택된 날짜의 일정
   const calSelectedEvents = selectedCalDate ? (grouped[selectedCalDate] || []) : [];
+  const hasCommentText = !!commentText.trim();
 
   return (
     <div style={S.content}>
@@ -869,7 +870,8 @@ export default function Community({ user, authUser, communityIds, activeCommunit
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
-            width: '100%', maxWidth: 480, maxHeight: '80vh',
+            width: '100%', maxWidth: 480, maxHeight: 'calc(90vh - 60px)',
+            marginBottom: 60,
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
             animation: 'slideUp 0.22s ease-out',
@@ -922,17 +924,29 @@ export default function Community({ user, authUser, communityIds, activeCommunit
               )}
             </div>
 
-            {/* 댓글 입력 — paddingBottom으로 하단 네비바 위로 띄움 */}
-            <div style={{ padding: '10px 16px 76px', borderTop: '1px solid var(--dm-border)' }}>
+            {/* 댓글 입력 */}
+            <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePostComment()}
-                placeholder={postingComment ? '등록 중...' : '댓글을 입력하고 Enter ↵'}
+                placeholder={postingComment ? '등록 중...' : '댓글을 입력하세요'}
                 maxLength={200}
                 disabled={postingComment}
-                style={{ ...S.input, width: '100%', marginBottom: 0, fontSize: 14, boxSizing: 'border-box' }}
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 14, boxSizing: 'border-box' }}
               />
+              <button
+                onClick={handlePostComment}
+                disabled={postingComment || !hasCommentText}
+                style={{
+                  background: hasCommentText ? '#4B6FFF' : 'var(--dm-input)',
+                  border: 'none', borderRadius: 12, padding: '0 16px', height: 40,
+                  color: hasCommentText ? '#fff' : 'var(--dm-muted)',
+                  fontSize: 13, fontWeight: 700, cursor: hasCommentText ? 'pointer' : 'default',
+                  flexShrink: 0, transition: 'background 0.15s',
+                }}>
+                등록
+              </button>
             </div>
           </div>
         </div>
