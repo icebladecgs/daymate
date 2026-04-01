@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, doc, getDoc } from "firebase/firestore";
-import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull } from "../firebase.js";
 import S from "../styles.js";
 
 const ADMIN_CONFIG_PATH = "admin/config";
@@ -43,6 +43,8 @@ export default function Admin({ authUser, onBack }) {
   const [suggestions, setSuggestions] = useState([]);
   const [replyTexts, setReplyTexts] = useState({});
   const [replyingId, setReplyingId] = useState(null);
+  const [communities, setCommunities] = useState([]);
+  const [commLoading, setCommLoading] = useState(false);
 
   useEffect(() => {
     if (!authUser) { setStatus("denied"); return; }
@@ -58,10 +60,11 @@ export default function Admin({ authUser, onBack }) {
       const isAdm = await checkIsAdmin(authUser.uid);
       if (!isAdm) { setStatus("denied"); return; }
       setStatus("loading");
-      const [list, suggs] = await Promise.all([loadAllUsersMeta(), loadSuggestions()]);
+      const [list, suggs, comms] = await Promise.all([loadAllUsersMeta(), loadSuggestions(), loadAllCommunities()]);
       list.sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
       setUsers(list);
       setSuggestions(suggs);
+      setCommunities(comms.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0)));
       setStatus("ready");
       loadDaysCounts(list);
     } catch (e) {
@@ -202,8 +205,9 @@ match /users/{uid} {
           return (
             <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
               {[
-                { key: 'users', label: `유저 목록 (${totalUsers}명)` },
+                { key: 'users', label: `유저 (${totalUsers})` },
                 { key: 'suggestions', label: '제안', badge: pendingCount },
+                { key: 'communities', label: `커뮤니티 (${communities.length})` },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
@@ -244,6 +248,40 @@ match /users/{uid} {
               )}
             </div>
           )
+        )}
+
+        {/* 커뮤니티 탭 */}
+        {activeTab === 'communities' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 80 }}>
+            {commLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 24, fontSize: 14 }}>삭제 중...</div>}
+            {communities.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>커뮤니티 없음</div>
+            ) : communities.map(c => (
+              <div key={c.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</span>
+                    {c.isPublic && <span style={{ fontSize: 9, fontWeight: 900, color: '#6C8EFF', background: 'rgba(75,111,255,.12)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 4, padding: '1px 5px' }}>공개</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>멤버 {c.memberCount || 0}명 · ID: {c.id.slice(0, 8)}...</div>
+                </div>
+                <button
+                  disabled={commLoading}
+                  onClick={async () => {
+                    if (!window.confirm(`"${c.name}" 커뮤니티를 강제 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
+                    setCommLoading(true);
+                    try {
+                      await deleteCommunityFull(c.id);
+                      setCommunities(prev => prev.filter(x => x.id !== c.id));
+                    } catch { alert('삭제 실패 — Firestore 권한을 확인하세요'); }
+                    setCommLoading(false);
+                  }}
+                  style={{ background: 'rgba(248,113,113,.15)', border: '1px solid rgba(248,113,113,.4)', borderRadius: 8, color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', flexShrink: 0 }}>
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* 제안 탭 */}

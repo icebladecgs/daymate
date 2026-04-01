@@ -183,6 +183,11 @@ export async function createCommunity(uid, name, nickname, isPublic = false, pas
   return { communityId: ref.id, inviteCode: code };
 }
 
+export async function loadAllCommunities() {
+  const snap = await getDocs(collection(db, 'communities'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function loadPublicCommunities() {
   const q = query(collection(db, 'communities'), where('isPublic', '==', true));
   const snap = await getDocs(q);
