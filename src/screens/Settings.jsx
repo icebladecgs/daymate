@@ -1254,7 +1254,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       {suggestionOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => setSuggestionOpen(false)}>
-          <div style={{ background: 'var(--dm-card)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '24px 24px 0 0', padding: '20px 16px 24px', width: '100%', marginBottom: 60 }}
+          <div style={{ background: 'var(--dm-card)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '24px 24px 0 0', padding: '20px 16px 24px', width: '100%', marginBottom: 84 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 900 }}>💡 개선 제안하기</div>

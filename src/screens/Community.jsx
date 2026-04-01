@@ -870,8 +870,8 @@ export default function Community({ user, authUser, communityIds, activeCommunit
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
-            width: '100%', maxWidth: 480, maxHeight: 'calc(90vh - 60px)',
-            marginBottom: 60,
+            width: '100%', maxWidth: 480, maxHeight: 'calc(90vh - 84px)',
+            marginBottom: 84,
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
             animation: 'slideUp 0.22s ease-out',
