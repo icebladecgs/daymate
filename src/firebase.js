@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { toDateStr } from './utils/date.js';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -255,8 +256,11 @@ export async function deleteCommunityEvent(communityId, eventId) {
 }
 
 export async function checkinCommunity(communityId, uid, nickname, completionRate) {
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const now = new Date();
+  const today = toDateStr(now);
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  const yesterday = toDateStr(yest);
+
   const ref = doc(db, 'communities', communityId, 'checkins', uid);
   const existing = await getDoc(ref);
   const prev = existing.exists() ? existing.data() : {};

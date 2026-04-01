@@ -4,7 +4,7 @@ import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
 import { scheduler } from "./api/scheduler.js";
-import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "./api/gcal.js";
+import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import S from "./styles.js";
@@ -62,8 +62,10 @@ export default function App() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isKakao = /KAKAOTALK/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const fromKakao = new URLSearchParams(window.location.search).get('from_kakao') === '1';
   const [showInstallBanner, setShowInstallBanner] = useState(() => {
     if (isStandalone) return false;
+    if (fromKakao) return true; // 카카오에서 넘어온 경우 항상 설치 배너 표시
     if (store.get('dm_install_dismissed')) return false;
     return isIOS;
   });
@@ -253,6 +255,18 @@ export default function App() {
       clearTimeout(gcalRefreshTimerRef.current);
       clearTimeout(driveRefreshTimerRef.current);
     };
+  }, []); // eslint-disable-line
+
+  // 구글 캘린더 자동 동기화 (토큰 있을 때 하루 1회, 앱 시작 시)
+  useEffect(() => {
+    const token = getValidGcalToken();
+    if (!token) return;
+    const today = toDateStr();
+    if (store.get('dm_last_gcal_sync', '') === today) return;
+    pullFromGcal(token).then(n => {
+      store.set('dm_last_gcal_sync', today);
+      if (n > 0) setToast(`구글 캘린더에서 ${n}개 일정을 가져왔어요`);
+    }).catch(() => {});
   }, []); // eslint-disable-line
 
   // Drive 자동 백업 (하루 1회)
@@ -457,24 +471,30 @@ export default function App() {
   };
 
   const pullFromGcal = async (token) => {
-    const events = await gcalFetchTodayEvents(token, todayStr);
-    const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
-    if (external.length === 0) return 0;
-    const curTasks = plans[todayStr]?.tasks || [];
-    const existingTitles = new Set(curTasks.map(t => t.title.trim().toLowerCase()));
-    const toAdd = external
-      .filter(e => !existingTitles.has(e.summary.trim().toLowerCase()))
-      .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
-    if (toAdd.length === 0) return 0;
-    setTodayData(prev => {
-      const tasks = [...(prev.tasks || [])];
+    const byDate = await gcalFetchRangeEvents(token, todayStr, 30);
+    const updates = {};
+    let totalAdded = 0;
+    for (const [dateStr, events] of Object.entries(byDate)) {
+      const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
+      if (external.length === 0) continue;
+      const curDay = plans[dateStr] || newDay(dateStr);
+      const existingGcalIds = new Set((curDay.tasks || []).map(t => t.gcalEventId).filter(Boolean));
+      const toAdd = external
+        .filter(e => !existingGcalIds.has(e.id))
+        .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
+      if (toAdd.length === 0) continue;
+      const tasks = [...(curDay.tasks || [])];
       const remaining = [...toAdd];
       for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
         if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
       }
-      return { ...prev, tasks: [...tasks, ...remaining] };
-    });
-    return toAdd.length;
+      const updated = { ...curDay, tasks: [...tasks, ...remaining] };
+      updates[dateStr] = updated;
+      saveDay(dateStr, updated);
+      totalAdded += toAdd.length;
+    }
+    if (totalAdded > 0) setPlans(prev => ({ ...prev, ...updates }));
+    return totalAdded;
   };
 
   const ensureToday = () => {
@@ -700,10 +720,64 @@ export default function App() {
   // 온보딩
   const [firstRunDone, setFirstRunDone] = useState(() => !!store.get("dm_first_run_done", false));
   const [nameInput, setNameInput] = useState("");
-  const [onboardStep, setOnboardStep] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('from_kakao') === '1' ? 4 : 1;
-  });
+  const [onboardStep, setOnboardStep] = useState(1);
+
+  // 카카오톡 인앱 브라우저 감지 → 외부 브라우저로 유도
+  if (isKakao && !isStandalone) {
+    const openInBrowser = (pkg) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('from_kakao', '1');
+      window.location.href = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=${pkg};S.browser_fallback_url=${encodeURIComponent(url.toString())};end`;
+    };
+    return (
+      <div style={S.app}>
+        <div style={S.phone}>
+          <div className="dm-blob dm-blob-1" />
+          <div className="dm-blob dm-blob-2" />
+          <div style={{ padding: "56px 24px 32px", position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, marginBottom: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px rgba(108,142,255,.35)" }}>✅</div>
+            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, textAlign: "center" }}>DayMate Lite</div>
+            <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8, textAlign: "center", marginBottom: 32 }}>
+              매일 할 일 3가지만 정하고<br/>체크하고, 일기 한 줄로 마무리.
+            </div>
+
+            <div style={{ width: "100%", background: "var(--dm-card)", border: "1.5px solid var(--dm-border)", borderRadius: 16, padding: "20px", marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 6 }}>📲 앱으로 설치하려면</div>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8 }}>
+                카카오톡 브라우저에서는 앱 설치가 되지 않아요.<br/>
+                {isIOS ? "Safari" : "크롬 또는 삼성인터넷"}에서 열어주세요.
+              </div>
+            </div>
+
+            {isIOS ? (
+              <div style={{ width: "100%", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "16px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 12 }}>Safari로 여는 방법</div>
+                {[
+                  ["1", "하단의 ⋯ 버튼을 탭해요"],
+                  ["2", "'Safari로 열기'를 선택해요"],
+                  ["3", "공유 버튼(□↑) → '홈 화면에 추가'"],
+                ].map(([n, txt]) => (
+                  <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
+                    <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 10 }} onClick={() => openInBrowser('com.android.chrome')}>
+                  🌐 크롬에서 열기
+                </button>
+                <button style={{ ...S.btn, background: "var(--dm-card)", color: "var(--dm-text)", border: "1.5px solid var(--dm-border)", marginBottom: 0 }} onClick={() => openInBrowser('com.sec.android.app.sbrowser')}>
+                  🌐 삼성인터넷에서 열기
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!firstRunDone) {
     const iconBox = (
@@ -817,32 +891,6 @@ export default function App() {
                     <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
                     <div style={{ fontSize: 14, fontWeight: 900, color: "#4ADE80" }}>이미 앱으로 설치되어 있어요!</div>
                   </div>
-                ) : isKakao ? (
-                  isIOS ? (
-                    <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "16px", marginBottom: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>카카오톡에서는 Safari로 열어주세요</div>
-                      {[
-                        ["1", "우측 하단 ⋯ 버튼을 탭해요"],
-                        ["2", "'Safari로 열기'를 선택해요"],
-                        ["3", "공유 버튼(□↑) → '홈 화면에 추가'"],
-                      ].map(([n, txt]) => (
-                        <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                          <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
-                          <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={() => {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('from_kakao', '1');
-                        const intentUrl = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;end`;
-                        window.location.href = intentUrl;
-                      }}>📲 크롬에서 열고 설치하기</button>
-                      <div style={{ fontSize: 12, color: "var(--dm-sub)", textAlign: "center", marginBottom: 12 }}>크롬 브라우저에서 바로 앱 설치가 가능해요</div>
-                    </>
-                  )
                 ) : installPrompt ? (
                   <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={async () => {
                     await handleInstall();

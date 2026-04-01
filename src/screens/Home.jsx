@@ -790,22 +790,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </div>
             <button onClick={dismissInstallBanner} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
           </div>
-          {isKakao ? (
-            <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.8 }}>
-              <div style={{ fontWeight: 700, color: "var(--dm-text)", marginBottom: 4 }}>카카오톡에서는 설치가 안 돼요 😢</div>
-              {isIOS
-                ? <>1️⃣ 우측 하단 <b style={{color:"var(--dm-text)"}}>⋯</b> → <b style={{color:"var(--dm-text)"}}>Safari로 열기</b><br/>2️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> → <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>
-                : <button
-                    onClick={() => {
-                      const url = window.location.href;
-                      const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
-                      window.location.href = intentUrl;
-                    }}
-                    style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer", marginTop: 8 }}
-                  >Chrome으로 열기</button>
-              }
-            </div>
-          ) : installPrompt ? (
+          {installPrompt ? (
             <button onClick={handleInstall} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
           ) : (
             <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>

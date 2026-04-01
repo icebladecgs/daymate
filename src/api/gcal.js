@@ -1,5 +1,11 @@
 import { pad2 } from '../utils/date.js';
 
+const getTzSuffix = () => {
+  const offsetMin = -new Date().getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  return `${sign}${pad2(Math.floor(Math.abs(offsetMin) / 60))}:${pad2(Math.abs(offsetMin) % 60)}`;
+};
+
 export async function gcalCreateEvent(token, dateStr, task) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
@@ -38,9 +44,7 @@ export async function gcalUpdateEvent(token, eventId, title) {
 export async function gcalFetchWeekEvents(token, weekDates) {
   const startDate = weekDates[0];
   const endDate = weekDates[weekDates.length - 1];
-  const offsetMin = -new Date().getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const tzSuffix = `${sign}${pad2(Math.floor(Math.abs(offsetMin) / 60))}:${pad2(Math.abs(offsetMin) % 60)}`;
+  const tzSuffix = getTzSuffix();
   const nextDay = new Date(endDate + 'T00:00:00');
   nextDay.setDate(nextDay.getDate() + 1);
   const nextDateStr = `${nextDay.getFullYear()}-${pad2(nextDay.getMonth() + 1)}-${pad2(nextDay.getDate())}`;
@@ -59,13 +63,36 @@ export async function gcalFetchWeekEvents(token, weekDates) {
   return byDate;
 }
 
+export async function gcalFetchRangeEvents(token, startDateStr, days = 30) {
+  const tzSuffix = getTzSuffix();
+  const end = new Date(startDateStr + 'T00:00:00');
+  end.setDate(end.getDate() + days);
+  const endDateStr = `${end.getFullYear()}-${pad2(end.getMonth() + 1)}-${pad2(end.getDate())}`;
+  let allItems = [];
+  let pageToken = null;
+  do {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startDateStr + 'T00:00:00' + tzSuffix)}&timeMax=${encodeURIComponent(endDateStr + 'T00:00:00' + tzSuffix)}&singleEvents=true&orderBy=startTime&maxResults=250${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`gcal fetch ${res.status}`);
+    const json = await res.json();
+    allItems.push(...(json.items || []));
+    pageToken = json.nextPageToken || null;
+  } while (pageToken);
+  const byDate = {};
+  allItems.forEach(e => {
+    const ds = e.start?.date || e.start?.dateTime?.slice(0, 10);
+    if (!ds) return;
+    if (!byDate[ds]) byDate[ds] = [];
+    byDate[ds].push(e);
+  });
+  return byDate;
+}
+
 export async function gcalFetchTodayEvents(token, dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
   const nextDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  const offsetMin = -new Date().getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const tzSuffix = `${sign}${pad2(Math.floor(Math.abs(offsetMin) / 60))}:${pad2(Math.abs(offsetMin) % 60)}`;
+  const tzSuffix = getTzSuffix();
   const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(dateStr + 'T00:00:00' + tzSuffix)}&timeMax=${encodeURIComponent(nextDate + 'T00:00:00' + tzSuffix)}&singleEvents=true&orderBy=startTime`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`gcal fetch ${res.status}`);
