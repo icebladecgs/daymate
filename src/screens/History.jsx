@@ -45,7 +45,7 @@ export default function History({ plans, onOpenDate, habits }) {
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
 
   return (
-    <div style={S.content}>
+    <div style={{ ...S.content, overflowX: "hidden" }}>
       <div style={S.topbar}>
         <div>
           <div style={S.title}>달력</div>
