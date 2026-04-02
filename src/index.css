@@ -23,6 +23,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== Font scale ===== */
+[data-font="large"] {
+  font-size: 110%;
+}
+
 /* ===== DayMate theme variables ===== */
 [data-theme="dark"] {
   --dm-bg:        #10131d;

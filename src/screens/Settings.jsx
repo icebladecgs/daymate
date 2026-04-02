@@ -66,7 +66,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   habits, setHabits, recurringTasks, setRecurringTasks,
   installPrompt, handleInstall, setShowInstallBanner,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
-  isDark, setIsDark,
+  isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
   onOpenAdmin, onOpenStats, onOpenLifeCoach, onChangeScreen }) {
@@ -1098,6 +1098,15 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0 }}>
           {isDark ? "☀️" : "🌙"}
+        </button>
+        <button onClick={() => setFontScale?.(v => v === 'large' ? 'normal' : 'large')}
+          style={{ width: 38, height: 38, borderRadius: 999,
+            border: `1.5px solid ${fontScale === 'large' ? 'rgba(108,142,255,.5)' : 'var(--dm-border)'}`,
+            background: fontScale === 'large' ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+            fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0, fontWeight: 900,
+            color: fontScale === 'large' ? '#6C8EFF' : 'var(--dm-muted)' }}>
+          A+
         </button>
       </div>
 

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
+import { sendTelegramMessage } from "./api/telegram.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
@@ -10,17 +11,17 @@ import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/sta
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
-import Home from "./screens/Home.jsx";
-import Today from "./screens/Today.jsx";
-import History from "./screens/History.jsx";
-import Stats from "./screens/Stats.jsx";
-import DayDetail from "./screens/DayDetail.jsx";
-import Settings from "./screens/Settings.jsx";
-import Admin from "./screens/Admin.jsx";
-import Chat from "./screens/Chat.jsx";
-import Community from "./screens/Community.jsx";
-import InvestDiary from "./screens/InvestDiary.jsx";
-import LifeCoach from "./screens/LifeCoach.jsx";
+import Home from "./screens/Home.jsx"; // eager — 메인 화면
+const Today      = lazy(() => import("./screens/Today.jsx"));
+const History    = lazy(() => import("./screens/History.jsx"));
+const Stats      = lazy(() => import("./screens/Stats.jsx"));
+const DayDetail  = lazy(() => import("./screens/DayDetail.jsx"));
+const Settings   = lazy(() => import("./screens/Settings.jsx"));
+const Admin      = lazy(() => import("./screens/Admin.jsx"));
+const Chat       = lazy(() => import("./screens/Chat.jsx"));
+const Community  = lazy(() => import("./screens/Community.jsx"));
+const InvestDiary = lazy(() => import("./screens/InvestDiary.jsx"));
+const LifeCoach  = lazy(() => import("./screens/LifeCoach.jsx"));
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
@@ -117,11 +118,21 @@ export default function App() {
     });
   }, [authUser, VAPID_PUBLIC]);
 
-  const [isDark, setIsDark] = useState(() => store.get('dm_theme', 'dark') === 'dark');
+  const [isDark, setIsDark] = useState(() => {
+    const stored = store.get('dm_theme', null);
+    if (stored !== null) return stored === 'dark';
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches !== false;
+  });
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     store.set('dm_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
+
+  const [fontScale, setFontScale] = useState(() => store.get('dm_font_scale', 'normal'));
+  useEffect(() => {
+    document.documentElement.setAttribute('data-font', fontScale);
+    store.set('dm_font_scale', fontScale);
+  }, [fontScale]);
 
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
@@ -276,6 +287,29 @@ export default function App() {
     const today = toDateStr();
     if (store.get('dm_last_drive_backup', '')?.slice(0, 10) === today) return;
     performDriveBackup(token).catch(() => {});
+  }, []); // eslint-disable-line
+
+  // 월말 목표 달성률 알림
+  useEffect(() => {
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const daysLeft = daysInMonth - today.getDate();
+    if (daysLeft > 7) return;
+    const alertKey = `dm_month_alert_${toDateStr()}`;
+    if (store.get(alertKey, false)) return;
+    const monthGoals = goals.month || [];
+    if (monthGoals.length === 0) return;
+    const done = monthGoals.filter((_, i) => goalChecks[i]).length;
+    const pct = done / monthGoals.length;
+    if (pct >= 0.6) return;
+    store.set(alertKey, true);
+    const pctStr = Math.round(pct * 100);
+    setToast(`📅 월말 D-${daysLeft} · 목표 달성 ${pctStr}%`);
+    if (telegramCfg?.botToken && telegramCfg?.chatId) {
+      sendTelegramMessage(telegramCfg.botToken, telegramCfg.chatId,
+        `📅 <b>월말 목표 알림</b>\n\n이번 달 ${daysLeft}일 남았어요!\n목표 달성: ${pctStr}% (${done}/${monthGoals.length})\n\n아직 ${monthGoals.length - done}개가 남아있어요 💪 마지막 스퍼트!`
+      );
+    }
   }, []); // eslint-disable-line
 
   // 과거 날짜 점수 스냅샷 (오늘 이전 날만, 한 번 저장되면 변경 불가)
@@ -1061,6 +1095,7 @@ export default function App() {
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
           onGcalPull={pullFromGcal}
           isDark={isDark} setIsDark={setIsDark}
+          fontScale={fontScale} setFontScale={setFontScale}
           event={event} setEvent={setEvent}
           onAddInviteBonus={addInviteBonus}
           driveToken={driveToken} driveTokenExp={driveTokenExp}
@@ -1131,7 +1166,9 @@ export default function App() {
       <div style={S.phone}>
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
-        {renderScreen()}
+        <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--dm-muted)' }}>⏳</div>}>
+          {renderScreen()}
+        </Suspense>
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,

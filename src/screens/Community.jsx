@@ -973,7 +973,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             </div>
 
             {/* 댓글 입력 */}
-            <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, position: 'sticky', bottom: 0, background: 'var(--dm-bg)', zIndex: 10 }}>
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}

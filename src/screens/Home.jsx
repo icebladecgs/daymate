@@ -268,6 +268,22 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [somedayInput, setSomedayInput] = useState("");
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
   const [habitCheckedId, setHabitCheckedId] = useState(null);
+
+  // 오늘 회고
+  const reflectionKey = `dm_reflection_${today}`;
+  const [reflection, setReflection] = useState(() => store.get(reflectionKey, ''));
+  const saveReflection = (v) => { store.set(reflectionKey, v); };
+
+  // 뒤로가기로 모달 닫기
+  useEffect(() => {
+    const handler = () => {
+      if (fortuneModalOpen) { setFortuneModalOpen(false); return; }
+      if (xpHelpOpen) { setXpHelpOpen(false); return; }
+      if (focusTask) { setFocusTask(null); return; }
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, [fortuneModalOpen, xpHelpOpen, focusTask]); // eslint-disable-line
   const saveSomeday = (next) => setSomeday(next);
   const addSomeday = () => {
     const title = somedayInput.trim();
@@ -727,7 +743,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             {(() => {
               const fl = fortuneLevel(todayFortuneScore);
               return (
-                <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); }} style={{
+                <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
                   background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
                   border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
                   borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
@@ -779,7 +795,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
               <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
-              <button onClick={() => setXpHelpOpen(true)} style={{
+              <button onClick={() => { setXpHelpOpen(true); history.pushState({ modal: 'xp' }, ''); }} style={{
                 background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
                 borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
@@ -1451,6 +1467,24 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           </>
         );
       })()}
+
+      {/* ── 오늘의 한 줄 회고 ─────────────────────────────────── */}
+      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span>한 줄 회고</div>
+      <div style={S.card}>
+        <textarea
+          value={reflection}
+          onChange={e => setReflection(e.target.value)}
+          onBlur={e => saveReflection(e.target.value)}
+          placeholder="오늘 하루 어땠나요? 잘한 점, 아쉬운 점, 내일 다짐 뭐든 좋아요..."
+          maxLength={200}
+          style={{ ...S.input, resize: 'none', height: 72, lineHeight: 1.7, marginBottom: 0 }}
+        />
+        {reflection && (
+          <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginTop: 6, textAlign: 'right' }}>
+            {reflection.length}/200 · 자동 저장됨
+          </div>
+        )}
+      </div>
 
       {/* 반복 할일 관리 */}
       {(editingRecurring || (recurringTasks && recurringTasks.length > 0)) && (
