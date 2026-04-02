@@ -1,13 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay } from "../data/stats.js";
+import { gcalFetchRangeEvents } from "../api/gcal.js";
+import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function History({ plans, onOpenDate, habits }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
+  const [gcalEvents, setGcalEvents] = useState({});
+
+  useEffect(() => {
+    const token = getValidGcalToken?.();
+    if (!token) return;
+    const cacheKey = `dm_gcal_month_${year}_${pad2(month0 + 1)}`;
+    const cached = store.get(cacheKey, null);
+    if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < 60 * 60 * 1000) {
+      setGcalEvents(cached);
+      return;
+    }
+    const startDateStr = `${year}-${pad2(month0 + 1)}-01`;
+    const daysInMonth = new Date(year, month0 + 1, 0).getDate();
+    gcalFetchRangeEvents(token, startDateStr, daysInMonth).then(byDate => {
+      const toStore = { ...byDate, _fetchedAt: Date.now() };
+      store.set(cacheKey, toStore);
+      setGcalEvents(byDate);
+    }).catch(() => {});
+  }, [year, month0]); // eslint-disable-line
   const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const firstDay = new Date(year, month0, 1).getDay();
@@ -87,6 +108,8 @@ export default function History({ plans, onOpenDate, habits }) {
             const habitChecks = plans[ds]?.habitChecks || {};
             const habitDots = dayHabits.slice(0, 6);
             const hasHabitData = dayHabits.length > 0 && plans[ds];
+            const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
+            const hasGcal = dayGcalEvents.length > 0;
             return (
               <div
                 key={ds}
@@ -101,13 +124,20 @@ export default function History({ plans, onOpenDate, habits }) {
                   gap: 2,
                   position: "relative",
                   cursor: "pointer",
-                  paddingBottom: hasHabitData ? 4 : 0,
+                  paddingBottom: hasHabitData || hasGcal ? 4 : 0,
                   ...st,
                 }}
                 title={perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : undefined}
               >
                 <span>{day}</span>
-                {hasHabitData && (
+                {hasGcal && (
+                  <span style={{
+                    position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)",
+                    width: 4, height: 4, borderRadius: 999,
+                    background: "#4B6FFF",
+                  }} />
+                )}
+                {hasHabitData && !hasGcal && (
                   <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", maxWidth: "90%" }}>
                     {habitDots.map(h => (
                       <span key={h.id} style={{
@@ -166,6 +196,7 @@ export default function History({ plans, onOpenDate, habits }) {
         const done = tasks.filter(t => t.done).length;
         const dayHabits = habits || [];
         const habitChecks = d?.habitChecks || {};
+        const previewGcal = (gcalEvents[preview] || []).filter(e => !e.extendedProperties?.private?.daymateId);
         return (
           <div onClick={() => setPreview(null)} style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
@@ -218,6 +249,27 @@ export default function History({ plans, onOpenDate, habits }) {
                   </>
                 ) : (
                   <div style={{ fontSize: 14, color: "var(--dm-muted)", textAlign: "center", padding: "16px 0" }}>기록 없음</div>
+                )}
+                {previewGcal.length > 0 && (
+                  <div style={{ marginTop: tasks.length > 0 ? 12 : 0 }}>
+                    <div style={{ fontSize: 11, color: "#4B6FFF", fontWeight: 900, marginBottom: 6 }}>📅 구글 캘린더</div>
+                    {previewGcal.slice(0, 5).map((e, i) => {
+                      const time = e.start?.dateTime
+                        ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                        : '종일';
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
+                          borderBottom: i < Math.min(previewGcal.length, 5) - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                          <div style={{ width: 3, height: 28, borderRadius: 2, background: "#4B6FFF", flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700 }}>{e.summary || '(제목 없음)'}</div>
+                            <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>{time}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {previewGcal.length > 5 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{previewGcal.length - 5}개 더</div>}
+                  </div>
                 )}
                 {d?.memo?.trim() && (
                   <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
