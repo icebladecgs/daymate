@@ -1,4 +1,14 @@
 :root {
+  /* ── Brand color tokens ── */
+  --dm-green:    #4ADE80;
+  --dm-blue:     #4B6FFF;
+  --dm-blue-lt:  #6C8EFF;
+  --dm-purple:   #A78BFA;
+  --dm-yellow:   #FCD34D;
+  --dm-amber:    #FBBF24;
+  --dm-orange:   #F97316;
+  --dm-red:      #F87171;
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -148,6 +158,48 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* ── Skeleton loading ── */
+@keyframes dm-skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.85; }
+}
+.dm-skeleton {
+  background: var(--dm-border, rgba(184,195,255,.1));
+  border-radius: 6px;
+  animation: dm-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Check bounce ── */
+@keyframes dm-check-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
+  65%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.dm-check-bounce {
+  animation: dm-check-bounce 0.38s ease-out !important;
+}
+
+/* ── Level-up card pulse ── */
+@keyframes dm-levelup-pulse {
+  0%   { transform: scale(0.82); opacity: 0; }
+  60%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.dm-levelup-card {
+  animation: dm-levelup-pulse 0.45s cubic-bezier(.22,.68,0,1.2) forwards;
+}
+
+/* ── Section collapse ── */
+.dm-section-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+.dm-section-body.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
 }
 
 @keyframes xp-float {

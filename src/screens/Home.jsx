@@ -266,6 +266,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   }, []);
 
   const [somedayInput, setSomedayInput] = useState("");
+  const [somedayCollapsed, setSomedayCollapsed] = useState(false);
+  const [habitCheckedId, setHabitCheckedId] = useState(null);
   const saveSomeday = (next) => setSomeday(next);
   const addSomeday = () => {
     const title = somedayInput.trim();
@@ -351,6 +353,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     setAiSuggestions(prev => prev.filter(s => s !== title));
   };
 
+  useEffect(() => {
+    if (levelUpInfo) {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        setTimeout(() => playSound(freq, 320), i * 90);
+      });
+    }
+  }, [levelUpInfo]); // eslint-disable-line
+
   const startEditTasks = () => {
     setDraftTasks((todayData?.tasks || []).map(t => ({ ...t })));
     setEditingTasks(true);
@@ -378,11 +388,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       {levelUpInfo && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.8)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={onDismissLevelUp}>
-          <div style={{ background: "var(--dm-card)", border: "1.5px solid rgba(108,142,255,.5)", borderRadius: 28, padding: "40px 32px", textAlign: "center", minWidth: 260, maxWidth: 320, position: "relative" }}
+          <div className="dm-levelup-card" style={{ background: "var(--dm-card)", border: "1.5px solid rgba(108,142,255,.5)", borderRadius: 28, padding: "40px 32px", textAlign: "center", minWidth: 260, maxWidth: 320, position: "relative", boxShadow: "0 0 60px rgba(108,142,255,.35)" }}
             onClick={e => e.stopPropagation()}>
             {/* 배경 빛 효과 */}
-            <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "radial-gradient(circle at 50% 30%, rgba(108,142,255,.15), transparent 70%)", pointerEvents: "none" }} />
-            <div style={{ fontSize: 64, marginBottom: 8, filter: "drop-shadow(0 0 16px rgba(252,211,77,.6))" }}>{levelUpInfo.icon}</div>
+            <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "radial-gradient(circle at 50% 30%, rgba(108,142,255,.25), transparent 70%)", pointerEvents: "none" }} />
+            <div style={{ position: "relative", display: "inline-block", marginBottom: 8 }}>
+              <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(252,211,77,.35), transparent 70%)", animation: "dm-levelup-pulse 2s ease-in-out infinite alternate", pointerEvents: "none" }} />
+              <div style={{ fontSize: 64, filter: "drop-shadow(0 0 20px rgba(252,211,77,.8))", position: "relative" }}>{levelUpInfo.icon}</div>
+            </div>
             <div style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 900, letterSpacing: 2, marginBottom: 4 }}>LEVEL UP!</div>
             <div style={{ fontSize: 32, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>Lv.{levelUpInfo.level}</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#FCD34D", marginBottom: 16 }}>{levelUpInfo.title}</div>
@@ -403,10 +416,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
       {/* ── 오늘의 운 모달 ───────────────────────────────────── */}
       {/* ── 운세 팝업 모달 ──────────────────────────────────── */}
-      {fortuneModalOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      {fortuneModalOpen && (() => {
+        const isFsTab = fortuneTab === 'saju' || fortuneTab === 'tojeong';
+        return (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "flex", alignItems: isFsTab ? "stretch" : "flex-end", justifyContent: "center" }}
           onClick={() => setFortuneModalOpen(false)}>
-          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "24px 24px 0 0", padding: "20px 16px 24px", width: "100%", maxHeight: "calc(90vh - 84px)", marginBottom: 84, overflowY: "auto" }}
+          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: "20px 16px 24px", width: "100%", maxHeight: isFsTab ? "100%" : "calc(90vh - 84px)", marginBottom: isFsTab ? 0 : 84, overflowY: "auto" }}
             onClick={e => e.stopPropagation()}>
             {/* 헤더 */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -441,9 +456,17 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>⚙️ 설정에서 입력하기</button>
               </div>
             ) : fortuneLoading ? (
-              <div style={{ textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "28px 16px" }}>
-                <div style={{ fontSize: 28, marginBottom: 10 }}>🔮</div>
-                <div>운세를 불러오는 중<span style={{ display: "inline-block", animation: "dm-dots 1.2s steps(3,end) infinite", width: 18 }}>...</span></div>
+              <div style={{ padding: "4px 0" }}>
+                <div className="dm-skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 14 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                  {[1,2,3,4].map(i => <div key={i} className="dm-skeleton" style={{ height: 72, borderRadius: 10 }} />)}
+                </div>
+                <div className="dm-skeleton" style={{ height: 68, borderRadius: 10, marginBottom: 10 }} />
+                <div className="dm-skeleton" style={{ height: 44, borderRadius: 10, marginBottom: 10 }} />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div className="dm-skeleton" style={{ flex: 1, height: 52, borderRadius: 10 }} />
+                  <div className="dm-skeleton" style={{ flex: 1, height: 52, borderRadius: 10 }} />
+                </div>
               </div>
             ) : fortuneError ? (
               <div style={{ textAlign: "center", padding: "24px 16px" }}>
@@ -602,7 +625,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             )}
           </div>
         </div>
-      )}
+      );})()}
 
       {/* ── 포커스 모드 모달 ─────────────────────────────────── */}
       {focusTask && (
@@ -616,15 +639,15 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
       {showConfetti && (
         <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, pointerEvents:'none', zIndex:500, overflow:'hidden' }}>
-          {Array(20).fill(null).map((_,i) => (
+          {Array(36).fill(null).map((_,i) => (
             <div key={i} style={{
               position:'absolute',
-              left: `${(i * 5.1 + 3) % 100}%`,
+              left: `${(i * 2.8 + 1.5) % 100}%`,
               top: '-20px',
-              fontSize: 20,
-              animation: `fall ${1.5 + (i % 5) * 0.2}s ease-in forwards`,
-              animationDelay: `${(i % 8) * 0.1}s`,
-            }}>{['🎉','⭐','✨','🎊','💫'][i%5]}</div>
+              fontSize: 18 + (i % 3) * 4,
+              animation: `fall ${1.2 + (i % 6) * 0.18}s ease-in forwards`,
+              animationDelay: `${(i % 12) * 0.07}s`,
+            }}>{['🎉','⭐','✨','🎊','💫','🌟','🎈','🏆'][i%8]}</div>
           ))}
         </div>
       )}
@@ -983,10 +1006,22 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         )}
       </div>
 
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📋</span>언젠가 할일</div>
-      <div style={S.card}>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>📋</span>언젠가 할일
+          {someday.length > 0 && <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>{someday.length}개</span>}
+        </span>
+        <button onClick={() => setSomedayCollapsed(v => !v)}
+          style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", fontWeight: 700 }}>
+          {somedayCollapsed ? "펼치기 ▼" : "접기 ▲"}
+        </button>
+      </div>
+      {!somedayCollapsed && <div style={S.card}>
         {someday.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>언제 할지 모르지만 해야 할 일을 적어두세요.</div>
+          <div style={{ textAlign: "center", padding: "10px 0 6px" }}>
+            <div style={{ fontSize: 26, marginBottom: 6 }}>📋</div>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.6 }}>언젠가 하고 싶은 일을 적어두세요<br/>오늘 할일로 언제든 옮길 수 있어요</div>
+          </div>
         )}
         {someday.map(item => (
           <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -1018,7 +1053,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           />
           <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
         </div>
-      </div>
+      </div>}
 
       {/* ── 인생 목표 섹션 ───────────────────────────────────── */}
       <div onClick={() => { if (!lgForm) setLifeGoalOpen(v => !v); }}
@@ -1252,9 +1287,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             </>
           );
         })() : (
-          <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 4 }}>
-            이달 목표가 없어요.{" "}
-            <span onClick={startEditGoals} style={{ color: "#4B6FFF", cursor: "pointer", fontWeight: 900 }}>✏️ 편집</span>에서 추가해보세요
+          <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>🎯</div>
+            <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 10 }}>이달 목표가 없어요</div>
+            <button onClick={startEditGoals} style={{ ...S.btn, width: "auto", padding: "8px 20px", fontSize: 12 }}>+ 목표 추가</button>
           </div>
         )}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
@@ -1361,15 +1397,20 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   {habits.map((h, i) => {
                     const checked = !!habitChecks[h.id];
                     return (
-                      <div key={h.id} onClick={() => { navigator.vibrate?.(50); onToggleHabit(h.id); }}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                      <div key={h.id} onClick={() => {
+                        navigator.vibrate?.(50);
+                        if (!checked) { setHabitCheckedId(h.id); setTimeout(() => setHabitCheckedId(null), 400); }
+                        onToggleHabit(h.id);
+                      }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
                           borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
                           cursor: "pointer" }}>
-                        <div style={{
+                        <div className={habitCheckedId === h.id ? "dm-check-bounce" : ""}
+                          style={{
                           width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                           border: checked ? "none" : "2px solid #3A4260",
                           background: checked ? "#A78BFA" : "transparent",
                           display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "background 0.2s",
                         }}>
                           {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                         </div>
@@ -1447,7 +1488,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               ➕ 반복 할일 추가
             </button>
           )}
-          {(recurringTasks || []).length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 등록된 반복 할일이 없어요.</div>}
+          {(recurringTasks || []).length === 0 && (
+            <div style={{ textAlign: "center", padding: "10px 0 6px" }}>
+              <div style={{ fontSize: 26, marginBottom: 6 }}>🔁</div>
+              <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.6 }}>매일 자동으로 추가될 할일을 등록해보세요</div>
+            </div>
+          )}
         </div>
       )}
 
