@@ -128,7 +128,7 @@ export default function App() {
     store.set('dm_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  const [fontScale, setFontScale] = useState(() => store.get('dm_font_scale', 'normal'));
+  const [fontScale, setFontScale] = useState(() => store.get('dm_font_scale', 'large'));
   useEffect(() => {
     document.documentElement.setAttribute('data-font', fontScale);
     store.set('dm_font_scale', fontScale);
