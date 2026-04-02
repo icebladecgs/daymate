@@ -268,6 +268,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [somedayInput, setSomedayInput] = useState("");
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
   const [habitCheckedId, setHabitCheckedId] = useState(null);
+  const [xpHelpOpen, setXpHelpOpen] = useState(false);
 
   // 오늘 회고
   const reflectionKey = `dm_reflection_${today}`;
@@ -324,7 +325,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
-  const [xpHelpOpen, setXpHelpOpen] = useState(false);
 
   useEffect(() => {
     if (allDone && !prevAllDone) {
