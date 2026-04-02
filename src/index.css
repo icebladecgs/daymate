@@ -24,8 +24,8 @@
 }
 
 /* ===== Font scale ===== */
-[data-font="large"] {
-  font-size: 110%;
+[data-font="large"] .dm-phone {
+  zoom: 1.1;
 }
 
 /* ===== DayMate theme variables ===== */

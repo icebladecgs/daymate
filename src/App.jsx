@@ -1163,7 +1163,7 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <div style={S.phone}>
+      <div style={S.phone} className="dm-phone">
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
         <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--dm-muted)' }}>⏳</div>}>
