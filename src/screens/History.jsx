@@ -62,7 +62,7 @@ export default function History({ plans, onOpenDate, habits }) {
         {monthLabel(year, month0)}
       </div>
 
-      <div style={{ padding: "0 18px 12px" }}>
+      <div style={{ padding: "0 18px 12px", width: "100%", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
             <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>
