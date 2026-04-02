@@ -270,10 +270,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
 
-  // 오늘 회고
-  const reflectionKey = `dm_reflection_${today}`;
-  const [reflection, setReflection] = useState(() => store.get(reflectionKey, ''));
-  const saveReflection = (v) => { store.set(reflectionKey, v); };
 
   // 뒤로가기로 모달 닫기
   useEffect(() => {
@@ -1467,24 +1463,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           </>
         );
       })()}
-
-      {/* ── 오늘의 한 줄 회고 ─────────────────────────────────── */}
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span>한 줄 회고</div>
-      <div style={S.card}>
-        <textarea
-          value={reflection}
-          onChange={e => setReflection(e.target.value)}
-          onBlur={e => saveReflection(e.target.value)}
-          placeholder="오늘 하루 어땠나요? 잘한 점, 아쉬운 점, 내일 다짐 뭐든 좋아요..."
-          maxLength={200}
-          style={{ ...S.input, resize: 'none', height: 72, lineHeight: 1.7, marginBottom: 0 }}
-        />
-        {reflection && (
-          <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginTop: 6, textAlign: 'right' }}>
-            {reflection.length}/200 · 자동 저장됨
-          </div>
-        )}
-      </div>
 
       {/* 반복 할일 관리 */}
       {(editingRecurring || (recurringTasks && recurringTasks.length > 0)) && (
