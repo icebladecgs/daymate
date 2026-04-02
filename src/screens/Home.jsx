@@ -74,6 +74,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       return cached?.overall ?? null;
     } catch { return null; }
   })();
+  const fortuneXpKey = `dm_fortune_xp_${today}`;
 
   // ── 운세 ────────────────────────────────────────────────────
   const [fortuneOpen, setFortuneOpen] = useState(false);
@@ -128,6 +129,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     } catch {}
     setFortuneLoading(false);
   };
+
+  useEffect(() => {
+    if (fortuneData?.overall && !store.get(fortuneXpKey, null)) {
+      const xp = Math.round(fortuneData.overall * 2);
+      store.set(fortuneXpKey, xp);
+      onLuckyXp?.(xp);
+    }
+  }, [fortuneData]);
 
   const loadSaju = async () => {
     if (!birthDate) return;
