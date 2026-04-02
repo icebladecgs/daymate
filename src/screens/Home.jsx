@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
+import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
 import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
@@ -14,49 +15,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
   const allDone = filledCount > 0 && doneCount === filledCount;
 
-  // ── 포커스 모드 / 타이머 챌린지 ─────────────────────────────
-  const TIMER_OPTIONS = [
-    { label: '5분', sec: 5 * 60, xp: 5 },
-    { label: '15분', sec: 15 * 60, xp: 15 },
-    { label: '25분', sec: 25 * 60, xp: 30 },
-    { label: '50분', sec: 50 * 60, xp: 70 },
-  ];
+  // ── 포커스 모드 (FocusTimerModal로 분리) ────────────────────
   const [focusTask, setFocusTask] = useState(null);
-  const [focusTimerIdx, setFocusTimerIdx] = useState(2); // 기본 25분
-  const [focusSec, setFocusSec] = useState(TIMER_OPTIONS[2].sec);
-  const [focusRunning, setFocusRunning] = useState(false);
-  const [focusDone, setFocusDone] = useState(false);
-  const focusInterval = useRef(null);
-  const POMODORO_SEC = TIMER_OPTIONS[focusTimerIdx].sec;
-
-  useEffect(() => {
-    if (focusRunning && focusSec > 0) {
-      focusInterval.current = setInterval(() => setFocusSec(s => s - 1), 1000);
-    } else if (focusSec === 0 && focusRunning) {
-      setFocusRunning(false);
-      setFocusDone(true);
-      // 완료 효과음 (3번 울림)
-      [0, 300, 600].forEach(d => setTimeout(() => playSound(880, 400), d));
-    }
-    return () => clearInterval(focusInterval.current);
-  }, [focusRunning, focusSec]);
-
-  const startFocus = (task) => {
-    setFocusTask(task);
-    setFocusSec(TIMER_OPTIONS[focusTimerIdx].sec);
-    setFocusRunning(false);
-    setFocusDone(false);
-  };
-  const closeFocus = () => {
-    clearInterval(focusInterval.current);
-    setFocusTask(null);
-    setFocusRunning(false);
-    setFocusDone(false);
-    setFocusSec(TIMER_OPTIONS[focusTimerIdx].sec);
-  };
-  const focusMin = String(Math.floor(focusSec / 60)).padStart(2, "0");
-  const focusSs  = String(focusSec % 60).padStart(2, "0");
-  const focusPct = ((POMODORO_SEC - focusSec) / POMODORO_SEC) * 100;
+  const startFocus = (task) => setFocusTask(task);
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
@@ -76,12 +37,25 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   })();
   const fortuneXpKey = `dm_fortune_xp_${today}`;
 
+  // XP 플로팅 애니메이션
+  const [xpFloat, setXpFloat] = useState(null);
+  const [xpFloatPos, setXpFloatPos] = useState({ top: '40%', left: '50%' });
+  const triggerXpFloat = (xp, anchorEl) => {
+    if (anchorEl) {
+      const r = anchorEl.getBoundingClientRect();
+      setXpFloatPos({ top: r.top + r.height / 2, left: r.left + r.width / 2 });
+    }
+    setXpFloat({ xp, key: Date.now() });
+    onLuckyXp?.(xp);
+  };
+
   // ── 운세 ────────────────────────────────────────────────────
   const [fortuneOpen, setFortuneOpen] = useState(false);
   const [fortuneModalOpen, setFortuneModalOpen] = useState(false);
   const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
   const [fortuneData, setFortuneData] = useState(null);
   const [fortuneLoading, setFortuneLoading] = useState(false);
+  const [fortuneError, setFortuneError] = useState(false);
 
   // 로또 번호
   const lottoKey = `dm_lotto_${today}`;
@@ -117,6 +91,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     const cached = store.get(fortuneCacheKey, null);
     if (cached) { setFortuneData(cached); return; }
     setFortuneLoading(true);
+    setFortuneError(false);
     try {
       const res = await fetch('/api/chat?action=fortune', {
         method: 'POST',
@@ -126,7 +101,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       const data = await res.json();
       store.set(fortuneCacheKey, data);
       setFortuneData(data);
-    } catch {}
+    } catch {
+      setFortuneError(true);
+    }
     setFortuneLoading(false);
   };
 
@@ -134,9 +111,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     if (fortuneData?.overall && !store.get(fortuneXpKey, null)) {
       const xp = Math.round(fortuneData.overall * 2);
       store.set(fortuneXpKey, xp);
-      onLuckyXp?.(xp);
+      triggerXpFloat(xp);
     }
-  }, [fortuneData]);
+  }, [fortuneData]); // eslint-disable-line
 
   const loadSaju = async () => {
     if (!birthDate) return;
@@ -173,6 +150,38 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
   const starRating = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
+  const fortuneLevel = (score) => {
+    if (!score) return { label: '🔮', color: '#A78BFA', desc: '운세보기' };
+    const pts = score * 20;
+    if (pts >= 80) return { label: '대길 ★', color: '#4ADE80', desc: `${pts}점` };
+    if (pts >= 60) return { label: '길 ☆', color: '#FCD34D', desc: `${pts}점` };
+    if (pts >= 40) return { label: '평 △', color: '#94A3B8', desc: `${pts}점` };
+    return { label: '흉 ▽', color: '#F87171', desc: `${pts}점` };
+  };
+
+  const fortuneWeekHistory = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const dateStr = toDateStr(d);
+      const cached = store.get(`dm_fortune_${dateStr}`, null);
+      const dow = '일월화수목금토'[d.getDay()];
+      return { dateStr, overall: cached?.overall ?? null, dow };
+    });
+  }, []); // eslint-disable-line
+
+  const habitHeatmap = useMemo(() => {
+    return Array.from({ length: 28 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (27 - i));
+      const dateStr = toDateStr(d);
+      const dayData = plans[dateStr];
+      const checks = dayData?.habitChecks || {};
+      const total = habits.length;
+      const done = total > 0 ? habits.filter(h => checks[h.id]).length : 0;
+      return { dateStr, pct: total > 0 ? done / total : -1 };
+    });
+  }, [plans, habits]);
 
   // ── 오늘의 명언 ──────────────────────────────────────────────
   const QUOTES = [
@@ -436,6 +445,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <div style={{ fontSize: 28, marginBottom: 10 }}>🔮</div>
                 <div>운세를 불러오는 중<span style={{ display: "inline-block", animation: "dm-dots 1.2s steps(3,end) infinite", width: 18 }}>...</span></div>
               </div>
+            ) : fortuneError ? (
+              <div style={{ textAlign: "center", padding: "24px 16px" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>😶‍🌫️</div>
+                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 14 }}>운세를 불러오지 못했어요.<br/>네트워크를 확인하고 다시 시도해보세요.</div>
+                <button onClick={loadFortune} style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>🔄 다시 시도</button>
+              </div>
             ) : fortuneTab === 'daily' ? (
               fortuneData ? (() => {
                 const cats = [
@@ -448,6 +463,25 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 const scoreColor = totalScore >= 80 ? "#4ADE80" : totalScore >= 60 ? "#FCD34D" : "#F87171";
                 return (
                   <div style={S.card}>
+                    {/* 주간 운세 히스토리 미니 차트 */}
+                    {fortuneWeekHistory.some(d => d.overall !== null) && (
+                      <div style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6, textAlign: "center" }}>7일 운세 흐름</div>
+                        <div style={{ display: "flex", gap: 4, alignItems: "flex-end", justifyContent: "center", height: 36 }}>
+                          {fortuneWeekHistory.map((d, i) => {
+                            const pts = d.overall ? d.overall * 20 : 0;
+                            const isToday = i === 6;
+                            const barColor = pts >= 80 ? "#4ADE80" : pts >= 60 ? "#FCD34D" : pts > 0 ? "#F87171" : "var(--dm-row)";
+                            return (
+                              <div key={d.dateStr} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: 1 }}>
+                                <div style={{ width: "100%", maxWidth: 28, height: d.overall ? `${Math.max(4, pts * 0.32)}px` : 4, background: barColor, borderRadius: 3, opacity: isToday ? 1 : 0.6, border: isToday ? `1.5px solid ${barColor}` : "none" }} />
+                                <div style={{ fontSize: 9, color: isToday ? "var(--dm-text)" : "var(--dm-muted)", fontWeight: isToday ? 900 : 400 }}>{d.dow}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>종합 운세 점수</div>
@@ -572,104 +606,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
 
       {/* ── 포커스 모드 모달 ─────────────────────────────────── */}
       {focusTask && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 1000,
-          background: "rgba(10,12,30,0.97)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: 24,
-        }}>
-          {/* 닫기 */}
-          <button onClick={closeFocus} style={{
-            position: "absolute", top: 20, right: 20,
-            background: "transparent", border: "none", color: "var(--dm-muted)",
-            fontSize: 28, cursor: "pointer", lineHeight: 1,
-          }}>✕</button>
-
-          {/* 할일 이름 */}
-          <div style={{ fontSize: 15, color: "var(--dm-sub)", marginBottom: 8, fontWeight: 700, textAlign: "center" }}>집중 중</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--dm-text)", marginBottom: 40, textAlign: "center", maxWidth: 280 }}>
-            {focusTask.title}
-          </div>
-
-          {/* 원형 타이머 */}
-          <div style={{ position: "relative", width: 220, height: 220, marginBottom: 40 }}>
-            <svg width="220" height="220" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="110" cy="110" r="100" fill="none" stroke="var(--dm-input)" strokeWidth="10" />
-              <circle cx="110" cy="110" r="100" fill="none"
-                stroke={focusDone ? "#4ADE80" : "#A78BFA"} strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 100}`}
-                strokeDashoffset={`${2 * Math.PI * 100 * (1 - focusPct / 100)}`}
-                style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
-              />
-            </svg>
-            <div style={{
-              position: "absolute", inset: 0,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            }}>
-              {focusDone ? (
-                <div style={{ fontSize: 48 }}>🎉</div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 48, fontWeight: 900, color: "var(--dm-text)", letterSpacing: 2 }}>
-                    {focusMin}:{focusSs}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 4 }}>남음</div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 완료 시 */}
-          {focusDone ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: "#4ADE80", marginBottom: 8 }}>
-                {TIMER_OPTIONS[focusTimerIdx].label} 집중 완료! 🌟
-              </div>
-              <div style={{ fontSize: 14, color: "#FCD34D", fontWeight: 900, marginBottom: 20 }}>
-                +{TIMER_OPTIONS[focusTimerIdx].xp} XP 획득!
-              </div>
-              <button onClick={() => { onToggleTask(focusTask.id); onLuckyXp?.(TIMER_OPTIONS[focusTimerIdx].xp); closeFocus(); }}
-                style={{ ...S.btn, marginBottom: 10, background: "linear-gradient(135deg,#4ADE80,#22c55e)" }}>
-                ✅ 할일 완료 + XP 받기
-              </button>
-              <button onClick={() => { onLuckyXp?.(TIMER_OPTIONS[focusTimerIdx].xp); closeFocus(); }}
-                style={{ ...S.btnGhost, marginBottom: 0 }}>XP만 받고 닫기</button>
-            </div>
-          ) : (
-            <>
-              {/* 시간 선택 */}
-              {!focusRunning && focusSec === TIMER_OPTIONS[focusTimerIdx].sec && (
-                <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-                  {TIMER_OPTIONS.map((opt, i) => (
-                    <button key={opt.label} onClick={() => { setFocusTimerIdx(i); setFocusSec(opt.sec); }} style={{
-                      padding: "6px 10px", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
-                      border: `1.5px solid ${focusTimerIdx === i ? '#A78BFA' : 'var(--dm-border)'}`,
-                      background: focusTimerIdx === i ? 'rgba(167,139,250,.2)' : 'var(--dm-input)',
-                      color: focusTimerIdx === i ? '#A78BFA' : 'var(--dm-muted)',
-                    }}>
-                      {opt.label}
-                      <div style={{ fontSize: 10, color: focusTimerIdx === i ? '#A78BFA' : 'var(--dm-muted)', marginTop: 1 }}>+{opt.xp}XP</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 12 }}>
-                <button onClick={() => setFocusRunning(r => !r)} style={{
-                  ...S.btn, width: 120, background: focusRunning
-                    ? "linear-gradient(135deg,#F87171,#ef4444)"
-                    : "linear-gradient(135deg,#A78BFA,#7c3aed)",
-                }}>
-                  {focusRunning ? "⏸ 일시정지" : "▶ 시작"}
-                </button>
-                <button onClick={() => { setFocusSec(TIMER_OPTIONS[focusTimerIdx].sec); setFocusRunning(false); setFocusDone(false); }}
-                  style={{ ...S.btnGhost, width: 80 }}>
-                  🔄 초기화
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <FocusTimerModal
+          task={focusTask}
+          onClose={() => setFocusTask(null)}
+          onToggleTask={onToggleTask}
+          onXp={(xp) => triggerXpFloat(xp)}
+        />
       )}
 
       {showConfetti && (
@@ -759,17 +701,20 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
               </button>
             )}
-            <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); }} style={{
-              background: todayFortuneScore ? "rgba(167,139,250,.12)" : "rgba(167,139,250,.08)",
-              border: `1px solid ${todayFortuneScore ? "rgba(167,139,250,.5)" : "rgba(167,139,250,.3)"}`,
-              borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
-            }}>
-              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: "#A78BFA" }}>
-                {todayFortuneScore ? `${todayFortuneScore * 20}점` : "🔮"}
-              </div>
-              <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>운세보기</div>
-            </button>
+            {(() => {
+              const fl = fortuneLevel(todayFortuneScore);
+              return (
+                <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); }} style={{
+                  background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
+                  border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
+                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
+                }}>
+                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
+                  <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
+                </button>
+              );
+            })()}
           </div>
         </div>
         {/* 중앙: 원형 링 + XP */}
@@ -800,7 +745,14 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             );
           })()}
           {/* XP 정보 */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, position: "relative" }}>
+            {xpFloat && (
+              <div key={xpFloat.key} className="xp-float"
+                style={{ top: xpFloatPos.top, left: xpFloatPos.left }}
+                onAnimationEnd={() => setXpFloat(null)}>
+                +{xpFloat.xp} XP
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
               <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
@@ -1430,6 +1382,28 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       </div>
                     );
                   })}
+                  {/* 4주 습관 히트맵 */}
+                  {habits.length > 0 && (
+                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
+                      <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6 }}>4주 기록</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                        {habitHeatmap.map((d) => {
+                          const isToday = d.dateStr === today;
+                          const bg = d.pct < 0 ? "var(--dm-row)"
+                            : d.pct === 0 ? "rgba(248,113,113,.25)"
+                            : d.pct < 0.5 ? "rgba(167,139,250,.3)"
+                            : d.pct < 1 ? "rgba(167,139,250,.6)"
+                            : "#A78BFA";
+                          return (
+                            <div key={d.dateStr} title={d.dateStr} style={{
+                              height: 12, borderRadius: 2, background: bg,
+                              outline: isToday ? "1.5px solid #A78BFA" : "none",
+                            }} />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

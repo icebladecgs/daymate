@@ -150,6 +150,23 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+@keyframes xp-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(-44px) scale(1.15); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-64px) scale(0.9); }
+}
+.xp-float {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  font-size: 17px;
+  font-weight: 900;
+  color: #4ADE80;
+  text-shadow: 0 0 12px rgba(74,222,128,.6);
+  animation: xp-float 1.6s ease-out forwards;
+  white-space: nowrap;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

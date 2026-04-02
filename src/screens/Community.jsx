@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
 import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
-import { toDateStr } from "../utils/date.js";
+import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 
@@ -956,7 +956,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
                           <span style={{ fontSize: 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
-                              {new Date(c.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {formatRelativeTime(c.createdAt)}
                             </span>
                             {(isMine || isAdmin) && (
                               <button onClick={() => handleDeleteComment(c.id)}
