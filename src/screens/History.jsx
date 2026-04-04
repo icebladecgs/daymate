@@ -13,6 +13,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
   const [gcalEvents, setGcalEvents] = useState({});
 
   const [gcalRefreshing, setGcalRefreshing] = useState(false);
+  const [gcalToast, setGcalToast] = useState(null);
+
+  const showToast = (msg) => {
+    setGcalToast(msg);
+    setTimeout(() => setGcalToast(null), 2500);
+  };
 
   const fetchGcal = async (forceRefresh = false) => {
     const token = getValidGcalToken?.();
@@ -32,7 +38,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
       const toStore = { ...byDate, _fetchedAt: Date.now() };
       store.set(cacheKey, toStore);
       setGcalEvents(byDate);
-    }).catch(() => {}).finally(() => setGcalRefreshing(false));
+      if (forceRefresh) showToast('📅 구글 캘린더 업데이트 완료');
+    }).catch(() => {
+      if (forceRefresh) showToast('❌ 불러오기 실패');
+    }).finally(() => setGcalRefreshing(false));
   };
 
   useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
@@ -73,6 +82,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
 
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
+      {gcalToast && (
+        <div style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '10px 18px', fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', boxShadow: '0 4px 20px rgba(0,0,0,.3)', whiteSpace: 'nowrap' }}>
+          {gcalToast}
+        </div>
+      )}
       <div style={S.topbar}>
         <div>
           <div style={S.title}>달력</div>
