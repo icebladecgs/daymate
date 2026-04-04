@@ -486,3 +486,16 @@ export async function loadChallengeMembers(challengeId) {
   const snap = await getDocs(collection(db, 'challenges', challengeId, 'members'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() })).sort((a, b) => (b.streak || 0) - (a.streak || 0));
 }
+
+export async function deleteChallengeFull(challengeId) {
+  for (const sub of ['members', 'certs']) {
+    const snap = await getDocs(collection(db, 'challenges', challengeId, sub));
+    for (const d of snap.docs) await deleteDoc(d.ref);
+  }
+  await deleteDoc(doc(db, 'challenges', challengeId));
+}
+
+export async function loadAllChallenges() {
+  const snap = await getDocs(collection(db, 'challenges'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}

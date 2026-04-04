@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -148,7 +148,7 @@ function ChallengeCard({ challenge: c, myMember, today, onClick }) {
   );
 }
 
-function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }) {
+function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, onDeleted }) {
   const [certs, setCerts] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,6 +217,19 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
   };
 
   const isAdmin = authUser?.uid === import.meta.env.VITE_ADMIN_UID;
+  const isHost = c.hostUid === authUser?.uid;
+
+  const handleDeleteChallenge = async () => {
+    const hasMembers = members.length > 1;
+    const msg = hasMembers
+      ? `참여자 ${members.length}명의 데이터가 모두 삭제됩니다.\n정말 삭제할까요?`
+      : '챌린지를 삭제할까요?';
+    if (!window.confirm(msg)) return;
+    await deleteChallengeFull(c.id);
+    showToast('챌린지가 삭제됐어요');
+    onDeleted?.();
+    onBack();
+  };
 
   const handleDeleteCert = async (certId) => {
     if (!window.confirm('인증을 삭제할까요?')) return;
@@ -353,6 +366,15 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
               <div style={{ fontSize: 13, fontWeight: 900, color: '#FBBF24' }}>🔥 {m.streak || 0}일</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 챌린지 삭제 (개설자 or 관리자) */}
+      {(isHost || isAdmin) && (
+        <div style={{ padding: '16px 16px 80px', textAlign: 'center' }}>
+          <button onClick={handleDeleteChallenge} style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.4)', borderRadius: 10, color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '8px 20px' }}>
+            🗑 챌린지 삭제
+          </button>
         </div>
       )}
     </div>
