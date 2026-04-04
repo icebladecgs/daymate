@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, loadChallengeMembers } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -216,6 +216,14 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
     setCerts(prev => prev.map(cert => cert.id === certId ? { ...cert, cheerCount: (cert.cheerCount || 0) + 1 } : cert));
   };
 
+  const isAdmin = authUser?.uid === import.meta.env.VITE_ADMIN_UID;
+
+  const handleDeleteCert = async (certId) => {
+    if (!window.confirm('인증을 삭제할까요?')) return;
+    await deleteCert(c.id, certId);
+    setCerts(prev => prev.filter(cert => cert.id !== certId));
+  };
+
   const daysLeft = c.endDate ? Math.max(0, Math.ceil((new Date(c.endDate) - new Date(today)) / 86400000)) : null;
   const todayCerts = certs.filter(cert => cert.dateKey === today).length;
 
@@ -315,9 +323,14 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</div>
                   </div>
                 </div>
-                <button onClick={() => handleCheer(cert.id)} disabled={cheeredCerts.has(cert.id)} style={{ background: cheeredCerts.has(cert.id) ? 'rgba(251,191,36,.25)' : 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: cheeredCerts.has(cert.id) ? 'default' : 'pointer' }}>
-                  👏 {cert.cheerCount || 0}
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button onClick={() => handleCheer(cert.id)} disabled={cheeredCerts.has(cert.id)} style={{ background: cheeredCerts.has(cert.id) ? 'rgba(251,191,36,.25)' : 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: cheeredCerts.has(cert.id) ? 'default' : 'pointer' }}>
+                    👏 {cert.cheerCount || 0}
+                  </button>
+                  {(cert.uid === authUser.uid || isAdmin) && (
+                    <button onClick={() => handleDeleteCert(cert.id)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', padding: '4px 6px' }}>✕</button>
+                  )}
+                </div>
               </div>
               {cert.text && cert.text !== '✓' && (
                 <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, paddingLeft: 36 }}>{cert.text}</div>

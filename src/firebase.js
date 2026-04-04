@@ -472,6 +472,10 @@ export async function loadChallengeCerts(challengeId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function deleteCert(challengeId, certId) {
+  await deleteDoc(doc(db, 'challenges', challengeId, 'certs', certId));
+}
+
 export async function cheerCert(challengeId, certId) {
   const ref = doc(db, 'challenges', challengeId, 'certs', certId);
   const snap = await getDoc(ref);
