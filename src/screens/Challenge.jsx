@@ -222,10 +222,15 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
   const isHost = c.hostUid === authUser?.uid;
 
   const handleDeleteChallenge = async () => {
-    await deleteChallengeFull(c.id);
-    showToast('챌린지가 삭제됐어요');
-    onDeleted?.();
-    onBack();
+    try {
+      await deleteChallengeFull(c.id);
+      showToast('챌린지가 삭제됐어요');
+      onDeleted?.();
+      onBack();
+    } catch (e) {
+      showToast('삭제 실패: ' + (e?.message || '권한을 확인하세요'));
+      setDeleteConfirm(false);
+    }
   };
 
   const handleDeleteCert = async (certId) => {
