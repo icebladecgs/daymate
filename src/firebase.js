@@ -396,3 +396,89 @@ export async function getPendingSuggestionsCount() {
   const snap = await getCountFromServer(query(collection(db, 'suggestions'), where('status', '==', 'pending')));
   return snap.data().count;
 }
+
+// ---------- 챌린지 ----------
+
+export async function createChallenge(uid, nickname, data) {
+  const ref = doc(collection(db, 'challenges'));
+  await setDoc(ref, {
+    ...data,
+    hostUid: uid,
+    hostNickname: nickname,
+    memberCount: 1,
+    createdAt: new Date().toISOString(),
+    status: 'open',
+  });
+  await setDoc(doc(db, 'challenges', ref.id, 'members', uid), {
+    nickname,
+    joinedAt: new Date().toISOString(),
+    streak: 0,
+    totalCerts: 0,
+    lastCertDate: null,
+  });
+  return ref.id;
+}
+
+export async function loadPublicChallenges() {
+  const q = query(collection(db, 'challenges'), where('isPublic', '==', true), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function loadMyChallenges(uid) {
+  const snap = await getDocs(collection(db, 'challenges'));
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const result = [];
+  for (const ch of all) {
+    const memberSnap = await getDoc(doc(db, 'challenges', ch.id, 'members', uid));
+    if (memberSnap.exists()) result.push({ ...ch, myMember: memberSnap.data() });
+  }
+  return result;
+}
+
+export async function joinChallenge(uid, nickname, challengeId) {
+  const memberRef = doc(db, 'challenges', challengeId, 'members', uid);
+  const existing = await getDoc(memberRef);
+  if (existing.exists()) return;
+  await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), streak: 0, totalCerts: 0, lastCertDate: null });
+  const ref = doc(db, 'challenges', challengeId);
+  const snap = await getDoc(ref);
+  await setDoc(ref, { memberCount: (snap.data()?.memberCount || 0) + 1 }, { merge: true });
+}
+
+export async function certifyChallenge(uid, nickname, challengeId, text) {
+  const today = toDateStr();
+  // 중복 인증 방지
+  const q = query(collection(db, 'challenges', challengeId, 'certs'), where('uid', '==', uid), where('dateKey', '==', today));
+  const existing = await getDocs(q);
+  if (!existing.empty) throw new Error('already_certified');
+
+  const ref = doc(collection(db, 'challenges', challengeId, 'certs'));
+  await setDoc(ref, { uid, nickname, dateKey: today, text, createdAt: new Date().toISOString(), cheerCount: 0 });
+
+  // streak 업데이트
+  const memberRef = doc(db, 'challenges', challengeId, 'members', uid);
+  const memberSnap = await getDoc(memberRef);
+  const member = memberSnap.data() || {};
+  const yesterday = toDateStr(new Date(Date.now() - 86400000));
+  const newStreak = member.lastCertDate === yesterday ? (member.streak || 0) + 1 : 1;
+  await setDoc(memberRef, { streak: newStreak, totalCerts: (member.totalCerts || 0) + 1, lastCertDate: today }, { merge: true });
+  return ref.id;
+}
+
+export async function loadChallengeCerts(challengeId) {
+  const q = query(collection(db, 'challenges', challengeId, 'certs'), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function cheerCert(challengeId, certId) {
+  const ref = doc(db, 'challenges', challengeId, 'certs', certId);
+  const snap = await getDoc(ref);
+  await setDoc(ref, { cheerCount: (snap.data()?.cheerCount || 0) + 1 }, { merge: true });
+}
+
+export async function loadChallengeMembers(challengeId) {
+  const snap = await getDocs(collection(db, 'challenges', challengeId, 'members'));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() })).sort((a, b) => (b.streak || 0) - (a.streak || 0));
+}

@@ -3,6 +3,7 @@ import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore"
 import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
+import Challenge from "./Challenge.jsx";
 import S from "../styles.js";
 
 // ── 미니 달력 컴포넌트 ────────────────────────────────────────
@@ -79,6 +80,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
 }
 
 export default function Community({ user, authUser, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange }) {
+  const [mainTab, setMainTab] = useState("community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
@@ -446,6 +448,18 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
   if (communityIds.length === 0 || mode === 'create' || mode === 'join' || mode === 'add') return (
     <div style={S.content}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+          <button key={t.key} onClick={() => setMainTab(t.key)} style={{
+            flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
+            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            marginBottom: -1,
+          }}>{t.label}</button>
+        ))}
+      </div>
+      {mainTab === 'challenge' && <Challenge authUser={authUser} />}
+      {mainTab === 'community' && <>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={S.sub}>함께하는 일정 공유</div></div>
         {communityIds.length > 0 && mode !== null && (
@@ -551,6 +565,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           <button style={S.btnGhost} onClick={() => setMode(null)}>취소</button>
         </div>
       )}
+      </>}
     </div>
   );
 
@@ -560,6 +575,22 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
   return (
     <div style={S.content}>
+      {/* 메인 탭: 커뮤니티 / 챌린지 */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+          <button key={t.key} onClick={() => setMainTab(t.key)} style={{
+            flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
+            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            marginBottom: -1,
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {mainTab === 'challenge' && <Challenge authUser={authUser} />}
+      {mainTab === 'challenge' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
+      {mainTab === 'community' && <>
+
       {/* 상단 */}
       <div style={S.topbar}>
         <div style={{ flex: 1 }}>
@@ -999,6 +1030,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }
