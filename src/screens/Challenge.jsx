@@ -353,7 +353,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 16px' }}>
-          {members.map((m, i) => (
+          {[...members].map(m => ({ ...m, totalCerts: certs.filter(cert => cert.uid === m.uid).length }))
+            .sort((a, b) => b.totalCerts - a.totalCerts)
+            .map((m, i) => (
             <div key={m.uid} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? ['#FBBF24','#94A3B8','#CD7C3E'][i] : 'var(--dm-muted)', width: 20, textAlign: 'center' }}>{i + 1}</div>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#6C8EFF' }}>
@@ -361,7 +363,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{m.nickname} {m.uid === authUser.uid ? '(나)' : ''}</div>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>총 {m.totalCerts || 0}회</div>
+                <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>총 {m.totalCerts}회</div>
               </div>
               <div style={{ fontSize: 13, fontWeight: 900, color: '#FBBF24' }}>🔥 {m.streak || 0}일</div>
             </div>
