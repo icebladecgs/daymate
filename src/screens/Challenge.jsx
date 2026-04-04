@@ -49,7 +49,7 @@ export default function Challenge({ authUser, myTotalScore = 0 }) {
   };
 
   if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
-  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} showToast={showToast} />;
+  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} onDeleted={() => { setSelected(null); load(); }} showToast={showToast} />;
 
   return (
     <div style={{ paddingBottom: 80 }}>
