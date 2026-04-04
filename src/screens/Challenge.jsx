@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, loadChallengeMembers } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
+import { store } from "../utils/storage.js";
 import S from "../styles.js";
+
+const NICKNAME_KEY = 'dm_challenge_nickname';
 
 export default function Challenge({ authUser }) {
   const [tab, setTab] = useState("my"); // my | explore
@@ -14,7 +17,9 @@ export default function Challenge({ authUser }) {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-  const nickname = authUser?.displayName?.split(" ")[0] || authUser?.email?.split("@")[0] || "익명";
+  const [nickname, setNickname] = useState(() => store.get(NICKNAME_KEY, authUser?.displayName?.split(" ")[0] || authUser?.email?.split("@")[0] || ""));
+  const [editingNickname, setEditingNickname] = useState(!store.get(NICKNAME_KEY, null));
+  const [nicknameInput, setNicknameInput] = useState(nickname);
 
   useEffect(() => {
     if (!authUser) return;
@@ -34,6 +39,14 @@ export default function Challenge({ authUser }) {
     }
   };
 
+  const saveNickname = () => {
+    if (!nicknameInput.trim()) return;
+    const n = nicknameInput.trim();
+    setNickname(n);
+    store.set(NICKNAME_KEY, n);
+    setEditingNickname(false);
+  };
+
   if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
   if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} onBack={() => { setSelected(null); load(); }} showToast={showToast} />;
 
@@ -44,6 +57,21 @@ export default function Challenge({ authUser }) {
           {toast}
         </div>
       )}
+
+      {/* 닉네임 */}
+      <div style={{ padding: '8px 16px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>닉네임</span>
+        {editingNickname ? (
+          <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            <input value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveNickname()} placeholder="닉네임 입력" maxLength={20} autoFocus style={{ ...S.input, marginBottom: 0, fontSize: 12, padding: '4px 10px', flex: 1 }} />
+            <button onClick={saveNickname} style={{ ...S.btn, marginTop: 0, padding: '4px 12px', fontSize: 12, width: 'auto' }}>확인</button>
+          </div>
+        ) : (
+          <button onClick={() => { setNicknameInput(nickname); setEditingNickname(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {nickname} <span style={{ fontSize: 11 }}>✏️</span>
+          </button>
+        )}
+      </div>
 
       {/* 탭 + 만들기 버튼 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px 8px' }}>
@@ -130,6 +158,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
   const [isMember, setIsMember] = useState(!!c.myMember);
   const [myMember, setMyMember] = useState(c.myMember || null);
   const [detailTab, setDetailTab] = useState("feed"); // feed | members
+  const [cheeredCerts, setCheeredCerts] = useState(() => new Set(JSON.parse(store.get(`dm_cheer_${c.id}`, '[]'))));
   const today = toDateStr();
   const certedToday = myMember?.lastCertDate === today;
 
@@ -178,7 +207,12 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
   };
 
   const handleCheer = async (certId) => {
+    if (cheeredCerts.has(certId)) return;
     await cheerCert(c.id, certId);
+    const next = new Set(cheeredCerts);
+    next.add(certId);
+    setCheeredCerts(next);
+    store.set(`dm_cheer_${c.id}`, JSON.stringify([...next]));
     setCerts(prev => prev.map(cert => cert.id === certId ? { ...cert, cheerCount: (cert.cheerCount || 0) + 1 } : cert));
   };
 
@@ -188,12 +222,19 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
   return (
     <div style={{ paddingBottom: 80 }}>
       {/* 헤더 */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={onBack} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>{c.title}</div>
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음'}</div>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--dm-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: c.description ? 8 : 0 }}>
+          <button onClick={onBack} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>{c.title}</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음'}</div>
+          </div>
         </div>
+        {c.description && (
+          <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px' }}>
+            {c.description}
+          </div>
+        )}
       </div>
 
       {/* 내 상태 카드 */}
@@ -274,7 +315,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast }
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</div>
                   </div>
                 </div>
-                <button onClick={() => handleCheer(cert.id)} style={{ background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => handleCheer(cert.id)} disabled={cheeredCerts.has(cert.id)} style={{ background: cheeredCerts.has(cert.id) ? 'rgba(251,191,36,.25)' : 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: cheeredCerts.has(cert.id) ? 'default' : 'pointer' }}>
                   👏 {cert.cheerCount || 0}
                 </button>
               </div>
