@@ -25,12 +25,12 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBjMy6mpY0A_1h8X5D-7BkMFzpehIq_d4o",
-  authDomain: "daymate-a9ff6.firebaseapp.com",
-  projectId: "daymate-a9ff6",
-  storageBucket: "daymate-a9ff6.firebasestorage.app",
-  messagingSenderId: "9221676076",
-  appId: "1:9221676076:web:c2dbada9d6b87c91818589",
+  apiKey: import.meta.env.VITE_FB_API_KEY,
+  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FB_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FB_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
@@ -426,14 +426,15 @@ export async function loadPublicChallenges() {
 }
 
 export async function loadMyChallenges(uid) {
-  const snap = await getDocs(collection(db, 'challenges'));
-  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const result = [];
-  for (const ch of all) {
-    const memberSnap = await getDoc(doc(db, 'challenges', ch.id, 'members', uid));
-    if (memberSnap.exists()) result.push({ ...ch, myMember: memberSnap.data() });
-  }
-  return result;
+  const allSnap = await getDocs(collection(db, 'challenges'));
+  const all = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // 순차 await 대신 Promise.all로 병렬 조회
+  const memberSnaps = await Promise.all(
+    all.map(ch => getDoc(doc(db, 'challenges', ch.id, 'members', uid)))
+  );
+  return all
+    .map((ch, i) => memberSnaps[i].exists() ? { ...ch, myMember: memberSnaps[i].data() } : null)
+    .filter(Boolean);
 }
 
 export async function joinChallenge(uid, nickname, challengeId) {
