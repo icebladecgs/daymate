@@ -7,7 +7,7 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -38,7 +38,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
       const toStore = { ...byDate, _fetchedAt: Date.now() };
       store.set(cacheKey, toStore);
       setGcalEvents(byDate);
-      if (forceRefresh) showToast('📅 구글 캘린더 업데이트 완료');
+      if (forceRefresh) {
+        const added = onSyncGcal?.(byDate) ?? 0;
+        showToast(added > 0 ? `📅 ${added}개 일정이 할일에 추가됨` : '📅 구글 캘린더 최신 상태');
+      }
     }).catch(() => {
       if (forceRefresh) showToast('❌ 불러오기 실패');
     }).finally(() => setGcalRefreshing(false));

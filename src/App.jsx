@@ -504,8 +504,7 @@ export default function App() {
     setInviteBonus(prev => { const next = prev + pts; store.set('dm_invite_bonus', next); return next; });
   };
 
-  const pullFromGcal = async (token) => {
-    const byDate = await gcalFetchRangeEvents(token, todayStr, 30);
+  const syncGcalByDate = (byDate) => {
     const updates = {};
     let totalAdded = 0;
     for (const [dateStr, events] of Object.entries(byDate)) {
@@ -529,6 +528,11 @@ export default function App() {
     }
     if (totalAdded > 0) setPlans(prev => ({ ...prev, ...updates }));
     return totalAdded;
+  };
+
+  const pullFromGcal = async (token) => {
+    const byDate = await gcalFetchRangeEvents(token, todayStr, 30);
+    return syncGcalByDate(byDate);
   };
 
   const ensureToday = () => {
@@ -1046,7 +1050,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} />;
+      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onSyncGcal={syncGcalByDate} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} onBack={() => history.back()} />;
