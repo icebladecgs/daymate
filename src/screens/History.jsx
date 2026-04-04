@@ -45,9 +45,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
   };
 
   const styleOf = (r, isToday, isPerfect) => {
-    if (isToday && isPerfect) return { background: "#6C8EFF", color: "#fff", fontWeight: 900, border: "2px solid #4ADE80" };
     if (isToday) return { background: "#6C8EFF", color: "#fff", fontWeight: 900 };
-    if (isPerfect) return { background: "rgba(74,222,128,.20)", color: "#4ADE80", fontWeight: 900, border: "1.5px solid #4ADE80" };
+    if (isPerfect) return { fontWeight: 900, color: "var(--dm-text)" };
     if (r === null) return { background: "transparent", color: "var(--dm-muted)" };
     if (r >= 80) return { background: "rgba(74,222,128,.18)", color: "#4ADE80", fontWeight: 900 };
     if (r >= 50) return { background: "rgba(252,211,77,.14)", color: "#FCD34D", fontWeight: 900 };
@@ -149,10 +148,16 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
                 )}
                 {hasMemo && (
                   <span style={{
-                    position: "absolute", top: 3, right: 3,
+                    position: "absolute", top: 3, left: 3,
                     width: 4, height: 4, borderRadius: 999,
                     background: "#6C8EFF",
                   }} />
+                )}
+                {perfect && (
+                  <span style={{
+                    position: "absolute", top: 1, right: 2,
+                    fontSize: 8, lineHeight: 1, color: "#FBBF24",
+                  }}>★</span>
                 )}
               </div>
             );
