@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { calcLevel } from "../data/stats.js";
 import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
@@ -6,7 +7,7 @@ import S from "../styles.js";
 
 const NICKNAME_KEY = 'dm_challenge_nickname';
 
-export default function Challenge({ authUser }) {
+export default function Challenge({ authUser, myTotalScore = 0 }) {
   const [tab, setTab] = useState("my"); // my | explore
   const [myChallenges, setMyChallenges] = useState([]);
   const [publicChallenges, setPublicChallenges] = useState([]);
@@ -48,7 +49,7 @@ export default function Challenge({ authUser }) {
   };
 
   if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
-  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} onBack={() => { setSelected(null); load(); }} showToast={showToast} />;
+  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} showToast={showToast} />;
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -148,7 +149,7 @@ function ChallengeCard({ challenge: c, myMember, today, onClick }) {
   );
 }
 
-function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, onDeleted }) {
+function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, showToast, onDeleted }) {
   const [certs, setCerts] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -338,7 +339,10 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
                     {cert.nickname?.[0] || '?'}
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)' }}>{cert.nickname}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)' }}>{cert.nickname}</span>
+                      {cert.uid === authUser.uid && myLevel && <span style={{ fontSize: 11 }}>{myLevel.icon}</span>}
+                    </div>
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</div>
                   </div>
                 </div>
@@ -368,7 +372,10 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
                 {m.nickname?.[0] || '?'}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{m.nickname} {m.uid === authUser.uid ? '(나)' : ''}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{m.nickname} {m.uid === authUser.uid ? '(나)' : ''}</span>
+                  {m.uid === authUser.uid && myLevel && <span style={{ fontSize: 11 }}>{myLevel.icon} <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{myLevel.title}</span></span>}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>총 {m.totalCerts}회</div>
               </div>
               <div style={{ fontSize: 13, fontWeight: 900, color: '#FBBF24' }}>🔥 {m.streak || 0}일</div>

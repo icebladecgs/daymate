@@ -1037,6 +1037,7 @@ export default function App() {
       return (
         <Community
           user={user} authUser={authUser}
+          myTotalScore={myRank?.totalScore || 0}
           communityIds={communityIds}
           activeCommunityId={activeCommunityId}
           setActiveCommunityId={setActiveCommunityId}
