@@ -1238,6 +1238,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </button>
       </div>
 
+      {authUser && (
+        <MenuGroup label="기타">
+          <MenuRow icon="💡" title="개선 제안하기" sub="앱 기능 개선 아이디어를 보내주세요"
+            onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }} />
+        </MenuGroup>
+      )}
+
       {authUser && onOpenAdmin && (
         <div style={{ padding: '8px 16px' }}>
           <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12, position: 'relative' }}>
@@ -1247,13 +1254,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             )}
           </button>
         </div>
-      )}
-
-      {authUser && (
-        <MenuGroup label="기타">
-          <MenuRow icon="💡" title="개선 제안하기" sub="앱 기능 개선 아이디어를 보내주세요"
-            onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }} />
-        </MenuGroup>
       )}
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite {APP_VERSION} · {APP_BUILD}</div>
