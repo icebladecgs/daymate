@@ -111,6 +111,25 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         {monthLabel(year, month0)}
       </div>
 
+      {/* 범례 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 10px', flexWrap: 'wrap' }}>
+        {[
+          { color: '#4ADE80', bg: 'rgba(74,222,128,.18)', label: '80%↑' },
+          { color: '#FCD34D', bg: 'rgba(252,211,77,.14)', label: '50~79%' },
+          { color: '#F87171', bg: 'rgba(248,113,113,.10)', label: '50%↓' },
+          { color: '#6C8EFF', bg: '#6C8EFF', label: '오늘', textColor: '#fff' },
+        ].map(({ color, bg, label, textColor }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: `1.5px solid ${color}` }} />
+            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+          </div>
+        ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 11, color: '#FBBF24' }}>★</span>
+          <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완벽한 날</span>
+        </div>
+      </div>
+
       <div style={{ padding: "0 18px 12px", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 4, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
