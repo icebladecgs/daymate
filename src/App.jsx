@@ -1105,7 +1105,7 @@ export default function App() {
           driveToken={driveToken} driveTokenExp={driveTokenExp}
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
           lastDriveBackup={lastDriveBackup}
-          onOpenAdmin={authUser?.uid === import.meta.env.VITE_ADMIN_UID ? () => changeScreen("admin") : undefined}
+          onOpenAdmin={authUser && authUser.uid === import.meta.env.VITE_ADMIN_UID ? () => changeScreen("admin") : undefined}
           onOpenStats={() => changeScreen("stats")}
           onOpenLifeCoach={() => changeScreen("life-coach")}
           onChangeScreen={changeScreen}
