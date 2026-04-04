@@ -1258,6 +1258,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite {APP_VERSION} · {APP_BUILD}</div>
       {authUser && <div style={{ padding: '0 18px 12px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 10, wordBreak: 'break-all' }}>UID: {authUser.uid}</div>}
+      <div style={{ padding: '0 18px 12px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 10, wordBreak: 'break-all' }}>ENV: {import.meta.env.VITE_ADMIN_UID || '(없음)'}</div>
       <div style={{ height: 12 }} />
 
       {/* 제안 모달 */}
