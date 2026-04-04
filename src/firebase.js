@@ -14,6 +14,8 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
+  increment,
   collection,
   getDocs,
   getCountFromServer,
@@ -216,9 +218,7 @@ export async function joinCommunity(uid, communityId, nickname) {
   const existing = await getDoc(memberRef);
   if (existing.exists()) return; // 이미 가입됨
   await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), isAdmin: false });
-  const ref = doc(db, 'communities', communityId);
-  const snap = await getDoc(ref);
-  await setDoc(ref, { memberCount: (snap.data()?.memberCount || 0) + 1 }, { merge: true });
+  await updateDoc(doc(db, 'communities', communityId), { memberCount: increment(1) });
 }
 
 export async function loadCommunityData(communityId) {
@@ -282,9 +282,7 @@ export async function updateMemberNickname(communityId, uid, nickname) {
 
 export async function leaveCommunity(communityId, uid) {
   await deleteDoc(doc(db, 'communities', communityId, 'members', uid));
-  const ref = doc(db, 'communities', communityId);
-  const snap = await getDoc(ref);
-  await setDoc(ref, { memberCount: Math.max((snap.data()?.memberCount || 1) - 1, 0) }, { merge: true });
+  await updateDoc(doc(db, 'communities', communityId), { memberCount: increment(-1) });
 }
 
 export async function deleteCommunityFull(communityId) {
@@ -442,9 +440,7 @@ export async function joinChallenge(uid, nickname, challengeId) {
   const existing = await getDoc(memberRef);
   if (existing.exists()) return;
   await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), streak: 0, totalCerts: 0, lastCertDate: null });
-  const ref = doc(db, 'challenges', challengeId);
-  const snap = await getDoc(ref);
-  await setDoc(ref, { memberCount: (snap.data()?.memberCount || 0) + 1 }, { merge: true });
+  await updateDoc(doc(db, 'challenges', challengeId), { memberCount: increment(1) });
 }
 
 export async function certifyChallenge(uid, nickname, challengeId, text) {
@@ -478,9 +474,7 @@ export async function deleteCert(challengeId, certId) {
 }
 
 export async function cheerCert(challengeId, certId) {
-  const ref = doc(db, 'challenges', challengeId, 'certs', certId);
-  const snap = await getDoc(ref);
-  await setDoc(ref, { cheerCount: (snap.data()?.cheerCount || 0) + 1 }, { merge: true });
+  await updateDoc(doc(db, 'challenges', challengeId, 'certs', certId), { cheerCount: increment(1) });
 }
 
 export async function loadChallengeMembers(challengeId) {
