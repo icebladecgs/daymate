@@ -133,15 +133,20 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameEdit, setNicknameEdit] = useState('');
 
-  // 커뮤니티 이름 캐시 (스위처용)
+  // 커뮤니티 홈 (목록) vs 상세
+  const [showHome, setShowHome] = useState(true);
+
+  // 커뮤니티 이름/멤버수 캐시 (홈 목록용)
   const [communityNames, setCommunityNames] = useState({});
+  const [communityMeta, setCommunityMeta] = useState({}); // id -> { name, memberCount, inviteCode }
   useEffect(() => {
     (communityIds || []).forEach(id => {
-      if (!communityNames[id]) {
-        loadCommunityData(id).then(data => {
-          if (data) setCommunityNames(prev => ({ ...prev, [id]: data.name }));
-        }).catch(() => {});
-      }
+      loadCommunityData(id).then(data => {
+        if (data) {
+          setCommunityNames(prev => ({ ...prev, [id]: data.name }));
+          setCommunityMeta(prev => ({ ...prev, [id]: data }));
+        }
+      }).catch(() => {});
     });
   }, [communityIds]); // eslint-disable-line
 
@@ -212,11 +217,11 @@ export default function Community({ user, authUser, communityIds, activeCommunit
   }, [communityId]); // eslint-disable-line
 
   useEffect(() => {
-    if (mode === 'join' && joinTab === 'public') {
+    if ((mode === 'join' && joinTab === 'public') || (mode === null && showHome)) {
       setPublicLoading(true);
       loadPublicCommunities().then(list => { setPublicList(list); setPublicLoading(false); }).catch(() => setPublicLoading(false));
     }
-  }, [mode, joinTab]);
+  }, [mode, joinTab, showHome]); // eslint-disable-line
 
   // 댓글 실시간 구독
   useEffect(() => {
@@ -295,7 +300,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     try {
       const { communityId: id } = await createCommunity(authUser.uid, nameInput.trim(), nicknameInput.trim(), isPublic, createPassword.trim() || null);
       addCommunityId(id);
-      setMode(null);
+      setMode(null); setShowHome(true);
     } catch { setToast('생성 실패 ❌'); }
     setSubmitting(false);
   };
@@ -308,7 +313,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
       if (!result) { setToast('커뮤니티를 찾을 수 없어요'); setSubmitting(false); return; }
       await joinCommunity(authUser.uid, result.communityId, nicknameInput.trim());
       addCommunityId(result.communityId);
-      setMode(null);
+      setMode(null); setShowHome(true);
     } catch { setToast('가입 실패 ❌'); }
     setSubmitting(false);
   };
@@ -319,7 +324,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     try {
       await joinPublicCommunity(authUser.uid, selectedPublic.id, nicknameInput.trim(), pubPassword.trim());
       addCommunityId(selectedPublic.id);
-      setMode(null);
+      setMode(null); setShowHome(true);
     } catch (e) {
       setToast(e.message === 'wrong password' ? '비밀번호가 틀렸어요 ❌' : '가입 실패 ❌');
     }
@@ -446,6 +451,82 @@ export default function Community({ user, authUser, communityIds, activeCommunit
     </div>
   );
 
+  // ── 커뮤니티 홈 화면 ──────────────────────────────────────────
+  if (showHome && mode === null) return (
+    <div style={S.content}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+          <button key={t.key} onClick={() => setMainTab(t.key)} style={{
+            flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
+            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            marginBottom: -1,
+          }}>{t.label}</button>
+        ))}
+      </div>
+      {mainTab === 'challenge' && <Challenge authUser={authUser} />}
+      {mainTab === 'community' && (
+        <div style={{ paddingBottom: 80 }}>
+          {/* 상단 */}
+          <div style={{ padding: '14px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={S.title}>커뮤니티</div>
+            <button onClick={() => setMode('create')} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: 13, width: 'auto' }}>+ 만들기</button>
+          </div>
+
+          {/* 내 커뮤니티 */}
+          {communityIds.length > 0 && (
+            <div style={{ padding: '4px 16px 12px' }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>내 커뮤니티</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {communityIds.map(id => {
+                  const meta = communityMeta[id];
+                  return (
+                    <div key={id} onClick={() => { setActiveCommunityId(id); setShowHome(false); }} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>👥</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityNames[id] || '...'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
+                      </div>
+                      <div style={{ color: 'var(--dm-muted)', fontSize: 16 }}>›</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 공개 커뮤니티 */}
+          <div style={{ padding: '4px 16px 12px' }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>공개 커뮤니티</div>
+            {publicLoading ? (
+              <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>불러오는 중...</div>
+            ) : publicList.filter(c => !communityIds.includes(c.id)).length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>공개 커뮤니티가 없어요</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {publicList.filter(c => !communityIds.includes(c.id)).map(c => (
+                  <div key={c.id} onClick={() => { setSelectedPublic(c); setMode('join'); setJoinTab('public'); }} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(74,222,128,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🌐</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {c.memberCount}명 {c.password ? '· 🔑 비밀번호' : '· 자유 입장'}</div>
+                    </div>
+                    <button style={{ background: 'rgba(108,142,255,.15)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 8, padding: '5px 12px', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>가입</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 초대코드로 가입 */}
+          <div style={{ padding: '0 16px' }}>
+            <button onClick={() => { setMode('join'); setJoinTab('code'); }} style={{ ...S.btnGhost, fontSize: 13, boxShadow: 'none' }}>🔗 초대코드로 가입하기</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (communityIds.length === 0 || mode === 'create' || mode === 'join' || mode === 'add') return (
     <div style={S.content}>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
@@ -562,7 +643,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
             </>
           )}
 
-          <button style={S.btnGhost} onClick={() => setMode(null)}>취소</button>
+          <button style={S.btnGhost} onClick={() => { setMode(null); setShowHome(true); }}>취소</button>
         </div>
       )}
       </>}
@@ -593,6 +674,7 @@ export default function Community({ user, authUser, communityIds, activeCommunit
 
       {/* 상단 */}
       <div style={S.topbar}>
+        <button onClick={() => setShowHome(true)} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
         <div style={{ flex: 1 }}>
           <div style={S.title}>{community?.name || '커뮤니티'}</div>
           <div style={{ ...S.sub, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
