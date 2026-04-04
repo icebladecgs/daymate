@@ -12,23 +12,30 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
 
-  useEffect(() => {
+  const [gcalRefreshing, setGcalRefreshing] = useState(false);
+
+  const fetchGcal = async (forceRefresh = false) => {
     const token = getValidGcalToken?.();
     if (!token) return;
     const cacheKey = `dm_gcal_month_${year}_${pad2(month0 + 1)}`;
-    const cached = store.get(cacheKey, null);
-    if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < 60 * 60 * 1000) {
-      setGcalEvents(cached);
-      return;
+    if (!forceRefresh) {
+      const cached = store.get(cacheKey, null);
+      if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < 60 * 60 * 1000) {
+        setGcalEvents(cached);
+        return;
+      }
     }
+    setGcalRefreshing(true);
     const startDateStr = `${year}-${pad2(month0 + 1)}-01`;
     const daysInMonth = new Date(year, month0 + 1, 0).getDate();
     gcalFetchRangeEvents(token, startDateStr, daysInMonth).then(byDate => {
       const toStore = { ...byDate, _fetchedAt: Date.now() };
       store.set(cacheKey, toStore);
       setGcalEvents(byDate);
-    }).catch(() => {});
-  }, [year, month0]); // eslint-disable-line
+    }).catch(() => {}).finally(() => setGcalRefreshing(false));
+  };
+
+  useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
   const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const firstDay = new Date(year, month0, 1).getDay();
@@ -73,6 +80,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken }
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto' }}>🔍</button>
+          {getValidGcalToken?.() && (
+            <button onClick={() => fetchGcal(true)} disabled={gcalRefreshing} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto', opacity: gcalRefreshing ? 0.5 : 1 }}>
+              {gcalRefreshing ? '⟳' : '📅'}
+            </button>
+          )}
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
