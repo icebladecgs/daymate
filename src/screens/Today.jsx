@@ -71,38 +71,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
         </div>
       )}
 
-      {/* 빈 상태: 메모·일기 모두 없을 때 첫 안내 */}
-      {!data.memo?.trim() && !data.journal?.body?.trim() && (
-        <div style={{ margin: "0 16px 10px", borderRadius: 16, background: "linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))", border: "1.5px dashed rgba(108,142,255,.3)", padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
-          <div style={{ fontSize: 28, flexShrink: 0 }}>✏️</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>오늘 기록을 시작해볼까요?</div>
-            <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.7 }}>
-              메모는 수시로, 일기는 하루 끝에.<br/>한 줄도 좋아요 — 기록이 쌓이면 달라져요.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 투자일기 바로가기 */}
-      {onOpenInvest && (
-        <div onClick={onOpenInvest} style={{
-          ...S.card, marginBottom: 10, cursor: "pointer",
-          background: "linear-gradient(135deg,rgba(167,139,250,0.12),rgba(108,142,255,0.08))",
-          border: "1.5px solid rgba(167,139,250,0.25)",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>💹</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>투자일기</div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>판단을 기록하고 복기하세요</div>
-            </div>
-          </div>
-          <span style={{ fontSize: 18, color: "var(--dm-muted)" }}>›</span>
-        </div>
-      )}
-
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>오늘 메모</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -195,6 +163,25 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
           {data.journal.body.length} / 1200
         </div>
       </div>
+
+      {/* 투자일기 바로가기 */}
+      {onOpenInvest && (
+        <div onClick={onOpenInvest} style={{
+          ...S.card, marginTop: 4, cursor: "pointer",
+          background: "linear-gradient(135deg,rgba(167,139,250,0.12),rgba(108,142,255,0.08))",
+          border: "1.5px solid rgba(167,139,250,0.25)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>💹</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>투자일기</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>판단을 기록하고 복기하세요</div>
+            </div>
+          </div>
+          <span style={{ fontSize: 18, color: "var(--dm-muted)" }}>›</span>
+        </div>
+      )}
 
       <div style={{ height: 12 }} />
     </div>
