@@ -1159,6 +1159,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <input style={{ ...S.input, flex: 1 }} placeholder="목표 제목"
                   value={lgForm.title} onChange={e => setLgForm(p => ({ ...p, title: e.target.value }))} maxLength={40} autoFocus />
               </div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--dm-muted)', marginBottom: 4 }}>목표 달성일 (선택)</div>
               <input type="date" style={{ ...S.input, marginBottom: 10 }}
                 value={lgForm.deadline} onChange={e => setLgForm(p => ({ ...p, deadline: e.target.value }))} />
 
