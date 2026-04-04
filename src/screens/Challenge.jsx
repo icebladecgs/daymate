@@ -157,6 +157,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
   const [joining, setJoining] = useState(false);
   const [isMember, setIsMember] = useState(!!c.myMember);
   const [myMember, setMyMember] = useState(c.myMember || null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [detailTab, setDetailTab] = useState("feed"); // feed | members
   const [cheeredCerts, setCheeredCerts] = useState(() => new Set(JSON.parse(store.get(`dm_cheer_${c.id}`, '[]'))));
   const today = toDateStr();
@@ -220,11 +221,6 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
   const isHost = c.hostUid === authUser?.uid;
 
   const handleDeleteChallenge = async () => {
-    const hasMembers = members.length > 1;
-    const msg = hasMembers
-      ? `참여자 ${members.length}명의 데이터가 모두 삭제됩니다.\n정말 삭제할까요?`
-      : '챌린지를 삭제할까요?';
-    if (!window.confirm(msg)) return;
     await deleteChallengeFull(c.id);
     showToast('챌린지가 삭제됐어요');
     onDeleted?.();
@@ -250,6 +246,16 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
             <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>{c.title}</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음'}</div>
           </div>
+          {(isHost || isAdmin) && (
+            deleteConfirm ? (
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => setDeleteConfirm(false)} style={{ background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 8, color: 'var(--dm-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>취소</button>
+                <button onClick={handleDeleteChallenge} style={{ background: 'rgba(248,113,113,.2)', border: '1px solid rgba(248,113,113,.5)', borderRadius: 8, color: '#F87171', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>삭제확인</button>
+              </div>
+            ) : (
+              <button onClick={() => setDeleteConfirm(true)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px', flexShrink: 0 }}>🗑</button>
+            )
+          )}
         </div>
         {c.description && (
           <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px' }}>
@@ -371,14 +377,6 @@ function ChallengeDetail({ challenge: c, authUser, nickname, onBack, showToast, 
         </div>
       )}
 
-      {/* 챌린지 삭제 (개설자 or 관리자) */}
-      {(isHost || isAdmin) && (
-        <div style={{ padding: '16px 16px 80px', textAlign: 'center' }}>
-          <button onClick={handleDeleteChallenge} style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.4)', borderRadius: 10, color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '8px 20px' }}>
-            🗑 챌린지 삭제
-          </button>
-        </div>
-      )}
     </div>
   );
 }
