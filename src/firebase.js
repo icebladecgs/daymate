@@ -420,9 +420,9 @@ export async function createChallenge(uid, nickname, data) {
 }
 
 export async function loadPublicChallenges() {
-  const q = query(collection(db, 'challenges'), where('isPublic', '==', true), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'challenges'), where('isPublic', '==', true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
 export async function loadMyChallenges(uid) {
