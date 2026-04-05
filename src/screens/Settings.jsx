@@ -923,13 +923,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {navigator.share && (
             <button onClick={async () => {
-              try { await navigator.share({ title: 'DayMate', text: '📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 ', url: `https://daymate-beta.vercel.app?invite=${myCode}` }); } catch {}
+              try { await navigator.share({ title: 'DayMate', text: '당신만의 인생 운영 시스템, DayMate\n할 일, 습관, 일정, 기록을 한곳에서 관리하세요', url: `https://daymate-beta.vercel.app?invite=${myCode}` }); } catch {}
             }} style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,#FEE500,#FDD835)', color: '#3C1E1E' }}>
               💬 카카오 / 문자로 공유하기
             </button>
           )}
           <button onClick={() => {
-            const full = `📅 DayMate — 매일 할일 3가지, 습관, 일기를 한 곳에서! 무료로 써보세요 👉 https://daymate-beta.vercel.app?invite=${myCode}`;
+            const full = `당신만의 인생 운영 시스템, DayMate\n할 일, 습관, 일정, 기록을 한곳에서 관리하세요\nhttps://daymate-beta.vercel.app?invite=${myCode}`;
             if (navigator.clipboard) {
               navigator.clipboard.writeText(full).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); });
             } else {
