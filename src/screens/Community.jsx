@@ -79,7 +79,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange }) {
   const [mainTab, setMainTab] = useState("community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -464,7 +464,7 @@ export default function Community({ user, authUser, myTotalScore, communityIds, 
           }}>{t.label}</button>
         ))}
       </div>
-      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} />}
+      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
       {mainTab === 'community' && (
         <div style={{ paddingBottom: 80 }}>
           {/* 상단 */}
@@ -542,7 +542,7 @@ export default function Community({ user, authUser, myTotalScore, communityIds, 
           }}>{t.label}</button>
         ))}
       </div>
-      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} />}
+      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
       {mainTab === 'community' && <>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={S.sub}>함께하는 일정 공유</div></div>
@@ -671,7 +671,7 @@ export default function Community({ user, authUser, myTotalScore, communityIds, 
         ))}
       </div>
 
-      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} />}
+      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
       {mainTab === 'challenge' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
       {mainTab === 'community' && <>
 

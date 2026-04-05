@@ -7,7 +7,7 @@ import S from "../styles.js";
 
 const NICKNAME_KEY = 'dm_challenge_nickname';
 
-export default function Challenge({ authUser, myTotalScore = 0 }) {
+export default function Challenge({ authUser, myTotalScore = 0, habits = [], onToggleHabit }) {
   const [tab, setTab] = useState("my"); // my | explore
   const [myChallenges, setMyChallenges] = useState([]);
   const [publicChallenges, setPublicChallenges] = useState([]);
@@ -48,8 +48,8 @@ export default function Challenge({ authUser, myTotalScore = 0 }) {
     setEditingNickname(false);
   };
 
-  if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
-  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} onDeleted={() => { setSelected(null); load(); }} showToast={showToast} />;
+  if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} habits={habits} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
+  if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} onDeleted={() => { setSelected(null); load(); }} showToast={showToast} onToggleHabit={onToggleHabit} habits={habits} />;
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -149,7 +149,7 @@ function ChallengeCard({ challenge: c, myMember, today, onClick }) {
   );
 }
 
-function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, showToast, onDeleted }) {
+function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, showToast, onDeleted, onToggleHabit, habits = [] }) {
   const [certs, setCerts] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -200,7 +200,13 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
     try {
       await certifyChallenge(authUser.uid, nickname, c.id, certText.trim() || '✓');
       setCertText("");
-      showToast('🎉 인증 완료! 오늘도 수고했어요');
+      // 연결된 습관 자동 체크
+      if (c.linkedHabitId && onToggleHabit) {
+        onToggleHabit(c.linkedHabitId);
+        showToast('🎉 인증 완료! 연결된 습관도 체크됐어요');
+      } else {
+        showToast('🎉 인증 완료! 오늘도 수고했어요');
+      }
       loadData();
     } catch (e) {
       if (e.message === 'already_certified') showToast('오늘은 이미 인증했어요');
@@ -393,12 +399,13 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
   );
 }
 
-function CreateChallenge({ authUser, nickname, onDone, onBack, showToast }) {
+function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, showToast }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [certType, setCertType] = useState("check"); // check | text
   const [isPublic, setIsPublic] = useState(true);
   const [endDate, setEndDate] = useState("");
+  const [linkedHabitId, setLinkedHabitId] = useState("");
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim();
@@ -413,6 +420,7 @@ function CreateChallenge({ authUser, nickname, onDone, onBack, showToast }) {
         certType,
         isPublic,
         endDate: endDate || null,
+        linkedHabitId: linkedHabitId || null,
       });
       showToast('🎉 챌린지가 만들어졌어요!');
       onDone(id);
@@ -455,6 +463,19 @@ function CreateChallenge({ authUser, nickname, onDone, onBack, showToast }) {
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>마감일 (선택)</div>
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={toDateStr()} style={{ ...S.input, marginBottom: 0 }} />
         </div>
+
+        {habits.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>습관 연결 (선택)</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>인증하면 연결된 습관이 자동으로 체크돼요</div>
+            <select value={linkedHabitId} onChange={e => setLinkedHabitId(e.target.value)} style={{ ...S.input, marginBottom: 0 }}>
+              <option value="">연결 안 함</option>
+              {habits.map(h => (
+                <option key={h.id} value={h.id}>{h.icon || '📌'} {h.title}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px' }}>
           <div>

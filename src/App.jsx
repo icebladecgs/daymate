@@ -1045,6 +1045,7 @@ export default function App() {
         <Community
           user={user} authUser={authUser}
           myTotalScore={myRank?.totalScore || 0}
+          habits={habits} onToggleHabit={onToggleHabit}
           communityIds={communityIds}
           activeCommunityId={activeCommunityId}
           setActiveCommunityId={setActiveCommunityId}
