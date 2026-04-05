@@ -499,8 +499,8 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
                   <button key={h.id} onClick={() => setLinkedHabitId(h.id)} style={{
                     padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                     border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
-                    background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
-                    color: selected ? '#6C8EFF' : 'var(--dm-muted)',
+                    background: selected ? 'rgba(108,142,255,.2)' : 'var(--dm-card)',
+                    color: selected ? '#6C8EFF' : 'var(--dm-text)',
                   }}>{h.icon || '📌'} {h.title}</button>
                 );
               })}
