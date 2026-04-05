@@ -19,7 +19,8 @@
     "tg:mac:stop": "sh scripts/telegram-agent.sh stop",
     "tg:mac:restart": "sh scripts/telegram-agent.sh restart",
     "tg:mac:status": "sh scripts/telegram-agent.sh status",
-    "tg:mac:logs": "sh scripts/telegram-agent.sh logs"
+    "tg:mac:logs": "sh scripts/telegram-agent.sh logs",
+    "tg:mac:update": "sh scripts/mac-refresh.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

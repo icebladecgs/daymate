@@ -10,8 +10,19 @@ LOG_DIR="$ROOT_DIR/logs"
 STDOUT_LOG="$LOG_DIR/telegram-agent.stdout.log"
 STDERR_LOG="$LOG_DIR/telegram-agent.stderr.log"
 PID_FILE="$LOG_DIR/telegram-agent.pid"
+LAUNCHD_LABEL="${DAYMATE_LAUNCHD_LABEL:-com.daymate.telegram-agent}"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/$LAUNCHD_LABEL.plist"
+LAUNCHD_DOMAIN="gui/$(id -u)"
 
 mkdir -p "$LOG_DIR"
+
+launchd_installed() {
+  [ -f "$LAUNCHD_PLIST" ]
+}
+
+launchd_loaded() {
+  launchctl print "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" >/dev/null 2>&1
+}
 
 agent_pid() {
   if [ -f "$PID_FILE" ]; then
@@ -34,6 +45,19 @@ agent_pid() {
 }
 
 show_status() {
+  if launchd_installed; then
+    if launchd_loaded; then
+      if PID="$(agent_pid)"; then
+        echo "Telegram agent is running via launchd. PID=$PID"
+      else
+        echo "Telegram agent LaunchAgent is loaded. PID not detected yet."
+      fi
+    else
+      echo "Telegram agent LaunchAgent is installed but not loaded."
+    fi
+    return
+  fi
+
   if PID="$(agent_pid)"; then
     echo "Telegram agent is running. PID=$PID"
   else
@@ -42,6 +66,17 @@ show_status() {
 }
 
 stop_agent() {
+  if launchd_installed; then
+    if launchd_loaded; then
+      launchctl bootout "$LAUNCHD_DOMAIN" "$LAUNCHD_PLIST" >/dev/null 2>&1 || true
+      rm -f "$PID_FILE"
+      echo "Stopped Telegram agent LaunchAgent."
+    else
+      echo "Telegram agent LaunchAgent is already unloaded."
+    fi
+    return
+  fi
+
   if PID="$(agent_pid)"; then
     kill "$PID" 2>/dev/null || true
     sleep 1
@@ -63,6 +98,20 @@ start_agent() {
   if [ ! -f "$AGENT_FILE" ]; then
     echo "telegram_agent.py not found: $AGENT_FILE"
     exit 1
+  fi
+
+  if launchd_installed; then
+    if launchd_loaded; then
+      launchctl kickstart -k "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" >/dev/null 2>&1 || true
+      sleep 2
+      show_status
+      return
+    fi
+
+    launchctl bootstrap "$LAUNCHD_DOMAIN" "$LAUNCHD_PLIST"
+    sleep 2
+    show_status
+    return
   fi
 
   if PID="$(agent_pid)"; then
@@ -91,6 +140,10 @@ show_logs() {
   tail -n 20 "$STDOUT_LOG" 2>/dev/null || true
   echo "== stderr =="
   tail -n 20 "$STDERR_LOG" 2>/dev/null || true
+  if launchd_installed; then
+    echo "== launchd =="
+    launchctl print "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" 2>/dev/null | tail -n 20 || true
+  fi
 }
 
 case "$ACTION" in

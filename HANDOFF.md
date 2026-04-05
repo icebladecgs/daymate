@@ -31,6 +31,10 @@
   - `npm run tg:status`
 - Windows helper script 위치: `scripts/telegram-agent.ps1`.
 - Mac helper script 위치: `scripts/telegram-agent.sh`.
+- Mac one-shot refresh script 위치: `scripts/mac-refresh.sh`.
+- Mac quick guide 위치: `MAC_WORKFLOW.md`.
+- Mac에서 LaunchAgent로 봇을 관리 중이면 `pkill` 대신 `launchctl` 기반 stop/start를 사용해야 한다.
+- LaunchAgent 템플릿 위치: `scripts/com.daymate.telegram-agent.plist.template`.
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
@@ -48,11 +52,14 @@
 - `telegram_agent.py`의 Vercel 토큰 하드코딩은 제거했고 `.env.local` 환경변수로 옮겼다.
 - Windows helper script와 Mac helper script를 추가해 봇 start/stop/status를 쉽게 했다.
 - `.env.local.example`과 `requirements.txt`를 추가해 머신 이동/세팅을 단순화했다.
+- Mac helper script는 LaunchAgent가 있으면 `launchctl` 기반으로 동작하도록 보강했다.
+- Mac에서 외울 명령을 줄이기 위해 `MAC_WORKFLOW.md`와 `npm run tg:mac:update` 흐름을 정리했다.
 
 ## Current Risks / Notes
 - Mac 쪽 저장소도 최신 코드로 `git pull` 되어 있어야 한다.
 - Mac 쪽 `.env.local`도 Windows와 같은 값으로 맞아야 한다.
 - Mac 쪽 파이썬 환경에도 `anthropic`, `python-telegram-bot`가 설치되어 있어야 한다.
+- Mac에서 LaunchAgent가 봇을 KeepAlive 중이면 수동 `pkill` 만으로는 중지가 안 될 수 있다. 이 경우 `npm run tg:mac:stop` 또는 `launchctl bootout`을 사용한다.
 - Windows helper의 `tg:start`는 Mac 봇이 살아 있으면 충돌 때문에 바로 종료될 수 있다. 이 경우 먼저 Mac 봇을 끈 뒤 Windows에서 시작한다.
 
 ## Suggested Next Steps

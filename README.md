@@ -110,6 +110,14 @@ Telegram dev bot, Mac host:
 - `npm run tg:mac:restart`
 - `npm run tg:mac:status`
 - `npm run tg:mac:logs`
+- `npm run tg:mac:update`
+
+If the Mac bot is managed by LaunchAgent:
+
+- Do not stop it with `pkill` only. `launchd` may immediately restart it.
+- Use `npm run tg:mac:stop` so the helper calls `launchctl bootout` when a LaunchAgent plist exists.
+- Use `npm run tg:mac:start` or `npm run tg:mac:restart` so the helper calls `launchctl bootstrap` / `kickstart`.
+- A plist template is available at `scripts/com.daymate.telegram-agent.plist.template`.
 
 Recommended daily flow for your current setup:
 
@@ -129,4 +137,23 @@ pip install -r requirements.txt
 npm run tg:mac:start
 ```
 
+Shortcut:
+
+```bash
+npm run tg:mac:update
+```
+
+This runs the stop → pull → venv activate → `pip install -r requirements.txt` → start flow for you.
+
 If dependencies did not change, the `pip install -r requirements.txt` step is safe to keep and usually quick.
+
+LaunchAgent note:
+
+```bash
+# unload fully before pull/restart if launchd manages the bot
+npm run tg:mac:stop
+git pull origin main
+npm run tg:mac:start
+```
+
+If you install the LaunchAgent manually, copy `scripts/com.daymate.telegram-agent.plist.template` to `~/Library/LaunchAgents/com.daymate.telegram-agent.plist` and replace `__PROJECT_ROOT__` and `__PYTHON_EXE__` with real absolute paths.
