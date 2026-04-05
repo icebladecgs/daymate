@@ -1,7 +1,7 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.280.0",
+  "version": "0.282.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
@@ -26,6 +26,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.0.0",
     "react": "^19.2.0",
