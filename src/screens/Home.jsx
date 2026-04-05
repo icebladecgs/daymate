@@ -9,7 +9,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [] }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -1016,6 +1016,39 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             })}
           </>
         )}
+      </div>
+
+      {/* 오늘의 챌린지 요약 */}
+      {myChallenges.length > 0 && (() => {
+        const today = toDateStr();
+        return (
+          <div style={{ margin: '0 16px 12px' }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🏁</span> 오늘의 챌린지
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {myChallenges.map(c => {
+                const streak = c.myMember?.streak || 0;
+                const lastCert = c.myMember?.lastCertDate;
+                const certedToday = lastCert === today;
+                return (
+                  <div key={c.id} style={{ background: 'var(--dm-card)', border: `1.5px solid ${certedToday ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ fontSize: 20 }}>{certedToday ? '✅' : '⬜'}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{certedToday ? '오늘 인증 완료' : '오늘 인증 대기 중'} · 🔥 {streak}일 연속</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 광고 배너 자리 */}
+      <div style={{ margin: '0 16px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1px dashed var(--dm-border)', padding: '10px 16px', textAlign: 'center' }}>
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>📢 배너 준비 중입니다</div>
       </div>
 
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>

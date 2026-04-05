@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -211,6 +211,7 @@ export default function App() {
 
   const todayStr = toDateStr();
 
+  const [myChallenges, setMyChallenges] = useState([]);
   const [communityEventsToday, setCommunityEventsToday] = useState([]);
   const [communityEventChecks, setCommunityEventChecks] = useState(() =>
     store.get(`dm_community_event_checks_${todayStr}`, {})
@@ -220,6 +221,11 @@ export default function App() {
     if (!communityIds.length) { setCommunityEventsToday([]); return; }
     loadTodayCommunityEvents(communityIds, todayStr).then(setCommunityEventsToday).catch(() => {});
   }, [communityIds, todayStr]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    loadMyChallenges(authUser.uid).then(setMyChallenges).catch(() => {});
+  }, [authUser]);
 
   const onToggleCommunityEvent = (eventId) => {
     setCommunityEventChecks(prev => {
@@ -1007,6 +1013,7 @@ export default function App() {
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
           onOpenSettings={() => changeScreen("settings")}
           levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
+          myChallenges={myChallenges}
           communityEventsToday={communityEventsToday}
           communityEventChecks={communityEventChecks}
           onToggleCommunityEvent={onToggleCommunityEvent}

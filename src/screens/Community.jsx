@@ -486,6 +486,9 @@ export default function Community({ user, authUser, myTotalScore, communityIds, 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityNames[id] || '...'}</div>
                         <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
+                        {meta?.lastActivityAt && (
+                          <div style={{ fontSize: 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
+                        )}
                       </div>
                       <div style={{ color: 'var(--dm-muted)', fontSize: 16 }}>›</div>
                     </div>

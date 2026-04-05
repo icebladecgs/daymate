@@ -270,6 +270,7 @@ export async function checkinCommunity(communityId, uid, nickname, completionRat
       ? (prev.streak || 1)
       : 1;
   await setDoc(ref, { uid, nickname, date: today, completionRate: completionRate ?? null, streak, lastCheckin: today, checkedAt: new Date().toISOString() });
+  await updateDoc(doc(db, 'communities', communityId), { lastActivityAt: new Date().toISOString() });
 }
 
 export async function updateMemberNickname(communityId, uid, nickname) {
