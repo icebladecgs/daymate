@@ -7,6 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 const versionFile = resolve(projectRoot, 'src', 'version.js');
 const packageJsonFile = resolve(projectRoot, 'package.json');
+const serviceWorkerFile = resolve(projectRoot, 'public', 'sw.js');
 
 function run(command) {
   try {
@@ -52,5 +53,12 @@ writeFileSync(versionFile, content, 'utf8');
 const packageJson = JSON.parse(readFileSync(packageJsonFile, 'utf8'));
 packageJson.version = Number.isFinite(versionNumber) && versionNumber > 0 ? `0.${versionNumber}.0` : '0.0.0';
 writeFileSync(packageJsonFile, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+
+const serviceWorkerSource = readFileSync(serviceWorkerFile, 'utf8');
+const updatedServiceWorker = serviceWorkerSource.replace(
+  /const CACHE = 'daymate-[^']+';/,
+  `const CACHE = 'daymate-${shortSha}';`,
+);
+writeFileSync(serviceWorkerFile, updatedServiceWorker, 'utf8');
 
 console.log(`Generated ${appVersion} ${appBuild}`);
