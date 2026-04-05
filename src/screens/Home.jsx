@@ -56,6 +56,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [fortuneData, setFortuneData] = useState(null);
   const [fortuneLoading, setFortuneLoading] = useState(false);
   const [fortuneError, setFortuneError] = useState(false);
+  const canDirectInstall = !!installPrompt;
 
   // 로또 번호
   const lottoKey = `dm_lotto_${today}`;
@@ -688,17 +689,22 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       </div>
 
       {showInstallBanner && (
-        <div style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid #4B6FFF", padding: "12px 14px", boxShadow: "0 2px 12px rgba(75,111,255,.2)" }}>
+        <div
+          onClick={() => { if (canDirectInstall) handleInstall(); }}
+          style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid #4B6FFF", padding: "12px 14px", boxShadow: "0 2px 12px rgba(75,111,255,.2)", cursor: canDirectInstall ? 'pointer' : 'default' }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 22 }}>📲</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>홈 화면에 설치하기</div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>앱처럼 빠르게 실행돼요</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>
+                {canDirectInstall ? '이 배너를 누르면 바로 설치돼요' : '앱처럼 빠르게 실행돼요'}
+              </div>
             </div>
-            <button onClick={dismissInstallBanner} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
+            <button onClick={(e) => { e.stopPropagation(); dismissInstallBanner(); }} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
           </div>
           {installPrompt ? (
-            <button onClick={handleInstall} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
+            <button onClick={(e) => { e.stopPropagation(); handleInstall(); }} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
           ) : (
             <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
               {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
