@@ -325,7 +325,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                   setLinkedHabitId(val);
                   updateMemberLinkedHabit(c.id, authUser.uid, val).catch(() => {});
                 }}
-                style={{ ...S.input, marginBottom: 0, fontSize: 12 }}
+                style={{ ...S.input, marginBottom: 0, fontSize: 12, color: 'var(--dm-text)', background: 'var(--dm-input)' }}
               >
                 <option value="">연결 안 함</option>
                 {habits.map(h => (
@@ -490,7 +490,7 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>습관 연결 (선택)</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>인증하면 연결된 습관이 자동으로 체크돼요</div>
-            <select value={linkedHabitId} onChange={e => setLinkedHabitId(e.target.value)} style={{ ...S.input, marginBottom: 0 }}>
+            <select value={linkedHabitId} onChange={e => setLinkedHabitId(e.target.value)} style={{ ...S.input, marginBottom: 0, color: 'var(--dm-text)', background: 'var(--dm-input)' }}>
               <option value="">연결 안 함</option>
               {habits.map(h => (
                 <option key={h.id} value={h.id}>{h.icon || '📌'} {h.title}</option>
