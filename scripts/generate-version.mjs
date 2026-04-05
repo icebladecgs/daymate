@@ -1,11 +1,12 @@
 import { execSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 const versionFile = resolve(projectRoot, 'src', 'version.js');
+const packageJsonFile = resolve(projectRoot, 'package.json');
 
 function run(command) {
   try {
@@ -47,4 +48,9 @@ const content = [
 ].join('\n');
 
 writeFileSync(versionFile, content, 'utf8');
+
+const packageJson = JSON.parse(readFileSync(packageJsonFile, 'utf8'));
+packageJson.version = Number.isFinite(versionNumber) && versionNumber > 0 ? `0.${versionNumber}.0` : '0.0.0';
+writeFileSync(packageJsonFile, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+
 console.log(`Generated ${appVersion} ${appBuild}`);
