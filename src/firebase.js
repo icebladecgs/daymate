@@ -193,7 +193,7 @@ export async function createCommunity(uid, name, nickname, isPublic = false, pas
   await setDoc(ref, {
     name, createdBy: uid, inviteCode: code,
     createdAt: new Date().toISOString(), memberCount: 1,
-    isPublic, password: isPublic ? (password || null) : null,
+    isPublic, password: password || null,
   });
   await setDoc(doc(db, 'communities', ref.id, 'members', uid), { nickname, joinedAt: new Date().toISOString(), isAdmin: true });
   return { communityId: ref.id, inviteCode: code };
@@ -412,6 +412,25 @@ export async function getPendingSuggestionsCount() {
 // ---------- 챌린지 ----------
 
 export async function createChallenge(uid, nickname, data) {
+  const today = toDateStr();
+  const hostChallengesSnap = await getDocs(query(collection(db, 'challenges'), where('hostUid', '==', uid)));
+  const activeHostedChallenges = hostChallengesSnap.docs.filter((challengeDoc) => {
+    const challenge = challengeDoc.data() || {};
+    if (challenge.status && challenge.status !== 'open') return false;
+    if (challenge.endDate && challenge.endDate < today) return false;
+    return true;
+  });
+
+  if (activeHostedChallenges.length >= 3) {
+    throw new Error('challenge_limit_reached');
+  }
+
+  if (data?.endDate) {
+    const maxAllowedEndDate = toDateStr(new Date(Date.now() + 1000 * 60 * 60 * 24 * 90));
+    if (data.endDate < today) throw new Error('invalid_end_date');
+    if (data.endDate > maxAllowedEndDate) throw new Error('end_date_too_far');
+  }
+
   const ref = doc(collection(db, 'challenges'));
   await setDoc(ref, {
     ...data,
@@ -434,7 +453,11 @@ export async function createChallenge(uid, nickname, data) {
 export async function loadPublicChallenges() {
   const q = query(collection(db, 'challenges'), where('isPublic', '==', true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const today = toDateStr();
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter((challenge) => (challenge.status || 'open') === 'open' && (!challenge.endDate || challenge.endDate >= today))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
 export async function loadMyChallenges(uid) {
@@ -450,6 +473,15 @@ export async function loadMyChallenges(uid) {
 }
 
 export async function joinChallenge(uid, nickname, challengeId) {
+  const challengeSnap = await getDoc(doc(db, 'challenges', challengeId));
+  if (!challengeSnap.exists()) throw new Error('challenge_not_found');
+
+  const today = toDateStr();
+  const challenge = challengeSnap.data() || {};
+  if ((challenge.status && challenge.status !== 'open') || (challenge.endDate && challenge.endDate < today)) {
+    throw new Error('challenge_closed');
+  }
+
   const memberRef = doc(db, 'challenges', challengeId, 'members', uid);
   const existing = await getDoc(memberRef);
   if (existing.exists()) return;
@@ -463,6 +495,13 @@ export async function updateMemberLinkedHabit(challengeId, uid, habitId) {
 
 export async function certifyChallenge(uid, nickname, challengeId, text) {
   const today = toDateStr();
+  const challengeSnap = await getDoc(doc(db, 'challenges', challengeId));
+  if (!challengeSnap.exists()) throw new Error('challenge_not_found');
+
+  const challenge = challengeSnap.data() || {};
+  if (challenge.status && challenge.status !== 'open') throw new Error('challenge_closed');
+  if (challenge.endDate && challenge.endDate < today) throw new Error('challenge_closed');
+
   // 중복 인증 방지
   const q = query(collection(db, 'challenges', challengeId, 'certs'), where('uid', '==', uid), where('dateKey', '==', today));
   const existing = await getDocs(q);
@@ -500,12 +539,31 @@ export async function loadChallengeMembers(challengeId) {
   return snap.docs.map(d => ({ uid: d.id, ...d.data() })).sort((a, b) => (b.streak || 0) - (a.streak || 0));
 }
 
-export async function deleteChallengeFull(challengeId) {
+export async function deleteChallengeFull(challengeId, actorUid) {
+  if (!actorUid) throw new Error('missing_actor');
+
+  const isAdminByEnv = actorUid === import.meta.env.VITE_ADMIN_UID;
+  const isAdminByConfig = isAdminByEnv ? true : await checkIsAdmin(actorUid);
+  if (!isAdminByConfig) throw new Error('admin_only');
+
   for (const sub of ['members', 'certs']) {
     const snap = await getDocs(collection(db, 'challenges', challengeId, sub));
     for (const d of snap.docs) await deleteDoc(d.ref);
   }
   await deleteDoc(doc(db, 'challenges', challengeId));
+}
+
+export async function endChallenge(challengeId, actorUid) {
+  if (!actorUid) throw new Error('missing_actor');
+
+  const isAdminByEnv = actorUid === import.meta.env.VITE_ADMIN_UID;
+  const isAdminByConfig = isAdminByEnv ? true : await checkIsAdmin(actorUid);
+  if (!isAdminByConfig) throw new Error('admin_only');
+
+  await updateDoc(doc(db, 'challenges', challengeId), {
+    status: 'ended',
+    endedAt: new Date().toISOString(),
+  });
 }
 
 export async function loadAllChallenges() {

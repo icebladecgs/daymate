@@ -1,10 +1,88 @@
 import { useEffect, useRef, useState } from "react";
+import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
 import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
 import S from "../styles.js";
+
+function vibrateIfAvailable(pattern) {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {}
+}
+
+function SortableCommunityCard({ communityId, meta, communityName, editingCommunityOrder, onOpen, isOverlay = false }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: communityId });
+  const dragging = isDragging || isOverlay;
+  const label = meta?.name || communityName || '커뮤니티';
+
+  return (
+    <div
+      ref={isOverlay ? undefined : setNodeRef}
+      onClick={() => { if (!editingCommunityOrder) onOpen(); }}
+      style={{
+        background: 'var(--dm-card)',
+        border: dragging ? '1.5px dashed rgba(108,142,255,.35)' : '1.5px solid var(--dm-border)',
+        borderRadius: 14,
+        padding: dragging ? '20px 14px' : '14px',
+        cursor: editingCommunityOrder ? 'default' : 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        transform: isOverlay ? undefined : CSS.Transform.toString(transform),
+        transition: isOverlay ? undefined : [transition, 'box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, padding 180ms ease'].filter(Boolean).join(', '),
+        opacity: isDragging ? 0.35 : 1,
+        position: 'relative',
+        zIndex: dragging ? 2 : 1,
+        boxShadow: dragging ? '0 18px 36px rgba(0,0,0,.18)' : 'none',
+        backgroundColor: dragging ? 'rgba(108,142,255,.05)' : undefined,
+      }}
+    >
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>👥</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityName || '...'}</div>
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
+        {meta?.lastActivityAt && (
+          <div style={{ fontSize: 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
+        )}
+      </div>
+      {editingCommunityOrder ? (
+        <button
+          type="button"
+          {...(isOverlay ? {} : attributes)}
+          {...(isOverlay ? {} : listeners)}
+          aria-label={`${label} 순서 이동`}
+          aria-roledescription="sortable community"
+          title={`${label} 순서 이동`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 32,
+            height: 42,
+            borderRadius: 10,
+            border: '1px solid var(--dm-border)',
+            background: dragging ? 'rgba(108,142,255,.18)' : 'var(--dm-card)',
+            color: 'var(--dm-muted)',
+            cursor: isOverlay ? 'grabbing' : 'grab',
+            flexShrink: 0,
+            fontSize: 16,
+            lineHeight: 1,
+            touchAction: 'none',
+            transform: dragging ? 'scale(1.04)' : 'scale(1)',
+            transition: 'transform 140ms ease, background 140ms ease, border-color 140ms ease',
+          }}
+        >
+          ⋮⋮
+        </button>
+      ) : (
+        <div style={{ color: 'var(--dm-muted)', fontSize: 16 }}>›</div>
+      )}
+    </div>
+  );
+}
 
 // ── 미니 달력 컴포넌트 ────────────────────────────────────────
 function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
@@ -79,7 +157,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -92,6 +170,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   useEffect(() => {
     if (initialMainTab) setMainTab(initialMainTab);
   }, [initialMainTab]);
+
+  useEffect(() => {
+    if (mode !== 'join') { setFoundCommunity(null); setCodePassword(''); }
+  }, [mode]);
 
   // 공지
   const [notices, setNotices] = useState([]);
@@ -136,9 +218,21 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const myNickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameEdit, setNicknameEdit] = useState('');
+  const [draggingCommunityId, setDraggingCommunityId] = useState(null);
+  const [srAnnouncement, setSrAnnouncement] = useState('');
+  const communitySensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // 커뮤니티 홈 (목록) vs 상세
   const [showHome, setShowHome] = useState(true);
+  const [editingCommunityOrder, setEditingCommunityOrder] = useState(false);
+
+  const announce = (message) => {
+    setSrAnnouncement('');
+    window.setTimeout(() => setSrAnnouncement(message), 10);
+  };
 
   // 커뮤니티 이름/멤버수 캐시 (홈 목록용)
   const [communityNames, setCommunityNames] = useState({});
@@ -167,6 +261,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [publicLoading, setPublicLoading] = useState(false);
   const [selectedPublic, setSelectedPublic] = useState(null);
   const [pubPassword, setPubPassword] = useState('');
+  const [foundCommunity, setFoundCommunity] = useState(null);
+  const [codePassword, setCodePassword] = useState('');
 
   // 이벤트 추가 UI
   const [showAdd, setShowAdd] = useState(false);
@@ -309,16 +405,27 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     setSubmitting(false);
   };
 
-  const handleJoin = async () => {
-    if (!codeInput.trim() || !nicknameInput.trim()) return;
+  const handleFindByCode = async () => {
+    if (codeInput.trim().length < 6) return;
     setSubmitting(true);
     try {
       const result = await findCommunityByCode(codeInput.trim());
-      if (!result) { setToast('커뮤니티를 찾을 수 없어요'); setSubmitting(false); return; }
-      await joinCommunity(authUser.uid, result.communityId, nicknameInput.trim());
-      addCommunityId(result.communityId);
+      if (!result) { setToast('커뮤니티를 찾을 수 없어요'); }
+      else { setFoundCommunity(result); setCodePassword(''); }
+    } catch { setToast('오류가 발생했어요 ❌'); }
+    setSubmitting(false);
+  };
+
+  const handleJoin = async () => {
+    if (!foundCommunity || !nicknameInput.trim()) return;
+    setSubmitting(true);
+    try {
+      await joinPublicCommunity(authUser.uid, foundCommunity.communityId, nicknameInput.trim(), codePassword.trim());
+      addCommunityId(foundCommunity.communityId);
       setMode(null); setShowHome(true);
-    } catch { setToast('가입 실패 ❌'); }
+    } catch (e) {
+      setToast(e.message === 'wrong password' ? '비밀번호가 틀렸어요 ❌' : '가입 실패 ❌');
+    }
     setSubmitting(false);
   };
 
@@ -458,6 +565,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   // ── 커뮤니티 홈 화면 ──────────────────────────────────────────
   if (showHome && mode === null) return (
     <div style={S.content}>
+      <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{srAnnouncement}</div>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
@@ -480,25 +588,68 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {/* 내 커뮤니티 */}
           {communityIds.length > 0 && (
             <div style={{ padding: '4px 16px 12px' }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>내 커뮤니티</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {communityIds.map(id => {
-                  const meta = communityMeta[id];
-                  return (
-                    <div key={id} onClick={() => { setActiveCommunityId(id); setShowHome(false); }} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>👥</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityNames[id] || '...'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
-                        {meta?.lastActivityAt && (
-                          <div style={{ fontSize: 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
-                        )}
-                      </div>
-                      <div style={{ color: 'var(--dm-muted)', fontSize: 16 }}>›</div>
-                    </div>
-                  );
-                })}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)' }}>내 커뮤니티</div>
+                {communityIds.length > 1 && (
+                  <button
+                    onClick={() => setEditingCommunityOrder(v => !v)}
+                    style={{ background: 'transparent', border: 'none', color: editingCommunityOrder ? '#4ADE80' : 'var(--dm-muted)', fontSize: 11, fontWeight: 900, cursor: 'pointer', padding: 0 }}
+                  >
+                    {editingCommunityOrder ? '완료 ✓' : '↕ 순서 편집'}
+                  </button>
+                )}
               </div>
+              {editingCommunityOrder && communityIds.length > 1 && (
+                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>오른쪽 핸들을 잡고 끌어서 내 커뮤니티 순서를 바꿀 수 있어요.</div>
+              )}
+              <DndContext
+                sensors={communitySensors}
+                collisionDetection={closestCenter}
+                onDragStart={({ active }) => {
+                  setDraggingCommunityId(active?.id || null);
+                  vibrateIfAvailable(12);
+                  announce(`${communityMeta[active?.id]?.name || communityNames[active?.id] || '커뮤니티'} 순서 이동을 시작했습니다.`);
+                }}
+                onDragCancel={() => setDraggingCommunityId(null)}
+                onDragEnd={({ active, over }) => {
+                  setDraggingCommunityId(null);
+                  if (!editingCommunityOrder) return;
+                  if (!active?.id || !over?.id || active.id === over.id) return;
+                  reorderCommunityId?.(active.id, over.id);
+                  vibrateIfAvailable([14, 28, 12]);
+                  announce(`${communityMeta[active.id]?.name || communityNames[active.id] || '커뮤니티'} 순서를 변경했습니다.`);
+                }}
+              >
+                <SortableContext items={communityIds} strategy={verticalListSortingStrategy}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {communityIds.map((id) => {
+                      const meta = communityMeta[id];
+                      return (
+                        <SortableCommunityCard
+                          key={id}
+                          communityId={id}
+                          meta={meta}
+                          communityName={communityNames[id]}
+                          editingCommunityOrder={editingCommunityOrder}
+                          onOpen={() => { setActiveCommunityId(id); setShowHome(false); }}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {draggingCommunityId && communityIds.includes(draggingCommunityId) ? (
+                    <SortableCommunityCard
+                      communityId={draggingCommunityId}
+                      meta={communityMeta[draggingCommunityId]}
+                      communityName={communityNames[draggingCommunityId]}
+                      editingCommunityOrder
+                      onOpen={() => {}}
+                      isOverlay
+                    />
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </div>
           )}
 
@@ -584,9 +735,15 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               </button>
             ))}
           </div>
-          {isPublic && (
-            <input style={S.input} placeholder="입장 비밀번호 (없으면 빈칸)" value={createPassword} onChange={e => setCreatePassword(e.target.value)} maxLength={20} />
-          )}
+          <input
+            style={S.input}
+            placeholder="입장 암호 4자리 숫자 (선택 · 없으면 빈칸)"
+            type="text"
+            inputMode="numeric"
+            value={createPassword}
+            onChange={e => setCreatePassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            maxLength={4}
+          />
           <button style={S.btn} onClick={handleCreate} disabled={submitting || !nameInput.trim() || !nicknameInput.trim()}>
             {submitting ? '생성 중...' : '만들기'}
           </button>
@@ -641,12 +798,41 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
           {joinTab === 'code' && (
             <>
-              <input style={{ ...S.input, textTransform: 'uppercase', letterSpacing: 4, fontSize: 18, textAlign: 'center' }}
-                placeholder="A1B2C3" value={codeInput} onChange={e => setCodeInput(e.target.value.toUpperCase())} maxLength={6} />
-              <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
-              <button style={S.btn} onClick={handleJoin} disabled={submitting || codeInput.length < 6 || !nicknameInput.trim()}>
-                {submitting ? '가입 중...' : '가입하기'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={{ ...S.input, flex: 1, textTransform: 'uppercase', letterSpacing: 4, fontSize: 18, textAlign: 'center' }}
+                  placeholder="A1B2C3" value={codeInput}
+                  onChange={e => { setCodeInput(e.target.value.toUpperCase()); setFoundCommunity(null); }}
+                  maxLength={6} />
+                <button style={{ ...S.btn, width: 72, flexShrink: 0, fontSize: 13 }} onClick={handleFindByCode}
+                  disabled={submitting || codeInput.length < 6}>
+                  {submitting ? '...' : '확인'}
+                </button>
+              </div>
+              {foundCommunity && (
+                <>
+                  <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(108,142,255,.08)', border: '1px solid rgba(108,142,255,.2)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{foundCommunity.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
+                      멤버 {foundCommunity.memberCount}명 {foundCommunity.password ? '· 🔑 암호 있음' : '· 자유 입장'}
+                    </div>
+                  </div>
+                  {foundCommunity.password && (
+                    <input
+                      style={S.input}
+                      placeholder="입장 암호 4자리"
+                      type="text"
+                      inputMode="numeric"
+                      value={codePassword}
+                      onChange={e => setCodePassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      maxLength={4}
+                    />
+                  )}
+                  <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
+                  <button style={S.btn} onClick={handleJoin} disabled={submitting || !nicknameInput.trim()}>
+                    {submitting ? '가입 중...' : `"${foundCommunity.name}" 가입하기`}
+                  </button>
+                </>
+              )}
             </>
           )}
 
