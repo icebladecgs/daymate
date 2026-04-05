@@ -333,6 +333,21 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
 
+  const moveHabit = (habitId, direction) => {
+    setHabits(prev => {
+      const currentIndex = prev.findIndex(item => item.id === habitId);
+      if (currentIndex < 0) return prev;
+
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (allDone && !prevAllDone) {
       setShowConfetti(true);
@@ -1459,7 +1474,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
             <div style={{ ...S.card, border: allHabitsDone && !editingHabits ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)", display: habits.length === 0 && !editingHabits ? "none" : undefined }}>
               {editingHabits ? (
                 <>
-                  {(habits || []).map(h => (
+                  {(habits || []).length > 1 && (
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 10 }}>
+                      화살표로 오늘 습관 순서를 바꿀 수 있어요.
+                    </div>
+                  )}
+                  {(habits || []).map((h, index) => (
                     <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
                         value={h.icon} maxLength={2} placeholder="🎯"
@@ -1467,6 +1487,42 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
                         value={h.name} maxLength={20} placeholder="습관 이름"
                         onChange={e => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                        <button
+                          onClick={() => moveHabit(h.id, 'up')}
+                          disabled={index === 0}
+                          style={{
+                            width: 28,
+                            height: 24,
+                            borderRadius: 8,
+                            border: '1px solid var(--dm-border)',
+                            background: index === 0 ? 'var(--dm-input)' : 'var(--dm-card)',
+                            color: index === 0 ? 'var(--dm-muted)' : 'var(--dm-text)',
+                            cursor: index === 0 ? 'default' : 'pointer',
+                            fontSize: 12,
+                            padding: 0,
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => moveHabit(h.id, 'down')}
+                          disabled={index === habits.length - 1}
+                          style={{
+                            width: 28,
+                            height: 24,
+                            borderRadius: 8,
+                            border: '1px solid var(--dm-border)',
+                            background: index === habits.length - 1 ? 'var(--dm-input)' : 'var(--dm-card)',
+                            color: index === habits.length - 1 ? 'var(--dm-muted)' : 'var(--dm-text)',
+                            cursor: index === habits.length - 1 ? 'default' : 'pointer',
+                            fontSize: 12,
+                            padding: 0,
+                          }}
+                        >
+                          ↓
+                        </button>
+                      </div>
                       <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
                         style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
                     </div>
