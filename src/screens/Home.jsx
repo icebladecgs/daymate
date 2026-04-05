@@ -57,6 +57,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [fortuneLoading, setFortuneLoading] = useState(false);
   const [fortuneError, setFortuneError] = useState(false);
   const canDirectInstall = !!installPrompt;
+  const showInviteBanners = !showInstallBanner;
 
   // 로또 번호
   const lottoKey = `dm_lotto_${today}`;
@@ -713,7 +714,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      {pendingInviteCode && (
+      {showInviteBanners && pendingInviteCode && (
         <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(108,142,255,.18),rgba(74,222,128,.1))", border: "1.5px solid rgba(108,142,255,.35)", padding: "14px 15px", boxShadow: "0 10px 30px rgba(75,111,255,.12)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <div style={{ flex: 1 }}>
@@ -729,7 +730,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      {recentInviteReward && (
+      {showInviteBanners && recentInviteReward && (
         <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(74,222,128,.18),rgba(108,142,255,.08))", border: "1.5px solid rgba(74,222,128,.3)", padding: "13px 15px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
