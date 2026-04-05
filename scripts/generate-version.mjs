@@ -8,6 +8,7 @@ const projectRoot = resolve(__dirname, '..');
 const versionFile = resolve(projectRoot, 'src', 'version.js');
 const packageJsonFile = resolve(projectRoot, 'package.json');
 const serviceWorkerFile = resolve(projectRoot, 'public', 'sw.js');
+const packageJson = JSON.parse(readFileSync(packageJsonFile, 'utf8'));
 
 function run(command) {
   try {
@@ -36,7 +37,11 @@ const buildTime = new Intl.DateTimeFormat('sv-SE', {
   hour12: false,
 }).format(new Date()).replace(',', '');
 
-const versionNumber = Number.parseInt(commitCount, 10);
+const storedVersionNumber = Number.parseInt(String(packageJson.version || '0.0.0').split('.')[1] || '0', 10);
+const gitVersionNumber = Number.parseInt(commitCount, 10);
+const versionNumber = Number.isFinite(gitVersionNumber) && gitVersionNumber > 0
+  ? gitVersionNumber
+  : (Number.isFinite(storedVersionNumber) && storedVersionNumber > 0 ? storedVersionNumber : 0);
 const appVersion = Number.isFinite(versionNumber) && versionNumber > 0 ? `v${versionNumber}` : 'v0';
 const appBuild = `${buildTime} (${shortSha})`;
 
@@ -50,7 +55,6 @@ const content = [
 
 writeFileSync(versionFile, content, 'utf8');
 
-const packageJson = JSON.parse(readFileSync(packageJsonFile, 'utf8'));
 packageJson.version = Number.isFinite(versionNumber) && versionNumber > 0 ? `0.${versionNumber}.0` : '0.0.0';
 writeFileSync(packageJsonFile, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
 
