@@ -24,7 +24,8 @@ export default async function handler(req, res) {
           src: 'yahoo',
         }));
       res.status(200).json({ result });
-    } catch {
+    } catch (error) {
+      console.error('[search] yahoo search failed:', error);
       res.status(200).json({ result: [] });
     }
   } else {
@@ -37,7 +38,8 @@ export default async function handler(req, res) {
       );
       const j = await r.json();
       res.status(200).json(j);
-    } catch {
+    } catch (error) {
+      console.error('[search] finnhub search failed:', error);
       res.status(200).json({ result: [], count: 0 });
     }
   }

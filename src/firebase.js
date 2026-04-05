@@ -146,6 +146,19 @@ export async function loadRankings() {
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 
+export async function loadRankingProfiles(uids = []) {
+  const uniqueUids = [...new Set((uids || []).filter(Boolean))];
+  if (uniqueUids.length === 0) return {};
+
+  const snaps = await Promise.all(uniqueUids.map(uid => getDoc(doc(db, 'rankings', uid))));
+  return uniqueUids.reduce((acc, uid, index) => {
+    acc[uid] = snaps[index].exists()
+      ? { uid, ...snaps[index].data() }
+      : { uid, totalScore: 0 };
+    return acc;
+  }, {});
+}
+
 // ---------- Admin ----------
 
 // 로그인 시 유저 루트 문서에 메타 저장 (관리자 조회용)

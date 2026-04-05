@@ -1,16 +1,132 @@
-# React + Vite
+# DayMate
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+DayMate is a React + Vite personal dashboard for daily tasks, habits, journaling, community features, challenges, Telegram notifications, and lightweight serverless automations.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Python tools used by `telegram_agent.py`:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-## Expanding the ESLint configuration
+Build for production:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run build
+```
+
+## Frontend stack
+
+- React 19
+- Vite 7
+- Firebase client SDK
+- Web Push / PWA support
+
+## Serverless endpoints
+
+The `api/` directory contains Vercel serverless functions for:
+
+- Telegram notifications and webhook automation
+- Market and stock search proxy endpoints
+- Push notifications and cron jobs
+- Widget data responses
+
+## Required environment variables
+
+Common:
+
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase Admin service account JSON
+- `FIREBASE_USER_UID`: target user UID for personal automations
+- `CRON_SECRET`: bearer token for cron-protected endpoints
+
+Telegram:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+- `TELEGRAM_WEBHOOK_SECRET_TOKEN`: optional, recommended for `/api/telegram-webhook`
+
+Telegram local dev agent:
+
+- `VERCEL_TOKEN`: optional, used by `telegram_agent.py` to poll deployment status after `git push`
+- `VERCEL_PROJECT_ID`: optional, required with `VERCEL_TOKEN` for deployment polling
+- `VERCEL_TEAM_ID`: optional, only needed when the Vercel project belongs to a team scope
+
+AI / market:
+
+- `ANTHROPIC_API_KEY`
+- `FINNHUB_KEY`
+
+Push:
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VITE_VAPID_PUBLIC_KEY`
+
+Widget protection:
+
+- `WIDGET_ACCESS_TOKEN`: optional, when set `/api/widget` requires a matching bearer token, `X-Widget-Token`, or `?token=`
+- `WIDGET_ALLOWED_ORIGINS`: optional comma-separated allowlist for browser origins calling `/api/widget`
+
+Optional app metadata:
+
+- `USER_NAME`
+- `SELECTED_ASSETS`
+- `NOTIFY_TYPE`
+
+## Notes
+
+- If `TELEGRAM_WEBHOOK_SECRET_TOKEN` is configured, Telegram webhook requests must include `x-telegram-bot-api-secret-token`.
+- `telegram_agent.py` no longer embeds Vercel credentials; set `VERCEL_TOKEN` and `VERCEL_PROJECT_ID` in `.env.local` if you want Telegram deployment-complete notifications.
+- If `WIDGET_ACCESS_TOKEN` is configured, existing widget clients or shortcuts must be updated to send that token.
+- Several endpoints are intended for a single-user deployment model driven by `FIREBASE_USER_UID`.
+
+## Dev ergonomics
+
+Environment bootstrap:
+
+- Copy `.env.local.example` to `.env.local` and fill real secrets.
+- Install Node deps with `npm install`.
+- Install Python deps with `pip install -r requirements.txt` inside `.venv`.
+
+Telegram dev bot, Windows host:
+
+- `npm run tg:start`
+- `npm run tg:stop`
+- `npm run tg:restart`
+- `npm run tg:status`
+
+Telegram dev bot, Mac host:
+
+- `npm run tg:mac:start`
+- `npm run tg:mac:stop`
+- `npm run tg:mac:restart`
+- `npm run tg:mac:status`
+- `npm run tg:mac:logs`
+
+Recommended daily flow for your current setup:
+
+1. Develop on Windows.
+2. Commit/push changes.
+3. On Mac, stop the Telegram bot, `git pull origin main`, then restart the bot.
+4. Keep only one Telegram polling bot running at a time.
+
+Mac refresh sequence:
+
+```bash
+cd ~/daymate
+npm run tg:mac:stop
+git pull origin main
+source .venv/bin/activate
+pip install -r requirements.txt
+npm run tg:mac:start
+```
+
+If dependencies did not change, the `pip install -r requirements.txt` step is safe to keep and usually quick.

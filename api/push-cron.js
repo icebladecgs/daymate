@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     // 구독 정보
     const settingsSnap = await db.doc(`users/${uid}/data/settings`).get();
     const sub = settingsSnap.data()?.pushSubscription;
-    if (!sub) return res.status(200).json({ ok: false, reason: 'no subscription' });
+    if (!sub) return res.status(404).json({ ok: false, reason: 'no subscription' });
 
     // 오늘 날짜 (KST)
     const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
@@ -57,6 +57,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ ok: true, remaining });
   } catch (e) {
+    console.error('[push-cron] failed:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 }

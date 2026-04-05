@@ -156,6 +156,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, done, total });
   } catch (e) {
+    console.error('[smart-notify] failed:', e);
     return res.status(500).json({ ok: false, error: e.message });
   }
 }

@@ -45,7 +45,9 @@ export async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_MET
         const coin = j[coinId];
         if (coin) data[sym] = { label, price: coin.usd, chgPct: coin.usd_24h_change, src: 'coingecko' };
       }
-    } catch {}
+    } catch (error) {
+      console.error('[telegram] coingecko fetch failed:', error);
+    }
   }
 
   if (finnhubKey) {
@@ -55,7 +57,9 @@ export async function fetchMarketData(finnhubKey, assets = Object.keys(ASSET_MET
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
         const j = await r.json();
         if (j && j.c > 0) data[sym] = { label: registry[sym].label, price: j.c, change: j.d, chgPct: j.dp, src: 'finnhub' };
-      } catch {}
+      } catch (error) {
+        console.error(`[telegram] finnhub quote fetch failed for ${sym}:`, error);
+      }
     }
   }
   return data;
@@ -132,7 +136,10 @@ export async function fetchMarketDataFromServer(assets, customRegistry = {}) {
     });
     if (!r.ok) return {};
     return await r.json();
-  } catch { return {}; }
+  } catch (error) {
+    console.error('[telegram] market proxy fetch failed:', error);
+    return {};
+  }
 }
 
 export async function searchFinnhub(_key, query) {
@@ -143,7 +150,10 @@ export async function searchFinnhub(_key, query) {
       .filter(item => item.type === 'Common Stock' || item.type === 'ETP')
       .slice(0, 6)
       .map(item => ({ sym: item.symbol, label: item.description, src: 'finnhub' }));
-  } catch { return []; }
+  } catch (error) {
+    console.error('[telegram] finnhub search failed:', error);
+    return [];
+  }
 }
 
 export async function searchKoreanStock(query) {
@@ -151,7 +161,10 @@ export async function searchKoreanStock(query) {
     const r = await fetch(`/api/search?q=${encodeURIComponent(query)}&src=kr`);
     const j = await r.json();
     return j.result || [];
-  } catch { return []; }
+  } catch (error) {
+    console.error('[telegram] korean stock search failed:', error);
+    return [];
+  }
 }
 
 export async function searchCoinGecko(query) {
@@ -164,5 +177,8 @@ export async function searchCoinGecko(query) {
       src: 'coingecko',
       coinId: coin.id,
     }));
-  } catch { return []; }
+  } catch (error) {
+    console.error('[telegram] coingecko search failed:', error);
+    return [];
+  }
 }

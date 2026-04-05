@@ -9,7 +9,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [] }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -182,6 +182,15 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       return { dateStr, pct: total > 0 ? done / total : -1 };
     });
   }, [plans, habits]);
+  const linkedChallengesByHabit = useMemo(() => {
+    return (myChallenges || []).reduce((acc, challenge) => {
+      const linkedHabitId = challenge?.myMember?.linkedHabitId || challenge?.linkedHabitId;
+      if (!linkedHabitId) return acc;
+      if (!acc[linkedHabitId]) acc[linkedHabitId] = [];
+      acc[linkedHabitId].push(challenge);
+      return acc;
+    }, {});
+  }, [myChallenges]);
 
   // ── 오늘의 명언 ──────────────────────────────────────────────
   const QUOTES = [
@@ -1442,6 +1451,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                   </div>
                   {habits.map((h, i) => {
                     const checked = !!habitChecks[h.id];
+                    const linkedChallenges = linkedChallengesByHabit[h.id] || [];
                     return (
                       <div key={h.id} onClick={() => {
                         navigator.vibrate?.(50);
@@ -1466,6 +1476,28 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                           color: checked ? "var(--dm-muted)" : "var(--dm-text)",
                           textDecoration: checked ? "line-through" : "none",
                         }}>{h.name || "(이름 없음)"}</div>
+                        {linkedChallenges.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenChallengeHub?.();
+                            }}
+                            title={linkedChallenges.map(c => c.title).join(', ')}
+                            style={{
+                              border: '1px solid rgba(108,142,255,.28)',
+                              background: 'rgba(108,142,255,.12)',
+                              color: '#6C8EFF',
+                              borderRadius: 999,
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              fontWeight: 900,
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                            }}
+                          >
+                            🏁 {linkedChallenges.length}
+                          </button>
+                        )}
                       </div>
                     );
                   })}

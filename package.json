@@ -4,10 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "generate:version": "node scripts/generate-version.mjs",
+    "predev": "npm run generate:version",
+    "prebuild": "npm run generate:version",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tg:start": "powershell -ExecutionPolicy Bypass -File scripts/telegram-agent.ps1 start",
+    "tg:stop": "powershell -ExecutionPolicy Bypass -File scripts/telegram-agent.ps1 stop",
+    "tg:restart": "powershell -ExecutionPolicy Bypass -File scripts/telegram-agent.ps1 restart",
+    "tg:status": "powershell -ExecutionPolicy Bypass -File scripts/telegram-agent.ps1 status",
+    "tg:mac:start": "sh scripts/telegram-agent.sh start",
+    "tg:mac:stop": "sh scripts/telegram-agent.sh stop",
+    "tg:mac:restart": "sh scripts/telegram-agent.sh restart",
+    "tg:mac:status": "sh scripts/telegram-agent.sh status",
+    "tg:mac:logs": "sh scripts/telegram-agent.sh logs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

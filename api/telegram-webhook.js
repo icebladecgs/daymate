@@ -10,6 +10,7 @@ const db = getFirestore();
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = String(process.env.TELEGRAM_CHAT_ID || '');
 const UID = process.env.FIREBASE_USER_UID;
+const WEBHOOK_SECRET_TOKEN = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN || '';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function send(text) {
@@ -222,6 +223,13 @@ async function executeTool(name, input, today, todayData) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('ok');
+
+  if (WEBHOOK_SECRET_TOKEN) {
+    const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
+    if (secretHeader !== WEBHOOK_SECRET_TOKEN) {
+      return res.status(401).send('unauthorized');
+    }
+  }
 
   const body = req.body;
   const msg = body?.message;

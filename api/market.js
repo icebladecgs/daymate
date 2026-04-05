@@ -55,7 +55,8 @@ export default async function handler(req, res) {
         icon: WX_ICON[code] || '🌡️',
         wind: Math.round(c.windspeed_10m),
       });
-    } catch {
+    } catch (error) {
+      console.error('[market] weather lookup failed:', error);
       return res.status(200).json({ ok: false });
     }
   }
@@ -63,9 +64,16 @@ export default async function handler(req, res) {
   // POST: { assets: string[], customRegistry: string (JSON) }
   const body = req.body || {};
   const assets = Array.isArray(body.assets) ? body.assets : [];
-  const customRegistry = body.customRegistry
-    ? (typeof body.customRegistry === 'string' ? JSON.parse(body.customRegistry) : body.customRegistry)
-    : {};
+  let customRegistry = {};
+  if (body.customRegistry) {
+    try {
+      customRegistry = typeof body.customRegistry === 'string'
+        ? JSON.parse(body.customRegistry)
+        : body.customRegistry;
+    } catch {
+      return res.status(400).json({ error: 'customRegistry must be valid JSON' });
+    }
+  }
 
   const finnhubKey = process.env.FINNHUB_KEY || '';
   const registry = { ...ASSET_META, ...customRegistry };
@@ -92,7 +100,9 @@ export default async function handler(req, res) {
         const coin = j[coinId];
         if (coin) data[sym] = { label, price: coin.usd, chgPct: coin.usd_24h_change, src: 'coingecko' };
       }
-    } catch {}
+    } catch (error) {
+      console.error('[market] coingecko price fetch failed:', error);
+    }
   }
 
   // Finnhub
@@ -107,7 +117,9 @@ export default async function handler(req, res) {
         if (j && j.c > 0) {
           data[sym] = { label: registry[sym].label, price: j.c, change: j.d, chgPct: j.dp, src: 'finnhub' };
         }
-      } catch {}
+      } catch (error) {
+        console.error(`[market] finnhub quote fetch failed for ${sym}:`, error);
+      }
     }
   }
 
@@ -135,7 +147,9 @@ export default async function handler(req, res) {
           currency: meta.currency || 'KRW',
         };
       }
-    } catch {}
+    } catch (error) {
+      console.error(`[market] yahoo quote fetch failed for ${sym}:`, error);
+    }
   }
 
   res.status(200).json(data);

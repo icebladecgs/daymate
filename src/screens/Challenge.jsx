@@ -1,11 +1,35 @@
 import { useState, useEffect } from "react";
 import { calcLevel } from "../data/stats.js";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, updateMemberLinkedHabit } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, updateMemberLinkedHabit, loadRankingProfiles } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 
 const NICKNAME_KEY = 'dm_challenge_nickname';
+
+function LevelChip({ levelInfo, score = 0, compact = false }) {
+  if (!levelInfo) return null;
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: compact ? 4 : 6,
+      padding: compact ? '3px 8px' : '5px 10px',
+      borderRadius: 999,
+      background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
+      border: '1px solid rgba(108,142,255,.22)',
+      color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
+      fontSize: compact ? 10 : 11,
+      fontWeight: compact ? 800 : 900,
+      whiteSpace: 'nowrap',
+    }}>
+      <span>{levelInfo.icon}</span>
+      <span>Lv.{levelInfo.level}</span>
+      {!compact && <span>{levelInfo.title}</span>}
+      {!compact && <span style={{ color: 'var(--dm-muted)', fontWeight: 800 }}>{(score || 0).toLocaleString()} XP</span>}
+    </span>
+  );
+}
 
 export default function Challenge({ authUser, myTotalScore = 0, habits = [], onToggleHabit }) {
   const [tab, setTab] = useState("my"); // my | explore
@@ -152,6 +176,7 @@ function ChallengeCard({ challenge: c, myMember, today, onClick }) {
 function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, showToast, onDeleted, onToggleHabit, habits = [] }) {
   const [certs, setCerts] = useState([]);
   const [members, setMembers] = useState([]);
+  const [memberRankings, setMemberRankings] = useState({});
   const [loading, setLoading] = useState(true);
   const [certText, setCertText] = useState("");
   const [certifying, setCertifying] = useState(false);
@@ -173,8 +198,10 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
     setLoading(true);
     try {
       const [certsData, membersData] = await Promise.all([loadChallengeCerts(c.id), loadChallengeMembers(c.id)]);
+      const rankingMap = await loadRankingProfiles(membersData.map(member => member.uid));
       setCerts(certsData);
       setMembers(membersData);
+      setMemberRankings(rankingMap);
       const me = membersData.find(m => m.uid === authUser.uid);
       if (me) { setIsMember(true); setMyMember(me); setLinkedHabitId(me.linkedHabitId || c.linkedHabitId || ''); }
     } finally {
@@ -248,6 +275,14 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
 
   const daysLeft = c.endDate ? Math.max(0, Math.ceil((new Date(c.endDate) - new Date(today)) / 86400000)) : null;
   const todayCerts = certs.filter(cert => cert.dateKey === today).length;
+  const rankedMembers = [...members]
+    .map(member => ({
+      ...member,
+      totalCerts: certs.filter(cert => cert.uid === member.uid).length,
+      totalScore: memberRankings[member.uid]?.totalScore || 0,
+      levelInfo: calcLevel(memberRankings[member.uid]?.totalScore || 0),
+    }))
+    .sort((a, b) => (b.totalCerts - a.totalCerts) || (b.totalScore - a.totalScore) || ((b.streak || 0) - (a.streak || 0)));
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -280,12 +315,18 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       {/* 내 상태 카드 */}
       {isMember && (
         <div style={{ margin: '12px 16px', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <LevelChip levelInfo={myLevel} score={myMember?.totalScore || 0} />
+            <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
+              다음 레벨까지 {Math.max(0, (myLevel?.nextFloor || 0) - (myMember?.totalScore || 0)).toLocaleString()} XP
+            </span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: certedToday ? 0 : 12 }}>
             <div>
               <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 2 }}>내 현황</div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <span style={{ fontSize: 20, fontWeight: 900, color: '#FBBF24' }}>🔥 {myMember?.streak || 0}일</span>
-                <span style={{ fontSize: 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회</span>
+                <span style={{ fontSize: 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회 · {(myMember?.totalScore || 0).toLocaleString()} XP</span>
               </div>
             </div>
             {certedToday && (
@@ -351,7 +392,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
 
       {/* 피드/멤버 탭 */}
       <div style={{ display: 'flex', gap: 6, padding: '4px 16px 12px' }}>
-        {[{ key: 'feed', label: `인증 피드 (오늘 ${todayCerts}명)` }, { key: 'members', label: `참여자 ${members.length}명` }].map(t => (
+        {[{ key: 'feed', label: `인증 피드 (오늘 ${todayCerts}명)` }, { key: 'members', label: `전체 참여자 ${members.length}명` }].map(t => (
           <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
             flex: 1, padding: '7px 0', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: 'none',
             background: detailTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
@@ -366,7 +407,10 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
           {certs.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 인증이 없어요. 첫 번째로 인증해보세요!</div>
-          ) : certs.map(cert => (
+          ) : certs.map(cert => {
+            const certLevel = cert.uid === authUser.uid ? myLevel : calcLevel(memberRankings[cert.uid]?.totalScore || 0);
+            const certScore = cert.uid === authUser.uid ? (myMember?.totalScore || 0) : (memberRankings[cert.uid]?.totalScore || 0);
+            return (
             <div key={cert.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cert.text && cert.text !== '✓' ? 6 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -374,11 +418,15 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                     {cert.nickname?.[0] || '?'}
                   </div>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)' }}>{cert.nickname}</span>
-                      {cert.uid === authUser.uid && myLevel && <span style={{ fontSize: 11 }}>{myLevel.icon}</span>}
+                      <LevelChip levelInfo={certLevel} score={certScore} compact />
                     </div>
-                    <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
+                      <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
+                      <span style={{ fontSize: 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -394,26 +442,36 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                 <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, paddingLeft: 36 }}>{cert.text}</div>
               )}
             </div>
-          ))}
+          )})}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 16px' }}>
-          {[...members].map(m => ({ ...m, totalCerts: certs.filter(cert => cert.uid === m.uid).length }))
-            .sort((a, b) => b.totalCerts - a.totalCerts)
-            .map((m, i) => (
-            <div key={m.uid} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? ['#FBBF24','#94A3B8','#CD7C3E'][i] : 'var(--dm-muted)', width: 20, textAlign: 'center' }}>{i + 1}</div>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#6C8EFF' }}>
+          <div style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', marginBottom: 2 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>현재 참여 중인 멤버</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
+              닉네임과 레벨, 누적 XP, 인증 횟수, 연속 인증 일수를 한 번에 볼 수 있어요.
+            </div>
+          </div>
+          {rankedMembers.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 참여자가 없어요.</div>
+          ) : rankedMembers.map((m, i) => (
+            <div key={m.uid} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? ['#FBBF24','#94A3B8','#CD7C3E'][i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>
                 {m.nickname?.[0] || '?'}
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{m.nickname} {m.uid === authUser.uid ? '(나)' : ''}</span>
-                  {m.uid === authUser.uid && myLevel && <span style={{ fontSize: 11 }}>{myLevel.icon} <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{myLevel.title}</span></span>}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-text)' }}>{m.nickname}</span>
+                  {m.uid === authUser.uid && <span style={{ fontSize: 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
+                  <LevelChip levelInfo={m.levelInfo} score={m.totalScore} />
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>총 {m.totalCerts}회</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: 'var(--dm-sub)', background: 'var(--dm-input)', borderRadius: 999, padding: '4px 8px' }}>인증 {m.totalCerts}회</span>
+                  <span style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.18)', borderRadius: 999, padding: '4px 8px' }}>누적 {m.totalScore.toLocaleString()} XP</span>
+                  <span style={{ fontSize: 11, color: '#FBBF24', background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.18)', borderRadius: 999, padding: '4px 8px' }}>🔥 연속 {m.streak || 0}일</span>
+                </div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: '#FBBF24' }}>🔥 {m.streak || 0}일</div>
             </div>
           ))}
         </div>

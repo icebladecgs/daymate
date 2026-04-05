@@ -22,11 +22,12 @@ export default async function handler(req, res) {
   try {
     const snap = await db.doc(`users/${uid}/data/settings`).get();
     const sub = snap.data()?.pushSubscription;
-    if (!sub) return res.status(200).json({ ok: false, reason: 'no subscription' });
+    if (!sub) return res.status(404).json({ ok: false, reason: 'no subscription' });
 
     await webpush.sendNotification(sub, JSON.stringify({ title, body }));
     res.status(200).json({ ok: true });
   } catch (e) {
-    res.status(200).json({ ok: false, error: e.message });
+    console.error('[push] notification send failed:', e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 }

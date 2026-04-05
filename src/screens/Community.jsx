@@ -79,8 +79,8 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange }) {
-  const [mainTab, setMainTab] = useState("community"); // community | challenge
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null }) {
+  const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
@@ -88,6 +88,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [checkins, setCheckins] = useState([]);
   const [checkingIn, setCheckingIn] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (initialMainTab) setMainTab(initialMainTab);
+  }, [initialMainTab]);
 
   // 공지
   const [notices, setNotices] = useState([]);

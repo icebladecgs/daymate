@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
@@ -11,17 +11,18 @@ import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/sta
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
-import Home from "./screens/Home.jsx";
-import Today from "./screens/Today.jsx";
-import History from "./screens/History.jsx";
-import Stats from "./screens/Stats.jsx";
-import DayDetail from "./screens/DayDetail.jsx";
-import Settings from "./screens/Settings.jsx";
-import Admin from "./screens/Admin.jsx";
-import Chat from "./screens/Chat.jsx";
-import Community from "./screens/Community.jsx";
-import InvestDiary from "./screens/InvestDiary.jsx";
-import LifeCoach from "./screens/LifeCoach.jsx";
+
+const Home = lazy(() => import("./screens/Home.jsx"));
+const Today = lazy(() => import("./screens/Today.jsx"));
+const History = lazy(() => import("./screens/History.jsx"));
+const Stats = lazy(() => import("./screens/Stats.jsx"));
+const DayDetail = lazy(() => import("./screens/DayDetail.jsx"));
+const Settings = lazy(() => import("./screens/Settings.jsx"));
+const Admin = lazy(() => import("./screens/Admin.jsx"));
+const Chat = lazy(() => import("./screens/Chat.jsx"));
+const Community = lazy(() => import("./screens/Community.jsx"));
+const InvestDiary = lazy(() => import("./screens/InvestDiary.jsx"));
+const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 
 export default function App() {
   const [screen, setScreen] = useState(() => {
@@ -205,7 +206,7 @@ export default function App() {
     loadRankings().then(list => {
       const sorted = list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
       const idx = sorted.findIndex(r => r.uid === authUser.uid);
-      if (idx >= 0) setMyRank({ rank: idx + 1, total: sorted.length });
+      if (idx >= 0) setMyRank({ rank: idx + 1, total: sorted.length, totalScore: sorted[idx].totalScore || 0 });
     }).catch(() => {});
   }, [authUser]);
 
@@ -216,6 +217,7 @@ export default function App() {
   const [communityEventChecks, setCommunityEventChecks] = useState(() =>
     store.get(`dm_community_event_checks_${todayStr}`, {})
   );
+  const [communityInitialTab, setCommunityInitialTab] = useState(null);
 
   useEffect(() => {
     if (!communityIds.length) { setCommunityEventsToday([]); return; }
@@ -973,7 +975,8 @@ export default function App() {
     );
   }
 
-  const changeScreen = (s) => {
+  const changeScreen = (s, options = {}) => {
+    setCommunityInitialTab(s === 'community' ? (options.communityTab || null) : null);
     setScreen(s);
     history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
   };
@@ -1017,6 +1020,7 @@ export default function App() {
           communityEventsToday={communityEventsToday}
           communityEventChecks={communityEventChecks}
           onToggleCommunityEvent={onToggleCommunityEvent}
+          onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
         />
       );
     }
@@ -1055,6 +1059,7 @@ export default function App() {
           setToast={setToast}
           todayCompletion={todayCompletion}
           onUnreadChange={setCommunityUnread}
+          initialMainTab={communityInitialTab}
         />
       );
     }
@@ -1179,7 +1184,15 @@ export default function App() {
       <div style={S.phone} className="dm-phone">
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
-        {renderScreen()}
+        <Suspense fallback={(
+          <div style={{ ...S.content, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <div style={{ ...S.card, width: 'calc(100% - 32px)', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>
+              화면을 불러오는 중...
+            </div>
+          </div>
+        )}>
+          {renderScreen()}
+        </Suspense>
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,

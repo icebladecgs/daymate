@@ -38,10 +38,14 @@ class NotifScheduler {
           const text = msgs[alarmKey] || TTS_DEFAULT_MESSAGES[alarmKey] || '';
           if (text) speakTTS(text);
         }
-      } catch { /* ignore */ }
+      } catch (error) {
+        console.error(`[scheduler] local notification side effects failed for ${id}:`, error);
+      }
       sendNotification(title, body, iconEmoji);
       if (onFire) {
-        try { await onFire(); } catch {}
+        try { await onFire(); } catch (error) {
+          console.error(`[scheduler] scheduled callback failed for ${id}:`, error);
+        }
       }
       this.timers[id] = setTimeout(fire, 24 * 60 * 60 * 1000);
     };

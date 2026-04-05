@@ -18,6 +18,7 @@ import glob
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -59,41 +60,117 @@ ALLOWED_CHAT_ID = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
 ANTHROPIC_KEY   = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Vercel 배포 알림
-VERCEL_TOKEN      = "vca_33VWnhr5LdUDHhuPzso6BUAS0cHeuYBOtu5r4vmg95QH0728HZ4UhYVJ"
-VERCEL_PROJECT_ID = "prj_EdnIiBAcUzI7iQs8U8hUQpJ0Am7I"
-VERCEL_TEAM_ID    = "team_Z4aVNtPPS5X7HOf16wd0tPEg"
+VERCEL_TOKEN      = os.environ.get("VERCEL_TOKEN", "")
+VERCEL_PROJECT_ID = os.environ.get("VERCEL_PROJECT_ID", "")
+VERCEL_TEAM_ID    = os.environ.get("VERCEL_TEAM_ID", "")
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
 # ── 대화 히스토리 ─────────────────────────────────────────────
 # {chat_id: [{"role": "user"/"assistant", "content": ...}]}
 conversation_history: dict[int, list] = {}
-MAX_HISTORY = 30  # 메시지 최대 보관 수
+MAX_HISTORY = 12  # 메시지 최대 보관 수
+MAX_HISTORY_CHARS = 24000
+MAX_TOOL_RESULT_CHARS = {
+    "read_file": 12000,
+    "bash": 4000,
+    "list_files": 4000,
+    "search_files": 4000,
+    "write_file": 1000,
+}
 
 
 def get_history(chat_id: int) -> list:
     return conversation_history.setdefault(chat_id, [])
 
 
+def truncate_text(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    omitted = len(text) - limit
+    return text[:limit] + f"\n\n...[생략 {omitted}자]"
+
+
+def normalize_history_content(content) -> str:
+    if isinstance(content, str):
+        return truncate_text(content, 2000)
+
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            block_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
+            if block_type == "text":
+                text = block.get("text", "") if isinstance(block, dict) else getattr(block, "text", "")
+                if text:
+                    parts.append(truncate_text(text, 1000))
+            elif block_type == "tool_use":
+                name = block.get("name", "tool") if isinstance(block, dict) else getattr(block, "name", "tool")
+                tool_input = block.get("input", {}) if isinstance(block, dict) else getattr(block, "input", {})
+                parts.append(f"[tool:{name}] {truncate_text(json.dumps(tool_input, ensure_ascii=False), 300)}")
+            elif block_type == "tool_result":
+                tool_result = block.get("content", "") if isinstance(block, dict) else getattr(block, "content", "")
+                parts.append(f"[tool_result] {truncate_text(str(tool_result), 300)}")
+            elif block_type == "image":
+                parts.append("[image]")
+        return truncate_text("\n".join(parts) or "(빈 내용)", 4000)
+
+    return truncate_text(str(content), 2000)
+
+
+def trim_history(history: list) -> list:
+    trimmed = history[-MAX_HISTORY:]
+    while len("\n".join(msg["content"] for msg in trimmed)) > MAX_HISTORY_CHARS and len(trimmed) > 2:
+        trimmed = trimmed[2:]
+    return trimmed
+
+
 def add_to_history(chat_id: int, role: str, content):
     history = get_history(chat_id)
-    history.append({"role": role, "content": content})
-    # 오래된 메시지 제거 (MAX_HISTORY 초과 시)
-    if len(history) > MAX_HISTORY:
-        conversation_history[chat_id] = history[-MAX_HISTORY:]
+    history.append({"role": role, "content": normalize_history_content(content)})
+    conversation_history[chat_id] = trim_history(history)
+
+
+def compact_tool_result(name: str, result: str) -> str:
+    limit = MAX_TOOL_RESULT_CHARS.get(name, 2000)
+    return truncate_text(result, limit)
+
+
+def is_context_overflow_error(error: Exception) -> bool:
+    text = str(error).lower()
+    return (
+        "prompt is too long" in text
+        or "context" in text and "long" in text
+        or "maximum context length" in text
+        or "too many input tokens" in text
+    )
 
 
 # ── Claude 도구 정의 ──────────────────────────────────────────
 TOOLS = [
     {
         "name": "read_file",
-        "description": "프로젝트 파일 읽기",
+        "description": "프로젝트 파일 일부 읽기. 큰 파일은 필요한 줄 범위만 읽습니다.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "프로젝트 루트 기준 상대 경로"}
+                "path": {"type": "string", "description": "프로젝트 루트 기준 상대 경로"},
+                "start_line": {"type": "integer", "description": "시작 줄 번호(1부터). 생략 시 1"},
+                "end_line": {"type": "integer", "description": "끝 줄 번호(포함). 생략 시 start_line+199"}
             },
             "required": ["path"],
+        },
+    },
+    {
+        "name": "search_files",
+        "description": "프로젝트 전체에서 텍스트를 검색합니다. 먼저 검색하고 필요한 파일 일부만 읽을 때 사용합니다.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "검색할 텍스트 또는 정규식"},
+                "glob": {"type": "string", "description": "대상 glob 패턴(예: src/**/*.jsx)"},
+                "is_regex": {"type": "boolean", "description": "정규식 여부"}
+            },
+            "required": ["query"],
         },
     },
     {
@@ -138,8 +215,47 @@ def execute_tool(name: str, inputs: dict) -> tuple[str, bool]:
 
     if name == "read_file":
         path = os.path.join(PROJECT_DIR, inputs["path"])
+        start_line = max(1, int(inputs.get("start_line", 1)))
+        end_line = int(inputs.get("end_line", start_line + 199))
+        if end_line < start_line:
+            end_line = start_line
+
         with open(path, "r", encoding="utf-8") as f:
-            return f.read(), False
+            lines = f.readlines()
+
+        total = len(lines)
+        start_idx = min(start_line - 1, total)
+        end_idx = min(end_line, total)
+        selected = lines[start_idx:end_idx]
+        numbered = "".join(f"{i:>4}: {line}" for i, line in enumerate(selected, start=start_idx + 1))
+        header = f"# {inputs['path']} ({start_idx + 1}-{end_idx}/{total})\n"
+        return header + (numbered or "(빈 범위)"), False
+
+    elif name == "search_files":
+        query = inputs["query"]
+        glob_pattern = inputs.get("glob", "**/*")
+        is_regex = bool(inputs.get("is_regex", False))
+        compiled = re.compile(query, re.IGNORECASE) if is_regex else None
+        matches = []
+
+        for file_path in glob.glob(os.path.join(PROJECT_DIR, glob_pattern), recursive=True):
+            if not os.path.isfile(file_path):
+                continue
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    for line_no, line in enumerate(f, start=1):
+                        hit = compiled.search(line) if compiled else query.lower() in line.lower()
+                        if hit:
+                            rel = os.path.relpath(file_path, PROJECT_DIR)
+                            matches.append(f"{rel}:{line_no}: {line.rstrip()}")
+                            if len(matches) >= 60:
+                                break
+                if len(matches) >= 60:
+                    break
+            except Exception:
+                continue
+
+        return "\n".join(matches) or "(검색 결과 없음)", False
 
     elif name == "write_file":
         path = os.path.join(PROJECT_DIR, inputs["path"])
@@ -171,7 +287,7 @@ def execute_tool(name: str, inputs: dict) -> tuple[str, bool]:
     return "알 수 없는 도구", False
 
 
-SYSTEM_PROMPT = f"""You are a coding assistant for the DayMate project running on Windows.
+SYSTEM_PROMPT = f"""You are a coding assistant for the DayMate project running on the current local machine.
 Project directory: {PROJECT_DIR}
 
 ## 프로젝트 구조
@@ -188,10 +304,22 @@ Project directory: {PROJECT_DIR}
 - src/firebase.js : Firebase 클라이언트
 
 ## 작업 순서
-1. 관련 파일을 read_file로 먼저 읽어 확인
-2. write_file로 수정
-3. bash로 git add / commit / push
-4. 결과를 한국어로 간결하게 보고
+1. list_files 또는 search_files로 먼저 위치를 좁힌다
+2. read_file은 필요한 줄 범위만 읽는다 (한 번에 최대 200줄 정도)
+3. write_file로 수정
+4. bash로 git add / commit / push
+5. 결과를 한국어로 간결하게 보고
+
+## 실행 환경 규칙
+- 현재 OS나 셸을 단정하지 않는다.
+- OS/셸 차이가 중요하면 bash로 먼저 확인한 뒤 그 결과를 기준으로 행동한다.
+- 경로와 명령은 실제 확인된 환경에 맞춰 사용한다.
+
+## 컨텍스트 절약 규칙
+- 큰 파일 전체를 read_file로 읽지 말고 start_line, end_line을 꼭 사용한다.
+- 먼저 search_files로 함수명/컴포넌트명을 찾은 뒤 필요한 구간만 읽는다.
+- bash 출력이 길면 핵심만 요약해서 다음 행동을 결정한다.
+- 정보가 부족하면 파일 전체를 읽기보다 추가 구간을 다시 읽는다.
 
 ## git push 명령
 git add -A && git commit -m "feat: <내용>" && git push origin main
@@ -204,12 +332,18 @@ git add -A && git commit -m "feat: <내용>" && git push origin main
 # ── Vercel 배포 모니터링 ──────────────────────────────────────
 async def monitor_deployment(bot, chat_id: int):
     """git push 후 Vercel 배포 상태를 폴링하여 완료/실패 알림"""
+    if not VERCEL_TOKEN or not VERCEL_PROJECT_ID:
+        await bot.send_message(
+            chat_id,
+            "ℹ️ Vercel 배포 모니터링을 건너뜁니다. VERCEL_TOKEN, VERCEL_PROJECT_ID 환경변수를 설정하면 자동 확인할 수 있습니다.",
+        )
+        return
+
     await asyncio.sleep(10)  # 배포 시작 대기
 
-    url = (
-        f"https://api.vercel.com/v6/deployments"
-        f"?projectId={VERCEL_PROJECT_ID}&teamId={VERCEL_TEAM_ID}&limit=1"
-    )
+    url = f"https://api.vercel.com/v6/deployments?projectId={VERCEL_PROJECT_ID}&limit=1"
+    if VERCEL_TEAM_ID:
+        url += f"&teamId={VERCEL_TEAM_ID}"
     headers = {"Authorization": f"Bearer {VERCEL_TOKEN}"}
 
     for _ in range(36):  # 최대 3분 (5초 × 36)
@@ -257,16 +391,33 @@ async def run_claude(update: Update, context: ContextTypes.DEFAULT_TYPE, user_co
     messages = list(get_history(chat_id))
 
     git_pushed = False
+    retried_with_trimmed_history = False
 
     try:
         for _ in range(20):
-            response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=8096,
-                system=SYSTEM_PROMPT,
-                tools=TOOLS,
-                messages=messages,
-            )
+            try:
+                response = client.messages.create(
+                    model="claude-opus-4-6",
+                    max_tokens=8096,
+                    system=SYSTEM_PROMPT,
+                    tools=TOOLS,
+                    messages=messages,
+                )
+            except Exception as e:
+                if is_context_overflow_error(e) and not retried_with_trimmed_history:
+                    retried_with_trimmed_history = True
+                    messages = messages[-1:]
+                    conversation_history[chat_id] = list(messages)
+                    await update.message.reply_text("히스토리가 너무 길어서 최근 요청만 남기고 다시 시도합니다.")
+                    response = client.messages.create(
+                        model="claude-opus-4-6",
+                        max_tokens=8096,
+                        system=SYSTEM_PROMPT,
+                        tools=TOOLS,
+                        messages=messages,
+                    )
+                else:
+                    raise
 
             for block in response.content:
                 if block.type == "text" and block.text.strip():
@@ -275,12 +426,20 @@ async def run_claude(update: Update, context: ContextTypes.DEFAULT_TYPE, user_co
                         await update.message.reply_text(text[i:i+4000])
 
             if response.stop_reason == "end_turn":
-                add_to_history(chat_id, "assistant", response.content)
+                final_text = "\n".join(
+                    block.text.strip() for block in response.content
+                    if block.type == "text" and block.text.strip()
+                )
+                add_to_history(chat_id, "assistant", final_text or response.content)
                 break
 
             tool_calls = [b for b in response.content if b.type == "tool_use"]
             if not tool_calls:
-                add_to_history(chat_id, "assistant", response.content)
+                final_text = "\n".join(
+                    block.text.strip() for block in response.content
+                    if block.type == "text" and block.text.strip()
+                )
+                add_to_history(chat_id, "assistant", final_text or response.content)
                 break
 
             messages.append({"role": "assistant", "content": response.content})
@@ -298,14 +457,11 @@ async def run_claude(update: Update, context: ContextTypes.DEFAULT_TYPE, user_co
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tc.id,
-                    "content": result,
+                    "content": compact_tool_result(tc.name, result),
                 })
 
             tool_results_msg = {"role": "user", "content": tool_results}
             messages.append(tool_results_msg)
-
-        # 히스토리 마지막 상태 동기화
-        conversation_history[chat_id] = messages
 
         # git push 됐으면 배포 모니터링 시작
         if git_pushed:

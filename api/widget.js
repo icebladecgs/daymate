@@ -7,17 +7,50 @@ if (!getApps().length) {
 const db = getFirestore();
 
 const UID = process.env.FIREBASE_USER_UID;
+const WIDGET_ACCESS_TOKEN = process.env.WIDGET_ACCESS_TOKEN || '';
+const WIDGET_ALLOWED_ORIGINS = (process.env.WIDGET_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function toDateStr(d = new Date()) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (!origin) return;
+
+  if (WIDGET_ALLOWED_ORIGINS.length === 0 || WIDGET_ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Widget-Token');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  }
+}
+
+function isAuthorized(req) {
+  if (!WIDGET_ACCESS_TOKEN) return true;
+
+  const authHeader = req.headers.authorization || '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const headerToken = req.headers['x-widget-token'];
+  const queryToken = req.query?.token;
+
+  return bearerToken === WIDGET_ACCESS_TOKEN || headerToken === WIDGET_ACCESS_TOKEN || queryToken === WIDGET_ACCESS_TOKEN;
+}
+
 export default async function handler(req, res) {
-  // CORS 허용 (iOS 단축어 등에서 사용)
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  applyCors(req, res);
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const today = toDateStr();
 

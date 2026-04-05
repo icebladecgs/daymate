@@ -57,7 +57,9 @@ async function fetchMarketData(finnhubKey, assets, customRegistry = {}) {
         const coin = j[coinId];
         if (coin) data[sym] = { label, price: coin.usd, chgPct: coin.usd_24h_change, src: 'coingecko' };
       }
-    } catch {}
+    } catch (error) {
+      console.error('[notify] coingecko fetch failed:', error);
+    }
   }
 
   // Finnhub (preset + custom stocks)
@@ -68,7 +70,9 @@ async function fetchMarketData(finnhubKey, assets, customRegistry = {}) {
         const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${finnhubKey}`);
         const j = await r.json();
         if (j && j.c > 0) data[sym] = { label: registry[sym].label, price: j.c, change: j.d, chgPct: j.dp, src: 'finnhub' };
-      } catch {}
+      } catch (error) {
+        console.error(`[notify] finnhub quote fetch failed for ${sym}:`, error);
+      }
     }
   }
   return data;
@@ -152,7 +156,9 @@ async function fetchNewsDigest(finnhubKey, symbols) {
         articles = (Array.isArray(j) ? j : []).slice(0, 2);
       }
       if (articles.length > 0) newsMap[sym] = articles.map(a => a.headline);
-    } catch {}
+    } catch (error) {
+      console.error(`[notify] news fetch failed for ${sym}:`, error);
+    }
   }
   if (Object.keys(newsMap).length === 0) return null;
 
@@ -180,7 +186,8 @@ async function fetchNewsDigest(finnhubKey, symbols) {
       }
     }
     return Object.keys(result).length > 0 ? result : null;
-  } catch {
+  } catch (error) {
+    console.error('[notify] anthropic news summary failed, using raw headlines:', error);
     // Claude 실패 시 원문 그대로
     return Object.fromEntries(Object.entries(newsMap).map(([sym, h]) => [sym, h.slice(0, 1)]));
   }
@@ -221,7 +228,9 @@ async function handleMorningGreeting(botToken, chatId, uid, userName, selectedAs
         summaries.forEach(s => { msg += `  · ${s}\n`; });
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('[notify] morning news digest failed:', error);
+  }
 
   await sendTelegramMessage(botToken, chatId, msg);
   return { ok: true, tasks: tasks.length };
@@ -336,7 +345,9 @@ export default async function handler(req, res) {
               summaries.forEach(s => { text += `  · ${s}\n`; });
             }
           }
-        } catch {}
+        } catch (error) {
+          console.error('[notify] briefing news digest failed:', error);
+        }
       }
     }
 
