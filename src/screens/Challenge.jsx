@@ -330,7 +330,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                       border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
                       background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
                       color: selected ? '#6C8EFF' : 'var(--dm-muted)',
-                    }}>{h.icon || '📌'} {h.title}</button>
+                    }}>{h.icon || '📌'} {h.name || h.title}</button>
                   );
                 })}
               </div>
@@ -501,7 +501,7 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
                     border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
                     background: selected ? 'rgba(108,142,255,.2)' : 'var(--dm-card)',
                     color: selected ? '#6C8EFF' : 'var(--dm-text)',
-                  }}>{h.icon || '📌'} {h.title}</button>
+                  }}>{h.icon || '📌'} {h.name || h.title}</button>
                 );
               })}
             </div>
