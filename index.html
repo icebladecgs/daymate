@@ -31,9 +31,43 @@
 
     <!-- Service Worker 등록 -->
     <script>
+      window.__daymateApplyUpdate = null;
+      window.__daymateHasPendingUpdate = () => false;
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+          navigator.serviceWorker.register('/sw.js').then((registration) => {
+            let pendingWorker = registration.waiting || null;
+            let refreshing = false;
+
+            const markUpdateReady = (worker) => {
+              if (!worker) return;
+              pendingWorker = worker;
+              window.__daymateHasPendingUpdate = () => !!pendingWorker;
+              window.__daymateApplyUpdate = () => pendingWorker?.postMessage({ type: 'SKIP_WAITING' });
+              window.dispatchEvent(new CustomEvent('daymate-update-ready'));
+            };
+
+            if (pendingWorker) {
+              markUpdateReady(pendingWorker);
+            }
+
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (!newWorker) return;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  markUpdateReady(newWorker);
+                }
+              });
+            });
+
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (refreshing) return;
+              refreshing = true;
+              window.location.reload();
+            });
+          }).catch(() => {});
         });
       }
     </script>
