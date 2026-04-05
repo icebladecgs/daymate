@@ -20,6 +20,8 @@
     "tg:mac:restart": "sh scripts/telegram-agent.sh restart",
     "tg:mac:status": "sh scripts/telegram-agent.sh status",
     "tg:mac:logs": "sh scripts/telegram-agent.sh logs",
+    "tg:mac:launchd:install": "sh scripts/telegram-agent.sh install-launchd",
+    "tg:mac:launchd:uninstall": "sh scripts/telegram-agent.sh uninstall-launchd",
     "tg:mac:update": "sh scripts/mac-refresh.sh"
   },
   "dependencies": {

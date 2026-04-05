@@ -9,7 +9,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, pendingInviteCode, recentInviteReward, onOpenInviteFlow, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
   const today = toDateStr();
   const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
@@ -674,7 +674,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>DayMate Lite</div>
+          <div style={S.title}>DayMate</div>
           <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -704,6 +704,38 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
             </div>
           )}
+        </div>
+      )}
+
+      {pendingInviteCode && (
+        <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(108,142,255,.18),rgba(74,222,128,.1))", border: "1.5px solid rgba(108,142,255,.35)", padding: "14px 15px", boxShadow: "0 10px 30px rgba(75,111,255,.12)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>초대 링크로 들어왔어요</div>
+              <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
+                초대 코드 <b style={{ color: "#6C8EFF" }}>{pendingInviteCode}</b> 를 적용하면 바로 <b style={{ color: "#4ADE80" }}>+100 XP</b>를 받을 수 있어요.
+              </div>
+            </div>
+            <button onClick={onOpenInviteFlow} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '10px 14px', flexShrink: 0 }}>
+              보상 받기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {recentInviteReward && (
+        <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(74,222,128,.18),rgba(108,142,255,.08))", border: "1.5px solid rgba(74,222,128,.3)", padding: "13px 15px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "#4ADE80", marginBottom: 3 }}>초대 보상이 적용됐어요</div>
+              <div style={{ fontSize: 11, color: "var(--dm-sub)", lineHeight: 1.6 }}>
+                코드 <b style={{ color: "var(--dm-text)" }}>{recentInviteReward.code}</b> 적용 완료. 이번 주 랭킹도 같이 올려보세요.
+              </div>
+            </div>
+            <button onClick={onDismissInviteReward} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: 4, lineHeight: 1 }}>
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

@@ -283,6 +283,11 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       levelInfo: calcLevel(memberRankings[member.uid]?.totalScore || 0),
     }))
     .sort((a, b) => (b.totalCerts - a.totalCerts) || (b.totalScore - a.totalScore) || ((b.streak || 0) - (a.streak || 0)));
+  const myMemberScore = memberRankings[authUser.uid]?.totalScore || 0;
+  const myMemberRank = rankedMembers.findIndex(member => member.uid === authUser.uid) + 1;
+  const podiumMembers = rankedMembers.slice(0, 3);
+  const rankAccent = ['#FBBF24', '#94A3B8', '#CD7C3E'];
+  const rankBadge = ['🥇', '🥈', '🥉'];
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -316,9 +321,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       {isMember && (
         <div style={{ margin: '12px 16px', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <LevelChip levelInfo={myLevel} score={myMember?.totalScore || 0} />
+            <LevelChip levelInfo={myLevel} score={myMemberScore} />
             <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
-              다음 레벨까지 {Math.max(0, (myLevel?.nextFloor || 0) - (myMember?.totalScore || 0)).toLocaleString()} XP
+              다음 레벨까지 {Math.max(0, (myLevel?.nextFloor || 0) - myMemberScore).toLocaleString()} XP
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: certedToday ? 0 : 12 }}>
@@ -326,7 +331,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
               <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 2 }}>내 현황</div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <span style={{ fontSize: 20, fontWeight: 900, color: '#FBBF24' }}>🔥 {myMember?.streak || 0}일</span>
-                <span style={{ fontSize: 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회 · {(myMember?.totalScore || 0).toLocaleString()} XP</span>
+                <span style={{ fontSize: 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회 · {myMemberScore.toLocaleString()} XP · 현재 {myMemberRank || '-'}위</span>
               </div>
             </div>
             {certedToday && (
@@ -452,11 +457,32 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
               닉네임과 레벨, 누적 XP, 인증 횟수, 연속 인증 일수를 한 번에 볼 수 있어요.
             </div>
           </div>
+          {podiumMembers.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 4 }}>
+              {podiumMembers.map((member, index) => (
+                <div key={member.uid} style={{ background: 'var(--dm-card)', border: `1.5px solid ${rankAccent[index]}55`, borderRadius: 14, padding: '12px 10px', textAlign: 'center', boxShadow: index === 0 ? '0 8px 22px rgba(251,191,36,.12)' : 'none' }}>
+                  <div style={{ fontSize: 18, marginBottom: 6 }}>{rankBadge[index]}</div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.nickname}</div>
+                  <div style={{ fontSize: 10, color: rankAccent[index], fontWeight: 900, marginBottom: 4 }}>{member.totalCerts}회 인증</div>
+                  <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{member.totalScore.toLocaleString()} XP</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {myMemberRank > 0 && (
+            <div style={{ background: 'linear-gradient(135deg,rgba(108,142,255,.14),rgba(108,142,255,.06))', border: '1px solid rgba(108,142,255,.25)', borderRadius: 12, padding: '10px 12px', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>내 현재 위치</div>
+                <div style={{ fontSize: 11, color: 'var(--dm-sub)' }}>지금 {myMemberRank}위예요. 오늘 인증 한 번이면 순위가 더 빨리 올라갑니다.</div>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>#{myMemberRank}</div>
+            </div>
+          )}
           {rankedMembers.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 참여자가 없어요.</div>
           ) : rankedMembers.map((m, i) => (
-            <div key={m.uid} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? ['#FBBF24','#94A3B8','#CD7C3E'][i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
+            <div key={m.uid} style={{ background: 'var(--dm-card)', border: m.uid === authUser.uid ? '1.5px solid rgba(108,142,255,.35)' : '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, boxShadow: i < 3 ? '0 8px 22px rgba(15,23,42,.04)' : 'none' }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? rankAccent[i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>
                 {m.nickname?.[0] || '?'}
               </div>

@@ -14,7 +14,7 @@ export default defineConfig({
             return 'react-vendor';
           }
 
-          if (normalizedId.includes('node_modules/firebase')) {
+          if (normalizedId.includes('node_modules/firebase') || normalizedId.includes('node_modules/@firebase/')) {
             return 'firebase-vendor';
           }
 

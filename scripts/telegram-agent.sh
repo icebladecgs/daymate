@@ -13,6 +13,7 @@ PID_FILE="$LOG_DIR/telegram-agent.pid"
 LAUNCHD_LABEL="${DAYMATE_LAUNCHD_LABEL:-com.daymate.telegram-agent}"
 LAUNCHD_PLIST="$HOME/Library/LaunchAgents/$LAUNCHD_LABEL.plist"
 LAUNCHD_DOMAIN="gui/$(id -u)"
+LAUNCHD_TEMPLATE="$ROOT_DIR/scripts/com.daymate.telegram-agent.plist.template"
 
 mkdir -p "$LOG_DIR"
 
@@ -146,14 +147,43 @@ show_logs() {
   fi
 }
 
+install_launchd() {
+  if [ ! -f "$LAUNCHD_TEMPLATE" ]; then
+    echo "LaunchAgent template not found: $LAUNCHD_TEMPLATE"
+    exit 1
+  fi
+  mkdir -p "$(dirname "$LAUNCHD_PLIST")"
+  sed -e "s|__PROJECT_ROOT__|$ROOT_DIR|g" -e "s|__PYTHON_EXE__|$PYTHON_EXE|g" "$LAUNCHD_TEMPLATE" > "$LAUNCHD_PLIST"
+  chmod 644 "$LAUNCHD_PLIST"
+  echo "Installed LaunchAgent plist: $LAUNCHD_PLIST"
+  launchctl bootstrap "$LAUNCHD_DOMAIN" "$LAUNCHD_PLIST" >/dev/null 2>&1 || launchctl kickstart -k "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" >/dev/null 2>&1 || true
+  sleep 2
+  show_status
+}
+
+uninstall_launchd() {
+  if launchd_loaded; then
+    launchctl bootout "$LAUNCHD_DOMAIN" "$LAUNCHD_PLIST" >/dev/null 2>&1 || true
+  fi
+  if [ -f "$LAUNCHD_PLIST" ]; then
+    rm -f "$LAUNCHD_PLIST"
+    echo "Removed LaunchAgent plist."
+  else
+    echo "LaunchAgent plist is not installed."
+  fi
+  rm -f "$PID_FILE"
+}
+
 case "$ACTION" in
   start) start_agent ;;
   stop) stop_agent ;;
   restart) stop_agent; start_agent ;;
   status) show_status ;;
   logs) show_logs ;;
+  install-launchd) install_launchd ;;
+  uninstall-launchd) uninstall_launchd ;;
   *)
-    echo "Usage: sh scripts/telegram-agent.sh {start|stop|restart|status|logs}"
+    echo "Usage: sh scripts/telegram-agent.sh {start|stop|restart|status|logs|install-launchd|uninstall-launchd}"
     exit 1
     ;;
 esac

@@ -20,3 +20,5 @@ pip install -r requirements.txt
 
 echo "[5/5] Start Telegram bot"
 sh scripts/telegram-agent.sh start
+
+echo "Done"

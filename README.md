@@ -110,6 +110,8 @@ Telegram dev bot, Mac host:
 - `npm run tg:mac:restart`
 - `npm run tg:mac:status`
 - `npm run tg:mac:logs`
+- `npm run tg:mac:launchd:install`
+- `npm run tg:mac:launchd:uninstall`
 - `npm run tg:mac:update`
 
 If the Mac bot is managed by LaunchAgent:
@@ -118,6 +120,8 @@ If the Mac bot is managed by LaunchAgent:
 - Use `npm run tg:mac:stop` so the helper calls `launchctl bootout` when a LaunchAgent plist exists.
 - Use `npm run tg:mac:start` or `npm run tg:mac:restart` so the helper calls `launchctl bootstrap` / `kickstart`.
 - A plist template is available at `scripts/com.daymate.telegram-agent.plist.template`.
+- `npm run tg:mac:launchd:install` writes the plist with your real paths and loads it immediately.
+- `npm run tg:mac:launchd:uninstall` unloads and removes the plist cleanly.
 
 Recommended daily flow for your current setup:
 
@@ -156,4 +160,6 @@ git pull origin main
 npm run tg:mac:start
 ```
 
-If you install the LaunchAgent manually, copy `scripts/com.daymate.telegram-agent.plist.template` to `~/Library/LaunchAgents/com.daymate.telegram-agent.plist` and replace `__PROJECT_ROOT__` and `__PYTHON_EXE__` with real absolute paths.
+You can install the LaunchAgent automatically with `npm run tg:mac:launchd:install`.
+
+If you still want to install it manually, copy `scripts/com.daymate.telegram-agent.plist.template` to `~/Library/LaunchAgents/com.daymate.telegram-agent.plist` and replace `__PROJECT_ROOT__` and `__PYTHON_EXE__` with real absolute paths.

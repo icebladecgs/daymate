@@ -76,6 +76,7 @@ MAX_TOOL_RESULT_CHARS = {
     "bash": 4000,
     "list_files": 4000,
     "search_files": 4000,
+    "replace_in_file": 1200,
     "write_file": 1000,
 }
 
@@ -186,6 +187,20 @@ TOOLS = [
         },
     },
     {
+        "name": "replace_in_file",
+        "description": "파일의 특정 텍스트를 정확히 찾아 부분 수정합니다. 작은 수정은 write_file보다 이 도구를 우선 사용합니다.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "old_text": {"type": "string", "description": "정확히 일치해야 하는 기존 텍스트"},
+                "new_text": {"type": "string", "description": "교체할 새 텍스트"},
+                "expected_count": {"type": "integer", "description": "기대 일치 횟수. 기본값 1"}
+            },
+            "required": ["path", "old_text", "new_text"],
+        },
+    },
+    {
         "name": "bash",
         "description": "프로젝트 디렉토리에서 셸 명령 실행 (git, npm 등)",
         "input_schema": {
@@ -264,6 +279,26 @@ def execute_tool(name: str, inputs: dict) -> tuple[str, bool]:
             f.write(inputs["content"])
         return f"저장 완료: {inputs['path']}", False
 
+    elif name == "replace_in_file":
+        path = os.path.join(PROJECT_DIR, inputs["path"])
+        expected_count = max(1, int(inputs.get("expected_count", 1)))
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        old_text = inputs["old_text"]
+        new_text = inputs["new_text"]
+        occurrences = content.count(old_text)
+        if occurrences != expected_count:
+            return (
+                f"교체 실패: {inputs['path']} 에서 일치 횟수 {occurrences}회 (기대값 {expected_count}회)",
+                False,
+            )
+
+        updated = content.replace(old_text, new_text, expected_count)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(updated)
+        return f"부분 수정 완료: {inputs['path']} ({expected_count}곳)", False
+
     elif name == "bash":
         command = inputs["command"]
         git_pushed = "git push" in command
@@ -307,6 +342,7 @@ Project directory: {PROJECT_DIR}
 1. list_files 또는 search_files로 먼저 위치를 좁힌다
 2. read_file은 필요한 줄 범위만 읽는다 (한 번에 최대 200줄 정도)
 3. write_file로 수정
+3-1. 작은 수정은 replace_in_file을 우선 사용
 4. bash로 git add / commit / push
 5. 결과를 한국어로 간결하게 보고
 
@@ -519,6 +555,47 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🗑 대화 히스토리를 초기화했습니다.")
 
 
+def run_local_command(args: list[str]) -> str:
+    try:
+        result = subprocess.run(
+            args,
+            cwd=PROJECT_DIR,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        output = (result.stdout or result.stderr or "").strip()
+        return output or "(없음)"
+    except Exception as error:
+        return f"오류: {error}"
+
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if ALLOWED_CHAT_ID and chat_id != ALLOWED_CHAT_ID:
+        await update.message.reply_text("⛔ 접근 거부.")
+        return
+
+    branch = run_local_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    commit = run_local_command(["git", "rev-parse", "--short", "HEAD"])
+    dirty = run_local_command(["git", "status", "--short"])
+    history_count = len(get_history(chat_id))
+    vercel_ready = "예" if VERCEL_TOKEN and VERCEL_PROJECT_ID else "아니오"
+
+    message = "\n".join([
+        "📍 DayMate Telegram Agent 상태",
+        f"브랜치: {branch}",
+        f"커밋: {commit}",
+        f"작업 디렉토리: {PROJECT_DIR}",
+        f"Python: {sys.executable}",
+        f"대화 히스토리: {history_count}개",
+        f"Vercel 모니터링 설정: {vercel_ready}",
+        f"git 변경사항: {truncate_text(dirty if dirty != '(없음)' else '깨끗함', 1200)}",
+    ])
+    await update.message.reply_text(message)
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await update.message.reply_text(
@@ -528,7 +605,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 설정 화면에 다크모드 추가해줘\n"
         f"• [사진 첨부] 이렇게 만들어줘\n\n"
         f"명령어:\n"
-        f"/clear — 대화 히스토리 초기화",
+        f"/clear — 대화 히스토리 초기화\n"
+        f"/status — 현재 브랜치, 커밋, 변경사항 확인",
         parse_mode="Markdown",
     )
 
@@ -549,6 +627,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("clear", cmd_clear))
+    app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()

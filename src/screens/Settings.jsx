@@ -69,9 +69,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
-  onOpenAdmin, onOpenStats, onOpenLifeCoach, onChangeScreen }) {
+  onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen }) {
 
-  const [subPage, setSubPage] = useState(null);
+  const [subPage, setSubPage] = useState(() => {
+    const next = store.get('dm_open_settings_subpage', null);
+    if (next) store.remove('dm_open_settings_subpage');
+    return next;
+  });
   const [pendingSuggestions, setPendingSuggestions] = useState(0);
   useEffect(() => {
     if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
@@ -140,7 +144,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     store.set('dm_used_invite_codes', [...used, code]);
     onAddInviteBonus?.(100);
     recordInviteUse(code).catch(() => {});
-    setCodeStatus('✅ +100 XP 획득!');
+    onInviteApplied?.(code, true);
+    setCodeStatus(`✅ ${code} 적용 완료 · +100 XP 획득!`);
     setCodeInput('');
     setTimeout(() => setCodeStatus(''), 4000);
     return true;
@@ -153,7 +158,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     const pending = store.get('dm_pending_invite');
     if (!pending) return;
     store.remove('dm_pending_invite');
-    applyInviteCode(pending);
+    const applied = applyInviteCode(pending);
+    if (!applied) onInviteApplied?.(pending, false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveEvent = () => {
@@ -451,7 +457,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             if (permission === "granted") {
               if (notifSound) playNotifSound();
               if (notifVibration) triggerVibration();
-              sendNotification("DayMate Lite", "테스트 알림입니다. ✅", "🔔");
+              sendNotification("DayMate", "테스트 알림입니다. ✅", "🔔");
               setToast("테스트 알림 발송 ✅");
             } else if (permission === "denied") {
               setToast("알림이 차단됨 — 브라우저 설정 → 알림 → 허용으로 변경해주세요");
@@ -460,7 +466,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               setPermission(r);
               if (r === "granted") {
                 setNotifEnabled(true);
-                sendNotification("DayMate Lite", "알림이 활성화됐어요! ✅", "🔔");
+                sendNotification("DayMate", "알림이 활성화됐어요! ✅", "🔔");
                 setToast("알림 권한 허용됨 ✅");
               } else {
                 setToast("알림 권한 거부됨 — 브라우저 설정에서 허용해주세요");
@@ -882,6 +888,14 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>🎁</span> 친구 초대</div>
       <div style={S.card}>
+        {pendingInviteCode && (
+          <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,rgba(108,142,255,.12),rgba(74,222,128,.08))', border: '1px solid rgba(108,142,255,.25)' }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>지금 들어온 초대 코드</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>
+              <b style={{ color: '#6C8EFF' }}>{pendingInviteCode}</b> 가 감지됐어요. 아래에서 바로 적용되거나, 이미 적용됐다면 친구에게 내 링크를 다시 공유해보세요.
+            </div>
+          </div>
+        )}
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           내 코드/링크로 친구가 가입하면 <b style={{ color: "#6C8EFF" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
         </div>
@@ -1256,7 +1270,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
       )}
 
-      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate Lite {APP_VERSION} · {APP_BUILD}</div>
+      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
 
       {/* 제안 모달 */}

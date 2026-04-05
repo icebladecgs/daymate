@@ -58,6 +58,8 @@ export default function App() {
 
   const [toast, setToast] = useState("");
   const [communityUnread, setCommunityUnread] = useState(0);
+  const [pendingInviteCode, setPendingInviteCode] = useState(() => store.get('dm_pending_invite', ''));
+  const [recentInviteReward, setRecentInviteReward] = useState(() => store.get('dm_recent_invite_reward', null));
 
   // PWA 설치 프롬프트
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -90,6 +92,30 @@ export default function App() {
   const dismissInstallBanner = () => {
     setShowInstallBanner(false);
     store.set('dm_install_dismissed', true);
+  };
+
+  const openInviteFlow = () => {
+    if (!pendingInviteCode) return;
+    store.set('dm_open_settings_subpage', 'friends');
+    changeScreen('settings');
+  };
+
+  const handleInviteApplied = (code, applied) => {
+    if (!code) return;
+    if (applied) {
+      const reward = { code, claimedAt: Date.now() };
+      setPendingInviteCode('');
+      setRecentInviteReward(reward);
+      store.remove('dm_pending_invite');
+      store.set('dm_recent_invite_reward', reward);
+      return;
+    }
+    setPendingInviteCode(code);
+  };
+
+  const dismissInviteReward = () => {
+    setRecentInviteReward(null);
+    store.remove('dm_recent_invite_reward');
   };
 
   const [authUser, setAuthUser] = useState(null);
@@ -782,7 +808,7 @@ export default function App() {
           <div className="dm-blob dm-blob-2" />
           <div style={{ padding: "56px 24px 32px", position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ width: 72, height: 72, borderRadius: 20, marginBottom: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px rgba(108,142,255,.35)" }}>✅</div>
-            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, textAlign: "center" }}>DayMate Lite</div>
+            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, textAlign: "center" }}>DayMate</div>
             <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8, textAlign: "center", marginBottom: 32 }}>
               매일 할 일 3가지만 정하고<br/>체크하고, 일기 한 줄로 마무리.
             </div>
@@ -855,7 +881,7 @@ export default function App() {
             {onboardStep === 1 && (
               <>
                 <div style={{ textAlign: "center", marginBottom: 24 }}>
-                  <div style={{ fontSize: 24, fontWeight: 900 }}>DayMate Lite</div>
+                  <div style={{ fontSize: 24, fontWeight: 900 }}>DayMate</div>
                   <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8, marginTop: 8 }}>
                     매일 할 일 3가지만 정하고<br/>체크하고, 일기 한 줄로 마무리.
                   </div>
@@ -1015,6 +1041,10 @@ export default function App() {
           onLuckyXp={addInviteBonus}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
           onOpenSettings={() => changeScreen("settings")}
+          pendingInviteCode={pendingInviteCode}
+          recentInviteReward={recentInviteReward}
+          onOpenInviteFlow={openInviteFlow}
+          onDismissInviteReward={dismissInviteReward}
           levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
           myChallenges={myChallenges}
           communityEventsToday={communityEventsToday}
@@ -1122,6 +1152,8 @@ export default function App() {
           onOpenAdmin={authUser && authUser.uid === 'N0vqJWCFLBRFoQndnVRADWO3HQE2' ? () => changeScreen("admin") : undefined}
           onOpenStats={() => changeScreen("stats")}
           onOpenLifeCoach={() => changeScreen("life-coach")}
+          pendingInviteCode={pendingInviteCode}
+          onInviteApplied={handleInviteApplied}
           onChangeScreen={changeScreen}
         />
       );
