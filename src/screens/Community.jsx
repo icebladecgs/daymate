@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname, setCommunityPassword } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -259,6 +259,35 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [pubPassword, setPubPassword] = useState('');
   const [foundCommunity, setFoundCommunity] = useState(null);
   const [codePassword, setCodePassword] = useState('');
+  const [showPasswordEdit, setShowPasswordEdit] = useState(false);
+  const [passwordEditValue, setPasswordEditValue] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const requestCommunityAccess = async (id, options = {}) => {
+    if (!id) return false;
+    const meta = communityMeta[id] || await loadCommunityData(id);
+    if (!meta) {
+      removeCommunityId?.(id);
+      setToast('커뮤니티를 찾을 수 없어요');
+      return false;
+    }
+    if (communityMeta[id] !== meta) {
+      setCommunityNames(prev => ({ ...prev, [id]: meta.name }));
+      setCommunityMeta(prev => ({ ...prev, [id]: meta }));
+    }
+    if (meta.password) {
+      const rawInput = window.prompt(`\"${meta.name || '커뮤니티'}\" 입장 암호 4자리를 입력하세요`, '');
+      if (rawInput == null) return false;
+      const normalizedInput = String(rawInput).replace(/\D/g, '').slice(0, 4);
+      if (normalizedInput !== String(meta.password)) {
+        setToast('비밀번호가 틀렸어요 ❌');
+        return false;
+      }
+    }
+    setActiveCommunityId(id);
+    if (options.openDetail !== false) setShowHome(false);
+    return true;
+  };
 
   useEffect(() => {
     if (mode !== 'join') { setFoundCommunity(null); setCodePassword(''); }
@@ -633,7 +662,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                           meta={meta}
                           communityName={communityNames[id]}
                           editingCommunityOrder={editingCommunityOrder}
-                          onOpen={() => { setActiveCommunityId(id); setShowHome(false); }}
+                          onOpen={() => { requestCommunityAccess(id); }}
                         />
                       );
                     })}
@@ -900,7 +929,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {communityIds.length > 1 && (
         <div style={{ display: 'flex', gap: 6, padding: '8px 16px', overflowX: 'auto' }}>
           {communityIds.map(id => (
-            <button key={id} onClick={() => setActiveCommunityId(id)} style={{
+            <button key={id} onClick={() => {
+              if (id === activeCommunityId) return;
+              requestCommunityAccess(id, { openDetail: true });
+            }} style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
               border: `1.5px solid ${id === activeCommunityId ? '#6C8EFF' : 'var(--dm-border)'}`,
               background: id === activeCommunityId ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',

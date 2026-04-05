@@ -2,3 +2,6 @@
 export const APP_VERSION = 'v287';
 export const APP_BUILD = '2026-04-10 00:19 (aefb2ae)';
 export const APP_COMMIT = 'aefb2ae';
+export const APP_VERSION = 'v286';
+export const APP_BUILD = '2026-04-06 00:04 (d5f488d)';
+export const APP_COMMIT = 'd5f488d';

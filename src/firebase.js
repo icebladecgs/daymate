@@ -249,6 +249,10 @@ export async function joinCommunity(uid, communityId, nickname) {
   await updateDoc(doc(db, 'communities', communityId), { memberCount: increment(1) });
 }
 
+export async function setCommunityPassword(communityId, password) {
+  await updateDoc(doc(db, 'communities', communityId), { password: password || null });
+}
+
 export async function loadCommunityData(communityId) {
   const snap = await getDoc(doc(db, 'communities', communityId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
