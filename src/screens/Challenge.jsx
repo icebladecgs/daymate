@@ -317,21 +317,23 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
           {/* 습관 연결 */}
           {habits.length > 0 && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6 }}>🔗 습관 연결 — 인증하면 자동 체크</div>
-              <select
-                value={linkedHabitId}
-                onChange={async e => {
-                  const val = e.target.value;
-                  setLinkedHabitId(val);
-                  updateMemberLinkedHabit(c.id, authUser.uid, val).catch(() => {});
-                }}
-                style={{ ...S.input, marginBottom: 0, fontSize: 12, color: 'var(--dm-text)', background: 'var(--dm-input)' }}
-              >
-                <option value="">연결 안 함</option>
-                {habits.map(h => (
-                  <option key={h.id} value={h.id}>{h.icon || '📌'} {h.title}</option>
-                ))}
-              </select>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>🔗 습관 연결 — 인증하면 자동 체크</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {[{ id: '', title: '연결 안 함', icon: '✕' }, ...habits].map(h => {
+                  const selected = linkedHabitId === h.id;
+                  return (
+                    <button key={h.id} onClick={async () => {
+                      setLinkedHabitId(h.id);
+                      updateMemberLinkedHabit(c.id, authUser.uid, h.id).catch(() => {});
+                    }} style={{
+                      padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
+                      background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+                      color: selected ? '#6C8EFF' : 'var(--dm-muted)',
+                    }}>{h.icon || '📌'} {h.title}</button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -490,12 +492,19 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>습관 연결 (선택)</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>인증하면 연결된 습관이 자동으로 체크돼요</div>
-            <select value={linkedHabitId} onChange={e => setLinkedHabitId(e.target.value)} style={{ ...S.input, marginBottom: 0, color: 'var(--dm-text)', background: 'var(--dm-input)' }}>
-              <option value="">연결 안 함</option>
-              {habits.map(h => (
-                <option key={h.id} value={h.id}>{h.icon || '📌'} {h.title}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {[{ id: '', title: '연결 안 함', icon: '✕' }, ...habits].map(h => {
+                const selected = linkedHabitId === h.id;
+                return (
+                  <button key={h.id} onClick={() => setLinkedHabitId(h.id)} style={{
+                    padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
+                    background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+                    color: selected ? '#6C8EFF' : 'var(--dm-muted)',
+                  }}>{h.icon || '📌'} {h.title}</button>
+                );
+              })}
+            </div>
           </div>
         )}
 
