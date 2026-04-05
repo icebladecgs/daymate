@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { calcLevel } from "../data/stats.js";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, updateMemberLinkedHabit } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -158,6 +158,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
   const [joining, setJoining] = useState(false);
   const [isMember, setIsMember] = useState(!!c.myMember);
   const [myMember, setMyMember] = useState(c.myMember || null);
+  const [linkedHabitId, setLinkedHabitId] = useState(c.myMember?.linkedHabitId || c.linkedHabitId || '');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [detailTab, setDetailTab] = useState("feed"); // feed | members
   const [cheeredCerts, setCheeredCerts] = useState(() => new Set(JSON.parse(store.get(`dm_cheer_${c.id}`, '[]'))));
@@ -175,7 +176,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       setCerts(certsData);
       setMembers(membersData);
       const me = membersData.find(m => m.uid === authUser.uid);
-      if (me) { setIsMember(true); setMyMember(me); }
+      if (me) { setIsMember(true); setMyMember(me); setLinkedHabitId(me.linkedHabitId || c.linkedHabitId || ''); }
     } finally {
       setLoading(false);
     }
@@ -200,9 +201,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
     try {
       await certifyChallenge(authUser.uid, nickname, c.id, certText.trim() || '✓');
       setCertText("");
-      // 연결된 습관 자동 체크
-      if (c.linkedHabitId && onToggleHabit) {
-        onToggleHabit(c.linkedHabitId);
+      // 연결된 습관 자동 체크 (멤버 개인 설정 우선)
+      if (linkedHabitId && onToggleHabit) {
+        onToggleHabit(linkedHabitId);
         showToast('🎉 인증 완료! 연결된 습관도 체크됐어요');
       } else {
         showToast('🎉 인증 완료! 오늘도 수고했어요');
@@ -310,6 +311,27 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
               }}>
                 {certifying ? '인증 중...' : '✓ 오늘 인증하기'}
               </button>
+            </div>
+          )}
+
+          {/* 습관 연결 */}
+          {habits.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6 }}>🔗 습관 연결 — 인증하면 자동 체크</div>
+              <select
+                value={linkedHabitId}
+                onChange={async e => {
+                  const val = e.target.value;
+                  setLinkedHabitId(val);
+                  updateMemberLinkedHabit(c.id, authUser.uid, val).catch(() => {});
+                }}
+                style={{ ...S.input, marginBottom: 0, fontSize: 12 }}
+              >
+                <option value="">연결 안 함</option>
+                {habits.map(h => (
+                  <option key={h.id} value={h.id}>{h.icon || '📌'} {h.title}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>

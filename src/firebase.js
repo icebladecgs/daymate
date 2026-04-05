@@ -444,6 +444,10 @@ export async function joinChallenge(uid, nickname, challengeId) {
   await updateDoc(doc(db, 'challenges', challengeId), { memberCount: increment(1) });
 }
 
+export async function updateMemberLinkedHabit(challengeId, uid, habitId) {
+  await setDoc(doc(db, 'challenges', challengeId, 'members', uid), { linkedHabitId: habitId || null }, { merge: true });
+}
+
 export async function certifyChallenge(uid, nickname, challengeId, text) {
   const today = toDateStr();
   // 중복 인증 방지
