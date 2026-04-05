@@ -171,10 +171,6 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     if (initialMainTab) setMainTab(initialMainTab);
   }, [initialMainTab]);
 
-  useEffect(() => {
-    if (mode !== 'join') { setFoundCommunity(null); setCodePassword(''); }
-  }, [mode]);
-
   // 공지
   const [notices, setNotices] = useState([]);
   const [showNoticeForm, setShowNoticeForm] = useState(false);
@@ -263,6 +259,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [pubPassword, setPubPassword] = useState('');
   const [foundCommunity, setFoundCommunity] = useState(null);
   const [codePassword, setCodePassword] = useState('');
+
+  useEffect(() => {
+    if (mode !== 'join') { setFoundCommunity(null); setCodePassword(''); }
+  }, [mode]);
 
   // 이벤트 추가 UI
   const [showAdd, setShowAdd] = useState(false);

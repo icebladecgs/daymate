@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
@@ -8,10 +11,175 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
+import HomeCustomizationModal from "../components/home/HomeCustomizationModal.jsx";
+import { DEFAULT_HOME_PREFS, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
+import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals } from "../utils/goals.js";
+function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
+  const dragging = isDragging || isOverlay;
+  const habitLabel = habit?.name?.trim() || '이름 없는 습관';
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, goalChecks, onToggleGoal, onSetTodayTasks, onSaveMonthGoals, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, lifeGoals = [], setLifeGoals, onOpenSettings, pendingInviteCode, recentInviteReward, onOpenInviteFlow, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
+  return (
+    <div
+      ref={isOverlay ? undefined : setNodeRef}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+        transform: isOverlay ? undefined : CSS.Transform.toString(transform),
+        transition: isOverlay ? undefined : [transition, 'box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, padding 180ms ease'].filter(Boolean).join(', '),
+        opacity: isOverlay ? 1 : undefined,
+        position: 'relative',
+        zIndex: dragging ? 2 : 1,
+        borderRadius: 14,
+        boxShadow: dragging ? '0 18px 36px rgba(0,0,0,.18)' : 'none',
+        border: dragging ? '1px dashed rgba(108,142,255,.35)' : '1px solid transparent',
+        background: dragging ? 'rgba(108,142,255,.05)' : 'transparent',
+        padding: dragging ? '6px' : 0,
+      }}
+    >
+      <button
+        type="button"
+        {...(isOverlay ? {} : attributes)}
+        {...(isOverlay ? {} : listeners)}
+        aria-label={`${habitLabel} 순서 이동`}
+        aria-roledescription="sortable habit"
+        title={`${habitLabel} 순서 이동`}
+        style={{
+          width: 32,
+          height: 42,
+          borderRadius: 10,
+          border: '1px solid var(--dm-border)',
+          background: dragging ? 'rgba(108,142,255,.18)' : 'var(--dm-card)',
+          color: 'var(--dm-muted)',
+          cursor: isOverlay ? 'grabbing' : 'grab',
+          flexShrink: 0,
+          fontSize: 16,
+          lineHeight: 1,
+          touchAction: 'none',
+          transform: dragging ? 'scale(1.04)' : 'scale(1)',
+          transition: 'transform 140ms ease, background 140ms ease, border-color 140ms ease',
+        }}
+      >
+        ⋮⋮
+      </button>
+      <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
+        value={habit.icon} maxLength={2} placeholder="🎯"
+        onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, icon: e.target.value } : x))} />
+      <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
+        value={habit.name} maxLength={20} placeholder="습관 이름"
+        onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, name: e.target.value } : x))} />
+      <button onClick={() => onRemove(habit.id)}
+        style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
+    </div>
+  );
+}
+
+function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onTogglePref, orderIndex, totalCount }) {
+  const sectionMeta = HOME_SECTION_CONFIG.find(section => section.id === sectionId);
+  const isVisible = sectionMeta?.visibleKey ? homePrefs?.[sectionMeta.visibleKey] !== false : true;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '12px 14px',
+        borderRadius: 16,
+        border: '1px solid var(--dm-border)',
+        background: 'var(--dm-card)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-text)' }}>{sectionMeta?.label || HOME_SECTION_LABELS[sectionId]}</div>
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 4 }}>{sectionMeta?.description || '홈 화면에서 보이는 위치를 바꿉니다.'}</div>
+      </div>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (sectionMeta?.visibleKey) onTogglePref?.(sectionMeta.visibleKey);
+        }}
+        aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 표시 전환`}
+        style={{
+          minWidth: 58,
+          height: 32,
+          borderRadius: 999,
+          padding: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isVisible ? 'flex-end' : 'flex-start',
+          background: isVisible ? 'rgba(74,222,128,.18)' : 'var(--dm-row)',
+          border: `1px solid ${isVisible ? 'rgba(74,222,128,.35)' : 'var(--dm-border)'}`,
+          cursor: 'pointer',
+          flexShrink: 0,
+          marginLeft: 12,
+        }}
+      >
+        <div style={{ width: 22, height: 22, borderRadius: '50%', background: isVisible ? '#4ADE80' : 'var(--dm-muted)' }} />
+      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 10 }}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMoveSection?.(sectionId, -1);
+          }}
+          disabled={orderIndex <= 0}
+          aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 위로 이동`}
+          style={{
+            width: 28,
+            height: 20,
+            borderRadius: 8,
+            border: '1px solid var(--dm-border)',
+            background: orderIndex <= 0 ? 'var(--dm-row)' : 'var(--dm-bg)',
+            color: orderIndex <= 0 ? 'var(--dm-muted)' : 'var(--dm-text)',
+            cursor: orderIndex <= 0 ? 'default' : 'pointer',
+            fontSize: 10,
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMoveSection?.(sectionId, 1);
+          }}
+          disabled={orderIndex >= totalCount - 1}
+          aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 아래로 이동`}
+          style={{
+            width: 28,
+            height: 20,
+            borderRadius: 8,
+            border: '1px solid var(--dm-border)',
+            background: orderIndex >= totalCount - 1 ? 'var(--dm-row)' : 'var(--dm-bg)',
+            color: orderIndex >= totalCount - 1 ? 'var(--dm-muted)' : 'var(--dm-text)',
+            cursor: orderIndex >= totalCount - 1 ? 'default' : 'pointer',
+            fontSize: 10,
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ▼
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
   const today = toDateStr();
-  const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;
+  const yearGoals = getYearGoals(goals);
+  const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
+    const doneCount = (todayData?.tasks || []).filter((t) => t.done && t.title.trim()).length;  
   const filledCount = (todayData?.tasks || []).filter((t) => t.title.trim()).length;
   const allDone = filledCount > 0 && doneCount === filledCount;
 
@@ -58,6 +226,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [fortuneError, setFortuneError] = useState(false);
   const canDirectInstall = !!installPrompt;
   const showInviteBanners = !showInstallBanner;
+  const showInvitePrompt = showInviteBanners && !!invitePromptCode;
 
   // 로또 번호
   const lottoKey = `dm_lotto_${today}`;
@@ -171,19 +340,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
       return { dateStr, overall: cached?.overall ?? null, dow };
     });
   }, []); // eslint-disable-line
-
-  const habitHeatmap = useMemo(() => {
-    return Array.from({ length: 28 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (27 - i));
-      const dateStr = toDateStr(d);
-      const dayData = plans[dateStr];
-      const checks = dayData?.habitChecks || {};
-      const total = habits.length;
-      const done = total > 0 ? habits.filter(h => checks[h.id]).length : 0;
-      return { dateStr, pct: total > 0 ? done / total : -1 };
-    });
-  }, [plans, habits]);
   const linkedChallengesByHabit = useMemo(() => {
     return (myChallenges || []).reduce((acc, challenge) => {
       const linkedHabitId = challenge?.myMember?.linkedHabitId || challenge?.linkedHabitId;
@@ -223,52 +379,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     const idx = Math.floor(new Date(todayStr).getTime() / 86400000) % QUOTES.length;
     return QUOTES[idx];
   }, [todayStr]); // eslint-disable-line
-
-  // ── 인생 목표 ────────────────────────────────────────────────
-  const [lifeGoalOpen, setLifeGoalOpen] = useState(false);
-  const [expandedGoalIds, setExpandedGoalIds] = useState({});
-  const toggleGoalExpand = (id) => setExpandedGoalIds(prev => ({ ...prev, [id]: !prev[id] }));
-  const [lgForm, setLgForm] = useState(null); // null | { id?, title, deadline, emoji, actions }
-  const [lgActionInput, setLgActionInput] = useState('');
-
-  const daysLeft = (deadline) => {
-    if (!deadline) return null;
-    const diff = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const saveLgForm = () => {
-    if (!lgForm?.title?.trim()) return;
-    const goal = {
-      id: lgForm.id || `lg_${Date.now()}`,
-      title: lgForm.title.trim(),
-      deadline: lgForm.deadline || '',
-      emoji: lgForm.emoji || '🎯',
-      actions: lgForm.actions || [],
-    };
-    setLifeGoals(prev =>
-      lgForm.id ? prev.map(g => g.id === lgForm.id ? goal : g) : [...prev, goal]
-    );
-    setLgForm(null);
-    setLgActionInput('');
-  };
-
-  const addLgAction = () => {
-    if (!lgActionInput.trim()) return;
-    setLgForm(prev => ({ ...prev, actions: [...(prev.actions || []), { id: `la_${Date.now()}`, title: lgActionInput.trim() }] }));
-    setLgActionInput('');
-  };
-
-  const addTaskFromAction = (actionTitle) => {
-    const newTask = { id: `t${Date.now()}`, title: actionTitle, done: false, checkedAt: null, priority: false };
-    onSetTodayTasks(prev => {
-      const all = [...(prev || [])];
-      const emptyIdx = all.findIndex(t => !t.title?.trim());
-      if (emptyIdx >= 0) all[emptyIdx] = newTask;
-      else all.push(newTask);
-      return all;
-    });
-  };
 
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
@@ -322,30 +432,90 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
   const [editingRecurring, setEditingRecurring] = useState(false);
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
-  const [editingGoals, setEditingGoals] = useState(false);
-  const [draftGoals, setDraftGoals] = useState([]);
-  const [newGoalInput, setNewGoalInput] = useState('');
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [goalsExpanded, setGoalsExpanded] = useState(false);
   const [checkedId, setCheckedId] = useState(null);
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
-
-  const moveHabit = (habitId, direction) => {
-    setHabits(prev => {
-      const currentIndex = prev.findIndex(item => item.id === habitId);
-      if (currentIndex < 0) return prev;
-
-      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
-
-      const next = [...prev];
-      const [moved] = next.splice(currentIndex, 1);
-      next.splice(targetIndex, 0, moved);
+  const [homePrefsOpen, setHomePrefsOpen] = useState(false);
+  const [homePrefs, setHomePrefs] = useState(() => ({ ...DEFAULT_HOME_PREFS, ...(store.get(HOME_PREFS_KEY, {}) || {}) }));
+  const [homeSectionOrder, setHomeSectionOrder] = useState(() => normalizeHomeSectionOrder(store.get(HOME_SECTION_ORDER_KEY, HOME_SECTION_CONFIG.map(section => section.id))));
+  const [srAnnouncement, setSrAnnouncement] = useState('');
+  const habitSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 10 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const updateHomePrefs = (patch) => {
+    setHomePrefs(prev => {
+      const next = { ...prev, ...patch };
+      store.set(HOME_PREFS_KEY, next);
       return next;
     });
+  };
+
+  const announce = (message) => {
+    setSrAnnouncement('');
+    window.setTimeout(() => setSrAnnouncement(message), 10);
+  };
+
+  const reorderHabits = (activeId, overId) => {
+    if (!activeId || !overId || activeId === overId) return;
+    setHabits(prev => {
+      const oldIndex = prev.findIndex(item => item.id === activeId);
+      const newIndex = prev.findIndex(item => item.id === overId);
+      if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  };
+
+  const reorderHomeSections = (activeId, overId) => {
+    if (!activeId || !overId || activeId === overId) return;
+    setHomeSectionOrder(prev => {
+      const oldIndex = prev.indexOf(activeId);
+      const newIndex = prev.indexOf(overId);
+      if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      store.set(HOME_SECTION_ORDER_KEY, next);
+      return next;
+    });
+  };
+
+  const moveHomeSectionByStep = (sectionId, step) => {
+    if (!sectionId || !step) return;
+    setHomeSectionOrder(prev => {
+      const currentIndex = prev.indexOf(sectionId);
+      if (currentIndex < 0) return prev;
+      const nextIndex = currentIndex + step;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = arrayMove(prev, currentIndex, nextIndex);
+      store.set(HOME_SECTION_ORDER_KEY, next);
+      return next;
+    });
+  };
+
+  const renderHomeSectionRow = (sectionId) => (
+    <SortableHomeSectionRow
+      key={sectionId}
+      sectionId={sectionId}
+      homePrefs={homePrefs}
+      onMoveSection={moveHomeSectionByStep}
+      onTogglePref={(key) => updateHomePrefs({ [key]: !homePrefs[key] })}
+      orderIndex={homeSectionOrder.indexOf(sectionId)}
+      totalCount={homeSectionOrder.length}
+    />
+  );
+
+  const isSectionVisible = (sectionId) => {
+    const sectionMeta = HOME_SECTION_CONFIG.find((section) => section.id === sectionId);
+    if (!sectionMeta?.visibleKey) return true;
+    return homePrefs[sectionMeta.visibleKey] !== false;
+  };
+
+  const getSectionOrder = (sectionId, fallback = 999) => {
+    const index = homeSectionOrder.indexOf(sectionId);
+    return index < 0 ? fallback : index * 10;
   };
 
   useEffect(() => {
@@ -407,21 +577,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
     onSetTodayTasks(draftTasks);
     setEditingTasks(false);
   };
-  const startEditGoals = () => {
-    setDraftGoals([...(goals.month || [])]);
-    setNewGoalInput('');
-    setEditingGoals(true);
-    setGoalsExpanded(true);
-  };
-  const saveGoalEdits = () => {
-    const final = [...draftGoals, ...(newGoalInput.trim() ? [newGoalInput.trim()] : [])].filter(g => g.trim());
-    onSaveMonthGoals(final);
-    setNewGoalInput('');
-    setEditingGoals(false);
-  };
-
   return (
     <div style={S.content}>
+      <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{srAnnouncement}</div>
       {/* ── 레벨업 모달 ─────────────────────────────────────── */}
       {levelUpInfo && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.8)", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -698,6 +856,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <button onClick={() => setIsDark?.(d => !d)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isDark ? '☀️' : '🌙'}
           </button>
+          <button onClick={() => setHomePrefsOpen(true)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ≡
+          </button>
           <button onClick={onOpenChat} style={{ ...S.btnGhost, marginTop: 0, width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             ✦
           </button>
@@ -726,22 +887,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
               {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
             </div>
           )}
-        </div>
-      )}
-
-      {showInviteBanners && pendingInviteCode && (
-        <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(108,142,255,.18),rgba(74,222,128,.1))", border: "1.5px solid rgba(108,142,255,.35)", padding: "14px 15px", boxShadow: "0 10px 30px rgba(75,111,255,.12)" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>초대 링크로 들어왔어요</div>
-              <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7 }}>
-                초대 코드 <b style={{ color: "#6C8EFF" }}>{pendingInviteCode}</b> 를 적용하면 바로 <b style={{ color: "#4ADE80" }}>+100 XP</b>를 받을 수 있어요.
-              </div>
-            </div>
-            <button onClick={onOpenInviteFlow} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '10px 14px', flexShrink: 0 }}>
-              보상 받기
-            </button>
-          </div>
         </div>
       )}
 
@@ -781,105 +926,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         );
       })()}
 
-      <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "16px" }}>
-        {/* 상단: 레벨 아이콘 + 이름 + 번호 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 32 }}>{levelInfo.icon}</div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", lineHeight: 1.2 }}>{levelInfo.title}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {myRank && (
-              <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
-                <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
-              </button>
-            )}
-            {(() => {
-              const fl = fortuneLevel(todayFortuneScore);
-              return (
-                <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
-                  background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
-                  border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
-                  borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
-                }}>
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
-                </button>
-              );
-            })()}
-          </div>
-        </div>
-        {/* 중앙: 원형 링 + XP */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "4px 0 12px" }}>
-          {/* 원형 완료율 링 */}
-          {(() => {
-            const pct = filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0;
-            const r = 26;
-            const circ = 2 * Math.PI * r;
-            const dash = (pct / 100) * circ;
-            return (
-              <svg width="68" height="68" viewBox="0 0 68 68" style={{ flexShrink: 0 }}>
-                <defs>
-                  <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#4B6FFF" />
-                    <stop offset="100%" stopColor="#b8c3ff" />
-                  </linearGradient>
-                </defs>
-                <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(75,111,255,0.15)" strokeWidth="6" />
-                <circle cx="34" cy="34" r={r} fill="none" stroke="url(#ringGrad)" strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={`${dash} ${circ}`}
-                  transform="rotate(-90 34 34)"
-                  style={{ transition: "stroke-dasharray 0.5s ease" }}
-                />
-                <text x="34" y="37" textAnchor="middle" fill="var(--dm-text)" fontSize="13" fontWeight="900" fontFamily="'Plus Jakarta Sans',sans-serif">{pct}%</text>
-              </svg>
-            );
-          })()}
-          {/* XP 정보 */}
-          <div style={{ flex: 1, position: "relative" }}>
-            {xpFloat && (
-              <div key={xpFloat.key} className="xp-float"
-                style={{ top: xpFloatPos.top, left: xpFloatPos.left }}
-                onAnimationEnd={() => setXpFloat(null)}>
-                +{xpFloat.xp} XP
-              </div>
-            )}
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
-              <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
-              <button onClick={() => { setXpHelpOpen(true); history.pushState({ modal: 'xp' }, ''); }} style={{
-                background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
-                borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
-              }}>?</button>
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
-              오늘 {doneCount}/{filledCount || 3} 완료
-            </div>
-          </div>
-        </div>
-        {/* 진행바 */}
-        <div style={{ height: 7, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-          <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
-        </div>
-        {/* 하단 요약 */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
-            {streak > 0 && <span style={{ color: "#F97316", fontWeight: 900 }}>🔥 {streak}일 연속 · </span>}
-            {streak > 0 && streak % 7 !== 0 && <span style={{ color: "#FCD34D", fontWeight: 700 }}>({7 - (streak % 7)}일 후 보너스) · </span>}
-            다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
-          </span>
-          <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
-        </div>
-      </div>
-
       {/* 바로가기 팁 (PWA 설치된 경우 1회만) */}
       {isStandalone && !shortcutTipDismissed && (
         <div style={{ margin: "0 16px 10px", borderRadius: 12, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -890,15 +936,117 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
         </div>
       )}
 
-      {/* ── 오늘의 명언 ─────────────────────────────────────────── */}
-      <div style={{ margin: "0 16px 10px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "14px 16px" }}>
-        <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>✨ 오늘의 명언</div>
-        <div style={{ fontSize: 14, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.6, marginBottom: 6 }}>"{todayQuote.text}"</div>
-        <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {isSectionVisible('level') && (
+            <div style={{ order: getSectionOrder('level') }}>
+            <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 32 }}>{levelInfo.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", lineHeight: 1.2 }}>{levelInfo.title}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {myRank && (
+                    <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
+                      <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
+                      <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
+                    </button>
+                  )}
+                  {(() => {
+                    const fl = fortuneLevel(todayFortuneScore);
+                    return (
+                      <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
+                        background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
+                        border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
+                        borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
+                      }}>
+                        <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
+                        <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
+                      </button>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "4px 0 12px" }}>
+                {(() => {
+                  const pct = filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0;
+                  const r = 26;
+                  const circ = 2 * Math.PI * r;
+                  const dash = (pct / 100) * circ;
+                  return (
+                    <svg width="68" height="68" viewBox="0 0 68 68" style={{ flexShrink: 0 }}>
+                      <defs>
+                        <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#4B6FFF" />
+                          <stop offset="100%" stopColor="#b8c3ff" />
+                        </linearGradient>
+                      </defs>
+                      <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(75,111,255,0.15)" strokeWidth="6" />
+                      <circle cx="34" cy="34" r={r} fill="none" stroke="url(#ringGrad)" strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray={`${dash} ${circ}`}
+                        transform="rotate(-90 34 34)"
+                        style={{ transition: "stroke-dasharray 0.5s ease" }}
+                      />
+                      <text x="34" y="37" textAnchor="middle" fill="var(--dm-text)" fontSize="13" fontWeight="900" fontFamily="'Plus Jakarta Sans',sans-serif">{pct}%</text>
+                    </svg>
+                  );
+                })()}
+                <div style={{ flex: 1, position: "relative" }}>
+                  {xpFloat && (
+                    <div key={xpFloat.key} className="xp-float"
+                      style={{ top: xpFloatPos.top, left: xpFloatPos.left }}
+                      onAnimationEnd={() => setXpFloat(null)}>
+                      +{xpFloat.xp} XP
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
+                    <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
+                    <button onClick={() => { setXpHelpOpen(true); history.pushState({ modal: 'xp' }, ''); }} style={{
+                      background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
+                      borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
+                    }}>?</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
+                    오늘 {doneCount}/{filledCount || 3} 완료
+                  </div>
+                </div>
+              </div>
+              <div style={{ height: 7, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+                <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
+                  {streak > 0 && <span style={{ color: "#F97316", fontWeight: 900 }}>🔥 {streak}일 연속 · </span>}
+                  {streak > 0 && streak % 7 !== 0 && <span style={{ color: "#FCD34D", fontWeight: 700 }}>({7 - (streak % 7)}일 후 보너스) · </span>}
+                  다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
+                </span>
+                <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
+              </div>
+            </div>
+            </div>
+            )}
+            {isSectionVisible('quote') && (
+            <div style={{ order: getSectionOrder('quote') }}>
+          <div style={{ margin: "0 16px 10px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "14px 16px" }}>
+            <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>✨ 오늘의 명언</div>
+            <div style={{ fontSize: 14, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.6, marginBottom: 6 }}>"{todayQuote.text}"</div>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
+          </div>
       </div>
+      )}
 
 
 
+      {isSectionVisible('tasks') && (
+      <div style={{ order: getSectionOrder('tasks') }}>
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>오늘 할일</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -978,7 +1126,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           </>
         ) : filledCount === 0 ? (
           <>
-            <div style={{ color: "var(--dm-muted)", fontSize: 13, marginBottom: 14 }}>
+            <div style={{ color: "var(--dm-muted)", fontSize: 14, marginBottom: 10 }}>
               오늘 할 일을 아직 입력하지 않았어요
             </div>
             <button style={S.btn} onClick={startEditTasks}>할일 입력하기 →</button>
@@ -1080,8 +1228,12 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           </>
         )}
       </div>
+      </div>
+      )}
 
       {/* 오늘의 챌린지 요약 */}
+      {isSectionVisible('challenges') && (
+      <div style={{ order: getSectionOrder('challenges') }}>
       {myChallenges.length > 0 && (() => {
         const today = toDateStr();
         return (
@@ -1108,12 +1260,18 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           </div>
         );
       })()}
+      </div>
+      )}
 
       {/* 광고 배너 자리 */}
+      <div style={{ order: 25 }}>
       <div style={{ margin: '0 16px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1px dashed var(--dm-border)', padding: '10px 16px', textAlign: 'center' }}>
         <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>📢 배너 준비 중입니다</div>
       </div>
+      </div>
 
+      {isSectionVisible('someday') && (
+      <div style={{ order: getSectionOrder('someday') }}>
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={S.sectionEmoji}>📋</span>언젠가 할일
@@ -1162,272 +1320,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           <button onClick={addSomeday} style={{ ...S.btn, width: 48, marginBottom: 0, flexShrink: 0 }}>➕</button>
         </div>
       </div>}
-
-      {/* ── 인생 목표 섹션 ───────────────────────────────────── */}
-      <div onClick={() => { if (!lgForm) setLifeGoalOpen(v => !v); }}
-        style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={S.sectionEmoji}>🚀</span>인생 목표
-          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{lifeGoalOpen ? "▾" : "▸"}</span>
-          {!lifeGoalOpen && lifeGoals.length > 0 && (
-            <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{lifeGoals.length}개</span>
-          )}
-        </span>
-        {lifeGoalOpen && (
-          <button onClick={e => { e.stopPropagation(); setLgForm({ title: '', deadline: '', emoji: '🎯', actions: [] }); }}
-            style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-            + 목표 추가
-          </button>
-        )}
       </div>
-
-      {lifeGoalOpen && (
-        <div style={{ paddingBottom: 4 }}>
-          {lifeGoals.length === 0 && !lgForm && (
-            <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "20px 16px" }}>
-              아직 목표가 없어요.<br />
-              <button onClick={() => setLgForm({ title: '', deadline: '', emoji: '🎯', actions: [] })}
-                style={{ marginTop: 10, ...S.btn, width: "auto", padding: "8px 20px", fontSize: 13 }}>
-                + 첫 목표 만들기
-              </button>
-            </div>
-          )}
-
-          {lifeGoals.map(goal => {
-            const dl = daysLeft(goal.deadline);
-            const isExpanded = !!expandedGoalIds[goal.id];
-            return (
-              <div key={goal.id} style={S.card}>
-                {/* 목표 헤더 — 클릭으로 펼치기/접기 */}
-                <div onClick={() => toggleGoalExpand(goal.id)}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>{goal.emoji} {goal.title}</span>
-                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{isExpanded ? "▾" : "▸"}</span>
-                    </div>
-                    {goal.deadline && (
-                      <div style={{ fontSize: 11, color: dl != null && dl < 30 ? "#F87171" : "var(--dm-muted)", marginTop: 2, fontWeight: 700 }}>
-                        {goal.deadline}{dl != null ? (dl > 0 ? ` · D-${dl}` : dl === 0 ? ' · 오늘!' : ` · D+${Math.abs(dl)}`) : ''}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setLgForm({ ...goal })}
-                      style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer" }}>✏️</button>
-                    <button onClick={() => { if (window.confirm('목표를 삭제할까요?')) setLifeGoals(prev => prev.filter(g => g.id !== goal.id)); }}
-                      style={{ fontSize: 11, color: "#F87171", background: "transparent", border: "none", cursor: "pointer" }}>✕</button>
-                  </div>
-                </div>
-
-                {/* 액션 목록 — 펼쳐졌을 때만 표시 */}
-                {isExpanded && goal.actions.length > 0 && (
-                  <div style={{ borderTop: "1px solid var(--dm-row)", marginTop: 10, paddingTop: 8 }}>
-                    {goal.actions.map(a => (
-                      <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
-                        <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>▸ {a.title}</div>
-                        <button onClick={() => addTaskFromAction(a.title)}
-                          style={{ fontSize: 11, fontWeight: 800, color: "#6C8EFF", background: "rgba(108,142,255,.1)", border: "1px solid rgba(108,142,255,.2)", borderRadius: 8, padding: "3px 8px", cursor: "pointer" }}>
-                          → 오늘 할일
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {isExpanded && goal.actions.length === 0 && (
-                  <div style={{ borderTop: "1px solid var(--dm-row)", marginTop: 10, paddingTop: 8, fontSize: 12, color: "var(--dm-muted)", textAlign: "center" }}>
-                    액션플랜을 추가해보세요 ✏️
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* 목표 추가/편집 폼 */}
-          {lgForm && (
-            <div style={{ ...S.card, border: "1.5px solid rgba(108,142,255,.4)" }}>
-              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>
-                {lgForm.id ? '목표 편집' : '새 목표'}
-              </div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <input style={{ ...S.input, width: 48, textAlign: "center", fontSize: 20, padding: "8px 4px" }}
-                  value={lgForm.emoji} onChange={e => setLgForm(p => ({ ...p, emoji: e.target.value }))} maxLength={2} />
-                <input style={{ ...S.input, flex: 1 }} placeholder="목표 제목"
-                  value={lgForm.title} onChange={e => setLgForm(p => ({ ...p, title: e.target.value }))} maxLength={40} autoFocus />
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--dm-muted)', marginBottom: 4 }}>목표 달성일 (선택)</div>
-              <input type="date" style={{ ...S.input, marginBottom: 10 }}
-                value={lgForm.deadline} onChange={e => setLgForm(p => ({ ...p, deadline: e.target.value }))} />
-
-              {(lgForm.actions || []).length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--dm-muted)", marginBottom: 6 }}>액션 플랜</div>
-                  {lgForm.actions.map((a, i) => (
-                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <div style={{ flex: 1, fontSize: 13, color: "var(--dm-sub)" }}>▸ {a.title}</div>
-                      <button onClick={() => setLgForm(p => ({ ...p, actions: p.actions.filter((_, j) => j !== i) }))}
-                        style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 13 }}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                <input style={{ ...S.input, flex: 1 }} placeholder="액션 추가 (예: 매일 30분 운동)"
-                  value={lgActionInput} onChange={e => setLgActionInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addLgAction()} maxLength={40} />
-                <button onClick={addLgAction}
-                  style={{ ...S.btn, width: "auto", marginTop: 0, padding: "0 14px", fontSize: 18 }}>+</button>
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ ...S.btn, flex: 1, marginTop: 0 }} onClick={saveLgForm}>저장</button>
-                <button style={{ ...S.btnGhost, flex: 1, marginTop: 0 }} onClick={() => { setLgForm(null); setLgActionInput(''); }}>취소</button>
-              </div>
-            </div>
-          )}
-        </div>
       )}
 
-      {false && <><div
-        onClick={() => { if (!editingGoals) setGoalsExpanded(v => !v); }}
-        style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, cursor: "pointer", userSelect: "none" }}
-      >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>🎯</span>이달 목표
-          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>
-            {goalsExpanded ? "▾" : "▸"}
-          </span>
-          {!goalsExpanded && (() => {
-            const mg = goals.month || [];
-            const dg = mg.filter((_, i) => goalChecks[i]).length;
-            return mg.length > 0
-              ? <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{dg}/{mg.length} 달성</span>
-              : <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>탭하여 펼치기</span>;
-          })()}
-        </span>
-        {goalsExpanded && (
-          <button onClick={e => { e.stopPropagation(); editingGoals ? saveGoalEdits() : startEditGoals(); }}
-            style={{ fontSize: 11, fontWeight: 900, color: editingGoals ? "#4ADE80" : "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-            {editingGoals ? "완료 ✓" : "✏️ 편집"}
-          </button>
-        )}
-      </div>
-      {(goalsExpanded || editingGoals) && <div style={S.card}>
-        {editingGoals ? (
-          <>
-            {draftGoals.map((g, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={g}
-                  onChange={(e) => setDraftGoals(prev => prev.map((x, j) => j === i ? e.target.value : x))}
-                  placeholder={`목표 ${i + 1}`}
-                  maxLength={40}
-                />
-                <button onClick={() => setDraftGoals(prev => prev.filter((_, j) => j !== i))}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", flexShrink: 0 }}>✕</button>
-              </div>
-            ))}
-            {draftGoals.length < 5 && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <input
-                  style={{ ...S.input, flex: 1 }}
-                  value={newGoalInput}
-                  onChange={(e) => setNewGoalInput(e.target.value)}
-                  placeholder="새 목표 입력 후 Enter 또는 ➕"
-                  maxLength={40}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newGoalInput.trim()) {
-                      setDraftGoals(prev => [...prev, newGoalInput.trim()]);
-                      setNewGoalInput('');
-                    }
-                  }}
-                />
-                <button onClick={() => {
-                  if (!newGoalInput.trim()) return;
-                  setDraftGoals(prev => [...prev, newGoalInput.trim()]);
-                  setNewGoalInput('');
-                }} style={{ background: "transparent", border: "none", color: "#4B6FFF", cursor: "pointer", flexShrink: 0, fontSize: 20, lineHeight: 1 }}>➕</button>
-              </div>
-            )}
-          </>
-        ) : (goals.month || []).length ? (() => {
-          const monthGoals = goals.month;
-          const doneGoals = monthGoals.filter((_, i) => goalChecks[i]).length;
-          const allGoalsDone = doneGoals === monthGoals.length;
-          return (
-            <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 13, color: "var(--dm-sub)", fontWeight: 900 }}>{doneGoals}/{monthGoals.length} 달성</div>
-                {allGoalsDone && <div style={{ fontSize: 12, color: "#4ADE80", fontWeight: 900 }}>🎉 전부 달성!</div>}
-              </div>
-              <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{
-                  height: "100%", borderRadius: 3, transition: "width 0.3s",
-                  background: allGoalsDone ? "#4ADE80" : "#4B6FFF",
-                  width: `${(doneGoals / monthGoals.length) * 100}%`,
-                  boxShadow: allGoalsDone ? "0 0 10px rgba(74,222,128,0.5)" : "0 0 10px rgba(75,111,255,0.5)",
-                }} />
-              </div>
-              {monthGoals.map((g, i) => {
-                const done = !!goalChecks[i];
-                return (
-                  <div key={i} onClick={() => onToggleGoal(i)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                      borderBottom: i < monthGoals.length - 1 ? `1px solid var(--dm-row)` : "none",
-                      cursor: "pointer" }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                      border: done ? "none" : "2px solid #3A4260",
-                      background: done ? "#4B6FFF" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
-                    </div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, flex: 1,
-                      color: done ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: done ? "line-through" : "none",
-                    }}>{g}</div>
-                  </div>
-                );
-              })}
-            </>
-          );
-        })() : (
-          <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-            <div style={{ fontSize: 28, marginBottom: 6 }}>🎯</div>
-            <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 10 }}>이달 목표가 없어요</div>
-            <button onClick={startEditGoals} style={{ ...S.btn, width: "auto", padding: "8px 20px", fontSize: 12 }}>+ 목표 추가</button>
-          </div>
-        )}
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>📆 완벽한 날</div>
-            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 2,
-                background: goalProgress.monthProgress >= 80 ? "#4ADE80" : goalProgress.monthProgress >= 50 ? "#FCD34D" : "#F87171",
-                width: `${goalProgress.monthProgress}%`,
-              }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.perfectDaysThisMonth}/{goalProgress.daysInMonth}일</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>👑 연간</div>
-            <div style={{ flex: 1, height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 2,
-                background: goalProgress.yearProgress >= 80 ? "#4ADE80" : goalProgress.yearProgress >= 50 ? "#FCD34D" : "#F87171",
-                width: `${goalProgress.yearProgress}%`,
-              }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--dm-sub)", fontWeight: 900 }}>{goalProgress.yearProgress}%</div>
-          </div>
-        </div>
-      </div>}</>}
-
+      {isSectionVisible('habits') && (
+      <div style={{ order: getSectionOrder('habits') }}>
       {(() => {
         const habitChecks = todayData?.habitChecks || {};
         const doneHabits = habits.filter(h => habitChecks[h.id]).length;
@@ -1476,57 +1373,37 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                 <>
                   {(habits || []).length > 1 && (
                     <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 10 }}>
-                      화살표로 오늘 습관 순서를 바꿀 수 있어요.
+                      왼쪽 핸들을 잡고 끌어서 오늘 습관 순서를 바꿀 수 있어요.
                     </div>
                   )}
-                  {(habits || []).map((h, index) => (
-                    <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
-                        value={h.icon} maxLength={2} placeholder="🎯"
-                        onChange={e => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))} />
-                      <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
-                        value={h.name} maxLength={20} placeholder="습관 이름"
-                        onChange={e => setHabits(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                        <button
-                          onClick={() => moveHabit(h.id, 'up')}
-                          disabled={index === 0}
-                          style={{
-                            width: 28,
-                            height: 24,
-                            borderRadius: 8,
-                            border: '1px solid var(--dm-border)',
-                            background: index === 0 ? 'var(--dm-input)' : 'var(--dm-card)',
-                            color: index === 0 ? 'var(--dm-muted)' : 'var(--dm-text)',
-                            cursor: index === 0 ? 'default' : 'pointer',
-                            fontSize: 12,
-                            padding: 0,
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          onClick={() => moveHabit(h.id, 'down')}
-                          disabled={index === habits.length - 1}
-                          style={{
-                            width: 28,
-                            height: 24,
-                            borderRadius: 8,
-                            border: '1px solid var(--dm-border)',
-                            background: index === habits.length - 1 ? 'var(--dm-input)' : 'var(--dm-card)',
-                            color: index === habits.length - 1 ? 'var(--dm-muted)' : 'var(--dm-text)',
-                            cursor: index === habits.length - 1 ? 'default' : 'pointer',
-                            fontSize: 12,
-                            padding: 0,
-                          }}
-                        >
-                          ↓
-                        </button>
-                      </div>
-                      <button onClick={() => setHabits(prev => prev.filter(x => x.id !== h.id))}
-                        style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
-                    </div>
-                  ))}
+                  <DndContext
+                    sensors={habitSensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={() => {
+                      vibrateIfAvailable(12);
+                      announce('습관 순서 이동을 시작했습니다. 원하는 위치에서 손을 떼면 순서가 바뀝니다.');
+                    }}
+                    onDragCancel={() => {}}
+                    onDragEnd={({ active, over }) => {
+                      reorderHabits(active?.id, over?.id);
+                      vibrateIfAvailable(over?.id && active?.id !== over?.id ? [14, 28, 12] : 10);
+                      if (active?.id && over?.id && active.id !== over.id) {
+                        const activeHabit = habits.find(h => h.id === active.id);
+                        announce(`${activeHabit?.name || '습관'} 순서를 변경했습니다.`);
+                      }
+                    }}
+                  >
+                    <SortableContext items={(habits || []).map(h => h.id)} strategy={verticalListSortingStrategy}>
+                      {(habits || []).map((h) => (
+                        <SortableHabitRow
+                          key={h.id}
+                          habit={h}
+                          setHabits={setHabits}
+                          onRemove={(habitId) => setHabits(prev => prev.filter(x => x.id !== habitId))}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                   {(habits || []).length < 10 && (
                     <button style={{ ...S.btn, marginTop: (habits||[]).length > 0 ? 4 : 0 }}
                       onClick={() => setHabits(prev => [...prev, { id: `h${Date.now()}`, name: '', icon: '🎯' }])}>
@@ -1596,36 +1473,18 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
                       </div>
                     );
                   })}
-                  {/* 4주 습관 히트맵 */}
-                  {habits.length > 0 && (
-                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--dm-row)" }}>
-                      <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6 }}>4주 기록</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
-                        {habitHeatmap.map((d) => {
-                          const isToday = d.dateStr === today;
-                          const bg = d.pct < 0 ? "var(--dm-row)"
-                            : d.pct === 0 ? "rgba(248,113,113,.25)"
-                            : d.pct < 0.5 ? "rgba(167,139,250,.3)"
-                            : d.pct < 1 ? "rgba(167,139,250,.6)"
-                            : "#A78BFA";
-                          return (
-                            <div key={d.dateStr} title={d.dateStr} style={{
-                              height: 12, borderRadius: 2, background: bg,
-                              outline: isToday ? "1.5px solid #A78BFA" : "none",
-                            }} />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>
           </>
         );
       })()}
+      </div>
+      )}
 
       {/* 반복 할일 관리 */}
+      {isSectionVisible('recurring') && (
+      <div style={{ order: getSectionOrder('recurring') }}>
       {(editingRecurring || (recurringTasks && recurringTasks.length > 0)) && (
         <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🔁</span>반복 할일</span>
@@ -1669,8 +1528,71 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, goal
           )}
         </div>
       )}
+      </div>
+      )}
 
+      <div style={{ height: 8 }} />
+
+      {/* ── 목표 이동 링크 ───────────────────────────────────── */}
+      {isSectionVisible('goalsShortcut') && (
+        <div style={{ order: getSectionOrder('goalsShortcut') }}>
+        <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={S.sectionEmoji}>🗓️</span>목표
+          </span>
+          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>
+            연간 {yearGoals.length}개 · 월별 목표 {monthGoals.length}개
+          </span>
+        </div>
+        <div style={S.card}>
+          <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.65, marginBottom: 14 }}>
+            홈은 오늘 할 일에만 집중하고, 중장기 목표는 달력 화면에서 관리하도록 분리했습니다.
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ padding: "7px 10px", borderRadius: 999, background: "rgba(108,142,255,.12)", color: "#AFC0FF", fontSize: 11, fontWeight: 800 }}>
+              올해 목표 {yearGoals.length}개
+            </div>
+            <div style={{ padding: "7px 10px", borderRadius: 999, background: "rgba(255,255,255,.05)", color: "var(--dm-text)", fontSize: 11, fontWeight: 800 }}>
+              월별 목표 {monthGoals.length}개
+            </div>
+          </div>
+          <button onClick={onOpenGoalsHub} style={{ ...S.btn, marginTop: 0 }}>
+            달력에서 목표 보기 →
+          </button>
+        </div>
+        </div>
+      )}
+      </div>
       <div style={{ height: 12 }} />
+
+      <HomeCustomizationModal
+        open={homePrefsOpen}
+        homeSectionOrder={homeSectionOrder}
+        renderSectionRow={renderHomeSectionRow}
+        onClose={() => setHomePrefsOpen(false)}
+      />
+
+      {showInvitePrompt && (
+        <div onClick={onDismissInvitePrompt} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)', zIndex: 270,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px'
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 360, borderRadius: 24, background: 'var(--dm-bg)', border: '1px solid var(--dm-border2)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.32)', padding: '22px 20px 18px'
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🎁</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>초대 보상이 도착했어요</div>
+            <div style={{ fontSize: 13, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 16 }}>
+              친구 초대 코드 <b style={{ color: '#6C8EFF' }}>{invitePromptCode}</b> 를 적용하면 바로 <b style={{ color: '#4ADE80' }}>+100 XP</b>를 받을 수 있어요.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={onDismissInvitePrompt} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>나중에</button>
+              <button onClick={onOpenInviteFlow} style={{ ...S.btn, flex: 1, marginTop: 0 }}>지금 받기</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── XP 도움말 모달 ──────────────────────────────────────── */}
       {xpHelpOpen && (() => {

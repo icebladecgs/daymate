@@ -2,15 +2,30 @@ import { useEffect, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay } from "../data/stats.js";
 import { gcalFetchRangeEvents } from "../api/gcal.js";
+import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, normalizeGoals, setMonthGoals, setYearGoals, updateYearGoal } from "../utils/goals.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(initialGoalsOpen);
+  const [editingYearGoals, setEditingYearGoals] = useState(false);
+  const [editingMonthGoals, setEditingMonthGoals] = useState(false);
+  const normalizedGoals = normalizeGoals(goals, getCurrentGoalMonthKey());
+  const yearGoals = getYearGoals(normalizedGoals);
+  const [selectedGoalMonthKey, setSelectedGoalMonthKey] = useState(getCurrentGoalMonthKey());
+  const monthGoals = getMonthGoals(normalizedGoals, selectedGoalMonthKey);
+  const [expandedYearGoalId, setExpandedYearGoalId] = useState(null);
+  const [yearDraft, setYearDraft] = useState(() => yearGoals.map((goal) => goal.title));
+  const [monthDraft, setMonthDraft] = useState(() => [...monthGoals]);
+  const [newYearInput, setNewYearInput] = useState('');
+  const [newMonthInput, setNewMonthInput] = useState('');
+  const [actionDrafts, setActionDrafts] = useState({});
 
   const [gcalRefreshing, setGcalRefreshing] = useState(false);
   const [gcalToast, setGcalToast] = useState(null);
@@ -19,6 +34,24 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     setGcalToast(msg);
     setTimeout(() => setGcalToast(null), 2500);
   };
+
+  useEffect(() => {
+    setGoalsOpen(initialGoalsOpen);
+  }, [initialGoalsOpen]);
+
+  useEffect(() => {
+    if (!editingYearGoals) setYearDraft(yearGoals.map((goal) => goal.title));
+  }, [yearGoals, editingYearGoals]);
+
+  useEffect(() => {
+    if (!editingMonthGoals) setMonthDraft([...monthGoals]);
+  }, [monthGoals, editingMonthGoals]);
+
+  useEffect(() => {
+    if (expandedYearGoalId && !yearGoals.some((goal) => goal.id === expandedYearGoalId)) {
+      setExpandedYearGoalId(null);
+    }
+  }, [expandedYearGoalId, yearGoals]);
 
   const fetchGcal = async (forceRefresh = false) => {
     const token = getValidGcalToken?.();
@@ -64,12 +97,48 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   };
 
   const styleOf = (r, isToday, isPerfect) => {
-    if (isToday) return { background: "#6C8EFF", color: "#fff", fontWeight: 900 };
-    if (isPerfect) return { fontWeight: 900, color: "var(--dm-text)" };
-    if (r === null) return { background: "transparent", color: "var(--dm-muted)" };
-    if (r >= 80) return { background: "rgba(74,222,128,.18)", color: "#4ADE80", fontWeight: 900 };
-    if (r >= 50) return { background: "rgba(252,211,77,.14)", color: "#FCD34D", fontWeight: 900 };
-    return { background: "rgba(248,113,113,.10)", color: "#F87171", fontWeight: 900 };
+    const base = {
+      background: "transparent",
+      color: "var(--dm-muted)",
+      fontWeight: 700,
+      border: "1px solid transparent",
+    };
+
+    if (r === null) {
+      return {
+        ...base,
+        color: isPerfect ? "var(--dm-text)" : "var(--dm-muted)",
+        border: isToday ? "1.5px solid #6C8EFF" : "1px solid transparent",
+      };
+    }
+
+    if (r >= 80) {
+      return {
+        ...base,
+        background: "rgba(75,111,255,.22)",
+        color: "#DCE5FF",
+        fontWeight: 900,
+        border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(108,142,255,.18)",
+      };
+    }
+
+    if (r > 0) {
+      return {
+        ...base,
+        background: "rgba(75,111,255,.10)",
+        color: "#9CB3FF",
+        fontWeight: 800,
+        border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(108,142,255,.12)",
+      };
+    }
+
+    return {
+      ...base,
+      background: "rgba(255,255,255,.03)",
+      color: "var(--dm-sub)",
+      fontWeight: 700,
+      border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(255,255,255,.05)",
+    };
   };
 
   const prev = () => {
@@ -80,6 +149,234 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     if (month0 === 11) { setMonth0(0); setYear((y) => y + 1); }
     else setMonth0((m) => m + 1);
   };
+
+  const shiftGoalMonth = (delta) => {
+    const [targetYear, targetMonth] = selectedGoalMonthKey.split('-').map(Number);
+    const nextDate = new Date(targetYear, targetMonth - 1 + delta, 1);
+    setSelectedGoalMonthKey(`${nextDate.getFullYear()}-${pad2(nextDate.getMonth() + 1)}`);
+  };
+
+  const selectedGoalMonthLabel = (() => {
+    const [targetYear, targetMonth] = selectedGoalMonthKey.split('-').map(Number);
+    return `${targetYear}년 ${targetMonth}월`;
+  })();
+
+  const saveYearGoals = () => {
+    const final = [...yearDraft, ...(newYearInput.trim() ? [newYearInput.trim()] : [])].filter(goal => goal.trim()).slice(0, 5);
+    onSaveGoals?.(setYearGoals(normalizedGoals, final));
+    setEditingYearGoals(false);
+    setNewYearInput('');
+  };
+
+  const saveMonthGoals = () => {
+    const final = [...monthDraft, ...(newMonthInput.trim() ? [newMonthInput.trim()] : [])].filter(goal => goal.trim()).slice(0, 5);
+    onSaveGoals?.(setMonthGoals(normalizedGoals, selectedGoalMonthKey, final));
+    setEditingMonthGoals(false);
+    setNewMonthInput('');
+  };
+
+  const addYearGoalAction = (goalId) => {
+    const title = (actionDrafts[goalId] || '').trim();
+    if (!title) return;
+    onSaveGoals?.(
+      updateYearGoal(normalizedGoals, goalId, (goal) => ({
+        ...goal,
+        actions: [...(goal.actions || []), { id: `yga_${Date.now()}`, title }],
+      }))
+    );
+    setActionDrafts((prev) => ({ ...prev, [goalId]: '' }));
+  };
+
+  const removeYearGoalAction = (goalId, actionId) => {
+    onSaveGoals?.(
+      updateYearGoal(normalizedGoals, goalId, (goal) => ({
+        ...goal,
+        actions: (goal.actions || []).filter((action) => action.id !== actionId),
+      }))
+    );
+  };
+
+  const renderGoalBlock = ({ title, accent, emoji, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, onCancel, extraHeader }) => (
+    <div style={{ borderRadius: 16, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
+          <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 3 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 등록된 목표가 없어요'}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {extraHeader}
+          <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+            {editing ? '저장 ✓' : '편집'}
+          </button>
+        </div>
+      </div>
+
+      {editing ? (
+        <>
+          {draft.map((goal, index) => (
+            <div key={`${title}-${index}`} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={goal}
+                onChange={(e) => setDraft(prev => prev.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                placeholder={`${title} ${index + 1}`}
+                maxLength={40}
+              />
+              <button onClick={() => setDraft(prev => prev.filter((_, itemIndex) => itemIndex !== index))} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+          {draft.length < 5 && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={newInput}
+                onChange={(e) => setNewInput(e.target.value)}
+                placeholder={`${title} 추가`}
+                maxLength={40}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newInput.trim()) {
+                    setDraft(prev => [...prev, newInput.trim()]);
+                    setNewInput('');
+                  }
+                }}
+              />
+              <button onClick={() => {
+                if (!newInput.trim()) return;
+                setDraft(prev => [...prev, newInput.trim()]);
+                setNewInput('');
+              }} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '0 14px', fontSize: 18 }}>+</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button onClick={onSave} style={{ ...S.btn, flex: 1, marginTop: 0 }}>저장</button>
+            <button onClick={onCancel} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>취소</button>
+          </div>
+        </>
+      ) : items.length > 0 ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {items.map((goal, index) => (
+            <div key={`${title}-item-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 0', borderBottom: index < items.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
+              <div style={{ width: 20, height: 20, borderRadius: 999, background: accent, color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{index + 1}</div>
+              <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{goal}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+          <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6 }}>아직 비어 있어요. 필요할 때만 짧게 적어두세요.</div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderYearGoalsBlock = () => (
+    <div style={{ borderRadius: 16, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>🌱 올해 목표</div>
+          <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 3 }}>{yearGoals.length > 0 ? `${yearGoals.length}개 등록됨` : '아직 등록된 목표가 없어요'}</div>
+        </div>
+        <button onClick={editingYearGoals ? saveYearGoals : () => {
+          setGoalsOpen(true);
+          setYearDraft(yearGoals.map((goal) => goal.title));
+          setNewYearInput('');
+          setEditingYearGoals(true);
+        }} style={{ fontSize: 11, fontWeight: 900, color: editingYearGoals ? '#4ADE80' : '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          {editingYearGoals ? '저장 ✓' : '편집'}
+        </button>
+      </div>
+
+      {editingYearGoals ? (
+        <>
+          {yearDraft.map((goal, index) => (
+            <div key={`year-draft-${index}`} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={goal}
+                onChange={(e) => setYearDraft(prev => prev.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                placeholder={`올해 목표 ${index + 1}`}
+                maxLength={40}
+              />
+              <button onClick={() => setYearDraft(prev => prev.filter((_, itemIndex) => itemIndex !== index))} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+          {yearDraft.length < 5 && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={newYearInput}
+                onChange={(e) => setNewYearInput(e.target.value)}
+                placeholder="올해 목표 추가"
+                maxLength={40}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newYearInput.trim()) {
+                    setYearDraft(prev => [...prev, newYearInput.trim()]);
+                    setNewYearInput('');
+                  }
+                }}
+              />
+              <button onClick={() => {
+                if (!newYearInput.trim()) return;
+                setYearDraft(prev => [...prev, newYearInput.trim()]);
+                setNewYearInput('');
+              }} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '0 14px', fontSize: 18 }}>+</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button onClick={saveYearGoals} style={{ ...S.btn, flex: 1, marginTop: 0 }}>저장</button>
+            <button onClick={() => {
+              setEditingYearGoals(false);
+              setYearDraft(yearGoals.map((goal) => goal.title));
+              setNewYearInput('');
+            }} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>취소</button>
+          </div>
+        </>
+      ) : yearGoals.length > 0 ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {yearGoals.map((goal, index) => {
+            const expanded = expandedYearGoalId === goal.id;
+            return (
+              <div key={goal.id} style={{ borderRadius: 14, border: `1px solid ${expanded ? 'rgba(108,142,255,.28)' : 'var(--dm-border)'}`, background: expanded ? 'rgba(108,142,255,.05)' : 'rgba(255,255,255,.02)' }}>
+                <button type="button" onClick={() => setExpandedYearGoalId(prev => prev === goal.id ? null : goal.id)} style={{ width: '100%', background: 'transparent', border: 'none', padding: '12px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 999, background: '#6C8EFF', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{index + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{goal.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 3 }}>액션플랜 {(goal.actions || []).length}개</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 900 }}>{expanded ? '▲' : '▼'}</div>
+                </button>
+                {expanded && (
+                  <div style={{ padding: '0 12px 12px', borderTop: '1px solid rgba(255,255,255,.05)' }}>
+                    {(goal.actions || []).length > 0 ? (
+                      <div style={{ display: 'grid', gap: 6, marginTop: 10, marginBottom: 10 }}>
+                        {(goal.actions || []).map((action) => (
+                          <div key={action.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.05)' }}>
+                            <div style={{ fontSize: 12, color: '#AFC0FF', flexShrink: 0 }}>•</div>
+                            <div style={{ flex: 1, fontSize: 12, color: 'var(--dm-text)', lineHeight: 1.5 }}>{action.title}</div>
+                            <button onClick={() => removeYearGoalAction(goal.id, action.id)} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 10, marginBottom: 10, fontSize: 12, color: 'var(--dm-muted)' }}>아직 액션플랜이 없어요.</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input style={{ ...S.input, flex: 1, marginBottom: 0 }} value={actionDrafts[goal.id] || ''} onChange={(e) => setActionDrafts(prev => ({ ...prev, [goal.id]: e.target.value }))} placeholder="세부 액션플랜 추가" maxLength={60} onKeyDown={(e) => { if (e.key === 'Enter') addYearGoalAction(goal.id); }} />
+                      <button onClick={() => addYearGoalAction(goal.id)} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '0 14px', fontSize: 18 }}>+</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+          <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6 }}>아직 비어 있어요. 목표를 등록한 뒤 각 항목을 눌러 액션플랜을 적을 수 있어요.</div>
+        </div>
+      )}
+    </div>
+  );
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
 
@@ -114,13 +411,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {/* 범례 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 10px', flexWrap: 'wrap' }}>
         {[
-          { color: '#4ADE80', bg: 'rgba(74,222,128,.18)', label: '80%↑' },
-          { color: '#FCD34D', bg: 'rgba(252,211,77,.14)', label: '50~79%' },
-          { color: '#F87171', bg: 'rgba(248,113,113,.10)', label: '50%↓' },
-          { color: '#6C8EFF', bg: '#6C8EFF', label: '오늘', textColor: '#fff' },
-        ].map(({ color, bg, label, textColor }) => (
+          { color: 'rgba(255,255,255,.18)', bg: 'rgba(255,255,255,.03)', label: '미완료' },
+          { color: '#7F9BFF', bg: 'rgba(75,111,255,.10)', label: '진행중' },
+          { color: '#6C8EFF', bg: 'rgba(75,111,255,.22)', label: '완료에 가까움' },
+          { color: '#6C8EFF', bg: 'transparent', label: '오늘', outline: true },
+        ].map(({ color, bg, label, outline }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: `1.5px solid ${color}` }} />
+            <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: outline ? `1.5px solid ${color}` : `1.5px solid ${color}` }} />
             <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
           </div>
         ))}
@@ -236,10 +533,65 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         );
       })()}
 
-      <div style={S.sectionTitle}>📅 이번주 일정</div>
-      <div style={{ padding: "0 16px" }}>
-        <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} />
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span>📅 이번주 일정</span>
+        <button
+          onClick={() => setWeeklyOpen(v => !v)}
+          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', fontWeight: 700 }}
+        >
+          {weeklyOpen ? '접기 ▲' : '펼치기 ▼'}
+        </button>
       </div>
+      {weeklyOpen && (
+        <div style={{ padding: "0 16px" }}>
+          <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} onToggleTask={onToggleTaskForDate} />
+        </div>
+      )}
+
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span>🎯 목표</span>
+        <button
+          onClick={() => setGoalsOpen(v => !v)}
+          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', fontWeight: 700 }}
+        >
+          {goalsOpen ? '접기 ▲' : `펼치기 ▼ · 올해 ${yearGoals.length}개 / 월별 목표 ${monthGoals.length}개`}
+        </button>
+      </div>
+      {goalsOpen && (
+        <div style={{ padding: '0 16px', display: 'grid', gap: 10 }}>
+          {renderYearGoalsBlock()}
+          {renderGoalBlock({
+            title: '월별 목표',
+            accent: '#4ADE80',
+            emoji: '🗓️',
+            items: monthGoals,
+            editing: editingMonthGoals,
+            draft: monthDraft,
+            setDraft: setMonthDraft,
+            newInput: newMonthInput,
+            setNewInput: setNewMonthInput,
+            onStartEdit: () => {
+              setGoalsOpen(true);
+              setMonthDraft([...monthGoals]);
+              setNewMonthInput('');
+              setEditingMonthGoals(true);
+            },
+            onSave: saveMonthGoals,
+            onCancel: () => {
+              setEditingMonthGoals(false);
+              setMonthDraft([...monthGoals]);
+              setNewMonthInput('');
+            },
+            extraHeader: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => shiftGoalMonth(-1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>‹</button>
+                <div style={{ minWidth: 78, textAlign: 'center', fontSize: 11, color: 'var(--dm-text)', fontWeight: 800 }}>{selectedGoalMonthLabel}</div>
+                <button onClick={() => shiftGoalMonth(1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>›</button>
+              </div>
+            ),
+          })}
+        </div>
+      )}
 
       <div style={{ height: 12 }} />
 

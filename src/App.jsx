@@ -8,9 +8,12 @@ import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
+import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
+import { APP_COMMIT, APP_VERSION } from "./version.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
 const Today = lazy(() => import("./screens/Today.jsx"));
@@ -25,6 +28,7 @@ const InvestDiary = lazy(() => import("./screens/InvestDiary.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 
 export default function App() {
+  const phoneRef = useRef(null);
   const [screen, setScreen] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -60,6 +64,10 @@ export default function App() {
   const [communityUnread, setCommunityUnread] = useState(0);
   const [pendingInviteCode, setPendingInviteCode] = useState(() => store.get('dm_pending_invite', ''));
   const [recentInviteReward, setRecentInviteReward] = useState(() => store.get('dm_recent_invite_reward', null));
+  const [dismissedInvitePromptCode, setDismissedInvitePromptCode] = useState(() => store.get('dm_invite_prompt_dismissed_code', ''));
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [canApplyUpdate, setCanApplyUpdate] = useState(false);
+  const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
 
   // PWA 설치 프롬프트
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -73,6 +81,34 @@ export default function App() {
     if (store.get('dm_install_dismissed')) return false;
     return isIOS;
   });
+
+  const scrollActiveViewToTop = () => {
+    try {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+
+    const phoneEl = phoneRef.current;
+    if (!phoneEl) return;
+
+    const scrollRoot = Array.from(phoneEl.querySelectorAll('*')).find((el) => {
+      const style = window.getComputedStyle(el);
+      return (style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight;
+    });
+
+    if (scrollRoot) {
+      scrollRoot.scrollTop = 0;
+    }
+  };
+
+  useEffect(() => {
+    const rafId = requestAnimationFrame(() => {
+      scrollActiveViewToTop();
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [screen]);
+
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
@@ -94,6 +130,47 @@ export default function App() {
     store.set('dm_install_dismissed', true);
   };
 
+  useEffect(() => {
+    const seenCommit = store.get('dm_seen_app_commit', null);
+    if (!isStandalone) {
+      store.set('dm_seen_app_commit', APP_COMMIT);
+      return;
+    }
+    if (!seenCommit) {
+      store.set('dm_seen_app_commit', APP_COMMIT);
+      return;
+    }
+    if (seenCommit !== APP_COMMIT) {
+      setShowUpdateBanner(true);
+    }
+  }, [isStandalone]);
+
+  useEffect(() => {
+    const onUpdateReady = () => {
+      setCanApplyUpdate(true);
+      setShowUpdateBanner(true);
+    };
+    window.addEventListener('daymate-update-ready', onUpdateReady);
+    if (typeof window !== 'undefined' && typeof window.__daymateHasPendingUpdate === 'function' && window.__daymateHasPendingUpdate()) {
+      onUpdateReady();
+    }
+    return () => window.removeEventListener('daymate-update-ready', onUpdateReady);
+  }, []);
+
+  const dismissUpdateBanner = () => {
+    setShowUpdateBanner(false);
+    setCanApplyUpdate(false);
+    store.set('dm_seen_app_commit', APP_COMMIT);
+  };
+
+  const applyPendingUpdate = () => {
+    if (typeof window !== 'undefined' && typeof window.__daymateApplyUpdate === 'function') {
+      window.__daymateApplyUpdate();
+      return;
+    }
+    dismissUpdateBanner();
+  };
+
   const openInviteFlow = () => {
     if (!pendingInviteCode) return;
     store.set('dm_open_settings_subpage', 'friends');
@@ -106,11 +183,19 @@ export default function App() {
       const reward = { code, claimedAt: Date.now() };
       setPendingInviteCode('');
       setRecentInviteReward(reward);
+      setDismissedInvitePromptCode('');
       store.remove('dm_pending_invite');
       store.set('dm_recent_invite_reward', reward);
+      store.remove('dm_invite_prompt_dismissed_code');
       return;
     }
     setPendingInviteCode(code);
+  };
+
+  const dismissInvitePrompt = () => {
+    if (!pendingInviteCode) return;
+    setDismissedInvitePromptCode(pendingInviteCode);
+    store.set('dm_invite_prompt_dismissed_code', pendingInviteCode);
   };
 
   const dismissInviteReward = () => {
@@ -161,8 +246,9 @@ export default function App() {
     store.set('dm_font_scale', fontScale);
   }, [fontScale]);
 
+  const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
-  const [goals, setGoals] = useState(() => store.get("dm_goals", { year: [], month: [] }));
+  const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
   const [lifeGoals, setLifeGoalsState] = useState(() => store.get("dm_life_goals", []));
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
@@ -208,6 +294,26 @@ export default function App() {
     });
     setActiveCommunityIdState(id);
     store.set('dm_active_community_id', id);
+  };
+  const reorderCommunityId = (communityId, direction) => {
+    setCommunityIdsState(prev => {
+      const currentIndex = prev.findIndex(id => id === communityId);
+      if (currentIndex < 0) return prev;
+      let targetIndex = -1;
+      if (direction === 'up' || direction === 'down') {
+        targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      } else {
+        targetIndex = prev.findIndex(id => id === direction);
+      }
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      if (targetIndex === currentIndex) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      store.set('dm_community_ids', next);
+      return next;
+    });
   };
   const removeCommunityId = (id) => {
     setCommunityIdsState(prev => {
@@ -331,7 +437,7 @@ export default function App() {
     if (daysLeft > 7) return;
     const alertKey = `dm_month_alert_${toDateStr()}`;
     if (store.get(alertKey, false)) return;
-    const monthGoals = goals.month || [];
+    const monthGoals = getMonthGoals(goals, currentGoalMonthKey);
     if (monthGoals.length === 0) return;
     const done = monthGoals.filter((_, i) => goalChecks[i]).length;
     const pct = done / monthGoals.length;
@@ -613,7 +719,11 @@ export default function App() {
             const ym = todayStr.slice(0, 7);
             if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
           }
-          if (remote.goals) { setGoals(remote.goals); store.set("dm_goals", remote.goals); }
+          if (remote.goals) {
+            const normalizedGoals = normalizeGoals(remote.goals, currentGoalMonthKey);
+            setGoals(normalizedGoals);
+            store.set("dm_goals", normalizedGoals);
+          }
           if (Object.keys(remote.days).length > 0) {
             const merged = { ...remote.days };
             Object.entries(remote.days).forEach(([ds, d]) => { saveDay(ds, d); });
@@ -694,6 +804,24 @@ export default function App() {
     });
   };
 
+  const setDayData = (dateStr, updater) => {
+    setPlans((prev) => {
+      const cur = prev[dateStr] || newDay(dateStr);
+      const nextDay = typeof updater === "function" ? updater(cur) : updater;
+      const next = { ...prev, [dateStr]: nextDay };
+      saveDay(dateStr, nextDay);
+      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, dateStr, nextDay).catch(() => {});
+      return next;
+    });
+  };
+
+  const toggleTaskForDate = (dateStr, taskId) => {
+    setDayData(dateStr, (cur) => ({
+      ...cur,
+      tasks: (cur.tasks || []).map((task) => task.id === taskId ? { ...task, done: !task.done } : task),
+    }));
+  };
+
   const openDetail = (ds) => {
     setPlans((prev) => {
       if (prev[ds]) return prev;
@@ -769,7 +897,14 @@ export default function App() {
   };
 
   const onSaveMonthGoals = (monthGoals) => {
-    const nextGoals = { ...goals, month: monthGoals };
+    const nextGoals = setGoalsMonth(goals, currentGoalMonthKey, monthGoals, currentGoalMonthKey);
+    setGoals(nextGoals);
+    store.set("dm_goals", nextGoals);
+    if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
+  };
+
+  const onSaveGoals = (nextGoalsRaw) => {
+    const nextGoals = normalizeGoals(nextGoalsRaw, currentGoalMonthKey);
     setGoals(nextGoals);
     store.set("dm_goals", nextGoals);
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
@@ -1003,7 +1138,9 @@ export default function App() {
 
   const changeScreen = (s, options = {}) => {
     setCommunityInitialTab(s === 'community' ? (options.communityTab || null) : null);
+    setHistoryInitialGoalsOpen(s === 'history' && !!options.openGoals);
     setScreen(s);
+    try { document.activeElement?.blur?.(); } catch {}
     history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
   };
 
@@ -1025,8 +1162,7 @@ export default function App() {
               return next;
             });
           }}
-          goalChecks={goalChecks} onToggleGoal={onToggleGoal}
-          onSetTodayTasks={onSetTodayTasks} onSaveMonthGoals={onSaveMonthGoals}
+          onSetTodayTasks={onSetTodayTasks}
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           someday={someday} setSomeday={setSomeday}
@@ -1039,11 +1175,13 @@ export default function App() {
           getValidGcalToken={getValidGcalToken}
           myRank={myRank} onOpenStats={() => changeScreen("stats")}
           onLuckyXp={addInviteBonus}
-          lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+          onOpenGoalsHub={() => changeScreen('history', { openGoals: true })}
           onOpenSettings={() => changeScreen("settings")}
           pendingInviteCode={pendingInviteCode}
+          invitePromptCode={!showInstallBanner && pendingInviteCode && dismissedInvitePromptCode !== pendingInviteCode ? pendingInviteCode : ''}
           recentInviteReward={recentInviteReward}
           onOpenInviteFlow={openInviteFlow}
+          onDismissInvitePrompt={dismissInvitePrompt}
           onDismissInviteReward={dismissInviteReward}
           levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
           myChallenges={myChallenges}
@@ -1083,6 +1221,7 @@ export default function App() {
           communityIds={communityIds}
           activeCommunityId={activeCommunityId}
           setActiveCommunityId={setActiveCommunityId}
+          reorderCommunityId={reorderCommunityId}
           addCommunityId={addCommunityId}
           removeCommunityId={removeCommunityId}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
@@ -1094,7 +1233,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onSyncGcal={syncGcalByDate} />;
+      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} onBack={() => history.back()} />;
@@ -1213,9 +1352,17 @@ export default function App() {
 
   return (
     <div style={S.app}>
-      <div style={S.phone} className="dm-phone">
+      <div ref={phoneRef} style={S.phone} className="dm-phone">
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
+        {showUpdateBanner && (
+          <UpdateBanner
+            mode={canApplyUpdate ? 'ready' : 'updated'}
+            version={APP_VERSION}
+            onApply={applyPendingUpdate}
+            onDismiss={dismissUpdateBanner}
+          />
+        )}
         <Suspense fallback={(
           <div style={{ ...S.content, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
             <div style={{ ...S.card, width: 'calc(100% - 32px)', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>

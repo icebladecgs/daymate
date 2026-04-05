@@ -5,6 +5,7 @@ import { getPermission, requestPermission, sendNotification, playNotifSound, tri
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
+import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
@@ -103,7 +104,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [menuSearch, setMenuSearch] = useState('');
   const [showAllMenu, setShowAllMenu] = useState(false);
   const [name, setName] = useState(user.name || "");
-  const [yearText, setYearText] = useState((goals.year || []).join("\n"));
+  const [yearText, setYearText] = useState(getYearGoalTitles(goals).join("\n"));
   const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
   const [birthTime, setBirthTime] = useState(() => store.get('dm_birth_time', ''));
   const [permission, setPermission] = useState(getPermission());
@@ -135,6 +136,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   // Drive
   const driveConnected = !!(driveToken && Date.now() < driveTokenExp);
   const [driveStatus, setDriveStatus] = useState('');
+
+  useEffect(() => {
+    setYearText(getYearGoalTitles(goals).join("\n"));
+  }, [goals]);
 
   const applyInviteCode = (code) => {
     if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return false; }
@@ -299,10 +304,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
   const save = () => {
     const nextUser = { name: (name || "").trim() || "사용자" };
-    const nextGoals = {
-      year: clampList(parseLines(yearText), 5),
-      month: goals.month || [],
-    };
+    const nextGoals = setNormalizedYearGoals(goals, clampList(parseLines(yearText), 5));
     setUser(nextUser);
     setGoals(nextGoals);
     store.set("dm_user", nextUser);
