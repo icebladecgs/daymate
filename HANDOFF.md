@@ -38,22 +38,23 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
-- 챌린지 화면에서 참여자 레벨/XP 표시를 개선했다.
-- 통계 화면에 내 레벨 진행 카드와 더 읽기 쉬운 랭킹 표현을 추가했다.
-- `api/notify.js` 문법 오류를 수정했고, 여러 API에 로깅/보호 로직을 추가했다.
-- 앱 버전은 `scripts/generate-version.mjs`로 자동 생성되며 `predev`, `prebuild`에 연결돼 있다.
-- Vite manual chunk 설정으로 초기 번들을 줄였다.
-- `telegram_agent.py`는 이제:
-  - 히스토리를 더 짧게 유지한다.
-  - tool 결과를 잘라서 저장한다.
-  - 컨텍스트 초과 시 최근 요청만 남기고 재시도한다.
-  - `search_files` 도구와 줄 범위 `read_file`을 사용한다.
-  - 실행 환경을 Windows로 단정하지 않는다.
-- `telegram_agent.py`의 Vercel 토큰 하드코딩은 제거했고 `.env.local` 환경변수로 옮겼다.
-- Windows helper script와 Mac helper script를 추가해 봇 start/stop/status를 쉽게 했다.
-- `.env.local.example`과 `requirements.txt`를 추가해 머신 이동/세팅을 단순화했다.
-- Mac helper script는 LaunchAgent가 있으면 `launchctl` 기반으로 동작하도록 보강했다.
-- Mac에서 외울 명령을 줄이기 위해 `MAC_WORKFLOW.md`와 `npm run tg:mac:update` 흐름을 정리했다.
+### 2026-04-06 (Windows 작업분)
+- 초대 플로우 개선 및 에이전트 ops 정비
+- 브랜드 레이블 통일
+- 인스톨 배너 클릭 가능 + 우선순위 조정
+- **오늘 습관 드래그 순서 변경 기능 추가** (`@dnd-kit/core`, `@dnd-kit/sortable` 신규 의존성)
+- **비공개 커뮤니티 4자리 암호 기능** — 서버사이드 검증 (`joinPublicCommunity`)
+- `mode` useEffect ReferenceError 수정
+- Vercel 빌드 버전 보존 / 캐시 버전 갱신 수정
+- `index.html`, `sw.js`, `vite.config` 누락 파일 포함
+- `telegram_agent.py` 추가 개선 (history 관리 등)
+- Mac: git pull + npm install 완료 (2026-04-06)
+
+### 이전 변경 이력 (요약)
+- AI_WIKI 구조 및 루트 MEMORY.md 인덱스 추가
+- Mac helper script, LaunchAgent 연동, MAC_WORKFLOW.md 정리
+- `telegram_agent.py` 개선 (히스토리 단축, 컨텍스트 초과 처리, 환경변수화)
+- 앱 버전 자동 생성(`scripts/generate-version.mjs`), Vite manual chunk 설정
 
 ## Current Risks / Notes
 - Mac 쪽 저장소도 최신 코드로 `git pull` 되어 있어야 한다.
