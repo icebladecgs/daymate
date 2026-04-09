@@ -204,6 +204,17 @@ export async function loadAllCommunities() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// 내가 가입한 커뮤니티 ID 목록을 Firestore에서 복구
+export async function loadMyCommunityIds(uid) {
+  const allSnap = await getDocs(collection(db, 'communities'));
+  const ids = [];
+  for (const d of allSnap.docs) {
+    const memberSnap = await getDoc(doc(db, 'communities', d.id, 'members', uid));
+    if (memberSnap.exists()) ids.push(d.id);
+  }
+  return ids;
+}
+
 export async function loadPublicCommunities() {
   const q = query(collection(db, 'communities'), where('isPublic', '==', true));
   const snap = await getDocs(q);

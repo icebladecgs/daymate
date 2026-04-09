@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -359,6 +359,31 @@ export default function App() {
   useEffect(() => {
     if (!authUser) return;
     loadMyChallenges(authUser.uid).then(setMyChallenges).catch(() => {});
+  }, [authUser]);
+
+  // Firestore에서 내가 가입한 커뮤니티 목록 복구 (localStorage 유실 대비)
+  useEffect(() => {
+    if (!authUser) return;
+    loadMyCommunityIds(authUser.uid).then(serverIds => {
+      if (!serverIds.length) return;
+      setCommunityIdsState(prev => {
+        const merged = [...new Set([...prev, ...serverIds])];
+        if (merged.length !== prev.length || merged.some((id, i) => id !== prev[i])) {
+          store.set("dm_community_ids", merged);
+          return merged;
+        }
+        return prev;
+      });
+      // activeCommunityId가 없으면 첫 번째로 설정
+      setActiveCommunityIdState(prev => {
+        if (!prev || !serverIds.includes(prev)) {
+          const fallback = serverIds[0];
+          store.set("dm_active_community_id", fallback);
+          return fallback;
+        }
+        return prev;
+      });
+    }).catch(() => {});
   }, [authUser]);
 
   const onToggleCommunityEvent = (eventId) => {
