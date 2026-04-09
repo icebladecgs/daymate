@@ -218,7 +218,10 @@ export async function loadMyCommunityIds(uid) {
 export async function loadPublicCommunities() {
   const q = query(collection(db, 'communities'), where('isPublic', '==', true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => {
+    const { password, ...rest } = d.data();
+    return { id: d.id, ...rest, hasPassword: !!password };
+  });
 }
 
 export async function joinPublicCommunity(uid, communityId, nickname, password) {
@@ -234,7 +237,8 @@ export async function findCommunityByCode(code) {
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const d = snap.docs[0];
-  return { communityId: d.id, ...d.data() };
+  const { password, ...rest } = d.data();
+  return { communityId: d.id, ...rest, hasPassword: !!password };
 }
 
 export async function joinCommunity(uid, communityId, nickname) {

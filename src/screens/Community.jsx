@@ -418,6 +418,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleJoin = async () => {
     if (!foundCommunity || !nicknameInput.trim()) return;
+    if (foundCommunity.hasPassword && !codePassword.trim()) { setToast('비밀번호를 입력해주세요 🔑'); return; }
     setSubmitting(true);
     try {
       await joinPublicCommunity(authUser.uid, foundCommunity.communityId, nicknameInput.trim(), codePassword.trim());
@@ -431,6 +432,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleJoinPublic = async () => {
     if (!selectedPublic || !nicknameInput.trim()) return;
+    if (selectedPublic.hasPassword && !pubPassword.trim()) { setToast('비밀번호를 입력해주세요 🔑'); return; }
     setSubmitting(true);
     try {
       await joinPublicCommunity(authUser.uid, selectedPublic.id, nicknameInput.trim(), pubPassword.trim());
@@ -667,7 +669,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(74,222,128,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🌐</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {c.memberCount}명 {c.password ? '· 🔑 비밀번호' : '· 자유 입장'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {c.memberCount}명 {c.hasPassword ? '· 🔑 비밀번호' : '· 자유 입장'}</div>
                     </div>
                     <button style={{ background: 'rgba(108,142,255,.15)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 8, padding: '5px 12px', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>가입</button>
                   </div>
@@ -778,14 +780,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 }}>
                   <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--dm-text)' }}>{c.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
-                    멤버 {c.memberCount}명 {c.password ? '· 🔑 비밀번호 있음' : '· 자유 입장'}
+                    멤버 {c.memberCount}명 {c.hasPassword ? '· 🔑 비밀번호 있음' : '· 자유 입장'}
                   </div>
                 </button>
               ))}
               {selectedPublic && (
                 <>
-                  {selectedPublic.password && (
-                    <input style={S.input} placeholder="비밀번호" type="password" value={pubPassword} onChange={e => setPubPassword(e.target.value)} maxLength={20} />
+                  {selectedPublic.hasPassword && (
+                    <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,.08)', border: '1px solid rgba(255,107,107,.3)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#FF6B6B', marginBottom: 6 }}>🔑 이 방은 비밀번호가 필요해요</div>
+                      <input style={{ ...S.input, borderColor: 'rgba(255,107,107,.4)', margin: 0 }} placeholder="비밀번호 4자리" type="text" inputMode="numeric" value={pubPassword} onChange={e => setPubPassword(e.target.value.replace(/\D/g, '').slice(0, 4))} maxLength={4} />
+                    </div>
                   )}
                   <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
                   <button style={S.btn} onClick={handleJoinPublic} disabled={submitting || !nicknameInput.trim()}>
@@ -813,10 +818,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(108,142,255,.08)', border: '1px solid rgba(108,142,255,.2)' }}>
                     <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{foundCommunity.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
-                      멤버 {foundCommunity.memberCount}명 {foundCommunity.password ? '· 🔑 암호 있음' : '· 자유 입장'}
+                      멤버 {foundCommunity.memberCount}명 {foundCommunity.hasPassword ? '· 🔑 암호 있음' : '· 자유 입장'}
                     </div>
                   </div>
-                  {foundCommunity.password && (
+                  {foundCommunity.hasPassword && (
                     <input
                       style={S.input}
                       placeholder="입장 암호 4자리"
