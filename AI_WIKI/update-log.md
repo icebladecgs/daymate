@@ -135,3 +135,39 @@
 - 관련 문서: frontend / ops
 - 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
 - 다음 작업 메모: `window.prompt` 대신 앱 내부 모달 입력 UI로 바꾸면 모바일/PWA 경험이 더 안정적일 수 있음
+
+### 2026-04-10 10:30
+- 커뮤니티 화면에서 저장된 활성 커뮤니티 ID가 비어 있거나 목록과 어긋나면 첫 커뮤니티로 자동 복구하고 홈 목록으로 되돌리도록 보강함
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 커뮤니티 암호 입력을 `window.prompt` 대신 앱 내부 모달로 바꾸면 캐시/모바일 UX를 더 안정적으로 다듬을 수 있음
+
+### 2026-04-10 10:55
+- 통합 검색에서 메모/일기 결과를 누르면 날짜 전체 화면 대신 해당 메모/일기만 단독으로 열고, 단독 뷰 카드가 화면 높이를 최대한 채우도록 확장함
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 필요하면 통합 검색 하이라이트를 단독 뷰 본문에도 이어서 적용할 수 있음
+
+### 2026-04-10 11:05
+- 집중 모드 시작 전 안내 박스를 추가해 시간 내 집중 모드라는 점과 완료 시 추가 XP 보너스를 받는다는 점을 명시함
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 필요하면 집중 모드 완료 보상 규칙을 선택 시간 옆에도 더 직접적으로 노출할 수 있음
+
+### 2026-04-10 11:15
+- 통합 검색에서 메모/일기 결과 클릭 시 단독 뷰로 전환되던 흐름의 React 훅 순서 문제를 수정해 런타임 불안정을 없앰
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 필요하면 메모/일기 단독 뷰에서도 검색어 하이라이트를 이어서 보여줄 수 있음
+
+### 2026-04-10 11:25
+- 통합 검색에서 연 메모/일기 단독 화면을 읽기 전용이 아니라 바로 수정 후 저장 가능한 편집 화면으로 확장함
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 필요하면 저장 후 토스트나 자동 저장 UX를 추가해 편집 피드백을 더 강화할 수 있음
+
+### 2026-04-10 11:35
+- 집중 모드 모달을 작은 모바일 화면에서도 하단 네비게이션과 safe-area를 고려해 한 화면 안에 들어오도록 반응형으로 재구성함
+- 관련 문서: frontend
+- 검증: `npm run build`, `vercel deploy --prod --yes`, `https://daymate-beta.vercel.app`
+- 다음 작업 메모: 다른 전체화면 모달도 같은 기준으로 점검해 작은 화면 오버플로를 줄일 것

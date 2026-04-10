@@ -265,13 +265,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const requestCommunityAccess = async (id, options = {}) => {
     if (!id) return false;
-    const meta = communityMeta[id] || await loadCommunityData(id);
+    const latestMeta = await loadCommunityData(id).catch(() => null);
+    const meta = latestMeta || communityMeta[id] || null;
     if (!meta) {
       removeCommunityId?.(id);
       setToast('커뮤니티를 찾을 수 없어요');
       return false;
     }
-    if (communityMeta[id] !== meta) {
+    if (!communityMeta[id] || communityMeta[id].password !== meta.password || communityMeta[id].name !== meta.name || communityMeta[id].memberCount !== meta.memberCount || communityMeta[id].inviteCode !== meta.inviteCode) {
       setCommunityNames(prev => ({ ...prev, [id]: meta.name }));
       setCommunityMeta(prev => ({ ...prev, [id]: meta }));
     }
@@ -292,6 +293,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   useEffect(() => {
     if (mode !== 'join') { setFoundCommunity(null); setCodePassword(''); }
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== null || showHome) return;
+    if (!communityIds?.length) return;
+    if (communityId && communityIds.includes(communityId)) return;
+    setActiveCommunityId(communityIds[0]);
+    setShowHome(true);
+  }, [mode, showHome, communityId, communityIds, setActiveCommunityId]);
 
   // 이벤트 추가 UI
   const [showAdd, setShowAdd] = useState(false);

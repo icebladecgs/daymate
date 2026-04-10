@@ -2,6 +2,20 @@
 
 DayMate is a React + Vite personal dashboard for daily tasks, habits, journaling, community features, challenges, Telegram notifications, and lightweight serverless automations.
 
+## AI project wiki
+
+This repo includes an AI-oriented project knowledge layer under `AI_WIKI/`.
+
+- `AI_WIKI/overview.md`: project and architecture overview
+- `AI_WIKI/frontend.md`: UI structure and frontend notes
+- `AI_WIKI/ops.md`: versioning, deploy, PWA, cache behavior
+- `AI_WIKI/telegram.md`: Telegram dev bot and multi-machine workflow
+- `AI_WIKI/decisions.md`: important product/technical decisions
+- `AI_WIKI/known-issues.md`: recurring issues and workarounds
+- `AI_WIKI/update-log.md`: short ongoing work log
+
+For AI handoff or session restart, read `AI_WIKI/README.md` first.
+
 ## Local development
 
 ```bash

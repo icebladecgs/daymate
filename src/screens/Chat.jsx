@@ -107,6 +107,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
           },
         }),
       });
+      if (!res.ok) throw new Error(`chat ${res.status}`);
       const data = await res.json();
       if (data.reply) {
         // 액션 처리 (할일 추가/완료/삭제, 메모 추가)

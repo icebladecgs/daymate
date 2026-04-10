@@ -8,7 +8,7 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -378,7 +378,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     </div>
   );
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
+  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>

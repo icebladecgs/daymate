@@ -25,6 +25,7 @@ const Admin = lazy(() => import("./screens/Admin.jsx"));
 const Chat = lazy(() => import("./screens/Chat.jsx"));
 const Community = lazy(() => import("./screens/Community.jsx"));
 const InvestDiary = lazy(() => import("./screens/InvestDiary.jsx"));
+const Portfolio = lazy(() => import("./screens/Portfolio.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 
 export default function App() {
@@ -334,12 +335,28 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!communityIds.length) {
+      if (activeCommunityId !== null) {
+        setActiveCommunityIdState(null);
+        store.set('dm_active_community_id', null);
+      }
+      return;
+    }
+
+    if (!activeCommunityId || !communityIds.includes(activeCommunityId)) {
+      const fallback = communityIds[0];
+      setActiveCommunityIdState(fallback);
+      store.set('dm_active_community_id', fallback);
+    }
+  }, [communityIds, activeCommunityId]);
+
+  useEffect(() => {
     if (!authUser) return;
     loadRankings().then(list => {
       const sorted = list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
       const idx = sorted.findIndex(r => r.uid === authUser.uid);
       if (idx >= 0) setMyRank({ rank: idx + 1, total: sorted.length, totalScore: sorted[idx].totalScore || 0 });
-    }).catch(() => {});
+    }).catch(e => console.error('[App] loadRankings failed:', e));
   }, [authUser]);
 
   const todayStr = toDateStr();
@@ -442,7 +459,7 @@ export default function App() {
     pullFromGcal(token).then(n => {
       store.set('dm_last_gcal_sync', today);
       if (n > 0) setToast(`구글 캘린더에서 ${n}개 일정을 가져왔어요`);
-    }).catch(() => {});
+    }).catch(e => console.error('[App] gcal auto-sync failed:', e));
   }, []); // eslint-disable-line
 
   // Drive 자동 백업 (하루 1회)
@@ -451,7 +468,7 @@ export default function App() {
     if (!token) return;
     const today = toDateStr();
     if (store.get('dm_last_drive_backup', '')?.slice(0, 10) === today) return;
-    performDriveBackup(token).catch(() => {});
+    performDriveBackup(token).catch(e => console.error('[App] drive auto-backup failed:', e));
   }, []); // eslint-disable-line
 
   // 월말 목표 달성률 알림
@@ -892,13 +909,13 @@ export default function App() {
 
     const newTaskIds = new Set(tasks.map(t => t.id));
     prevTasks.filter(t => t.gcalEventId && !newTaskIds.has(t.id))
-      .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(() => {}));
+      .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(e => console.error('[App] gcal delete failed:', e)));
 
     const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
     tasks.forEach(t => {
       const prev = prevTaskMap.get(t.id);
       if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
-        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(() => {});
+        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(e => console.error('[App] gcal update failed:', e));
       }
     });
 
@@ -1214,6 +1231,8 @@ export default function App() {
           communityEventChecks={communityEventChecks}
           onToggleCommunityEvent={onToggleCommunityEvent}
           onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
+          telegramCfg={telegramCfg}
+          onOpenPortfolio={() => changeScreen("portfolio")}
         />
       );
     }
@@ -1221,7 +1240,7 @@ export default function App() {
       const d = plans[todayStr] || newDay(todayStr);
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
-          toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail}
+          toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")} />
       );
     }
@@ -1230,6 +1249,17 @@ export default function App() {
         <InvestDiary
           uid={authUser?.uid}
           telegramCfg={telegramCfg}
+          onBack={() => history.back()}
+        />
+      );
+    }
+    if (screen === "portfolio") {
+      return (
+        <Portfolio
+          uid={authUser?.uid}
+          telegramCfg={telegramCfg}
+          setTelegramCfg={setTelegramCfg}
+          authUser={authUser}
           onBack={() => history.back()}
         />
       );
@@ -1258,7 +1288,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} />;
+      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} onBack={() => history.back()} />;

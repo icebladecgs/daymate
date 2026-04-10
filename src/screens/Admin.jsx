@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, doc, getDoc } from "firebase/firestore";
-import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge } from "../firebase.js";
 import S from "../styles.js";
 
 const ADMIN_CONFIG_PATH = "admin/config";
@@ -291,22 +291,38 @@ match /users/{uid} {
         {/* 챌린지 탭 */}
         {activeTab === 'challenges' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 80 }}>
-            {challLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 24, fontSize: 14 }}>삭제 중...</div>}
+            {challLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 24, fontSize: 14 }}>처리 중...</div>}
             {challenges.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>챌린지 없음</div>
             ) : challenges.map(c => (
               <div key={c.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 2 }}>{c.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>개설자: {c.hostNickname} · 멤버 {c.memberCount || 1}명</div>
+                  <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>개설자: {c.hostNickname} · 멤버 {c.memberCount || 1}명 · 상태 {(c.status || 'open') === 'open' ? '진행중' : '종료'}</div>
                 </div>
+                {(c.status || 'open') === 'open' && (
+                  <button
+                    disabled={challLoading}
+                    onClick={async () => {
+                      if (!window.confirm(`"${c.title}" 챌린지를 종료할까요?`)) return;
+                      setChallLoading(true);
+                      try {
+                        await endChallenge(c.id, authUser.uid);
+                        setChallenges(prev => prev.map(x => x.id === c.id ? { ...x, status: 'ended', endedAt: new Date().toISOString() } : x));
+                      } catch { alert('종료 실패'); }
+                      setChallLoading(false);
+                    }}
+                    style={{ background: 'rgba(251,191,36,.15)', border: '1px solid rgba(251,191,36,.4)', borderRadius: 8, color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', flexShrink: 0 }}>
+                    종료
+                  </button>
+                )}
                 <button
                   disabled={challLoading}
                   onClick={async () => {
                     if (!window.confirm(`"${c.title}" 챌린지를 삭제할까요?`)) return;
                     setChallLoading(true);
                     try {
-                      await deleteChallengeFull(c.id);
+                      await deleteChallengeFull(c.id, authUser.uid);
                       setChallenges(prev => prev.filter(x => x.id !== c.id));
                     } catch { alert('삭제 실패'); }
                     setChallLoading(false);

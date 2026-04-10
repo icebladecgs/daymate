@@ -4,7 +4,7 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate, onOpenInvest }) {
+export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, onOpenInvest }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
@@ -39,7 +39,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
     setRecording(field);
   };
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} />;
+  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
   return (
     <div style={S.content}>

@@ -1,6 +1,7 @@
 # AI Shared Template
 
 이 파일은 ChatGPT, Claude, Copilot 등 어떤 AI에게 작업을 넘길 때 공통으로 붙여 넣는 템플릿이다.
+상세 프로젝트 문맥은 `AI_WIKI/` 문서를 먼저 읽는 것을 기본으로 한다.
 
 ## Rules
 - 민감한 값은 적지 않는다.
@@ -9,6 +10,9 @@
 - 변경 파일과 변경 이유를 짧게 남긴다.
 - 버전 관련 변경이 있으면 `APP_VERSION` 값을 수동 수정하지 말고, 자동 생성 방식을 유지한다.
 - 배포/릴리즈 성격의 큰 변경이면 최근 변경 내역에 버전/빌드 영향 여부를 한 줄 적는다.
+- `AI_WIKI`는 짧고 사실 위주로 유지한다. 긴 산문보다 함정, 결정 이유, 운영 규칙을 우선 기록한다.
+- 큰 작업 후에는 `AI_WIKI/update-log.md`에 4줄 요약을 남긴다.
+- 우선적으로 참고할 핵심 문서는 `AI_WIKI/frontend.md`, `AI_WIKI/ops.md`, `AI_WIKI/update-log.md`다.
 
 ## Copy Template
 
@@ -26,6 +30,9 @@
 - 불필요한 리팩토링 금지
 - 변경 파일과 변경 이유를 명확히 설명
 - 전체 파일을 새로 쓰지 말고 필요한 부분만 수정
+- AI_WIKI는 짧은 사실/결정/함정 위주로 유지
+- 큰 작업 후 AI_WIKI/update-log.md에 4줄 로그 추가
+- 먼저 AI_WIKI/frontend.md, AI_WIKI/ops.md, AI_WIKI/update-log.md 확인
 
 현재 작업:
 - [여기에 현재 작업]
@@ -42,6 +49,14 @@
 ```
 
 ## Recommended Additions
+- AI 위키 우선 읽기:
+	- `AI_WIKI/overview.md`
+	- `AI_WIKI/frontend.md`
+	- `AI_WIKI/ops.md`
+	- `AI_WIKI/telegram.md`
+	- `AI_WIKI/decisions.md`
+	- `AI_WIKI/known-issues.md`
+	- `AI_WIKI/update-log.md`
 - 참고 파일: [관련 파일 경로]
 - 검증 방법: [빌드 / 테스트 / 수동 확인 방법]
 - 제외 범위: [이번 작업에서 건드리지 말아야 할 것]

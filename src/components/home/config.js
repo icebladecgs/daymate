@@ -10,6 +10,7 @@ export const HOME_SECTION_CONFIG = [
   { id: 'habits', visibleKey: 'showHabits', label: '오늘 습관', description: '반복 습관 체크와 열지도' },
   { id: 'recurring', visibleKey: 'showRecurring', label: '반복 할일', description: '요일별 자동 할일 관리' },
   { id: 'goalsShortcut', visibleKey: 'showGoalsShortcut', label: '목표 바로가기', description: '달력으로 이동하는 목표 카드' },
+  { id: 'portfolio', visibleKey: 'showPortfolio', label: '자산 브리핑', description: '보유자산 평가금액 · 오늘 손익' },
 ];
 
 export const DEFAULT_HOME_PREFS = Object.fromEntries(HOME_SECTION_CONFIG.map((section) => [section.visibleKey, true]));

@@ -1,6 +1,7 @@
 # Mac Workflow
 
 이 파일은 Mac이 DayMate 텔레그램 개발 봇의 기본 호스트일 때 쓰는 빠른 운영 메모다.
+상세 운영 배경과 결정 이유는 `AI_WIKI/telegram.md`, `AI_WIKI/ops.md`를 함께 본다.
 
 ## One Command
 

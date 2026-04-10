@@ -187,6 +187,18 @@ TOOLS = [
         },
     },
     {
+        "name": "append_file",
+        "description": "기존 파일 끝에 텍스트를 덧붙입니다. 작업 로그나 위키 업데이트에 사용합니다.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "content": {"type": "string"},
+            },
+            "required": ["path", "content"],
+        },
+    },
+    {
         "name": "replace_in_file",
         "description": "파일의 특정 텍스트를 정확히 찾아 부분 수정합니다. 작은 수정은 write_file보다 이 도구를 우선 사용합니다.",
         "input_schema": {
@@ -279,6 +291,13 @@ def execute_tool(name: str, inputs: dict) -> tuple[str, bool]:
             f.write(inputs["content"])
         return f"저장 완료: {inputs['path']}", False
 
+    elif name == "append_file":
+        path = os.path.join(PROJECT_DIR, inputs["path"])
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "a", encoding="utf-8") as f:
+          f.write(inputs["content"])
+        return f"추가 완료: {inputs['path']}", False
+
     elif name == "replace_in_file":
         path = os.path.join(PROJECT_DIR, inputs["path"])
         expected_count = max(1, int(inputs.get("expected_count", 1)))
@@ -337,14 +356,26 @@ Project directory: {PROJECT_DIR}
 - src/styles.js : 전체 스타일
 - api/ : 서버리스 함수 (telegram-webhook, notify, chat 등)
 - src/firebase.js : Firebase 클라이언트
+- AI_WIKI/ : AI 전용 프로젝트 위키
+
+## AI_WIKI 우선 문서
+- AI_WIKI/README.md
+- AI_WIKI/overview.md
+- AI_WIKI/frontend.md
+- AI_WIKI/ops.md
+- AI_WIKI/telegram.md
+- AI_WIKI/decisions.md
+- AI_WIKI/known-issues.md
+- AI_WIKI/update-log.md
 
 ## 작업 순서
-1. list_files 또는 search_files로 먼저 위치를 좁힌다
-2. read_file은 필요한 줄 범위만 읽는다 (한 번에 최대 200줄 정도)
-3. write_file로 수정
-3-1. 작은 수정은 replace_in_file을 우선 사용
-4. bash로 git add / commit / push
-5. 결과를 한국어로 간결하게 보고
+1. 먼저 AI_WIKI 관련 문서를 읽어 현재 프로젝트 문맥을 파악한다.
+2. list_files 또는 search_files로 위치를 좁힌다.
+3. read_file은 필요한 줄 범위만 읽는다 (한 번에 최대 200줄 정도).
+4. write_file/replace_in_file/append_file로 수정한다.
+5. 큰 작업을 끝냈으면 AI_WIKI/update-log.md와 관련 위키 문서를 짧게 갱신한다.
+6. bash로 git add / commit / push.
+7. 결과를 한국어로 간결하게 보고한다.
 
 ## 실행 환경 규칙
 - 현재 OS나 셸을 단정하지 않는다.
@@ -356,6 +387,12 @@ Project directory: {PROJECT_DIR}
 - 먼저 search_files로 함수명/컴포넌트명을 찾은 뒤 필요한 구간만 읽는다.
 - bash 출력이 길면 핵심만 요약해서 다음 행동을 결정한다.
 - 정보가 부족하면 파일 전체를 읽기보다 추가 구간을 다시 읽는다.
+
+## 위키 갱신 규칙
+- 기능, 배포, 운영, 버그 수정처럼 후속 세션에 도움이 되는 작업이면 AI_WIKI를 갱신한다.
+- `AI_WIKI/update-log.md`에는 짧게 append 한다.
+- 반복 버그, 운영 규칙, 결정 이유는 관련 문서(`ops.md`, `telegram.md`, `decisions.md`, `known-issues.md`)에도 반영한다.
+- 민감한 값은 적지 않는다.
 
 ## git push 명령
 git add -A && git commit -m "feat: <내용>" && git push origin main

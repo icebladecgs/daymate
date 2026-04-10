@@ -1231,6 +1231,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <MenuRow icon="👤" title="프로필 & 목표" sub={user.name} onClick={() => setSubPage('profile')} />
       </MenuGroup>
 
+      <MenuGroup label="투자">
+        <MenuRow icon="💼" title="보유자산 관리" sub={telegramCfg.holdings?.length > 0 ? `${telegramCfg.holdings.length}개 종목` : '종목 추가하기'} onClick={() => onChangeScreen?.('portfolio')} />
+      </MenuGroup>
+
       <MenuGroup label="알림">
         <MenuRow icon="🔔" title="알림 설정" sub={notifEnabled ? '켜짐' : '꺼짐'} onClick={() => setSubPage('notifications')} />
         <MenuRow icon="📨" title="텔레그램 자동화" sub={telegramCfg.botToken ? '설정됨' : '미설정'} onClick={() => setSubPage('telegram')} />

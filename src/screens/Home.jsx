@@ -8,6 +8,7 @@ import { store } from "../utils/storage.js";
 import { getPermission } from "../utils/notification.js";
 import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
+import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
@@ -175,7 +176,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, telegramCfg, onOpenPortfolio }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -269,6 +270,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', today: todayStr }),
       });
+      if (!res.ok) throw new Error(`fortune ${res.status}`);
       const data = await res.json();
       store.set(fortuneCacheKey, data);
       setFortuneData(data);
@@ -295,10 +297,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자' }),
       });
+      if (!res.ok) throw new Error(`saju ${res.status}`);
       const data = await res.json();
       store.set('dm_saju_result', data);
       setSajuData(data);
-    } catch {}
+    } catch { setFortuneError(true); }
     setFortuneLoading(false);
   };
 
@@ -312,10 +315,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', year }),
       });
+      if (!res.ok) throw new Error(`tojeong ${res.status}`);
       const data = await res.json();
       store.set('dm_tojeong_result', data);
       setTojeongData(data);
-    } catch {}
+    } catch { setFortuneError(true); }
     setFortuneLoading(false);
   };
 
@@ -390,6 +394,41 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
+
+  // ── 포트폴리오 브리핑 ────────────────────────────────────────
+  const pfCacheKey = `dm_portfolio_prices_${toDateStr()}`;
+  const [pfMarket, setPfMarket] = useState(() => { try { return JSON.parse(localStorage.getItem(pfCacheKey) || "null"); } catch { return null; } });
+  const [pfLoading, setPfLoading] = useState(false);
+
+  useEffect(() => {
+    const holdings = telegramCfg?.holdings || [];
+    if (!pfMarket && holdings.length > 0) {
+      const customRegistry = Object.fromEntries(holdings.map(h => [h.sym, { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) }]));
+      setPfLoading(true);
+      fetchMarketDataFromServer([...new Set(holdings.map(h => h.sym))], customRegistry)
+        .then(data => { localStorage.setItem(pfCacheKey, JSON.stringify(data)); setPfMarket(data); })
+        .finally(() => setPfLoading(false));
+    }
+  }, []); // eslint-disable-line
+
+  const pfSummary = useMemo(() => {
+    const holdings = telegramCfg?.holdings || [];
+    if (!pfMarket || holdings.length === 0) return null;
+    let totalValue = 0, totalCost = 0, totalDailyChange = 0, count = 0;
+    holdings.forEach(h => {
+      const d = pfMarket[h.sym]; if (!d) return;
+      const value = h.qty * d.price;
+      const cost = h.qty * h.avgPrice;
+      const chg = d.change != null ? d.change * h.qty : d.chgPct != null ? value * (d.chgPct / 100) / (1 + d.chgPct / 100) : 0;
+      totalValue += value; totalCost += cost; totalDailyChange += chg; count++;
+    });
+    if (count === 0) return null;
+    const pnl = totalValue - totalCost;
+    const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+    const prevValue = totalValue - totalDailyChange;
+    const dailyChangePct = prevValue > 0 ? (totalDailyChange / prevValue) * 100 : 0;
+    return { totalValue, pnl, pnlPct, totalDailyChange, dailyChangePct };
+  }, [pfMarket, telegramCfg?.holdings]); // eslint-disable-line
 
 
   // 뒤로가기로 모달 닫기
@@ -1560,6 +1599,50 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             달력에서 목표 보기 →
           </button>
         </div>
+        </div>
+      )}
+
+      {isSectionVisible('portfolio') && (telegramCfg?.holdings?.length > 0 || pfSummary) && (
+        <div style={{ order: getSectionOrder('portfolio') }}>
+          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={S.sectionEmoji}>💼</span>자산 브리핑
+            </span>
+            <button onClick={onOpenPortfolio}
+              style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+              관리 →
+            </button>
+          </div>
+          <div style={{ ...S.card, marginBottom: 10 }}>
+            {pfLoading && <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "12px 0" }}>시세 불러오는 중...</div>}
+            {!pfLoading && pfSummary && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 2 }}>총 평가금액</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>
+                    ${pfSummary.totalValue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </div>
+                  <div style={{ fontSize: 12, color: pfSummary.pnl >= 0 ? "#4ADE80" : "#F87171", marginTop: 2, fontWeight: 700 }}>
+                    {pfSummary.pnl >= 0 ? "+" : ""}{pfSummary.pnl.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$ ({pfSummary.pnlPct >= 0 ? "+" : ""}{pfSummary.pnlPct.toFixed(1)}%)
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 2 }}>오늘 변동</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: pfSummary.totalDailyChange >= 0 ? "#4ADE80" : "#F87171" }}>
+                    {pfSummary.totalDailyChange >= 0 ? "+" : ""}{pfSummary.totalDailyChange.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$
+                  </div>
+                  <div style={{ fontSize: 11, color: pfSummary.dailyChangePct >= 0 ? "#4ADE80" : "#F87171" }}>
+                    {pfSummary.dailyChangePct >= 0 ? "+" : ""}{pfSummary.dailyChangePct.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+            )}
+            {!pfLoading && !pfSummary && (
+              <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "center", padding: "8px 0" }}>
+                시세 데이터를 불러올 수 없어요
+              </div>
+            )}
+          </div>
         </div>
       )}
       </div>
