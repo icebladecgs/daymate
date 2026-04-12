@@ -157,7 +157,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -691,7 +691,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           }}>{t.label}</button>
         ))}
       </div>
-      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
+      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
       {mainTab === 'community' && (
         <div style={{ paddingBottom: 80 }}>
           {/* 상단 */}
@@ -812,7 +812,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           }}>{t.label}</button>
         ))}
       </div>
-      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
+      {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
       {mainTab === 'community' && <>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={S.sub}>함께하는 일정 공유</div></div>

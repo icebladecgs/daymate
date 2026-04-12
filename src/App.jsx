@@ -366,6 +366,7 @@ export default function App() {
     store.get(`dm_community_event_checks_${todayStr}`, {})
   );
   const [communityInitialTab, setCommunityInitialTab] = useState(null);
+  const [communityInitialChallengeId, setCommunityInitialChallengeId] = useState(null);
 
   useEffect(() => {
     if (!communityIds.length) { setCommunityEventsToday([]); return; }
@@ -1179,6 +1180,7 @@ export default function App() {
 
   const changeScreen = (s, options = {}) => {
     setCommunityInitialTab(s === 'community' ? (options.communityTab || null) : null);
+    setCommunityInitialChallengeId(s === 'community' ? (options.challengeId || null) : null);
     setHistoryInitialGoalsOpen(s === 'history' && !!options.openGoals);
     setScreen(s);
     try { document.activeElement?.blur?.(); } catch {}
@@ -1230,6 +1232,7 @@ export default function App() {
           communityEventChecks={communityEventChecks}
           onToggleCommunityEvent={onToggleCommunityEvent}
           onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
+          onOpenChallengeItem={(challengeId) => changeScreen('community', { communityTab: 'challenge', challengeId })}
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
           onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
@@ -1288,6 +1291,7 @@ export default function App() {
           todayCompletion={todayCompletion}
           onUnreadChange={setCommunityUnread}
           initialMainTab={communityInitialTab}
+          initialChallengeId={communityInitialChallengeId}
         />
       );
     }

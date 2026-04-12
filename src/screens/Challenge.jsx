@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { calcLevel } from "../data/stats.js";
 import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
@@ -57,7 +57,7 @@ function LevelChip({ levelInfo, score = 0, compact = false }) {
   );
 }
 
-export default function Challenge({ authUser, myTotalScore = 0, habits = [], onToggleHabit }) {
+export default function Challenge({ authUser, myTotalScore = 0, habits = [], onToggleHabit, initialSelectedId = null }) {
   const [tab, setTab] = useState("my"); // my | explore | archive
   const [myChallenges, setMyChallenges] = useState([]);
   const [publicChallenges, setPublicChallenges] = useState([]);
@@ -65,6 +65,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
   const [selected, setSelected] = useState(null); // 선택된 챌린지 상세
   const [showCreate, setShowCreate] = useState(false);
   const [toast, setToast] = useState(null);
+  const initialSelectionHandledRef = useRef(false);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
@@ -81,6 +82,15 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
     if (!authUser) return;
     load();
   }, [authUser]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!initialSelectedId || initialSelectionHandledRef.current) return;
+    const allChallenges = [...(myChallenges || []), ...(publicChallenges || [])];
+    const matched = allChallenges.find((challenge) => challenge.id === initialSelectedId);
+    if (!matched) return;
+    setSelected(matched);
+    initialSelectionHandledRef.current = true;
+  }, [initialSelectedId, myChallenges, publicChallenges]);
 
   const load = async () => {
     setLoading(true);

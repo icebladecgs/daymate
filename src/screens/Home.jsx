@@ -176,7 +176,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, telegramCfg, onOpenPortfolio, onSetMemo }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onSetMemo }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -1475,6 +1475,23 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                       <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
                       <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{certedToday ? '오늘 인증 완료' : '오늘 인증 대기 중'} · 🔥 {streak}일 연속</div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => onOpenChallengeItem?.(c.id) || onOpenChallengeHub?.()}
+                      style={{
+                        border: '1px solid rgba(108,142,255,.28)',
+                        background: 'rgba(108,142,255,.12)',
+                        color: '#6C8EFF',
+                        borderRadius: 999,
+                        padding: '6px 10px',
+                        fontSize: 11,
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      바로가기
+                    </button>
                   </div>
                 );
               })}
