@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay } from "../data/stats.js";
 import { gcalFetchRangeEvents } from "../api/gcal.js";
@@ -83,9 +83,27 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
   const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [quickTaskInput, setQuickTaskInput] = useState('');
+
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
   const today = toDateStr();
+
+  const monthStats = useMemo(() => {
+    let completedDays = 0, memoDays = 0, journalDays = 0, perfectDays = 0;
+    for (let i = 1; i <= daysInMonth; i++) {
+      const ds = `${year}-${pad2(month0 + 1)}-${pad2(i)}`;
+      if (ds > today) continue;
+      const d = plans[ds];
+      if (!d) continue;
+      const tasks = (d.tasks || []).filter(t => t.title.trim());
+      if (tasks.length > 0 && tasks.every(t => t.done)) completedDays++;
+      if (d.memo?.trim()) memoDays++;
+      if (d.journal?.body?.trim()) journalDays++;
+      if (isPerfectDay(d)) perfectDays++;
+    }
+    return { completedDays, memoDays, journalDays, perfectDays };
+  }, [plans, year, month0]); // eslint-disable-line
 
   const rateOf = (dateStr) => {
     const d = plans[dateStr];
@@ -404,26 +422,45 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         </div>
       </div>
 
-      <div style={{ padding: "12px 18px 8px", fontSize: 16, fontWeight: 900 }}>
+      <div style={{ padding: "12px 18px 4px", fontSize: 16, fontWeight: 900 }}>
         {monthLabel(year, month0)}
       </div>
 
-      {/* 범례 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px 10px', flexWrap: 'wrap' }}>
+      {/* 월간 요약 */}
+      <div style={{ display: 'flex', gap: 8, padding: '0 16px 10px', flexWrap: 'wrap' }}>
         {[
-          { color: 'rgba(255,255,255,.18)', bg: 'rgba(255,255,255,.03)', label: '미완료' },
-          { color: '#7F9BFF', bg: 'rgba(75,111,255,.10)', label: '진행중' },
-          { color: '#6C8EFF', bg: 'rgba(75,111,255,.22)', label: '완료에 가까움' },
-          { color: '#6C8EFF', bg: 'transparent', label: '오늘', outline: true },
-        ].map(({ color, bg, label, outline }) => (
+          { label: '완전완료', value: monthStats.completedDays, color: '#4ADE80', icon: '✅' },
+          { label: '메모', value: monthStats.memoDays, color: '#6C8EFF', icon: '📝' },
+          { label: '일기', value: monthStats.journalDays, color: '#A78BFA', icon: '📖' },
+          { label: '완벽', value: monthStats.perfectDays, color: '#FBBF24', icon: '★' },
+        ].map(({ label, value, color, icon }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, background: 'var(--dm-card)', border: '1px solid var(--dm-border)' }}>
+            <span style={{ fontSize: 12 }}>{icon}</span>
+            <span style={{ fontSize: 12, fontWeight: 900, color }}>{value}</span>
+            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* 범례 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px 10px', flexWrap: 'wrap' }}>
+        {[
+          { dot: '#6C8EFF', label: '메모' },
+          { dot: '#A78BFA', label: '일기' },
+          { dot: '#4B6FFF', label: '캘린더' },
+        ].map(({ dot, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: outline ? `1.5px solid ${color}` : `1.5px solid ${color}` }} />
+            <div style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
             <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 11, color: '#FBBF24' }}>★</span>
+          <span style={{ fontSize: 10, color: '#FBBF24' }}>★</span>
           <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완벽한 날</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ width: 16, height: 3, borderRadius: 2, background: 'linear-gradient(to right, #4B6FFF, #4ADE80)' }} />
+          <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완료율</span>
         </div>
       </div>
 
@@ -448,16 +485,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               ? { background: "var(--dm-input)", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)" }
               : styleOf(r, isToday, perfect);
             const hasMemo = !!(plans[ds]?.memo?.trim());
-            const dayHabits = (habits || []);
-            const habitChecks = plans[ds]?.habitChecks || {};
-            const habitDots = dayHabits.slice(0, 6);
-            const hasHabitData = dayHabits.length > 0 && plans[ds];
+            const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
             const hasGcal = dayGcalEvents.length > 0;
             return (
               <div
                 key={ds}
-                onClick={() => setPreview(ds)}
+                onClick={() => { setPreview(ds); setQuickTaskInput(''); }}
                 style={{
                   aspectRatio: 1,
                   borderRadius: 10,
@@ -465,44 +499,34 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 2,
                   position: "relative",
                   cursor: "pointer",
-                  paddingBottom: hasHabitData || hasGcal ? 4 : 0,
+                  overflow: "hidden",
                   ...st,
                 }}
                 title={perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : undefined}
               >
-                <span>{day}</span>
-                {hasGcal && (
-                  <span style={{
-                    position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)",
-                    width: 4, height: 4, borderRadius: 999,
-                    background: "#4B6FFF",
-                  }} />
-                )}
-                {hasHabitData && !hasGcal && (
-                  <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", maxWidth: "90%" }}>
-                    {habitDots.map(h => (
-                      <span key={h.id} style={{
-                        width: 4, height: 4, borderRadius: 999, flexShrink: 0,
-                        background: habitChecks[h.id] ? "#A78BFA" : "rgba(167,139,250,.22)",
-                      }} />
-                    ))}
+                <span style={{ fontSize: 13, fontWeight: st.fontWeight }}>{day}</span>
+                {/* 완료율 진행바 */}
+                {r !== null && r > 0 && (
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3 }}>
+                    <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF", opacity: 0.9 }} />
                   </div>
                 )}
+                {/* 메모 점 */}
                 {hasMemo && (
-                  <span style={{
-                    position: "absolute", top: 3, left: 3,
-                    width: 4, height: 4, borderRadius: 999,
-                    background: "#6C8EFF",
-                  }} />
+                  <span style={{ position: "absolute", top: 3, left: 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
+                )}
+                {/* 일기 점 */}
+                {hasJournal && (
+                  <span style={{ position: "absolute", top: 3, left: hasMemo ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
+                )}
+                {/* 구글 캘린더 표시 */}
+                {hasGcal && (
+                  <span style={{ position: "absolute", top: 3, right: perfect ? 10 : 3, width: 4, height: 4, borderRadius: 999, background: "#4B6FFF" }} />
                 )}
                 {perfect && (
-                  <span style={{
-                    position: "absolute", top: 1, right: 2,
-                    fontSize: 8, lineHeight: 1, color: "#FBBF24",
-                  }}>★</span>
+                  <span style={{ position: "absolute", top: 1, right: 2, fontSize: 8, lineHeight: 1, color: "#FBBF24" }}>★</span>
                 )}
               </div>
             );
@@ -599,100 +623,170 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         const d = plans[preview];
         const tasks = (d?.tasks || []).filter(t => t.title.trim());
         const done = tasks.filter(t => t.done).length;
-        const dayHabits = habits || [];
-        const habitChecks = d?.habitChecks || {};
         const previewGcal = (gcalEvents[preview] || []).filter(e => !e.extendedProperties?.private?.daymateId);
+        const mood = d?.journal?.mood;
+        const moodMap = { '행복': '😊', '평온': '😌', '보통': '🤔', '피곤': '😴', '우울': '😔' };
+        const isPast = preview <= today;
+
+        const addQuickTask = () => {
+          const title = quickTaskInput.trim();
+          if (!title) return;
+          onUpdateDayData?.(preview, prev => ({
+            ...(prev || {}),
+            tasks: [...((prev?.tasks) || []), { id: `t${Date.now()}`, title, done: false, checkedAt: null, priority: false }],
+          }));
+          setQuickTaskInput('');
+        };
+
         return (
           <div onClick={() => setPreview(null)} style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
-            zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "0 20px",
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+            zIndex: 200, display: "flex", alignItems: "flex-end",
           }}>
             <div onClick={e => e.stopPropagation()} style={{
               background: "var(--dm-bg)",
               border: "1px solid var(--dm-border2)",
-              borderRadius: 22,
-              width: "100%", maxWidth: 360,
-              maxHeight: "70vh",
+              borderRadius: "24px 24px 0 0",
+              width: "100%",
+              maxHeight: "78vh",
               display: "flex", flexDirection: "column",
-              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-              animation: "modalPop 0.18s ease-out",
-              overflow: "hidden",
+              boxShadow: "0 -12px 48px rgba(0,0,0,0.5)",
+              animation: "slideUp 0.22s ease-out",
             }}>
-              {/* 헤더 */}
-              <div style={{ padding: "22px 22px 14px", borderBottom: "1px solid var(--dm-border)" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--dm-text)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  {formatKoreanDate(preview)}
-                </div>
+              {/* 드래그 핸들 */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--dm-border2)' }} />
               </div>
-              {/* 내용 */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
-                {tasks.length > 0 ? (
-                  <>
-                    <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>
-                      {done}/{tasks.length} 완료
-                      <div style={{ height: 5, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginTop: 6 }}>
-                        <div style={{ height: "100%", borderRadius: 3, transition: "width 0.3s",
-                          background: done === tasks.length ? "#4ADE80" : "#4B6FFF",
-                          width: `${Math.round(done / tasks.length * 100)}%` }} />
-                      </div>
+
+              {/* 헤더 */}
+              <div style={{ padding: "8px 20px 12px", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>
+                    {formatKoreanDate(preview)}
+                    {mood && <span style={{ fontSize: 18, marginLeft: 8 }}>{moodMap[mood] || ''}</span>}
+                  </div>
+                  {tasks.length > 0 && (
+                    <div style={{ fontSize: 12, color: done === tasks.length ? '#4ADE80' : 'var(--dm-muted)', fontWeight: 700, marginTop: 2 }}>
+                      {done === tasks.length ? '✓ 전체 완료' : `${done}/${tasks.length} 완료`}
                     </div>
-                    {tasks.slice(0, 4).map((t, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
-                        borderBottom: i < Math.min(tasks.length, 4) - 1 ? "1px solid var(--dm-row)" : "none" }}>
-                        <div style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                          background: t.done ? "#4B6FFF" : "transparent",
-                          border: t.done ? "none" : "2px solid var(--dm-border2)",
-                          display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {t.done && <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>✓</span>}
-                        </div>
-                        <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                          textDecoration: t.done ? "line-through" : "none", flex: 1 }}>{t.title}</div>
-                      </div>
-                    ))}
-                    {tasks.length > 4 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6 }}>+{tasks.length - 4}개 더</div>}
-                  </>
-                ) : (
-                  <div style={{ fontSize: 14, color: "var(--dm-muted)", textAlign: "center", padding: "16px 0" }}>기록 없음</div>
+                  )}
+                </div>
+                <button onClick={() => setPreview(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>✕</button>
+              </div>
+
+              {/* 완료율 바 */}
+              {tasks.length > 0 && (
+                <div style={{ height: 4, background: "var(--dm-row)", margin: '0 20px 0' }}>
+                  <div style={{ height: "100%", transition: "width 0.3s",
+                    background: done === tasks.length ? "#4ADE80" : "#4B6FFF",
+                    width: `${Math.round(done / tasks.length * 100)}%`, borderRadius: 2 }} />
+                </div>
+              )}
+
+              {/* 내용 스크롤 영역 */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 0" }}>
+
+                {/* 할일 목록 */}
+                {tasks.length > 0 ? tasks.map((t, i) => (
+                  <div key={t.id || i}
+                    onClick={() => onToggleTaskForDate?.(preview, t.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
+                      borderBottom: i < tasks.length - 1 ? "1px solid var(--dm-row)" : "none",
+                      cursor: onToggleTaskForDate ? 'pointer' : 'default' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+                      background: t.done ? "#4B6FFF" : "transparent",
+                      border: t.done ? "none" : "2px solid var(--dm-border2)",
+                      display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
+                      {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                      textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4 }}>{t.title}</div>
+                    {t.time && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{t.time}</span>}
+                  </div>
+                )) : (
+                  <div style={{ fontSize: 13, color: "var(--dm-muted)", textAlign: "center", padding: "10px 0 4px" }}>할일 없음</div>
                 )}
+
+                {/* 할일 빠른 추가 */}
+                {isPast && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 4 }}>
+                    <input
+                      value={quickTaskInput}
+                      onChange={e => setQuickTaskInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addQuickTask()}
+                      placeholder="+ 할일 추가..."
+                      maxLength={60}
+                      style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 12px' }}
+                    />
+                    <button onClick={addQuickTask}
+                      style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', color: '#6C8EFF', fontWeight: 900, cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>
+                      추가
+                    </button>
+                  </div>
+                )}
+
+                {/* 구글 캘린더 */}
                 {previewGcal.length > 0 && (
-                  <div style={{ marginTop: tasks.length > 0 ? 12 : 0 }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
                     <div style={{ fontSize: 11, color: "#4B6FFF", fontWeight: 900, marginBottom: 6 }}>📅 구글 캘린더</div>
-                    {previewGcal.slice(0, 5).map((e, i) => {
+                    {previewGcal.slice(0, 3).map((e, i) => {
                       const time = e.start?.dateTime
                         ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
                         : '종일';
                       return (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
-                          borderBottom: i < Math.min(previewGcal.length, 5) - 1 ? "1px solid var(--dm-row)" : "none" }}>
-                          <div style={{ width: 3, height: 28, borderRadius: 2, background: "#4B6FFF", flexShrink: 0 }} />
-                          <div>
+                          borderBottom: i < Math.min(previewGcal.length, 3) - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                          <div style={{ width: 3, height: 24, borderRadius: 2, background: "#4B6FFF", flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700 }}>{e.summary || '(제목 없음)'}</div>
                             <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>{time}</div>
                           </div>
                         </div>
                       );
                     })}
-                    {previewGcal.length > 5 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{previewGcal.length - 5}개 더</div>}
+                    {previewGcal.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{previewGcal.length - 3}개 더</div>}
                   </div>
                 )}
+
+                {/* 메모 */}
                 {d?.memo?.trim() && (
-                  <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-muted)", fontStyle: "italic",
-                    background: "var(--dm-row)", borderRadius: 8, padding: "8px 10px",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    📝 {d.memo.trim()}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
+                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>📝 메모</div>
+                    <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.65,
+                      background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px",
+                      display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {d.memo.trim()}
+                    </div>
                   </div>
                 )}
+
+                {/* 일기 */}
+                {d?.journal?.body?.trim() && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
+                    <div style={{ fontSize: 11, color: "#A78BFA", fontWeight: 900, marginBottom: 6 }}>
+                      📖 일기 {mood ? `· ${moodMap[mood] || ''} ${mood}` : ''}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.65,
+                      background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px",
+                      display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {d.journal.body.trim()}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ height: 16 }} />
               </div>
-              {/* 버튼 */}
-              <div style={{ display: "flex", gap: 10, padding: "14px 22px 22px", borderTop: "1px solid var(--dm-border)" }}>
+
+              {/* 하단 버튼 */}
+              <div style={{ display: "flex", gap: 10, padding: "12px 20px 32px", borderTop: "1px solid var(--dm-border)" }}>
                 <button onClick={() => setPreview(null)}
-                  style={{ flex: 1, padding: 14, borderRadius: 12, background: "var(--dm-row)", border: "1.5px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
+                  style={{ flex: 1, padding: 13, borderRadius: 12, background: "var(--dm-row)", border: "1px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
                   닫기
                 </button>
                 <button onClick={() => { onOpenDate(preview); setPreview(null); }}
-                  style={{ flex: 2, padding: 14, borderRadius: 12, background: "linear-gradient(135deg,#4B6FFF,#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 16, boxShadow: "0 6px 20px rgba(75,111,255,.45)", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                  상세보기 →
+                  style={{ flex: 2, padding: 13, borderRadius: 12, background: "linear-gradient(135deg,#4B6FFF,#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 15, boxShadow: "0 4px 16px rgba(75,111,255,.4)" }}>
+                  전체보기 →
                 </button>
               </div>
             </div>
