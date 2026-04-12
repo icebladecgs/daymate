@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+const HOME_MODAL_NAV_CLEARANCE = 100;
+
 export default function HomeCustomizationModal({
   open,
   homeSectionOrder,
@@ -36,12 +38,12 @@ export default function HomeCustomizationModal({
     <div onClick={onClose} style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)', zIndex: 1200,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px))', overflowY: 'auto'
+      padding: `calc(16px + env(safe-area-inset-top, 0px)) 16px calc(${16 + HOME_MODAL_NAV_CLEARANCE}px + env(safe-area-inset-bottom, 0px))`, overflowY: 'auto'
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
         width: '100%', maxWidth: 420, borderRadius: 24, background: 'var(--dm-bg)', border: '1px solid var(--dm-border2)',
         boxShadow: '0 24px 60px rgba(0,0,0,0.28)', overflow: 'hidden',
-        maxHeight: 'min(calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)), 760px)',
+        maxHeight: `min(calc(100dvh - ${32 + HOME_MODAL_NAV_CLEARANCE}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)), 760px)`,
         display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ padding: '18px 18px 12px', borderBottom: '1px solid var(--dm-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -51,7 +53,7 @@ export default function HomeCustomizationModal({
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
         </div>
-        <div ref={scrollRef} style={{ padding: '16px 16px calc(72px + env(safe-area-inset-bottom, 0px))', display: 'grid', gap: 10, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', position: 'relative' }}>
+        <div ref={scrollRef} style={{ padding: `16px 16px calc(${72 + HOME_MODAL_NAV_CLEARANCE}px + env(safe-area-inset-bottom, 0px))`, display: 'grid', gap: 10, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', position: 'relative' }}>
           <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
             각 줄에서 토글로 보이기 여부를 바꾸고, 위아래 버튼으로 순서를 바꿀 수 있어요.
           </div>
@@ -64,7 +66,7 @@ export default function HomeCustomizationModal({
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: `${HOME_MODAL_NAV_CLEARANCE}px`,
             padding: '20px 16px calc(18px + env(safe-area-inset-bottom, 0px))',
             background: 'linear-gradient(180deg, rgba(12,16,28,0), rgba(12,16,28,0.88) 42%, rgba(12,16,28,0.98) 100%)',
             pointerEvents: 'none',
