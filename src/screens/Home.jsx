@@ -500,6 +500,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [editingRecurring, setEditingRecurring] = useState(false);
   const [editingTasks, setEditingTasks] = useState(false);
   const [draftTasks, setDraftTasks] = useState([]);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [quickTaskTime, setQuickTaskTime] = useState('');
+  const [quickTaskPriority, setQuickTaskPriority] = useState(false);
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [checkedId, setCheckedId] = useState(null);
@@ -509,6 +512,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [homePrefsOpen, setHomePrefsOpen] = useState(false);
   const [homePrefs, setHomePrefs] = useState(() => ({ ...DEFAULT_HOME_PREFS, ...(store.get(HOME_PREFS_KEY, {}) || {}) }));
   const [homeSectionOrder, setHomeSectionOrder] = useState(() => normalizeHomeSectionOrder(store.get(HOME_SECTION_ORDER_KEY, HOME_SECTION_CONFIG.map(section => section.id))));
+  const [showCompletedHabits, setShowCompletedHabits] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('');
   const habitSensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -654,6 +658,26 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const saveTaskEdits = () => {
     onSetTodayTasks(draftTasks);
     setEditingTasks(false);
+  };
+  const addQuickTask = () => {
+    const title = quickTaskTitle.trim();
+    if (!title) return;
+    const tasks = [...(todayData?.tasks || [])];
+    const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+    const newTask = {
+      id: `t${Date.now()}`,
+      title,
+      time: quickTaskTime || undefined,
+      done: false,
+      checkedAt: null,
+      priority: quickTaskPriority,
+    };
+    if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+    else tasks.push(newTask);
+    onSetTodayTasks(tasks);
+    setQuickTaskTitle('');
+    setQuickTaskTime('');
+    setQuickTaskPriority(false);
   };
   return (
     <div style={S.content}>
@@ -1183,6 +1207,80 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             <div style={{ fontSize: 9, color: 'var(--dm-muted)', marginTop: 2 }}>완료율</div>
           </div>
         </div>
+        {!editingTasks && (
+          <div style={{
+            marginBottom: 14,
+            padding: '12px',
+            borderRadius: 16,
+            border: '1px solid rgba(108,142,255,.18)',
+            background: 'rgba(255,255,255,.03)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--dm-text)' }}>바로 추가</div>
+              <button
+                type="button"
+                onClick={() => setQuickTaskPriority(v => !v)}
+                style={{
+                  border: `1px solid ${quickTaskPriority ? 'rgba(108,142,255,.45)' : 'var(--dm-border)'}`,
+                  background: quickTaskPriority ? 'rgba(108,142,255,.16)' : 'transparent',
+                  color: quickTaskPriority ? '#6C8EFF' : 'var(--dm-muted)',
+                  borderRadius: 999,
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                중요
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+              <input
+                style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                value={quickTaskTitle}
+                onChange={(e) => setQuickTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addQuickTask();
+                }}
+                placeholder="지금 바로 추가할 할일"
+                maxLength={60}
+              />
+              <button
+                type="button"
+                onClick={addQuickTask}
+                disabled={!quickTaskTitle.trim()}
+                style={{
+                  ...S.btn,
+                  width: 'auto',
+                  minWidth: 64,
+                  marginTop: 0,
+                  padding: '0 18px',
+                  opacity: quickTaskTitle.trim() ? 1 : 0.5,
+                }}
+              >
+                추가
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--dm-muted)' }}>시간</span>
+              <input
+                type="time"
+                value={quickTaskTime}
+                onChange={(e) => setQuickTaskTime(e.target.value)}
+                style={{ ...S.input, width: 118, padding: '8px 10px', fontSize: 12, marginBottom: 0 }}
+              />
+              {quickTaskTime && (
+                <button
+                  type="button"
+                  onClick={() => setQuickTaskTime('')}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 12, cursor: 'pointer', padding: 0 }}
+                >
+                  시간 제거
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {editingTasks ? (
           <>
             {draftTasks.map((t, idx) => (
@@ -1432,14 +1530,13 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         const habitChecks = todayData?.habitChecks || {};
         const doneHabits = habits.filter(h => habitChecks[h.id]).length;
         const allHabitsDone = habits.length > 0 && doneHabits === habits.length;
+        const visibleHabits = showCompletedHabits ? habits : habits.filter(h => !habitChecks[h.id]);
+        const hiddenDoneCount = Math.max(doneHabits - (showCompletedHabits ? doneHabits : 0), 0);
         return (
           <>
             <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={S.sectionEmoji}>🎯</span>오늘 습관
-                {habits.length === 0 && !editingHabits && (
-                  <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>매일 반복해야 하는 습관을 입력하세요</span>
-                )}
               </span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {habits.length > 0 && <span style={{ fontSize: 11, color: allHabitsDone ? "#4ADE80" : "var(--dm-muted)", fontWeight: 900 }}>{doneHabits}/{habits.length}</span>}
@@ -1517,6 +1614,32 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                 </>
               ) : (
                 <>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(167,139,250,.12)', border: '1px solid rgba(167,139,250,.24)', fontSize: 11, fontWeight: 800, color: '#C4B5FD' }}>
+                      진행 {habits.length - doneHabits}개
+                    </div>
+                    <div style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.24)', fontSize: 11, fontWeight: 800, color: '#86EFAC' }}>
+                      완료 {doneHabits}개
+                    </div>
+                    {doneHabits > 0 && !allHabitsDone && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCompletedHabits(v => !v)}
+                        style={{
+                          border: '1px solid var(--dm-border)',
+                          background: 'transparent',
+                          color: 'var(--dm-muted)',
+                          borderRadius: 999,
+                          padding: '6px 10px',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {showCompletedHabits ? '완료 숨기기' : `완료 ${hiddenDoneCount}개 숨김`}
+                      </button>
+                    )}
+                  </div>
                   <div style={{ height: 6, background: "var(--dm-row)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
                     <div style={{
                       height: "100%", borderRadius: 3, transition: "width 0.3s",
@@ -1524,7 +1647,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                       width: habits.length === 0 ? "0%" : `${(doneHabits / habits.length) * 100}%`,
                     }} />
                   </div>
-                  {habits.map((h, i) => {
+                  {visibleHabits.map((h, i) => {
                     const checked = !!habitChecks[h.id];
                     const linkedChallenges = linkedChallengesByHabit[h.id] || [];
                     return (
@@ -1533,7 +1656,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                         if (!checked) { setHabitCheckedId(h.id); setTimeout(() => setHabitCheckedId(null), 400); }
                         onToggleHabit(h.id);
                       }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
-                          borderBottom: i < habits.length - 1 ? `1px solid var(--dm-row)` : "none",
+                          borderBottom: i < visibleHabits.length - 1 ? `1px solid var(--dm-row)` : "none",
                           cursor: "pointer" }}>
                         <div className={habitCheckedId === h.id ? "dm-check-bounce" : ""}
                           style={{
@@ -1576,6 +1699,11 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                       </div>
                     );
                   })}
+                  {!showCompletedHabits && visibleHabits.length === 0 && habits.length > 0 && (
+                    <div style={{ padding: '8px 0 2px', fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center' }}>
+                      남은 습관이 없어요. 완료한 항목을 펼쳐서 다시 볼 수 있어요.
+                    </div>
+                  )}
                 </>
               )}
             </div>

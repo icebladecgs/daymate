@@ -262,6 +262,15 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [showPasswordEdit, setShowPasswordEdit] = useState(false);
   const [passwordEditValue, setPasswordEditValue] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [accessPasswordModal, setAccessPasswordModal] = useState(null);
+  const [accessPasswordInput, setAccessPasswordInput] = useState('');
+
+  const completeCommunityAccess = (id, options = {}) => {
+    if (!id) return false;
+    setActiveCommunityId(id);
+    if (options.openDetail !== false) setShowHome(false);
+    return true;
+  };
 
   const requestCommunityAccess = async (id, options = {}) => {
     if (!id) return false;
@@ -277,17 +286,32 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       setCommunityMeta(prev => ({ ...prev, [id]: meta }));
     }
     if (meta.password) {
-      const rawInput = window.prompt(`\"${meta.name || '커뮤니티'}\" 입장 암호 4자리를 입력하세요`, '');
-      if (rawInput == null) return false;
-      const normalizedInput = String(rawInput).replace(/\D/g, '').slice(0, 4);
-      if (normalizedInput !== String(meta.password)) {
-        setToast('비밀번호가 틀렸어요 ❌');
-        return false;
-      }
+      setAccessPasswordModal({
+        id,
+        name: meta.name || '커뮤니티',
+        password: String(meta.password),
+        options,
+      });
+      setAccessPasswordInput('');
+      return false;
     }
-    setActiveCommunityId(id);
-    if (options.openDetail !== false) setShowHome(false);
-    return true;
+    return completeCommunityAccess(id, options);
+  };
+
+  const closeAccessPasswordModal = () => {
+    setAccessPasswordModal(null);
+    setAccessPasswordInput('');
+  };
+
+  const handleConfirmAccessPassword = () => {
+    if (!accessPasswordModal) return;
+    const normalizedInput = String(accessPasswordInput).replace(/\D/g, '').slice(0, 4);
+    if (normalizedInput !== accessPasswordModal.password) {
+      setToast('비밀번호가 틀렸어요 ❌');
+      return;
+    }
+    completeCommunityAccess(accessPasswordModal.id, accessPasswordModal.options);
+    closeAccessPasswordModal();
   };
 
   useEffect(() => {
@@ -611,6 +635,52 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   if (showHome && mode === null) return (
     <div style={S.content}>
       <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{srAnnouncement}</div>
+      {accessPasswordModal && (
+        <div
+          onClick={closeAccessPasswordModal}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(5,8,16,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid rgba(108,142,255,.22)', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호 4자리를 입력해주세요.</div>
+            <input
+              autoFocus
+              style={{ ...S.input, marginBottom: 10, textAlign: 'center', letterSpacing: 6, fontSize: 18 }}
+              placeholder="0000"
+              inputMode="numeric"
+              type="text"
+              value={accessPasswordInput}
+              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleConfirmAccessPassword();
+                if (event.key === 'Escape') closeAccessPasswordModal();
+              }}
+              maxLength={4}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={closeAccessPasswordModal}
+                style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAccessPassword}
+                disabled={accessPasswordInput.length !== 4}
+                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length === 4 ? 1 : 0.5 }}
+              >
+                입장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
@@ -897,6 +967,52 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   return (
     <div style={S.content}>
+      {accessPasswordModal && (
+        <div
+          onClick={closeAccessPasswordModal}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(5,8,16,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid rgba(108,142,255,.22)', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호 4자리를 입력해주세요.</div>
+            <input
+              autoFocus
+              style={{ ...S.input, marginBottom: 10, textAlign: 'center', letterSpacing: 6, fontSize: 18 }}
+              placeholder="0000"
+              inputMode="numeric"
+              type="text"
+              value={accessPasswordInput}
+              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleConfirmAccessPassword();
+                if (event.key === 'Escape') closeAccessPasswordModal();
+              }}
+              maxLength={4}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={closeAccessPasswordModal}
+                style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAccessPassword}
+                disabled={accessPasswordInput.length !== 4}
+                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length === 4 ? 1 : 0.5 }}
+              >
+                입장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 메인 탭: 커뮤니티 / 챌린지 */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
