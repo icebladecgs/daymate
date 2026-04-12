@@ -786,7 +786,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               </div>
 
               {/* 하단 버튼 */}
-              <div style={{ display: "flex", gap: 10, padding: "12px 20px 80px", borderTop: "1px solid var(--dm-border)" }}>
+              <div style={{ display: "flex", gap: 10, padding: "12px 20px 100px", borderTop: "1px solid var(--dm-border)" }}>
                 <button onClick={() => setPreview(null)}
                   style={{ flex: 1, padding: 13, borderRadius: 12, background: "var(--dm-row)", border: "1px solid var(--dm-border2)", color: "var(--dm-text)", fontWeight: 900, cursor: "pointer", fontSize: 14 }}>
                   닫기
