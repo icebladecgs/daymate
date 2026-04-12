@@ -685,10 +685,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               )}
 
               {/* 내용 스크롤 영역 */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px 0" }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 20px 0" }}>
 
                 {/* 할일 목록 */}
-                {tasks.length > 0 ? tasks.map((t, i) => (
+                {tasks.map((t, i) => (
                   <div key={t.id || i}
                     onClick={() => onToggleTaskForDate?.(preview, t.id)}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
@@ -704,27 +704,23 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4 }}>{t.title}</div>
                     {t.time && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{t.time}</span>}
                   </div>
-                )) : (
-                  <div style={{ fontSize: 13, color: "var(--dm-muted)", textAlign: "center", padding: "10px 0 4px" }}>할일 없음</div>
-                )}
+                ))}
 
-                {/* 할일 빠른 추가 */}
-                {isPast && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 4 }}>
-                    <input
-                      value={quickTaskInput}
-                      onChange={e => setQuickTaskInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && addQuickTask()}
-                      placeholder="+ 할일 추가..."
-                      maxLength={60}
-                      style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 12px' }}
-                    />
-                    <button onClick={addQuickTask}
-                      style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', color: '#6C8EFF', fontWeight: 900, cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>
-                      추가
-                    </button>
-                  </div>
-                )}
+                {/* 할일 빠른 추가 — 날짜 제한 없이 항상 표시 */}
+                <div style={{ display: 'flex', gap: 8, marginTop: tasks.length > 0 ? 10 : 0, marginBottom: 4 }}>
+                  <input
+                    value={quickTaskInput}
+                    onChange={e => setQuickTaskInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addQuickTask()}
+                    placeholder={tasks.length === 0 ? "할일을 추가해보세요..." : "+ 할일 추가..."}
+                    maxLength={60}
+                    style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 12px' }}
+                  />
+                  <button onClick={addQuickTask}
+                    style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', color: '#6C8EFF', fontWeight: 900, cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>
+                    추가
+                  </button>
+                </div>
 
                 {/* 구글 캘린더 */}
                 {previewGcal.length > 0 && (
@@ -786,7 +782,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 </button>
                 <button onClick={() => { onOpenDate(preview); setPreview(null); }}
                   style={{ flex: 2, padding: 13, borderRadius: 12, background: "linear-gradient(135deg,#4B6FFF,#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 15, boxShadow: "0 4px 16px rgba(75,111,255,.4)" }}>
-                  전체보기 →
+                  자세히보기 →
                 </button>
               </div>
             </div>
