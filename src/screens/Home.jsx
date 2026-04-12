@@ -176,7 +176,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, telegramCfg, onOpenPortfolio }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, telegramCfg, onOpenPortfolio, onSetMemo }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -441,6 +441,35 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
   }, [fortuneModalOpen, xpHelpOpen, focusTask]); // eslint-disable-line
+  const [quickMemoOpen, setQuickMemoOpen] = useState(false);
+  const [quickMemoText, setQuickMemoText] = useState('');
+  const quickMemoSavedRef = useRef('');
+  const quickMemoSaved = quickMemoText === quickMemoSavedRef.current;
+
+  const openQuickMemo = () => {
+    const cur = todayData?.memo ?? '';
+    setQuickMemoText(cur);
+    quickMemoSavedRef.current = cur;
+    setQuickMemoOpen(true);
+  };
+
+  const closeQuickMemo = () => {
+    if (quickMemoText !== quickMemoSavedRef.current) {
+      onSetMemo?.(quickMemoText);
+      quickMemoSavedRef.current = quickMemoText;
+    }
+    setQuickMemoOpen(false);
+  };
+
+  useEffect(() => {
+    if (!quickMemoOpen || quickMemoText === quickMemoSavedRef.current) return;
+    const t = setTimeout(() => {
+      onSetMemo?.(quickMemoText);
+      quickMemoSavedRef.current = quickMemoText;
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [quickMemoText]); // eslint-disable-line
+
   const saveSomeday = (next) => setSomeday(next);
   const addSomeday = () => {
     const title = somedayInput.trim();
@@ -1770,6 +1799,59 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
           </div>
         );
       })()}
+
+      {/* ── 빠른 메모 플로팅 버튼 ────────────────────────────── */}
+      {onSetMemo && (
+        <button
+          onClick={openQuickMemo}
+          aria-label="빠른 메모"
+          style={{
+            position: 'fixed', bottom: 96, right: 18, zIndex: 200,
+            width: 50, height: 50, borderRadius: 999,
+            background: 'rgba(108,142,255,0.18)', border: '1.5px solid rgba(108,142,255,0.4)',
+            fontSize: 20, cursor: 'pointer', backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >📝</button>
+      )}
+
+      {/* ── 빠른 메모 모달 ──────────────────────────────────── */}
+      {quickMemoOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={closeQuickMemo}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', background: 'var(--dm-card)', borderRadius: '20px 20px 0 0', padding: '18px 16px 36px', border: '1px solid var(--dm-border2)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>📝 오늘 메모</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 11, color: quickMemoSaved ? '#4ADE80' : '#6C8EFF', fontWeight: 700, transition: 'color 0.3s' }}>
+                  {quickMemoSaved ? '✓ 저장됨' : '저장 중...'}
+                </span>
+                <button
+                  onClick={closeQuickMemo}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}
+                >✕</button>
+              </div>
+            </div>
+            <textarea
+              autoFocus
+              rows={8}
+              value={quickMemoText}
+              onChange={e => setQuickMemoText(e.target.value)}
+              placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
+              maxLength={1200}
+              style={{ ...S.input, resize: 'none', lineHeight: 1.7, flex: 1, minHeight: 0, marginBottom: 6 }}
+            />
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', textAlign: 'right' }}>
+              {quickMemoText.length} / 1200
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

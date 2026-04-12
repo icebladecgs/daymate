@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -7,10 +7,51 @@ import SearchViewer from "./SearchViewer.jsx";
 export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, onOpenInvest }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
-  const isPerfect = filledCount >= 3 && doneCount === filledCount && !!data.journal?.body?.trim();
   const [showSearch, setShowSearch] = useState(false);
   const [recording, setRecording] = useState(null); // 'memo' | 'journal' | null
   const recognitionRef = useRef(null);
+
+  const [memoText, setMemoText] = useState(data.memo ?? '');
+  const lastSavedMemoRef = useRef(data.memo ?? '');
+  const memoSaved = memoText === lastSavedMemoRef.current;
+
+  // 음성 인식 등 외부에서 data.memo가 바뀌면 로컬 상태 동기화
+  useEffect(() => {
+    if (data.memo !== lastSavedMemoRef.current) {
+      setMemoText(data.memo ?? '');
+      lastSavedMemoRef.current = data.memo ?? '';
+    }
+  }, [data.memo]); // eslint-disable-line
+
+  useEffect(() => {
+    if (memoText === lastSavedMemoRef.current) return;
+    const t = setTimeout(() => {
+      setData(prev => ({ ...prev, memo: memoText }));
+      lastSavedMemoRef.current = memoText;
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [memoText]); // eslint-disable-line
+
+  const [journalText, setJournalText] = useState(data.journal?.body ?? '');
+  const lastSavedJournalRef = useRef(data.journal?.body ?? '');
+  const journalSaved = journalText === lastSavedJournalRef.current;
+  const isPerfect = filledCount >= 3 && doneCount === filledCount && !!journalText.trim();
+
+  useEffect(() => {
+    if (data.journal?.body !== lastSavedJournalRef.current) {
+      setJournalText(data.journal?.body ?? '');
+      lastSavedJournalRef.current = data.journal?.body ?? '';
+    }
+  }, [data.journal?.body]); // eslint-disable-line
+
+  useEffect(() => {
+    if (journalText === lastSavedJournalRef.current) return;
+    const t = setTimeout(() => {
+      setData(prev => ({ ...prev, journal: { ...prev.journal, body: journalText } }));
+      lastSavedJournalRef.current = journalText;
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [journalText]); // eslint-disable-line
 
   const startRecording = (field) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -28,9 +69,9 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
       }
       if (!text) return;
       if (field === 'memo') {
-        setData(prev => ({ ...prev, memo: (prev.memo ?? '') + (prev.memo?.trim() ? '\n' : '') + text }));
+        setMemoText(prev => prev + (prev.trim() ? '\n' : '') + text);
       } else {
-        setData(prev => ({ ...prev, journal: { ...prev.journal, body: (prev.journal?.body || '') + (prev.journal?.body?.trim() ? '\n' : '') + text } }));
+        setJournalText(prev => prev + (prev.trim() ? '\n' : '') + text);
       }
     };
     r.onerror = () => setRecording(null);
@@ -73,58 +114,51 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
 
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>오늘 메모</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
-          <span style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 400 }}>수시로 기록해요</span>
-        </div>
+        {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
       </div>
       <div style={S.card}>
         <textarea
           rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
-          value={data.memo ?? ""}
-          onChange={(e) =>
-            setData((prev) => ({ ...prev, memo: e.target.value }))
-          }
+          value={memoText}
+          onChange={(e) => setMemoText(e.target.value)}
           placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
           maxLength={1200}
         />
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <button
-            style={{ ...S.btn, marginTop: 0, flex: 1 }}
-            onClick={() => {
-              setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
-              setToast("메모 저장 ✅ · 내일도 기록해봐요");
-            }}
-          >
-            메모 저장
-          </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: memoSaved ? 'var(--dm-muted)' : '#6C8EFF', fontWeight: memoSaved ? 400 : 700, transition: 'color 0.3s' }}>
+            {memoSaved ? `✓ 자동저장 · ${memoText.length} / 1200` : '저장 중...'}
+          </span>
           <button
             onClick={() => startRecording('memo')}
-            style={{ width: 48, borderRadius: 12, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}
+            style={{ width: 40, height: 36, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer' }}
           >{recording === 'memo' ? '⏹' : '🎤'}</button>
-        </div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6, textAlign: "right" }}>
-          {(data.memo ?? "").length} / 1200
         </div>
       </div>
 
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>📖</span>일기 (22:00 이후 추천)</div>
+      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📖</span>일기 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)' }}>(22:00 이후 추천)</span></span>
+        {recording === 'journal' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
+      </div>
       <div style={S.card}>
         <textarea
           rows={10}
           style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
-          value={data.journal.body}
-          onChange={(e) =>
-            setData((prev) => ({
-              ...prev,
-              journal: { ...prev.journal, body: e.target.value },
-            }))
-          }
+          value={journalText}
+          onChange={(e) => setJournalText(e.target.value)}
           placeholder="오늘 하루를 한 줄이라도 기록해봐요."
           maxLength={1200}
         />
-        {/* 무드 셀렉터 */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: journalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: journalSaved ? 400 : 700, transition: 'color 0.3s' }}>
+            {journalSaved ? `✓ 자동저장 · ${journalText.length} / 1200` : '저장 중...'}
+          </span>
+          <button
+            onClick={() => startRecording('journal')}
+            style={{ width: 40, height: 36, borderRadius: 10, border: `1.5px solid ${recording === 'journal' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'journal' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer' }}
+          >{recording === 'journal' ? '⏹' : '🎤'}</button>
+        </div>
+        {/* 무드 셀렉터 — 글 작성 후 기분 선택 */}
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--dm-border)" }}>
           <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}>오늘 기분은?</div>
           <div style={{ display: "flex", justifyContent: "space-around" }}>
@@ -140,27 +174,6 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
               );
             })}
           </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <button
-            style={{ ...S.btn, marginTop: 0, flex: 1 }}
-            onClick={() => {
-              setData((prev) => ({
-                ...prev,
-                journal: { ...prev.journal, savedAt: new Date().toISOString() },
-              }));
-              setToast("일기 저장 ✅ · +15 XP");
-            }}
-          >
-            일기 저장
-          </button>
-          <button
-            onClick={() => startRecording('journal')}
-            style={{ width: 48, borderRadius: 12, border: `1.5px solid ${recording === 'journal' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'journal' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}
-          >{recording === 'journal' ? '⏹' : '🎤'}</button>
-        </div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, textAlign: "right" }}>
-          {data.journal.body.length} / 1200
         </div>
       </div>
 

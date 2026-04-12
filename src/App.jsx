@@ -1233,6 +1233,7 @@ export default function App() {
           onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
+          onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
         />
       );
     }
