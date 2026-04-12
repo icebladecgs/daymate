@@ -18,10 +18,16 @@ const TAB_META = {
 
 export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUser, onBack, initialTab = "briefing" }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [diaryDraft, setDiaryDraft] = useState(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  const openDiary = (draft = null) => {
+    setDiaryDraft({ requestedAt: Date.now(), ...(draft || {}) });
+    setActiveTab("diary");
+  };
 
   return (
     <div style={S.content}>
@@ -80,13 +86,14 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
           setTelegramCfg={setTelegramCfg}
           authUser={authUser}
           embedded
-          onOpenDiary={() => setActiveTab("diary")}
+          onOpenDiary={openDiary}
         />
       ) : (
         <InvestDiary
           uid={uid}
           telegramCfg={telegramCfg}
           embedded
+          diaryDraft={diaryDraft}
           onOpenBriefing={() => setActiveTab("briefing")}
         />
       )}

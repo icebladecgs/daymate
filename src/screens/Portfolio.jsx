@@ -158,6 +158,26 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
 
   const summary = calcSummary();
 
+  const openDiaryWithHolding = (holding, rowData) => {
+    if (!onOpenDiary) return;
+    onOpenDiary({
+      asset: holding.sym,
+      currency: holding.currency || "USD",
+      quoteSnapshot: rowData?.price != null
+        ? {
+            ...rowData,
+            currency: holding.currency || "USD",
+            capturedAt: new Date().toISOString(),
+          }
+        : null,
+      holdingSnapshot: {
+        qty: holding.qty,
+        avgPrice: holding.avgPrice,
+        currency: holding.currency || "USD",
+      },
+    });
+  };
+
   const inputStyle = { ...S.input, marginBottom: 0 };
   const rootStyle = embedded
     ? { width: "100%", minWidth: 0, boxSizing: "border-box", paddingBottom: 12 }
@@ -285,6 +305,10 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
                 )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                {embedded && onOpenDiary && (
+                  <button onClick={() => openDiaryWithHolding(h, h)}
+                    style={{ background: "transparent", border: "none", color: "#6C8EFF", cursor: "pointer", fontSize: 12, fontWeight: 800, padding: "2px 4px" }}>기록</button>
+                )}
                 <button onClick={() => handleEdit(h)}
                   style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>✏️</button>
                 <button onClick={() => handleDelete(h.id)}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { saveInvestLog, loadInvestLogs, deleteInvestLog } from "../firebase.js";
+import { saveInvestLog, loadInvestLogs } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import InvestDetail from "./InvestDetail.jsx";
@@ -18,6 +18,51 @@ const ACTION_COLOR = { BUY: "#4ADE80", HOLD: "#FCD34D", SELL: "#F87171" };
 const RESULT_COLOR = { WIN: "#4ADE80", LOSE: "#F87171", UNKNOWN: "var(--dm-muted)" };
 const RESULT_LABEL = { WIN: "✅ 맞음", LOSE: "❌ 틀림", UNKNOWN: "❓ 모름" };
 
+function dedupeAssets(items) {
+  const seen = new Map();
+  items.forEach((item) => {
+    if (!item?.sym) return;
+    const sym = item.sym.toUpperCase();
+    if (seen.has(sym)) return;
+    seen.set(sym, { ...item, sym });
+  });
+  return Array.from(seen.values());
+}
+
+function parseNumericInput(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(String(value).replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatMoney(value, currency = "USD") {
+  if (value === null || value === undefined) return "-";
+  if (currency === "KRW") return `₩${Number(value).toLocaleString("ko-KR")}`;
+  return `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatQuantity(value) {
+  if (value === null || value === undefined) return "-";
+  return Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 8 });
+}
+
+function getCategoryFromSource(src = "") {
+  if (src === "coingecko") return "crypto";
+  if (src === "yahoo") return "stock";
+  return "stock";
+}
+
+function buildQuoteSnapshot(quote, fallbackCurrency, fallbackLabel) {
+  if (!quote || quote.price == null) return null;
+  return {
+    label: quote.label || fallbackLabel,
+    price: Number(quote.price),
+    changePercent: quote.changePercent ?? quote.chgPct ?? quote.change ?? null,
+    currency: quote.currency || fallbackCurrency || "USD",
+    capturedAt: quote.capturedAt || new Date().toISOString(),
+  };
+}
+
 function pad2(n) { return String(n).padStart(2, "0"); }
 function toDateStr(d = new Date()) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -33,7 +78,7 @@ function needsReview(log) {
   return diff >= 3;
 }
 
-export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false, onOpenBriefing }) {
+export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false, onOpenBriefing, diaryDraft = null }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
@@ -45,17 +90,41 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
   const [portfolioData, setPortfolioData] = useState(() => { try { return JSON.parse(localStorage.getItem(portfolioCacheKey) || 'null'); } catch { return null; } });
   const [portfolioLoading, setPortfolioLoading] = useState(false);
 
+  const holdings = telegramCfg?.holdings || [];
+  const availableAssets = dedupeAssets([
+    ...holdings.map((holding) => ({
+      sym: holding.sym,
+      label: holding.label || holding.sym,
+      category: getCategoryFromSource(holding.src),
+      src: holding.src || "finnhub",
+      currency: holding.currency || "USD",
+      ...(holding.coinId ? { coinId: holding.coinId } : {}),
+    })),
+    ...((telegramCfg?.customAssets || []).map((assetItem) => ({
+      sym: assetItem.sym,
+      label: assetItem.label || assetItem.sym,
+      category: getCategoryFromSource(assetItem.src),
+      src: assetItem.src || "finnhub",
+      currency: assetItem.currency || "USD",
+      ...(assetItem.coinId ? { coinId: assetItem.coinId } : {}),
+    }))),
+    ...PRESET_ASSETS.map((assetItem) => ({ ...assetItem, currency: assetItem.sym === "BTC" || assetItem.sym === "ETH" ? "USD" : "USD", src: assetItem.category === "crypto" ? "coingecko" : "finnhub" })),
+  ]);
+  const assetKey = availableAssets.map((assetItem) => assetItem.sym).join("|");
+
   const loadPortfolio = async () => {
-    const selectedAssets = telegramCfg?.assets || [];
-    const customAssets = telegramCfg?.customAssets || [];
-    if (selectedAssets.length === 0) return;
+    if (availableAssets.length === 0) return;
     setPortfolioLoading(true);
     try {
-      const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
+      const customRegistry = Object.fromEntries(availableAssets.map((assetItem) => [assetItem.sym, {
+        label: assetItem.label,
+        src: assetItem.src || "finnhub",
+        ...(assetItem.coinId ? { coinId: assetItem.coinId } : {}),
+      }]));
       const res = await fetch('/api/market', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assets: selectedAssets, customRegistry }),
+        body: JSON.stringify({ assets: availableAssets.map((assetItem) => assetItem.sym), customRegistry }),
       });
       const data = await res.json();
       localStorage.setItem(portfolioCacheKey, JSON.stringify(data));
@@ -65,28 +134,22 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
   };
 
   useEffect(() => {
-    if (!portfolioData && (telegramCfg?.assets?.length > 0)) loadPortfolio();
-  }, []); // eslint-disable-line
+    if (assetKey) loadPortfolio();
+    else setPortfolioData(null);
+  }, [assetKey]); // eslint-disable-line
 
   // 입력 폼 상태
-  const [asset, setAsset] = useState("BTC");
+  const [asset, setAsset] = useState(() => availableAssets[0]?.sym || "BTC");
   const [action, setAction] = useState("BUY");
-  const [amountKRW, setAmountKRW] = useState("");
-  const [amountUSD, setAmountUSD] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [reason, setReason] = useState("");
   const [marketNote, setMarketNote] = useState("");
   const [confidence, setConfidence] = useState(3);
   const [showExtra, setShowExtra] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // 자산 목록: 프리셋 + telegramCfg 커스텀 자산
-  const assets = [
-    ...PRESET_ASSETS,
-    ...((telegramCfg?.customAssets || []).map(a => ({
-      sym: a.sym, label: a.label,
-      category: a.src === "coingecko" ? "crypto" : "stock",
-    }))),
-  ];
+  const [queuedSnapshot, setQueuedSnapshot] = useState(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -95,6 +158,40 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
       .catch(() => setToast("로드 실패"))
       .finally(() => setLoading(false));
   }, [uid]);
+
+  useEffect(() => {
+    if (!availableAssets.length) return;
+    if (!availableAssets.some((assetItem) => assetItem.sym === asset)) {
+      setAsset(availableAssets[0].sym);
+    }
+  }, [asset, assetKey]); // eslint-disable-line
+
+  const selectedAssetInfo = availableAssets.find((assetItem) => assetItem.sym === asset) || { sym: asset, label: asset, category: "other", src: "finnhub", currency: "USD" };
+  const currentHolding = holdings.find((holding) => holding.sym === asset) || null;
+  const currentQuote = portfolioData?.[asset] || null;
+  const defaultCurrency = currentHolding?.currency || selectedAssetInfo.currency || "USD";
+  const isTradeAction = action !== "HOLD";
+  const numericQuantity = parseNumericInput(quantity);
+  const numericUnitPrice = parseNumericInput(unitPrice);
+  const computedAmount = isTradeAction && numericQuantity && numericUnitPrice ? numericQuantity * numericUnitPrice : null;
+
+  useEffect(() => {
+    setCurrency(defaultCurrency);
+  }, [asset]); // eslint-disable-line
+
+  useEffect(() => {
+    if (!diaryDraft?.requestedAt) return;
+    if (diaryDraft.asset) setAsset(diaryDraft.asset.toUpperCase());
+    if (diaryDraft.action) setAction(diaryDraft.action);
+    if (diaryDraft.currency) setCurrency(diaryDraft.currency);
+    if (diaryDraft.unitPrice != null) setUnitPrice(String(diaryDraft.unitPrice));
+    else if (diaryDraft.quoteSnapshot?.price != null) setUnitPrice(String(diaryDraft.quoteSnapshot.price));
+    if (diaryDraft.marketNote) {
+      setShowExtra(true);
+      setMarketNote((prev) => prev || diaryDraft.marketNote);
+    }
+    setQueuedSnapshot(diaryDraft.quoteSnapshot || null);
+  }, [diaryDraft?.requestedAt]); // eslint-disable-line
 
   // 통계
   const now = new Date();
@@ -108,36 +205,57 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
     ? { width: "100%", minWidth: 0, boxSizing: "border-box", paddingBottom: 12 }
     : S.content;
 
+  const resetForm = () => {
+    setQuantity("");
+    setUnitPrice("");
+    setReason("");
+    setMarketNote("");
+    setConfidence(3);
+    setShowExtra(false);
+    setQueuedSnapshot(null);
+  };
+
   const handleSave = async () => {
+    if (!uid) { setToast("로그인 후 기록할 수 있어요"); return; }
     if (!reason.trim()) { setToast("이유를 입력해주세요"); return; }
+    if (isTradeAction && (!numericQuantity || numericQuantity <= 0)) { setToast("수량을 입력해주세요"); return; }
+    if (isTradeAction && (!numericUnitPrice || numericUnitPrice <= 0)) { setToast("단가를 입력해주세요"); return; }
     setSaving(true);
     try {
-      const assetInfo = assets.find(a => a.sym === asset) || { sym: asset, label: asset, category: "other" };
+      const assetInfo = selectedAssetInfo;
+      const effectiveCurrency = currency || defaultCurrency || "USD";
+      const effectiveSnapshot = buildQuoteSnapshot(currentQuote || queuedSnapshot, effectiveCurrency, assetInfo.label);
       const log = {
         date: toDateStr(),
         asset,
         assetLabel: assetInfo.label,
         category: assetInfo.category,
         action,
-        amountKRW: amountKRW ? Number(amountKRW.replace(/,/g, "")) : null,
-        amountUSD: amountUSD ? Number(amountUSD) : null,
+        currency: effectiveCurrency,
+        quantity: isTradeAction ? numericQuantity : null,
+        unitPrice: isTradeAction ? numericUnitPrice : null,
+        amountKRW: isTradeAction && effectiveCurrency === "KRW" ? computedAmount : null,
+        amountUSD: isTradeAction && effectiveCurrency !== "KRW" ? computedAmount : null,
         reason: reason.trim(),
         marketNote: marketNote.trim(),
         confidence,
+        marketSnapshot: effectiveSnapshot,
+        holdingSnapshot: currentHolding ? {
+          qty: currentHolding.qty,
+          avgPrice: currentHolding.avgPrice,
+          currency: currentHolding.currency || effectiveCurrency,
+        } : null,
         review: null,
       };
       const id = await saveInvestLog(uid, log);
       setLogs(prev => [{ ...log, id, createdAt: new Date().toISOString() }, ...prev]);
-      // 폼 초기화
-      setReason(""); setMarketNote(""); setAmountKRW(""); setAmountUSD("");
-      setConfidence(3); setShowExtra(false);
+      resetForm();
       setToast("기록 완료 ✅");
     } catch { setToast("저장 실패"); }
     setSaving(false);
   };
 
-  const handleDelete = async (logId) => {
-    await deleteInvestLog(uid, logId);
+  const handleDelete = (logId) => {
     setLogs(prev => prev.filter(l => l.id !== logId));
     setSelectedLog(null);
     setToast("삭제됨");
@@ -148,6 +266,12 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
     setSelectedLog(prev => prev ? { ...prev, review } : null);
   };
 
+  const handleLogUpdated = (logId, patch) => {
+    setLogs((prev) => prev.map((logItem) => logItem.id === logId ? { ...logItem, ...patch } : logItem));
+    setSelectedLog((prev) => prev?.id === logId ? { ...prev, ...patch } : prev);
+    setToast("수정됨 ✅");
+  };
+
   if (selectedLog) {
     return (
       <InvestDetail
@@ -155,6 +279,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
         uid={uid}
         onBack={() => setSelectedLog(null)}
         onDelete={handleDelete}
+        onLogUpdated={handleLogUpdated}
         onReviewSaved={handleReviewSaved}
       />
     );
@@ -192,7 +317,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
       )}
 
       {/* 포트폴리오 시세 */}
-      {(telegramCfg?.assets?.length > 0) && (
+      {availableAssets.length > 0 && (
         <div style={{ ...S.card, marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>📈 관심 종목</div>
@@ -207,6 +332,9 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
             const isUp = chg > 0;
             const isDown = chg < 0;
             const color = isUp ? "#4ADE80" : isDown ? "#F87171" : "var(--dm-muted)";
+            const rowHolding = holdings.find((holding) => holding.sym === sym) || null;
+            const rowAssetInfo = availableAssets.find((assetItem) => assetItem.sym === sym) || null;
+            const rowCurrency = rowHolding?.currency || rowAssetInfo?.currency || "USD";
             return (
               <div key={sym} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
                 borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
@@ -222,6 +350,17 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
                     {isUp ? "▲" : isDown ? "▼" : "—"} {Math.abs(chg).toFixed(2)}%
                   </div>
                 </div>
+                <button
+                  onClick={() => {
+                    setAsset(sym);
+                    setQueuedSnapshot(buildQuoteSnapshot({ ...d, currency: rowCurrency, capturedAt: new Date().toISOString() }, rowCurrency, d.label || sym));
+                    setCurrency(rowCurrency);
+                    setUnitPrice(d.price != null ? String(d.price) : "");
+                  }}
+                  style={{ background: "transparent", border: "1px solid var(--dm-border)", color: "#6C8EFF", borderRadius: 10, padding: "6px 8px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}
+                >
+                  선택
+                </button>
               </div>
             );
           })}
@@ -257,7 +396,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
             onChange={e => setAsset(e.target.value)}
             style={{ ...S.input, flex: 1, marginBottom: 0, cursor: "pointer" }}
           >
-            {assets.map(a => (
+            {availableAssets.map(a => (
               <option key={a.sym} value={a.sym}>{a.sym} · {a.label}</option>
             ))}
           </select>
@@ -273,35 +412,76 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
           </div>
         </div>
 
-        {/* 금액 (KRW + USD) */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>₩ 원화 (선택)</div>
-            <input
-              type="number"
-              value={amountKRW}
-              onChange={e => setAmountKRW(e.target.value)}
-              placeholder="0"
-              style={{ ...S.input, marginBottom: 0 }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>$ 달러 (선택)</div>
-            <input
-              type="number"
-              value={amountUSD}
-              onChange={e => setAmountUSD(e.target.value)}
-              placeholder="0.00"
-              style={{ ...S.input, marginBottom: 0 }}
-            />
+        <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 12px", borderRadius: 14, background: "rgba(108,142,255,0.08)", border: "1px solid rgba(108,142,255,0.16)", boxShadow: "none" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-text)", marginBottom: 8 }}>{selectedAssetInfo.label} 컨텍스트</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 3 }}>현재가</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-text)" }}>{currentQuote?.price != null ? formatMoney(currentQuote.price, currentQuote.currency || defaultCurrency) : "-"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 3 }}>보유 현황</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-text)" }}>
+                {currentHolding ? `${formatQuantity(currentHolding.qty)} · 평단 ${formatMoney(currentHolding.avgPrice, currentHolding.currency || defaultCurrency)}` : "미보유"}
+              </div>
+            </div>
           </div>
         </div>
+
+        {isTradeAction && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>수량 *</div>
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={e => setQuantity(e.target.value)}
+                  placeholder="예: 3.5"
+                  style={{ ...S.input, marginBottom: 0 }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>체결 단가 *</div>
+                <input
+                  type="number"
+                  value={unitPrice}
+                  onChange={e => setUnitPrice(e.target.value)}
+                  placeholder="예: 182.50"
+                  style={{ ...S.input, marginBottom: 0 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>통화</div>
+                <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...S.input, marginBottom: 0, appearance: "none" }}>
+                  <option value="USD">USD</option>
+                  <option value="KRW">KRW</option>
+                </select>
+              </div>
+              <div style={{ ...S.card, margin: 0, padding: "12px 12px", borderRadius: 14, boxShadow: "none", background: "var(--dm-input)" }}>
+                <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 4, fontWeight: 700 }}>예상 총액</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>{computedAmount ? formatMoney(computedAmount, currency) : "수량과 단가를 입력하세요"}</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!isTradeAction && (
+          <div style={{ ...S.card, margin: "0 0 10px", padding: "12px 12px", borderRadius: 14, boxShadow: "none", background: "var(--dm-input)" }}>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.6 }}>
+              `HOLD`는 거래 체결 기록이 아니라 현재 판단을 남기는 메모형 기록입니다.
+            </div>
+          </div>
+        )}
 
         {/* 이유 */}
         <input
           value={reason}
           onChange={e => setReason(e.target.value)}
-          placeholder="한줄 이유 (필수) — 왜 이 판단을 했나요?"
+          placeholder={action === "BUY" ? "매수 이유 (필수) — 왜 지금 진입하나요?" : action === "SELL" ? "매도 이유 (필수) — 왜 지금 정리하나요?" : "보유 이유 (필수) — 왜 계속 들고 가나요?"}
           maxLength={100}
           style={{ ...S.input, marginBottom: 10 }}
         />
@@ -351,6 +531,13 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
       ) : (
         logs.map(log => {
           const pending = needsReview(log);
+          const logCurrency = log.currency || (log.amountKRW != null ? "KRW" : "USD");
+          const tradeSummary = log.action !== "HOLD" && log.quantity != null && log.unitPrice != null
+            ? `${formatQuantity(log.quantity)} · 단가 ${formatMoney(log.unitPrice, logCurrency)}`
+            : null;
+          const snapshotSummary = log.marketSnapshot?.price != null
+            ? `기록 당시 ${formatMoney(log.marketSnapshot.price, log.marketSnapshot.currency || logCurrency)}`
+            : null;
           return (
             <div key={log.id} onClick={() => setSelectedLog(log)} style={{
               ...S.card, marginBottom: 8, cursor: "pointer",
@@ -360,8 +547,8 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontWeight: 900, fontSize: 14, color: "var(--dm-text)" }}>{log.asset}</span>
                   <span style={{ fontSize: 12, fontWeight: 900, color: ACTION_COLOR[log.action], background: `${ACTION_COLOR[log.action]}22`, borderRadius: 6, padding: "2px 8px" }}>{log.action}</span>
-                  {log.amountKRW && <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>₩{Number(log.amountKRW).toLocaleString()}</span>}
-                  {log.amountUSD && <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>${log.amountUSD}</span>}
+                  {log.amountKRW && <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{formatMoney(log.amountKRW, "KRW")}</span>}
+                  {log.amountUSD && <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{formatMoney(log.amountUSD, "USD")}</span>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {pending && <span style={{ fontSize: 10, color: "#FCD34D", fontWeight: 900, background: "rgba(252,211,77,0.12)", borderRadius: 6, padding: "2px 6px" }}>복기 대기</span>}
@@ -370,6 +557,12 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
                 </div>
               </div>
               <div style={{ fontSize: 13, color: "var(--dm-text)", marginBottom: 4 }}>{log.reason}</div>
+              {(tradeSummary || snapshotSummary) && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                  {tradeSummary && <span style={{ fontSize: 11, color: "var(--dm-sub)" }}>{tradeSummary}</span>}
+                  {snapshotSummary && <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{snapshotSummary}</span>}
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>확신</span>
                 {"⭐".repeat(log.confidence)}
