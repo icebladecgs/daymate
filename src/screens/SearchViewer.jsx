@@ -100,13 +100,16 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
       </div>
 
       <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
-        <input
-          style={{ ...S.input, marginBottom: 0 }}
-          placeholder="🔍 검색어 입력..."
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          autoFocus
-        />
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 15, pointerEvents: 'none', userSelect: 'none' }}>🔍</span>
+          <input
+            style={{ ...S.input, marginBottom: 0, paddingLeft: 38 }}
+            placeholder="검색어 입력..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+          />
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, padding: "8px 16px", flexShrink: 0 }}>
