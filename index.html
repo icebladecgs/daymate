@@ -41,10 +41,18 @@
             let refreshing = false;
 
             const markUpdateReady = (worker) => {
-              if (!worker) return;
-              pendingWorker = worker;
+              const nextWorker = registration.waiting || worker || null;
+              if (!nextWorker) return;
+              pendingWorker = nextWorker;
               window.__daymateHasPendingUpdate = () => !!pendingWorker;
-              window.__daymateApplyUpdate = () => pendingWorker?.postMessage({ type: 'SKIP_WAITING' });
+              window.__daymateApplyUpdate = () => {
+                const workerToActivate = registration.waiting || pendingWorker;
+                if (!workerToActivate) {
+                  window.location.reload();
+                  return;
+                }
+                workerToActivate.postMessage({ type: 'SKIP_WAITING' });
+              };
               window.dispatchEvent(new CustomEvent('daymate-update-ready'));
             };
 
@@ -57,7 +65,7 @@
               if (!newWorker) return;
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  markUpdateReady(newWorker);
+                  markUpdateReady(registration.waiting || newWorker);
                 }
               });
             });
