@@ -927,8 +927,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>DayMate</div>
-          <div style={S.sub}>{user.name}님 · {formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
+          <div style={S.title}>{user.name}님</div>
+          <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => setIsDark?.(d => !d)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1372,13 +1372,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       })()}
       </div>
       )}
-
-      {/* 광고 배너 자리 */}
-      <div style={{ order: 25 }}>
-      <div style={{ margin: '0 16px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1px dashed var(--dm-border)', padding: '10px 16px', textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>📢 배너 준비 중입니다</div>
-      </div>
-      </div>
 
       {isSectionVisible('someday') && (
       <div style={{ order: getSectionOrder('someday') }}>
