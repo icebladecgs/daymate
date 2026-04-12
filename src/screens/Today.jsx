@@ -177,7 +177,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
         </div>
       </div>
 
-      {/* 투자일기 바로가기 */}
+      {/* 투자 허브 바로가기 */}
       {onOpenInvest && (
         <div onClick={onOpenInvest} style={{
           ...S.card, marginTop: 4, cursor: "pointer",
@@ -188,8 +188,8 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 22 }}>💹</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>투자일기</div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>판단을 기록하고 복기하세요</div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>투자 허브</div>
+              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>브리핑 확인 후 판단을 기록하세요</div>
             </div>
           </div>
           <span style={{ fontSize: 18, color: "var(--dm-muted)" }}>›</span>

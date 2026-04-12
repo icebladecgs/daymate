@@ -51,6 +51,12 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-04-12 (Windows 작업분)
+- **투자 허브 추가**: `자산 브리핑`과 `투자일기`를 하나의 허브 화면으로 통합
+- `portfolio` / `invest` 진입점은 유지하되 같은 허브를 다른 기본 탭으로 열도록 정리
+- 홈/오늘/설정의 투자 진입 라벨을 `투자 허브` 기준으로 맞춤
+- 검증: `npm run build` 통과
+
 ### 2026-04-06 (Windows 작업분)
 - 초대 플로우 개선 및 에이전트 ops 정비
 - 브랜드 레이블 통일

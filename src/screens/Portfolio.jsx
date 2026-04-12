@@ -32,7 +32,7 @@ function getDailyChange(d, qty) {
 
 const PF_CACHE_PREFIX = "dm_portfolio_prices_";
 
-export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, onBack }) {
+export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, onBack, embedded = false, onOpenDiary }) {
   const cacheKey = PF_CACHE_PREFIX + toDateStr();
   const [holdings, setHoldings] = useState(() => telegramCfg?.holdings || []);
   const [marketData, setMarketData] = useState(() => {
@@ -159,25 +159,59 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
   const summary = calcSummary();
 
   const inputStyle = { ...S.input, marginBottom: 0 };
+  const rootStyle = embedded
+    ? { width: "100%", minWidth: 0, boxSizing: "border-box", paddingBottom: 12 }
+    : S.content;
 
   return (
-    <div style={S.content}>
+    <div style={rootStyle}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       {/* 상단바 */}
-      <div style={S.topbar}>
-        <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
-        <div style={{ flex: 1, marginLeft: 10 }}>
-          <div style={S.title}>💼 보유자산</div>
-          <div style={S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
+      {!embedded && (
+        <div style={S.topbar}>
+          <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
+          <div style={{ flex: 1, marginLeft: 10 }}>
+            <div style={S.title}>💼 보유자산</div>
+            <div style={S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
+          </div>
+          <button
+            onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
+            style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
+          >
+            {loading ? "..." : "🔄"}
+          </button>
         </div>
-        <button
-          onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
-          style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
-        >
-          {loading ? "..." : "🔄"}
-        </button>
-      </div>
+      )}
+
+      {embedded && (
+        <div style={{ ...S.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>브리핑을 보고 바로 기록하세요</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", lineHeight: 1.5 }}>오늘 손익을 확인한 직후에 판단을 남겨야 복기 품질이 좋아집니다.</div>
+          </div>
+          {onOpenDiary && (
+            <button onClick={onOpenDiary} style={{ ...S.btnGhost, width: "auto", marginTop: 0, padding: "10px 12px", flexShrink: 0 }}>
+              기록하기
+            </button>
+          )}
+        </div>
+      )}
+
+      {embedded && (
+        <div style={{ ...S.card, marginTop: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 3 }}>보유 종목</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)" }}>{holdings.length}개</div>
+          </div>
+          <button
+            onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
+            style={{ background: "transparent", border: "1px solid var(--dm-border)", color: "var(--dm-muted)", fontSize: 12, cursor: "pointer", borderRadius: 10, padding: "8px 10px" }}
+          >
+            {loading ? "불러오는 중..." : "시세 새로고침"}
+          </button>
+        </div>
+      )}
 
       {/* 포트폴리오 요약 */}
       {summary && (
@@ -357,7 +391,7 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
         </div>
       )}
 
-      <div style={{ height: 40 }} />
+      <div style={{ height: embedded ? 12 : 40 }} />
     </div>
   );
 }

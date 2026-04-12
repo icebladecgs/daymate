@@ -33,7 +33,7 @@ function needsReview(log) {
   return diff >= 3;
 }
 
-export default function InvestDiary({ uid, telegramCfg, onBack }) {
+export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false, onOpenBriefing }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
@@ -104,6 +104,9 @@ export default function InvestDiary({ uid, telegramCfg, onBack }) {
   const wins = reviewed.filter(l => l.review.result === "WIN").length;
   const winRate = reviewed.length > 0 ? Math.round((wins / reviewed.length) * 100) : null;
   const pendingReview = logs.filter(needsReview).length;
+  const rootStyle = embedded
+    ? { width: "100%", minWidth: 0, boxSizing: "border-box", paddingBottom: 12 }
+    : S.content;
 
   const handleSave = async () => {
     if (!reason.trim()) { setToast("이유를 입력해주세요"); return; }
@@ -158,19 +161,35 @@ export default function InvestDiary({ uid, telegramCfg, onBack }) {
   }
 
   return (
-    <div style={S.content}>
+    <div style={rootStyle}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       {/* 상단바 */}
-      <div style={S.topbar}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-          <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
-          <div>
-            <div style={S.title}>💹 투자일기</div>
-            <div style={S.sub}>판단을 기록하고 복기하세요</div>
+      {!embedded && (
+        <div style={S.topbar}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+            <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
+            <div>
+              <div style={S.title}>💹 투자일기</div>
+              <div style={S.sub}>판단을 기록하고 복기하세요</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {embedded && (
+        <div style={{ ...S.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>기록 전에 브리핑을 다시 볼 수 있습니다</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", lineHeight: 1.5 }}>시세와 평가손익을 함께 보면 왜 매수·보유·매도를 선택했는지 더 선명하게 남길 수 있습니다.</div>
+          </div>
+          {onOpenBriefing && (
+            <button onClick={onOpenBriefing} style={{ ...S.btnGhost, width: "auto", marginTop: 0, padding: "10px 12px", flexShrink: 0 }}>
+              브리핑 보기
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 포트폴리오 시세 */}
       {(telegramCfg?.assets?.length > 0) && (
@@ -359,7 +378,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack }) {
           );
         })
       )}
-      <div style={{ height: 12 }} />
+      <div style={{ height: embedded ? 12 : 20 }} />
     </div>
   );
 }

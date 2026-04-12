@@ -1639,7 +1639,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             </span>
             <button onClick={onOpenPortfolio}
               style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-              관리 →
+              허브 →
             </button>
           </div>
           <div style={{ ...S.card, marginBottom: 10 }}>

@@ -1273,7 +1273,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </MenuGroup>
 
       <MenuGroup label="투자">
-        <MenuRow icon="💼" title="보유자산 관리" sub={telegramCfg.holdings?.length > 0 ? `${telegramCfg.holdings.length}개 종목` : '종목 추가하기'} onClick={() => onChangeScreen?.('portfolio')} />
+        <MenuRow icon="💼" title="투자 허브" sub={telegramCfg.holdings?.length > 0 ? `${telegramCfg.holdings.length}개 종목 · 브리핑/기록` : '브리핑과 투자 기록 열기'} onClick={() => onChangeScreen?.('portfolio')} />
       </MenuGroup>
 
       <MenuGroup label="알림">
