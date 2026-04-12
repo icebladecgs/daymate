@@ -22,9 +22,9 @@ function run(command) {
   }
 }
 
-const commitCount = process.env.VERCEL_GIT_COMMIT_SHA
-  ? run('git rev-list --count HEAD') || '0'
-  : run('git rev-list --count HEAD') || '0';
+// Vercel은 shallow clone이라 commit count가 실제보다 훨씬 작음 → package.json 버전 우선 사용
+const isVercel = !!process.env.VERCEL_GIT_COMMIT_SHA;
+const commitCount = isVercel ? '0' : run('git rev-list --count HEAD') || '0';
 const shortSha = (process.env.VERCEL_GIT_COMMIT_SHA || run('git rev-parse --short HEAD') || 'local').slice(0, 7);
 
 const buildTime = new Intl.DateTimeFormat('sv-SE', {
@@ -39,9 +39,10 @@ const buildTime = new Intl.DateTimeFormat('sv-SE', {
 
 const storedVersionNumber = Number.parseInt(String(packageJson.version || '0.0.0').split('.')[1] || '0', 10);
 const gitVersionNumber = Number.parseInt(commitCount, 10);
-const versionNumber = Number.isFinite(gitVersionNumber) && gitVersionNumber > 0
-  ? gitVersionNumber
-  : (Number.isFinite(storedVersionNumber) && storedVersionNumber > 0 ? storedVersionNumber : 0);
+// Vercel: storedVersionNumber(package.json) 우선 / 로컬: git commit count 우선
+const versionNumber = isVercel
+  ? (Number.isFinite(storedVersionNumber) && storedVersionNumber > 0 ? storedVersionNumber : gitVersionNumber)
+  : (Number.isFinite(gitVersionNumber) && gitVersionNumber > 0 ? gitVersionNumber : storedVersionNumber);
 const appVersion = Number.isFinite(versionNumber) && versionNumber > 0 ? `v${versionNumber}` : 'v0';
 const appBuild = `${buildTime} (${shortSha})`;
 
