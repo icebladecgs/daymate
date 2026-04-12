@@ -16,6 +16,8 @@ import {
   setDoc,
   updateDoc,
   increment,
+  arrayUnion,
+  arrayRemove,
   collection,
   getDocs,
   getCountFromServer,
@@ -345,19 +347,27 @@ export async function deleteCommunityNotice(communityId, noticeId) {
 
 export async function addNoticeComment(communityId, noticeId, comment) {
   const ref = doc(collection(db, 'communities', communityId, 'notices', noticeId, 'comments'));
-  await setDoc(ref, { ...comment, createdAt: new Date().toISOString() });
-  // 공지 문서에 댓글 수 업데이트
-  const noticeRef = doc(db, 'communities', communityId, 'notices', noticeId);
-  const snap = await getDoc(noticeRef);
-  await setDoc(noticeRef, { commentCount: (snap.data()?.commentCount || 0) + 1 }, { merge: true });
+  await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });
+  await updateDoc(doc(db, 'communities', communityId, 'notices', noticeId), { commentCount: increment(1) });
   return ref.id;
 }
 
 export async function deleteNoticeComment(communityId, noticeId, commentId) {
   await deleteDoc(doc(db, 'communities', communityId, 'notices', noticeId, 'comments', commentId));
-  const noticeRef = doc(db, 'communities', communityId, 'notices', noticeId);
-  const snap = await getDoc(noticeRef);
-  await setDoc(noticeRef, { commentCount: Math.max((snap.data()?.commentCount || 1) - 1, 0) }, { merge: true });
+  await updateDoc(doc(db, 'communities', communityId, 'notices', noticeId), { commentCount: increment(-1) });
+}
+
+export async function syncNoticeCommentCount(communityId, noticeId, actualCount) {
+  await updateDoc(doc(db, 'communities', communityId, 'notices', noticeId), { commentCount: actualCount });
+}
+
+export async function toggleCommentLike(communityId, noticeId, commentId, uid) {
+  const ref = doc(db, 'communities', communityId, 'notices', noticeId, 'comments', commentId);
+  const snap = await getDoc(ref);
+  const likedBy = snap.data()?.likedBy || [];
+  const isLiked = likedBy.includes(uid);
+  await updateDoc(ref, { likedBy: isLiked ? arrayRemove(uid) : arrayUnion(uid) });
+  return !isLiked;
 }
 
 // ---------- 투자일기 ----------

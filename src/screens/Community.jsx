@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, updateMemberNickname, setCommunityPassword } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -375,6 +375,11 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         if (hasNew && soundOnRef.current) playNotifySound('comment');
       } else {
         commentInitRef.current = true;
+        // 실제 댓글 수와 저장된 count가 다르면 자동 보정
+        const actual = snap.docs.length;
+        if (selectedNotice.commentCount !== actual) {
+          syncNoticeCommentCount(communityId, selectedNotice.id, actual).catch(() => {});
+        }
       }
       setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, () => {});
@@ -1298,6 +1303,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               ) : (
                 comments.map((c, i) => {
                   const isMine = c.uid === authUser?.uid;
+                  const likedBy = c.likedBy || [];
+                  const isLiked = likedBy.includes(authUser?.uid);
                   return (
                     <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
                       <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
@@ -1317,6 +1324,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                           </div>
                         </div>
                         <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>{c.text}</div>
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
+                          <button
+                            onClick={() => toggleCommentLike(communityId, selectedNotice.id, c.id, authUser?.uid).catch(() => {})}
+                            style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: 11, fontWeight: isLiked ? 700 : 400 }}
+                          >
+                            {isLiked ? '❤️' : '🤍'} {likedBy.length > 0 && likedBy.length}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
