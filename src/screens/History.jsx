@@ -433,8 +433,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         </div>
       </div>
 
-      <div style={{ padding: "12px 18px 4px", fontSize: 16, fontWeight: 900 }}>
-        {monthLabel(year, month0)}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 4px" }}>
+        <div style={{ fontSize: 16, fontWeight: 900 }}>{monthLabel(year, month0)}</div>
+        <button onClick={() => setGoalsOpen(v => !v)} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 12px', fontSize: 12, width: 'auto' }}>
+          🎯 목표
+        </button>
       </div>
 
       {/* 월간 요약 */}
