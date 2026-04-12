@@ -436,9 +436,46 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 4px" }}>
         <div style={{ fontSize: 16, fontWeight: 900 }}>{monthLabel(year, month0)}</div>
         <button onClick={() => setGoalsOpen(v => !v)} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 12px', fontSize: 12, width: 'auto' }}>
-          🎯 목표
+          🎯 목표 {goalsOpen ? '▲' : '▼'}
         </button>
       </div>
+
+      {/* 목표 — 월 레이블 바로 아래 인라인 펼침 */}
+      {goalsOpen && (
+        <div style={{ padding: '8px 16px 4px', display: 'grid', gap: 10 }}>
+          {renderYearGoalsBlock()}
+          {renderGoalBlock({
+            title: '월별 목표',
+            accent: '#4ADE80',
+            emoji: '🗓️',
+            items: monthGoals,
+            editing: editingMonthGoals,
+            draft: monthDraft,
+            setDraft: setMonthDraft,
+            newInput: newMonthInput,
+            setNewInput: setNewMonthInput,
+            onStartEdit: () => {
+              setGoalsOpen(true);
+              setMonthDraft([...monthGoals]);
+              setNewMonthInput('');
+              setEditingMonthGoals(true);
+            },
+            onSave: saveMonthGoals,
+            onCancel: () => {
+              setEditingMonthGoals(false);
+              setMonthDraft([...monthGoals]);
+              setNewMonthInput('');
+            },
+            extraHeader: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => shiftGoalMonth(-1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>‹</button>
+                <div style={{ minWidth: 78, textAlign: 'center', fontSize: 11, color: 'var(--dm-text)', fontWeight: 800 }}>{selectedGoalMonthLabel}</div>
+                <button onClick={() => shiftGoalMonth(1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>›</button>
+              </div>
+            ),
+          })}
+        </div>
+      )}
 
       {/* 월간 요약 */}
       <div style={{ display: 'flex', gap: 8, padding: '0 16px 10px', flexWrap: 'wrap' }}>
@@ -583,51 +620,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {weeklyOpen && (
         <div style={{ padding: "0 16px" }}>
           <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} onToggleTask={onToggleTaskForDate} />
-        </div>
-      )}
-
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span>🎯 목표</span>
-        <button
-          onClick={() => setGoalsOpen(v => !v)}
-          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', fontWeight: 700 }}
-        >
-          {goalsOpen ? '접기 ▲' : `펼치기 ▼ · 올해 ${yearGoals.length}개 / 월별 목표 ${monthGoals.length}개`}
-        </button>
-      </div>
-      {goalsOpen && (
-        <div style={{ padding: '0 16px', display: 'grid', gap: 10 }}>
-          {renderYearGoalsBlock()}
-          {renderGoalBlock({
-            title: '월별 목표',
-            accent: '#4ADE80',
-            emoji: '🗓️',
-            items: monthGoals,
-            editing: editingMonthGoals,
-            draft: monthDraft,
-            setDraft: setMonthDraft,
-            newInput: newMonthInput,
-            setNewInput: setNewMonthInput,
-            onStartEdit: () => {
-              setGoalsOpen(true);
-              setMonthDraft([...monthGoals]);
-              setNewMonthInput('');
-              setEditingMonthGoals(true);
-            },
-            onSave: saveMonthGoals,
-            onCancel: () => {
-              setEditingMonthGoals(false);
-              setMonthDraft([...monthGoals]);
-              setNewMonthInput('');
-            },
-            extraHeader: (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button onClick={() => shiftGoalMonth(-1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>‹</button>
-                <div style={{ minWidth: 78, textAlign: 'center', fontSize: 11, color: 'var(--dm-text)', fontWeight: 800 }}>{selectedGoalMonthLabel}</div>
-                <button onClick={() => shiftGoalMonth(1)} style={{ ...S.btnGhost, marginTop: 0, width: 28, height: 28, padding: 0, fontSize: 12 }}>›</button>
-              </div>
-            ),
-          })}
         </div>
       )}
 
