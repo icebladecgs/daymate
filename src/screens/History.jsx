@@ -8,7 +8,7 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -412,11 +412,22 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto' }}>🔍</button>
-          {getValidGcalToken?.() && (
-            <button onClick={() => fetchGcal(true)} disabled={gcalRefreshing} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto', opacity: gcalRefreshing ? 0.5 : 1 }}>
-              {gcalRefreshing ? '⟳' : '📅'}
-            </button>
-          )}
+          <button
+            onClick={async () => {
+              const token = getValidGcalToken?.();
+              if (!token) {
+                showToast('📅 구글 캘린더 연동이 필요해요');
+                await onGcalConnect?.();
+                fetchGcal(true);
+              } else {
+                fetchGcal(true);
+              }
+            }}
+            disabled={gcalRefreshing}
+            style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto', opacity: gcalRefreshing ? 0.5 : 1 }}
+          >
+            {gcalRefreshing ? '⟳' : '📅'}
+          </button>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
