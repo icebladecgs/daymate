@@ -13,7 +13,7 @@ import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import HomeCustomizationModal from "../components/home/HomeCustomizationModal.jsx";
-import { DEFAULT_HOME_PREFS, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
+import { DEFAULT_HOME_PREFS, DEFAULT_HOME_SECTION_ORDER, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals } from "../utils/goals.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
@@ -563,6 +563,16 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     });
   };
 
+  const resetHomeCustomization = () => {
+    const nextPrefs = { ...DEFAULT_HOME_PREFS };
+    const nextOrder = [...DEFAULT_HOME_SECTION_ORDER];
+    setHomePrefs(nextPrefs);
+    setHomeSectionOrder(nextOrder);
+    store.set(HOME_PREFS_KEY, nextPrefs);
+    store.set(HOME_SECTION_ORDER_KEY, nextOrder);
+    announce('홈 구성을 기본 추천 상태로 되돌렸습니다.');
+  };
+
   const renderHomeSectionRow = (sectionId) => (
     <SortableHomeSectionRow
       key={sectionId}
@@ -1103,10 +1113,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             )}
             {isSectionVisible('quote') && (
             <div style={{ order: getSectionOrder('quote') }}>
-          <div style={{ margin: "0 16px 10px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "14px 16px" }}>
-            <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>✨ 오늘의 명언</div>
-            <div style={{ fontSize: 14, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.6, marginBottom: 6 }}>"{todayQuote.text}"</div>
-            <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
+          <div style={{ margin: "0 16px 10px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))", border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", boxShadow: "none" }}>
+            <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>오늘의 명언</div>
+            <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.55, marginBottom: 5, opacity: 0.9 }}>"{todayQuote.text}"</div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
           </div>
       </div>
       )}
@@ -1115,7 +1125,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
 
       {isSectionVisible('tasks') && (
       <div style={{ order: getSectionOrder('tasks') }}>
-      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, paddingTop: 18 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>오늘 할일</span>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={fetchAiSuggestions} disabled={aiLoading}
@@ -1140,7 +1150,39 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             style={{ fontSize: 11, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0" }}>닫기</button>
         </div>
       )}
-      <div style={{ ...S.card, border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid var(--dm-border)" }}>
+      <div style={{
+        ...S.card,
+        border: allDone && !editingTasks ? "1.5px solid #4ADE80" : "1.5px solid rgba(108,142,255,.28)",
+        background: allDone && !editingTasks
+          ? "linear-gradient(135deg, rgba(74,222,128,.12), rgba(108,142,255,.08))"
+          : "linear-gradient(135deg, rgba(108,142,255,.12), rgba(108,142,255,.04))",
+        boxShadow: allDone && !editingTasks
+          ? "0 10px 26px rgba(74,222,128,.12), inset 0 1px 0 rgba(255,255,255,.08)"
+          : "0 12px 28px rgba(75,111,255,.12), inset 0 1px 0 rgba(255,255,255,.08)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 800, marginBottom: 3 }}>오늘 실행할 핵심</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>
+              {filledCount === 0 ? '아직 비어 있어요' : `${doneCount}/${filledCount} 완료`}
+            </div>
+          </div>
+          <div style={{
+            minWidth: 58,
+            height: 58,
+            borderRadius: 18,
+            background: allDone ? 'rgba(74,222,128,.14)' : 'rgba(108,142,255,.12)',
+            border: `1px solid ${allDone ? 'rgba(74,222,128,.28)' : 'rgba(108,142,255,.24)'}`,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: allDone ? '#4ADE80' : '#6C8EFF', lineHeight: 1 }}>{filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0}%</div>
+            <div style={{ fontSize: 9, color: 'var(--dm-muted)', marginTop: 2 }}>완료율</div>
+          </div>
+        </div>
         {editingTasks ? (
           <>
             {draftTasks.map((t, idx) => (
@@ -1681,6 +1723,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         open={homePrefsOpen}
         homeSectionOrder={homeSectionOrder}
         renderSectionRow={renderHomeSectionRow}
+        onReset={resetHomeCustomization}
         onClose={() => setHomePrefsOpen(false)}
       />
 

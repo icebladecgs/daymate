@@ -6,6 +6,7 @@ export default function HomeCustomizationModal({
   open,
   homeSectionOrder,
   renderSectionRow,
+  onReset,
   onClose,
 }) {
   const scrollRef = useRef(null);
@@ -51,7 +52,14 @@ export default function HomeCustomizationModal({
             <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>홈 구성</div>
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 4 }}>자주 안 보는 카드만 숨기고, 필요한 섹션 순서도 바꿀 수 있어요.</div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {onReset && (
+              <button onClick={onReset} style={{ background: 'transparent', border: '1px solid var(--dm-border)', color: 'var(--dm-sub)', fontSize: 11, fontWeight: 800, cursor: 'pointer', padding: '7px 10px', borderRadius: 999 }}>
+                기본 추천 복원
+              </button>
+            )}
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+          </div>
         </div>
         <div ref={scrollRef} style={{ padding: `16px 16px calc(${72 + HOME_MODAL_NAV_CLEARANCE}px + env(safe-area-inset-bottom, 0px))`, display: 'grid', gap: 10, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', position: 'relative' }}>
           <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
