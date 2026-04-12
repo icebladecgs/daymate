@@ -40,33 +40,69 @@ function MenuGroup({ label, children }) {
   );
 }
 
-function SummaryTile({ label, value, sub, onClick, tone = 'default' }) {
+function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone = 'default' }) {
   const accent = tone === 'good'
     ? '#4ADE80'
     : tone === 'warn'
       ? '#F59E0B'
       : tone === 'danger'
         ? '#F87171'
-        : '#6C8EFF';
+        : 'var(--dm-text)';
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        textAlign: 'left',
-        border: '1px solid rgba(255,255,255,.06)',
-        background: 'rgba(255,255,255,.03)',
-        borderRadius: 16,
-        padding: '14px 14px 13px',
-        cursor: onClick ? 'pointer' : 'default',
-        minHeight: 102,
-      }}
-    >
+    <div style={{
+      border: '1px solid rgba(255,255,255,.06)',
+      background: 'rgba(255,255,255,.03)',
+      borderRadius: 16,
+      padding: '14px 14px 13px',
+      minHeight: 116,
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 900, color: accent, marginBottom: 6 }}>{value}</div>
       <div style={{ fontSize: 11, color: 'var(--dm-sub)', lineHeight: 1.55 }}>{sub}</div>
-    </button>
+      {(onAction || onClick) && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 12 }}>
+          {onAction && actionLabel && (
+            <button
+              type="button"
+              onClick={onAction}
+              style={{
+                border: '1px solid rgba(108,142,255,.28)',
+                background: 'rgba(108,142,255,.12)',
+                color: '#C9D7FF',
+                borderRadius: 999,
+                padding: '6px 10px',
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+            >
+              {actionLabel}
+            </button>
+          )}
+          {onClick && (
+            <button
+              type="button"
+              onClick={onClick}
+              style={{
+                border: '1px solid var(--dm-border)',
+                background: 'transparent',
+                color: 'var(--dm-muted)',
+                borderRadius: 999,
+                padding: '6px 10px',
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              열기
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -132,7 +168,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     } catch (e) { console.error(e); }
     setSubmittingSuggestion(false);
   };
-  const [menuSearch, setMenuSearch] = useState('');
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState(getYearGoalTitles(goals).join("\n"));
   const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
@@ -396,6 +431,42 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const backupSummary = lastDriveBackup
     ? new Date(lastDriveBackup).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '아직 백업 없음';
+
+  const enableNotificationsNow = async () => {
+    if (permission === 'granted') {
+      setNotifEnabled(true);
+      store.set('dm_notif_enabled', true);
+      setToast('알림 ON ✅');
+      return;
+    }
+    if (permission === 'denied') {
+      setToast('브라우저 설정에서 알림 허용이 필요해요');
+      setSubPage('notifications');
+      return;
+    }
+    const result = await requestPermission();
+    setPermission(result);
+    if (result === 'granted') {
+      setNotifEnabled(true);
+      store.set('dm_notif_enabled', true);
+      setToast('알림 권한 허용됨 ✅');
+      return;
+    }
+    setToast('알림 권한이 필요해요');
+  };
+
+  const quickActions = [
+    permission !== 'granted' || !notifEnabled
+      ? { key: 'notif', label: '알림 켜기', action: enableNotificationsNow }
+      : { key: 'notif-test', label: '알림 테스트', action: () => setSubPage('notifications') },
+    tgConnected
+      ? { key: 'tg', label: '텔레그램 설정', action: () => setSubPage('telegram') }
+      : { key: 'tg-connect', label: '텔레그램 연결', action: startTgConnect },
+    driveConnected
+      ? { key: 'backup', label: '지금 백업', action: () => setSubPage('app') }
+      : { key: 'drive', label: 'Drive 연결', action: () => setSubPage('integrations') },
+    { key: 'friends', label: '친구 초대', action: () => setSubPage('friends') },
+  ];
 
   const exportData = () => {
     const data = {};
@@ -1180,10 +1251,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       ...(authUser && onOpenAdmin ? [{ icon: '🛠', title: '관리자 페이지', sub: '운영 도구', action: () => onOpenAdmin() }] : []),
     ]},
   ];
-  const allItems = SETTINGS_MENU.flatMap(g => g.items.map(it => ({ ...it, category: g.category })));
-  const menuSearchResults = menuSearch.trim()
-    ? allItems.filter(it => (it.title + it.sub + it.category).toLowerCase().includes(menuSearch.toLowerCase()))
-    : [];
 
   // ── 메인 메뉴 ──────────────────────────────────────
   return (
@@ -1222,13 +1289,19 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               value={authUser ? '연결됨' : '로컬 모드'}
               sub={authUser ? (authUser.displayName || authUser.email || 'Google 동기화 사용 중') : '기기 안에서만 저장 중'}
               onClick={() => setSubPage('integrations')}
-              tone={authUser ? 'good' : 'warn'}
+              actionLabel={authUser ? '연동 보기' : '로그인'}
+              onAction={() => authUser ? setSubPage('integrations') : onGoogleSignIn().catch(() => {})}
+              tone={authUser ? 'good' : 'default'}
             />
             <SummaryTile
               label="알림"
               value={notifEnabled && permission === 'granted' ? '켜짐' : '확인 필요'}
               sub={notificationSummary}
               onClick={() => setSubPage('notifications')}
+              actionLabel={permission === 'granted' && notifEnabled ? '테스트' : '권한 허용'}
+              onAction={permission === 'granted' && notifEnabled
+                ? () => setSubPage('notifications')
+                : enableNotificationsNow}
               tone={notifEnabled && permission === 'granted' ? 'good' : permission === 'denied' ? 'danger' : 'warn'}
             />
             <SummaryTile
@@ -1236,75 +1309,50 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               value={tgConnected ? '연결됨' : '미연결'}
               sub={telegramSummary}
               onClick={() => setSubPage('telegram')}
+              actionLabel={tgConnected ? '설정' : '연결'}
+              onAction={tgConnected ? () => setSubPage('telegram') : startTgConnect}
               tone={tgConnected ? 'good' : 'warn'}
             />
             <SummaryTile
               label="백업"
-              value={driveConnected ? 'Drive 사용 중' : '로컬 저장'}
-              sub={backupSummary}
+              value={driveConnected ? 'Drive 사용 중' : '로컬에만 저장'}
+              sub={driveConnected ? `마지막 백업 ${backupSummary}` : 'Drive 백업 없음'}
               onClick={() => setSubPage('app')}
-              tone={driveConnected || lastDriveBackup ? 'good' : 'warn'}
+              actionLabel={driveConnected ? '백업' : 'Drive 연결'}
+              onAction={driveConnected ? () => setSubPage('app') : () => setSubPage('integrations')}
+              tone={driveConnected ? 'good' : 'default'}
             />
           </div>
         </div>
 
-      {/* ── 검색바 ── */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--dm-muted)', pointerEvents: 'none' }}>🔍</span>
-            <input
-              value={menuSearch}
-              onChange={e => setMenuSearch(e.target.value)}
-              placeholder="설정 검색..."
-              style={{ ...S.input, marginBottom: 0, paddingLeft: 34, fontSize: 14 }}
-            />
-          </div>
-      </div>
-
-      {/* ── 검색 결과 ── */}
-      {menuSearchResults.length > 0 && (
-        <div style={{ margin: '0 16px 12px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
-          {menuSearchResults.map((it, i) => (
-            <div key={i} onClick={() => { it.action(); setMenuSearch(''); }} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              background: i % 2 === 0 ? 'var(--dm-card)' : 'var(--dm-row)',
-              borderBottom: i < menuSearchResults.length - 1 ? '1px solid var(--dm-border)' : 'none',
-              cursor: 'pointer',
-            }}>
-              <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{it.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)' }}>{it.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 1 }}>{it.category} · {it.sub}</div>
-              </div>
-              <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
-            </div>
+      <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {quickActions.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={item.action}
+              style={{
+                border: '1px solid rgba(108,142,255,.24)',
+                background: 'rgba(108,142,255,.10)',
+                color: '#C9D7FF',
+                borderRadius: 999,
+                padding: '9px 12px',
+                fontSize: 12,
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
-      )}
-      {menuSearch.trim() && menuSearchResults.length === 0 && (
-        <div style={{ margin: '0 16px 12px', padding: '14px 16px', textAlign: 'center', fontSize: 13, color: 'var(--dm-muted)', background: 'var(--dm-card)', borderRadius: 14, border: '1px solid var(--dm-border)' }}>
-          검색 결과가 없어요
-        </div>
-      )}
-
-      <MenuGroup label="핵심 설정">
-        <MenuRow icon="👤" title="프로필 & 목표" sub={user.name || '이름과 목표 관리'} onClick={() => setSubPage('profile')} />
-        <MenuRow icon="🔔" title="알림 설정" sub={notificationSummary} onClick={() => setSubPage('notifications')} />
-        <MenuRow icon="📨" title="텔레그램 자동화" sub={telegramSummary} onClick={() => setSubPage('telegram')} />
-        <MenuRow icon="🔗" title="Google 연동" sub={integrationSummary} onClick={() => setSubPage('integrations')} />
-        <MenuRow icon="⚙️" title="앱 관리" sub={`설치 · 백업 · 버전 ${APP_VERSION}`} onClick={() => setSubPage('app')} />
-      </MenuGroup>
-
-      <MenuGroup label="공유 및 지원">
-        <MenuRow icon="👥" title="친구 & 공유" sub={`초대 코드 ${myCode}`} onClick={() => setSubPage('friends')} />
-        {authUser && (
-          <MenuRow icon="💡" title="개선 제안하기" sub="앱 개선 아이디어 보내기" onClick={() => { setSuggestionOpen(true); setSuggestionDone(false); }} />
-        )}
-      </MenuGroup>
+      </div>
 
       {authUser && onOpenAdmin && (
-        <div style={{ padding: '8px 16px' }}>
-          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12, position: 'relative' }}>
+        <div style={{ padding: '0 16px 12px' }}>
+          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12, position: 'relative', marginTop: 0 }}>
             🛠 관리자 페이지
             {pendingSuggestions > 0 && (
               <span style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
@@ -1312,6 +1360,32 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </button>
         </div>
       )}
+
+      {SETTINGS_MENU.map((group) => (
+        <MenuGroup key={group.category} label={group.category}>
+          {group.items.map((item) => (
+            <MenuRow
+              key={item.title}
+              icon={item.icon}
+              title={item.title}
+              sub={item.title === '프로필 & 목표'
+                ? (user.name || '이름과 목표 관리')
+                : item.title === '알림 설정'
+                  ? notificationSummary
+                  : item.title === '텔레그램 자동화'
+                    ? telegramSummary
+                    : item.title === 'Google 연동'
+                      ? integrationSummary
+                      : item.title === '앱 관리'
+                        ? `설치 · 백업 · 버전 ${APP_VERSION}`
+                        : item.title === '친구 & 공유'
+                          ? `초대 코드 ${myCode}`
+                          : item.sub}
+              onClick={item.action}
+            />
+          ))}
+        </MenuGroup>
+      ))}
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />

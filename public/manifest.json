@@ -23,6 +23,13 @@
       "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     },
     {
+      "name": "오늘 습관",
+      "short_name": "습관",
+      "description": "홈의 오늘 습관 섹션 바로가기",
+      "url": "/?screen=home&focus=habits",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
       "name": "이번주 일정",
       "short_name": "일정",
       "description": "이번주 일정 보기",

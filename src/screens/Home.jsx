@@ -514,6 +514,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [homeSectionOrder, setHomeSectionOrder] = useState(() => normalizeHomeSectionOrder(store.get(HOME_SECTION_ORDER_KEY, HOME_SECTION_CONFIG.map(section => section.id))));
   const [showCompletedHabits, setShowCompletedHabits] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('');
+  const habitsSectionRef = useRef(null);
+  const [highlightedHomeSection, setHighlightedHomeSection] = useState(null);
   const habitSensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 10 } }),
@@ -679,6 +681,18 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     setQuickTaskTime('');
     setQuickTaskPriority(false);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get('focus');
+    if (focus !== 'habits') return;
+    const timeoutId = window.setTimeout(() => {
+      habitsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setHighlightedHomeSection('habits');
+      window.setTimeout(() => setHighlightedHomeSection(null), 2200);
+    }, 180);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
   return (
     <div style={S.content}>
       <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{srAnnouncement}</div>
@@ -1032,7 +1046,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       {isStandalone && !shortcutTipDismissed && (
         <div style={{ margin: "0 16px 10px", borderRadius: 12, background: "var(--dm-card)", border: "1px solid var(--dm-border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 18 }}>💡</span>
-          <span style={{ flex: 1, fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.5 }}>홈 화면 아이콘을 <b style={{ color: "var(--dm-text)" }}>꾹 누르면</b> 오늘 할 일 바로가기가 있어요!</span>
+          <span style={{ flex: 1, fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.5 }}>홈 화면 아이콘을 <b style={{ color: "var(--dm-text)" }}>꾹 누르면</b> 오늘 할 일과 오늘 습관 바로가기를 바로 열 수 있어요.</span>
           <button onClick={() => { setShortcutTipDismissed(true); store.set('dm_shortcut_tip_dismissed', true); }}
             style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
@@ -1526,6 +1540,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
 
       {isSectionVisible('habits') && (
       <div style={{ order: getSectionOrder('habits') }}>
+      <div ref={habitsSectionRef} style={{ borderRadius: 22, boxShadow: highlightedHomeSection === 'habits' ? '0 0 0 2px rgba(167,139,250,.35)' : 'none', transition: 'box-shadow 180ms ease' }}>
       {(() => {
         const habitChecks = todayData?.habitChecks || {};
         const doneHabits = habits.filter(h => habitChecks[h.id]).length;
@@ -1710,6 +1725,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
           </>
         );
       })()}
+      </div>
       </div>
       )}
 

@@ -51,6 +51,12 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-04-13 (Windows 작업분)
+- 업데이트 배너를 얇게 줄여 상단 점유를 낮추고, 설정 메인의 검색은 제거한 뒤 `빠른 액션` 칩으로 대체
+- 설정 상태 카드는 실제 상태 문구와 즉시 액션 버튼을 함께 보여주도록 정리
+- PWA 홈 화면 바로가기에 `오늘 습관` 추가, 홈은 `focus=habits` 진입 시 해당 섹션으로 스크롤/강조되도록 연결
+- 검증: `npm run build` 통과
+
 ### 2026-04-12 (Windows 작업분)
 - PWA 업데이트 배너의 `지금 업데이트` 버튼이 실제 대기 서비스워커를 활성화하도록 흐름 수정
 - `sw.js`는 설치 직후 자동 `skipWaiting()` 하지 않도록 바꾸고, `index.html`의 업데이트 브리지는 `registration.waiting` 우선으로 잡도록 조정
