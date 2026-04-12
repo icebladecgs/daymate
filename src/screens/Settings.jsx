@@ -3,7 +3,8 @@ import { toDateStr } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
-import { ASSET_META, sendTelegramMessage, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
+import { ASSET_META, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
+import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebase.js";
 import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import S from "../styles.js";
@@ -184,10 +185,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     setTimeout(() => setDriveStatus(''), 3000);
   };
 
-  const [tgToken, setTgToken] = useState(telegramCfg.botToken || '');
-  const [tgChatId, setTgChatId] = useState(telegramCfg.chatId || '');
-  const [showBotHelp, setShowBotHelp] = useState(false);
-  const [showChatHelp, setShowChatHelp] = useState(false);
+  const [tgConnected, setTgConnected] = useState(false);
+  const [tgConnecting, setTgConnecting] = useState(false);
+  const [tgFirstName, setTgFirstName] = useState('');
   const [briefingTime, setBriefingTime] = useState(telegramCfg.briefingTime || '07:00');
   const [todoTime, setTodoTime] = useState(telegramCfg.todoTime || '07:05');
   const [selectedAssets, setSelectedAssets] = useState(
@@ -218,9 +218,40 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     );
   };
 
+  // 텔레그램 연결 상태 감지
+  useEffect(() => {
+    if (!authUser) return;
+    const unsub = onTgConnected(authUser.uid, (data) => {
+      setTgConnected(true);
+      setTgConnecting(false);
+      setTgFirstName(data.firstName || '');
+    });
+    return () => unsub();
+  }, [authUser]); // eslint-disable-line
+
+  const startTgConnect = async () => {
+    if (!authUser) { setToast('로그인이 필요해요'); return; }
+    setTgConnecting(true);
+    try {
+      const code = await saveTgConnectCode(authUser.uid);
+      const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'DaymateKrBot';
+      window.open(`https://t.me/${botUsername}?start=${code}`, '_blank');
+    } catch {
+      setToast('연결 코드 생성 실패 ❌');
+      setTgConnecting(false);
+    }
+  };
+
+  const handleTgDisconnect = async () => {
+    if (!authUser) return;
+    if (!window.confirm('텔레그램 연결을 해제할까요?')) return;
+    await disconnectTelegram(authUser.uid).catch(() => {});
+    setTgConnected(false);
+    setTgFirstName('');
+  };
+
   const saveTelegram = () => {
     const cfg = {
-      botToken: tgToken.trim(), chatId: tgChatId.trim(),
       briefingTime, todoTime, assets: selectedAssets, customAssets,
       weatherCity: telegramCfg.weatherCity || '',
     };
@@ -289,8 +320,12 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   };
 
   const testTelegramMsg = async () => {
-    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), '✅ <b>DayMate 연결 테스트 성공!</b>\n\n텔레그램 알림이 정상 작동해요.');
-    setToast(res.ok ? '텔레그램 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
+    if (!tgConnected) { setToast('먼저 텔레그램을 연결해주세요'); return; }
+    try {
+      const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: authUser?.uid }) });
+      const json = await res.json();
+      setToast(json.ok ? '텔레그램 전송 성공 ✅' : `전송 실패 🚫`);
+    } catch { setToast('전송 실패 🚫'); }
   };
 
   const testBriefing = async () => {
@@ -595,44 +630,50 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <SubHeader title="텔레그램 자동화" onBack={() => setSubPage(null)} />
 
       <div style={{ margin: '0 16px' }}>
+        {/* 연결 상태 카드 */}
+        <div style={{ ...S.card, marginBottom: 12 }}>
+          {tgConnected ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: '#4ADE80' }}>✓ 텔레그램 연결됨</div>
+                  <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 2 }}>{tgFirstName ? `${tgFirstName}님 계정` : '연결 완료'}</div>
+                </div>
+              </div>
+              <button style={S.btnGhost} onClick={handleTgDisconnect}>연결 해제</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900 }}>텔레그램 연결</div>
+                  <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 2 }}>버튼 하나로 바로 연결</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.8, marginBottom: 14, background: 'var(--dm-deep)', borderRadius: 10, padding: '10px 12px' }}>
+                <b style={{ color: '#6C8EFF' }}>1.</b> 아래 버튼을 누르면 텔레그램이 열려요<br />
+                <b style={{ color: '#6C8EFF' }}>2.</b> 봇에서 <b>시작</b> 버튼만 누르면 끝!<br />
+                <span style={{ color: 'var(--dm-muted)', fontSize: 11 }}>BotFather, 토큰, Chat ID — 모두 필요 없어요 ✨</span>
+              </div>
+              <button
+                style={{ ...S.btn, opacity: tgConnecting ? 0.6 : 1 }}
+                onClick={startTgConnect}
+                disabled={tgConnecting}
+              >
+                {tgConnecting ? '⏳ 텔레그램 열리는 중...' : '📨 텔레그램으로 연결하기'}
+              </button>
+              {tgConnecting && (
+                <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', marginTop: 8 }}>
+                  텔레그램에서 시작 버튼을 누르면 자동으로 연결돼요
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div style={S.card}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>봇 토큰 (Bot Token)</div>
-            <button onClick={() => setShowBotHelp(v => !v)}
-              style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
-              {showBotHelp ? "▲ 닫기" : "❓ 얻는 방법"}
-            </button>
-          </div>
-          {showBotHelp && (
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
-              <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 <b>@BotFather</b> 검색 후 시작<br />
-              <b style={{ color: "#6C8EFF" }}>2.</b> <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>/newbot</code> 명령 입력<br />
-              <b style={{ color: "#6C8EFF" }}>3.</b> 봇 이름 지정 → 사용자명(봇ID) 지정<br />
-              <b style={{ color: "#6C8EFF" }}>4.</b> BotFather가 전송한 <b>HTTP API token</b> 복사<br />
-              <span style={{ color: "var(--dm-muted)" }}>예) <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>123456789:ABCdefGhIjklMno...</code></span>
-            </div>
-          )}
-          <input style={S.input} value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456789:ABCdef..." type="password" />
-
-          <div style={{ height: 10 }} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900 }}>채팅 ID (Chat ID)</div>
-            <button onClick={() => setShowChatHelp(v => !v)}
-              style={{ fontSize: 11, color: "#6C8EFF", background: "transparent", border: "none", cursor: "pointer", fontWeight: 700 }}>
-              {showChatHelp ? "▲ 닫기" : "❓ 얻는 방법"}
-            </button>
-          </div>
-          {showChatHelp && (
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-deep)", borderRadius: 8, padding: "10px 12px", marginBottom: 10, lineHeight: 1.8, border: "1px solid var(--dm-border)" }}>
-              <b style={{ color: "#6C8EFF" }}>1.</b> 텔레그램에서 내가 만든 봇을 찾아 메시지 전송<br />
-              <b style={{ color: "#6C8EFF" }}>2.</b> 브라우저에서 아래 URL 접속:<br />
-              <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4, wordBreak: "break-all" }}>https://api.telegram.org/bot<b>토큰</b>/getUpdates</code><br />
-              <b style={{ color: "#6C8EFF" }}>3.</b> 결과 JSON에서 <code style={{ background: "var(--dm-input)", padding: "1px 5px", borderRadius: 4 }}>"chat":{"{\"id\": "}<b>숫자</b>{"}"}</code> 확인<br />
-              <span style={{ color: "var(--dm-muted)" }}>또는 <b>@userinfobot</b>에 메시지 보내면 ID 알려줌</span>
-            </div>
-          )}
-          <input style={S.input} value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" />
-
           <div style={{ height: 10 }} />
           <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
             Finnhub API Key <span style={{ color: "var(--dm-muted)", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
@@ -756,9 +797,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </div>
 
           <div style={{ height: 14 }} />
-          <button style={S.btn} onClick={saveTelegram}>저장</button>
-          <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>
-          <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>
+          <button style={S.btn} onClick={saveTelegram}>알림 설정 저장</button>
+          {tgConnected && <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>}
+          {tgConnected && <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>}
           <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
             ⚠️ 탭이 열려 있을 때만 동작해요.
           </div>

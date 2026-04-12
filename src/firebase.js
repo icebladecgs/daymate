@@ -26,6 +26,7 @@ import {
   deleteDoc,
   orderBy,
   addDoc,
+  onSnapshot,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -598,4 +599,34 @@ export async function endChallenge(challengeId, actorUid) {
 export async function loadAllChallenges() {
   const snap = await getDocs(collection(db, 'challenges'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+
+// ---------- 텔레그램 연결 ----------
+
+// 연결 코드 생성 (클라이언트에서 Firestore에 직접 저장)
+export async function saveTgConnectCode(uid) {
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  await setDoc(doc(db, 'tg_connect', code), {
+    uid,
+    createdAt: new Date().toISOString(),
+  });
+  return code;
+}
+
+// tg_users/{uid} 실시간 감지 — 연결 완료 시 콜백 호출
+export function onTgConnected(uid, callback) {
+  return onSnapshot(doc(db, 'tg_users', uid), (snap) => {
+    if (snap.exists()) callback(snap.data());
+  });
+}
+
+// 텔레그램 연결 해제
+export async function disconnectTelegram(uid) {
+  await deleteDoc(doc(db, 'tg_users', uid));
+}
+
+// 연결된 chatId 조회
+export async function getTgChatId(uid) {
+  const snap = await getDoc(doc(db, 'tg_users', uid));
+  return snap.exists() ? snap.data().chatId : null;
 }
