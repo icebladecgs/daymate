@@ -51,6 +51,12 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-04-16 (세션 추가 메모)
+- 홈/오늘 화면의 DayMate 할 일 입력이 다시 Google Calendar 생성 경로를 타도록 복구했다. 핵심은 `src/App.jsx`의 `onSetTodayTasks()`가 새 task id만 보지 않고, 제목이 생겼지만 아직 `gcalEventId`가 없는 task도 생성 대상으로 잡게 바꾼 점이다
+- 제목을 비워 저장하면 연결된 Google Calendar 이벤트를 삭제하고, pending 생성 중복도 막도록 보강했다
+- `2026-04-16 00:29` 기준 `npm run build`는 통과했다
+- 이어서 확인할 파일은 `src/App.jsx`다. 실제 기기에서 홈 빠른 추가, 기본 빈 칸 입력, 제목 삭제 3가지를 손확인하면 된다
+
 ### 2026-04-16 (세션 저장 메모)
 - Google Calendar 일정 가져오기를 앱 공통 저장 경로로 묶어 설정의 `불러오기`와 상세 화면의 `캘린더에서 가져오기`가 모두 DayMate 내부 저장 + Firestore 저장을 같이 타도록 정리했다
 - imported task 중복은 `gcalEventId` 기준으로 정리하도록 보강했고, `2026-04-16 00:09` 기준 `npm run build`는 통과했다

@@ -11,6 +11,12 @@
 
 ## Entries
 
+### 2026-04-16 00:29
+- 홈/오늘 화면에서 기본 빈 할 일 칸에 제목을 입력해도 Google Calendar 이벤트가 다시 생성되도록 `onSetTodayTasks()`의 생성 조건을 보강하고, 제목을 지워 비우면 연결된 이벤트를 삭제하도록 정리
+- 관련 문서: overview
+- 검증: `npm run build`
+- 다음 작업 메모: 실제 기기에서 홈 빠른 추가와 기본 빈 칸 수정 둘 다 시험해 보고, 제목 삭제 시 원본 이벤트 삭제까지 손확인
+
 ### 2026-04-16 00:09
 - Google Calendar 일정 가져오기를 앱 공통 저장 경로로 통일해 상세 화면에서 가져온 일정도 DayMate 로컬 저장과 Firestore 저장을 같이 타도록 수정하고, imported task 중복은 `gcalEventId` 기준으로 정리
 - 관련 문서: overview

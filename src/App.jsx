@@ -209,6 +209,7 @@ export default function App() {
   const syncReadyRef = useRef(false);
   const gcalRefreshTimerRef = useRef(null);
   const driveRefreshTimerRef = useRef(null);
+  const pendingTodayGcalTaskIdsRef = useRef(new Set());
 
   const [gcalToken, setGcalToken] = useState(() => store.get('dm_gcal_token', null));
   const [gcalTokenExp, setGcalTokenExp] = useState(() => store.get('dm_gcal_token_exp', 0));
@@ -985,26 +986,41 @@ export default function App() {
 
   const onSetTodayTasks = (tasks) => {
     const prevTasks = todayData?.tasks || [];
-    setTodayData(prev => ({ ...prev, tasks }));
+    const normalizedTasks = tasks.map((task) => {
+      if (task.title?.trim()) return task;
+      if (!task.gcalEventId) return task;
+      const { gcalEventId, ...rest } = task;
+      return rest;
+    });
+    setTodayData(prev => ({ ...prev, tasks: normalizedTasks }));
 
     const token = getValidGcalToken();
     if (!token) return;
 
-    const newTaskIds = new Set(tasks.map(t => t.id));
-    prevTasks.filter(t => t.gcalEventId && !newTaskIds.has(t.id))
+    const nextTaskMap = new Map(normalizedTasks.map((task) => [task.id, task]));
+    prevTasks.filter((task) => {
+      if (!task.gcalEventId) return false;
+      const nextTask = nextTaskMap.get(task.id);
+      return !nextTask || !nextTask.title?.trim();
+    })
       .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(e => console.error('[App] gcal delete failed:', e)));
 
     const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
-    tasks.forEach(t => {
+    normalizedTasks.forEach(t => {
       const prev = prevTaskMap.get(t.id);
       if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
         gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(e => console.error('[App] gcal update failed:', e));
       }
     });
 
-    const prevTaskIds = new Set(prevTasks.map(t => t.id));
-    const toCreate = tasks.filter(t => t.title.trim() && !t.gcalEventId && !prevTaskIds.has(t.id));
+    const toCreate = normalizedTasks.filter((task) => {
+      if (!task.title.trim() || task.gcalEventId) return false;
+      if (pendingTodayGcalTaskIdsRef.current.has(task.id)) return false;
+      const prev = prevTaskMap.get(task.id);
+      return !prev?.gcalEventId;
+    });
     if (toCreate.length === 0) return;
+    toCreate.forEach((task) => pendingTodayGcalTaskIdsRef.current.add(task.id));
     Promise.all(toCreate.map(async task => {
       try { return { id: task.id, gcalEventId: await gcalCreateEvent(token, todayStr, task) }; }
       catch { return null; }
@@ -1018,6 +1034,8 @@ export default function App() {
           return u ? { ...t, gcalEventId: u.gcalEventId } : t;
         }),
       }));
+    }).finally(() => {
+      toCreate.forEach((task) => pendingTodayGcalTaskIdsRef.current.delete(task.id));
     });
   };
 
