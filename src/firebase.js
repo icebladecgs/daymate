@@ -56,6 +56,11 @@ export function onAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
+export function isPrimaryAdmin(uid) {
+  const adminUid = (import.meta.env.VITE_ADMIN_UID || '').trim();
+  return !!uid && !!adminUid && uid === adminUid;
+}
+
 // ---------- Firestore helpers ----------
 
 // settings: { name, notifEnabled, alarmTimes, telegram }
@@ -179,13 +184,6 @@ export async function loadAllUsersMeta() {
 export async function getUserDaysCount(uid) {
   const snap = await getCountFromServer(collection(db, 'users', uid, 'days'));
   return snap.data().count;
-}
-
-// admin/config 문서의 uids 배열에 포함 여부 확인
-export async function checkIsAdmin(uid) {
-  const snap = await getDoc(doc(db, 'admin', 'config')); // 에러는 caller에서 처리
-  if (!snap.exists()) return false;
-  return (snap.data().uids || []).includes(uid);
 }
 
 // ---------- Community ----------
@@ -572,9 +570,7 @@ export async function loadChallengeMembers(challengeId) {
 export async function deleteChallengeFull(challengeId, actorUid) {
   if (!actorUid) throw new Error('missing_actor');
 
-  const isAdminByEnv = actorUid === import.meta.env.VITE_ADMIN_UID;
-  const isAdminByConfig = isAdminByEnv ? true : await checkIsAdmin(actorUid);
-  if (!isAdminByConfig) throw new Error('admin_only');
+  if (!isPrimaryAdmin(actorUid)) throw new Error('admin_only');
 
   for (const sub of ['members', 'certs']) {
     const snap = await getDocs(collection(db, 'challenges', challengeId, sub));
@@ -586,9 +582,7 @@ export async function deleteChallengeFull(challengeId, actorUid) {
 export async function endChallenge(challengeId, actorUid) {
   if (!actorUid) throw new Error('missing_actor');
 
-  const isAdminByEnv = actorUid === import.meta.env.VITE_ADMIN_UID;
-  const isAdminByConfig = isAdminByEnv ? true : await checkIsAdmin(actorUid);
-  if (!isAdminByConfig) throw new Error('admin_only');
+  if (!isPrimaryAdmin(actorUid)) throw new Error('admin_only');
 
   await updateDoc(doc(db, 'challenges', challengeId), {
     status: 'ended',

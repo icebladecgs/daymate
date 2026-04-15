@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
@@ -204,6 +204,7 @@ export default function App() {
   };
 
   const [authUser, setAuthUser] = useState(null);
+  const canOpenAdmin = isPrimaryAdmin(authUser?.uid);
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
   const gcalRefreshTimerRef = useRef(null);
@@ -686,6 +687,27 @@ export default function App() {
     setInviteBonus(prev => { const next = prev + pts; store.set('dm_invite_bonus', next); return next; });
   };
 
+  const isImportedGcalTask = (task) => !!(task?.gcalEventId && String(task.id || '').startsWith('gcal_'));
+
+  const mergeTasksIntoDay = (dayData, incomingTasks = []) => {
+    if (!incomingTasks.length) return dayData;
+    const tasks = [...(dayData?.tasks || [])];
+    const remaining = [...incomingTasks];
+    for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
+      if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
+    }
+    return { ...dayData, tasks: [...tasks, ...remaining] };
+  };
+
+  const mergeImportedGcalTasks = (baseDay, localDay) => {
+    const localImportedTasks = (localDay?.tasks || []).filter(isImportedGcalTask);
+    if (!localImportedTasks.length) return baseDay;
+    const existingGcalIds = new Set((baseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
+    const missingImportedTasks = localImportedTasks.filter((task) => !existingGcalIds.has(task.gcalEventId));
+    if (!missingImportedTasks.length) return baseDay;
+    return mergeTasksIntoDay(baseDay, missingImportedTasks);
+  };
+
   const syncGcalByDate = (byDate) => {
     const updates = {};
     let totalAdded = 0;
@@ -698,14 +720,10 @@ export default function App() {
         .filter(e => !existingGcalIds.has(e.id))
         .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
       if (toAdd.length === 0) continue;
-      const tasks = [...(curDay.tasks || [])];
-      const remaining = [...toAdd];
-      for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
-        if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
-      }
-      const updated = { ...curDay, tasks: [...tasks, ...remaining] };
+      const updated = mergeTasksIntoDay(curDay, toAdd);
       updates[dateStr] = updated;
       saveDay(dateStr, updated);
+      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, dateStr, updated).catch(() => {});
       totalAdded += toAdd.length;
     }
     if (totalAdded > 0) setPlans(prev => ({ ...prev, ...updates }));
@@ -766,11 +784,23 @@ export default function App() {
             setGoals(normalizedGoals);
             store.set("dm_goals", normalizedGoals);
           }
-          if (Object.keys(remote.days).length > 0) {
-            const merged = { ...remote.days };
-            Object.entries(remote.days).forEach(([ds, d]) => { saveDay(ds, d); });
-            setPlans(merged);
-          }
+          const merged = {};
+          Object.entries(remote.days).forEach(([ds, remoteDay]) => {
+            const localDay = loadDay(ds);
+            const nextDay = mergeImportedGcalTasks(remoteDay, localDay);
+            merged[ds] = nextDay;
+            saveDay(ds, nextDay);
+            if (nextDay !== remoteDay) fsaveDay(firebaseUser.uid, ds, nextDay).catch(() => {});
+          });
+          listAllDays().forEach((ds) => {
+            if (merged[ds]) return;
+            const localDay = loadDay(ds);
+            if (!(localDay?.tasks || []).some(isImportedGcalTask)) return;
+            merged[ds] = localDay;
+            saveDay(ds, localDay);
+            fsaveDay(firebaseUser.uid, ds, localDay).catch(() => {});
+          });
+          if (Object.keys(merged).length > 0) setPlans(merged);
         } else {
           const localDays = {};
           listAllDays().forEach((ds) => { const d = loadDay(ds); if (d) localDays[ds] = d; });
@@ -1351,7 +1381,7 @@ export default function App() {
           driveToken={driveToken} driveTokenExp={driveTokenExp}
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
           lastDriveBackup={lastDriveBackup}
-          onOpenAdmin={authUser && authUser.uid === 'N0vqJWCFLBRFoQndnVRADWO3HQE2' ? () => changeScreen("admin") : undefined}
+          onOpenAdmin={canOpenAdmin ? () => changeScreen("admin") : undefined}
           onOpenStats={() => changeScreen("stats")}
           onOpenLifeCoach={() => changeScreen("life-coach")}
           pendingInviteCode={pendingInviteCode}
@@ -1361,7 +1391,37 @@ export default function App() {
       );
     }
     if (screen === "admin") {
-      return <Admin authUser={authUser} onBack={() => changeScreen("settings")} />;
+      return canOpenAdmin
+        ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
+        : <Settings
+          user={user} setUser={setUser}
+          goals={goals} setGoals={setGoals}
+          lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+          notifEnabled={notifEnabled} setNotifEnabled={setNotifEnabled}
+          telegramCfg={telegramCfg} setTelegramCfg={setTelegramCfg}
+          authUser={authUser} syncStatus={syncStatus}
+          onGoogleSignIn={googleSignIn} onGoogleSignOut={googleSignOut}
+          habits={habits} setHabits={setHabits}
+          recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+          installPrompt={installPrompt} handleInstall={handleInstall}
+          setShowInstallBanner={setShowInstallBanner}
+          gcalToken={gcalToken} gcalTokenExp={gcalTokenExp}
+          onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
+          onGcalPull={pullFromGcal}
+          isDark={isDark} setIsDark={setIsDark}
+          fontScale={fontScale} setFontScale={setFontScale}
+          event={event} setEvent={setEvent}
+          onAddInviteBonus={addInviteBonus}
+          driveToken={driveToken} driveTokenExp={driveTokenExp}
+          onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
+          lastDriveBackup={lastDriveBackup}
+          onOpenAdmin={undefined}
+          onOpenStats={() => changeScreen("stats")}
+          onOpenLifeCoach={() => changeScreen("life-coach")}
+          pendingInviteCode={pendingInviteCode}
+          onInviteApplied={handleInviteApplied}
+          onChangeScreen={changeScreen}
+        />;
     }
     if (screen === "chat") {
       return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")}

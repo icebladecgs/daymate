@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
-import { collection, doc, getDoc } from "firebase/firestore";
-import { db, loadAllUsersMeta, getUserDaysCount, checkIsAdmin, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin } from "../firebase.js";
 import S from "../styles.js";
-
-const ADMIN_CONFIG_PATH = "admin/config";
 
 function ago(isoStr) {
   if (!isoStr) return "-";
@@ -59,7 +56,7 @@ export default function Admin({ authUser, onBack }) {
     setStatus("checking");
     setErrMsg("");
     try {
-      const isAdm = authUser.uid === 'N0vqJWCFLBRFoQndnVRADWO3HQE2' || await checkIsAdmin(authUser.uid);
+      const isAdm = isPrimaryAdmin(authUser.uid);
       if (!isAdm) { setStatus("denied"); return; }
       setStatus("loading");
       const [list, suggs, comms, challs] = await Promise.all([loadAllUsersMeta(), loadSuggestions(), loadAllCommunities(), loadAllChallenges()]);
@@ -108,8 +105,7 @@ export default function Admin({ authUser, onBack }) {
               <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>접근 권한 없음</div>
               <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 20 }}>
-                Firebase 콘솔에서 <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4 }}>admin/config</code> 문서를 생성하고<br />
-                <code style={{ background: "var(--dm-input)", padding: "2px 6px", borderRadius: 4 }}>uids</code> 배열에 아래 UID를 추가하세요.
+                이 계정은 관리자 UID와 일치하지 않아 관리자 페이지를 열 수 없습니다.
               </div>
               {authUser && (
                 <div
@@ -119,9 +115,6 @@ export default function Admin({ authUser, onBack }) {
                   {adminUid === "copied" ? "✓ 복사됨" : authUser.uid}
                 </div>
               )}
-              <button onClick={init} style={{ ...S.btn, marginTop: 16, background: "var(--dm-input)", color: "var(--dm-text)", boxShadow: "none", border: "1.5px solid var(--dm-border)" }}>
-                다시 확인
-              </button>
             </>
           )}
         </div>
@@ -143,17 +136,7 @@ export default function Admin({ authUser, onBack }) {
           </div>
           {errMsg.includes("규칙") && (
             <div style={{ fontSize: 12, color: "var(--dm-sub)", background: "var(--dm-input)", borderRadius: 10, padding: 12, marginBottom: 16, lineHeight: 1.7 }}>
-              Firebase 콘솔 → Firestore → <b>규칙</b> 탭에서 아래 규칙을 추가하세요:<br /><br />
-              <code style={{ fontSize: 11, fontFamily: "monospace", display: "block", whiteSpace: "pre-wrap" }}>
-{`match /admin/{doc} {
-  allow read: if request.auth != null;
-}
-match /users/{uid} {
-  allow read: if request.auth.uid in
-    get(/databases/$(database)/documents/admin/config).data.uids;
-  allow write: if request.auth.uid == uid;
-}`}
-              </code>
+              Firebase 콘솔 → Firestore → <b>규칙</b> 탭에서 관리자 계정만 <code style={{ background: "rgba(255,255,255,.08)", padding: "1px 4px", borderRadius: 4 }}>users</code> 메타를 읽을 수 있게 설정되어 있는지 확인하세요.
             </div>
           )}
           <button onClick={init} style={{ ...S.btn }}>재시도</button>

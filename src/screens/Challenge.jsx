@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { calcLevel } from "../data/stats.js";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles, isPrimaryAdmin } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -324,7 +324,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
     setCerts(prev => prev.map(cert => cert.id === certId ? { ...cert, cheerCount: (cert.cheerCount || 0) + 1 } : cert));
   };
 
-  const isAdmin = authUser?.uid === import.meta.env.VITE_ADMIN_UID;
+  const isAdmin = isPrimaryAdmin(authUser?.uid);
 
   const handleDeleteChallenge = async () => {
     try {

@@ -51,6 +51,18 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-04-15 (세션 저장 메모)
+- 최신 배포 기준선은 `v316`이고, Google Calendar에서 가져온 할 일이 로그인 복원/동기화 중 사라지지 않도록 보강한 상태까지 반영돼 있다. 프로덕션 alias는 `https://daymate-beta.vercel.app`
+- 현재 로컬 워크트리에는 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 정리한 미배포 변경이 추가로 남아 있고, `2026-04-15 23:57` 기준 `npm run build`는 통과했다
+- 이어서 볼 핵심 파일은 `src/App.jsx`, `src/firebase.js`, `src/screens/Admin.jsx`, `src/screens/Challenge.jsx`다
+- 다른 머신에서 이어받을 때는 최신 코드 동기화 후 `.env.local`의 `VITE_ADMIN_UID` 값까지 먼저 맞춘다
+
+### 2026-04-13 (세션 마감 메모)
+- 최신 배포 버전은 `v315`이고, 홈 `오늘의 챌린지` 각 항목에서 커뮤니티 챌린지 상세로 바로 진입하는 흐름까지 반영한 뒤 배포/푸시 완료
+- 관련 릴리스 커밋은 `15df9a5` (`feat: 홈 챌린지 항목 바로가기 추가 (v315)`), 프로덕션 alias는 `https://daymate-beta.vercel.app`
+- 현재 작업 트리는 기능 기준으로 정리된 상태이며, `.claude/settings.local.json`만 로컬 전용 파일로 남아 있으니 이후 커밋에서 제외 유지
+- 다음 AI는 `AI_WIKI/update-log.md`의 `v315` 항목부터 확인하고, 이어서 실제 모바일에서 홈 챌린지 바로가기 체감과 기존 미해결 과제 2개를 우선 판단
+
 ### 2026-04-13 (Windows 작업분)
 - 홈 `오늘의 챌린지` 카드 각 항목에 `바로가기` 버튼 추가
 - 홈에서 누른 챌린지 ID를 앱 라우팅 상태로 넘겨 커뮤니티 챌린지 탭에서 해당 상세를 바로 열도록 연결
@@ -155,6 +167,8 @@
 ## Current Risks / Notes
 - Mac 쪽 저장소도 최신 코드로 `git pull` 되어 있어야 한다.
 - Mac 쪽 `.env.local`도 Windows와 같은 값으로 맞아야 한다.
+- 현재 로컬 미배포 변경은 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 묶는 정리다. 다른 머신에서 이어받을 때 이 값이 없거나 다르면 관리자 화면 진입과 챌린지 종료/삭제가 막힌다.
+- 최신 로컬 빌드 검증은 `2026-04-15 23:57`의 `npm run build` 기준 통과했고, `src/version.js`와 `public/sw.js`는 그 시각의 생성값을 반영한다.
 - Mac 쪽 파이썬 환경에도 `anthropic`, `python-telegram-bot`가 설치되어 있어야 한다.
 - Mac에서 LaunchAgent가 봇을 KeepAlive 중이면 수동 `pkill` 만으로는 중지가 안 될 수 있다. 이 경우 `npm run tg:mac:stop` 또는 `launchctl bootout`을 사용한다.
 - Windows helper의 `tg:start`는 Mac 봇이 살아 있으면 충돌 때문에 바로 종료될 수 있다. 이 경우 먼저 Mac 봇을 끈 뒤 Windows에서 시작한다.
@@ -163,6 +177,9 @@
 
 ## Claude Handoff Focus
 - 먼저 `AI_WIKI/README.md`, `AI_WIKI/frontend.md`, `AI_WIKI/known-issues.md`, `AI_WIKI/update-log.md` 순서로 읽는다.
+- 최신 배포 기준선은 `v316` / alias `https://daymate-beta.vercel.app` 이다.
+- 그 위에 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 정리한 로컬 변경이 얹혀 있으니, 이어서 작업할 때 `src/App.jsx`, `src/firebase.js`, `src/screens/Admin.jsx`, `src/screens/Challenge.jsx`를 먼저 같이 본다.
+- 로컬 전용 `.claude/settings.local.json`은 작업 참고만 하고 커밋 대상에서는 계속 제외한다.
 - 홈 구성 쪽은 `src/components/home/HomeCustomizationModal.jsx`, `src/components/home/config.js`, `src/screens/Home.jsx`를 같이 본다.
 - 월별 목표 쪽은 `src/utils/goals.js`, `src/screens/History.jsx`, `src/App.jsx`를 같이 본다.
 - 현재 실무적으로 중요한 미해결 이슈는 `홈 구성 드래그 불안정 원인 분석`과 `월별 목표 구조의 자동 마이그레이션 여부` 두 가지다.
