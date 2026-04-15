@@ -689,41 +689,101 @@ export default function App() {
 
   const isImportedGcalTask = (task) => !!(task?.gcalEventId && String(task.id || '').startsWith('gcal_'));
 
+  const dedupeDayTasks = (dayData) => {
+    if (!dayData?.tasks?.length) return dayData;
+    const seenTaskIds = new Set();
+    const seenGcalIds = new Set();
+    let changed = false;
+    const tasks = [];
+    for (const task of dayData.tasks) {
+      const taskId = String(task?.id || '');
+      const gcalId = task?.gcalEventId || null;
+      if (taskId && seenTaskIds.has(taskId)) {
+        changed = true;
+        continue;
+      }
+      if (gcalId && seenGcalIds.has(gcalId)) {
+        changed = true;
+        continue;
+      }
+      if (taskId) seenTaskIds.add(taskId);
+      if (gcalId) seenGcalIds.add(gcalId);
+      tasks.push(task);
+    }
+    return changed ? { ...dayData, tasks } : dayData;
+  };
+
   const mergeTasksIntoDay = (dayData, incomingTasks = []) => {
-    if (!incomingTasks.length) return dayData;
-    const tasks = [...(dayData?.tasks || [])];
+    const normalizedDay = dedupeDayTasks(dayData);
+    if (!incomingTasks.length) return normalizedDay;
+    const tasks = [...(normalizedDay?.tasks || [])];
     const remaining = [...incomingTasks];
     for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
       if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
     }
-    return { ...dayData, tasks: [...tasks, ...remaining] };
+    return dedupeDayTasks({ ...normalizedDay, tasks: [...tasks, ...remaining] });
+  };
+
+  const buildImportedGcalTasks = (events, existingTasks = []) => {
+    const existingGcalIds = new Set((existingTasks || []).map((task) => task.gcalEventId).filter(Boolean));
+    const seenIncomingIds = new Set();
+    return (events || [])
+      .filter((event) => !event.extendedProperties?.private?.daymateId && event.summary?.trim())
+      .filter((event) => {
+        if (existingGcalIds.has(event.id) || seenIncomingIds.has(event.id)) return false;
+        seenIncomingIds.add(event.id);
+        return true;
+      })
+      .map((event) => ({
+        id: `gcal_${event.id}`,
+        title: event.summary.trim(),
+        done: false,
+        checkedAt: null,
+        priority: false,
+        gcalEventId: event.id,
+      }));
   };
 
   const mergeImportedGcalTasks = (baseDay, localDay) => {
-    const localImportedTasks = (localDay?.tasks || []).filter(isImportedGcalTask);
-    if (!localImportedTasks.length) return baseDay;
-    const existingGcalIds = new Set((baseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
+    const normalizedBaseDay = dedupeDayTasks(baseDay);
+    const normalizedLocalDay = dedupeDayTasks(localDay);
+    const localImportedTasks = (normalizedLocalDay?.tasks || []).filter(isImportedGcalTask);
+    if (!localImportedTasks.length) return normalizedBaseDay;
+    const existingGcalIds = new Set((normalizedBaseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
     const missingImportedTasks = localImportedTasks.filter((task) => !existingGcalIds.has(task.gcalEventId));
-    if (!missingImportedTasks.length) return baseDay;
-    return mergeTasksIntoDay(baseDay, missingImportedTasks);
+    if (!missingImportedTasks.length) return normalizedBaseDay;
+    return mergeTasksIntoDay(normalizedBaseDay, missingImportedTasks);
+  };
+
+  const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
+    const normalizedDay = dedupeDayTasks(dayData);
+    saveDay(dateStr, normalizedDay);
+    if (uidOverride && (forceRemote || syncReadyRef.current)) fsaveDay(uidOverride, dateStr, normalizedDay).catch(() => {});
+    return normalizedDay;
+  };
+
+  const importGcalEventsForDate = (dateStr, events = []) => {
+    let addedCount = 0;
+    setPlans((prev) => {
+      const currentDay = dedupeDayTasks(prev[dateStr] || loadDay(dateStr) || newDay(dateStr));
+      const toAdd = buildImportedGcalTasks(events, currentDay.tasks || []);
+      if (!toAdd.length) return prev;
+      addedCount = toAdd.length;
+      const nextDay = persistDayData(dateStr, mergeTasksIntoDay(currentDay, toAdd));
+      return { ...prev, [dateStr]: nextDay };
+    });
+    return addedCount;
   };
 
   const syncGcalByDate = (byDate) => {
     const updates = {};
     let totalAdded = 0;
     for (const [dateStr, events] of Object.entries(byDate)) {
-      const external = events.filter(e => !e.extendedProperties?.private?.daymateId && e.summary?.trim());
-      if (external.length === 0) continue;
-      const curDay = plans[dateStr] || newDay(dateStr);
-      const existingGcalIds = new Set((curDay.tasks || []).map(t => t.gcalEventId).filter(Boolean));
-      const toAdd = external
-        .filter(e => !existingGcalIds.has(e.id))
-        .map(e => ({ id: `gcal_${e.id}`, title: e.summary.trim(), done: false, checkedAt: null, priority: false, gcalEventId: e.id }));
+      const curDay = dedupeDayTasks(loadDay(dateStr) || plans[dateStr] || newDay(dateStr));
+      const toAdd = buildImportedGcalTasks(events, curDay.tasks || []);
       if (toAdd.length === 0) continue;
-      const updated = mergeTasksIntoDay(curDay, toAdd);
+      const updated = persistDayData(dateStr, mergeTasksIntoDay(curDay, toAdd));
       updates[dateStr] = updated;
-      saveDay(dateStr, updated);
-      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, dateStr, updated).catch(() => {});
       totalAdded += toAdd.length;
     }
     if (totalAdded > 0) setPlans(prev => ({ ...prev, ...updates }));
@@ -789,16 +849,13 @@ export default function App() {
             const localDay = loadDay(ds);
             const nextDay = mergeImportedGcalTasks(remoteDay, localDay);
             merged[ds] = nextDay;
-            saveDay(ds, nextDay);
-            if (nextDay !== remoteDay) fsaveDay(firebaseUser.uid, ds, nextDay).catch(() => {});
+            persistDayData(ds, nextDay, firebaseUser.uid, true);
           });
           listAllDays().forEach((ds) => {
             if (merged[ds]) return;
             const localDay = loadDay(ds);
             if (!(localDay?.tasks || []).some(isImportedGcalTask)) return;
-            merged[ds] = localDay;
-            saveDay(ds, localDay);
-            fsaveDay(firebaseUser.uid, ds, localDay).catch(() => {});
+            merged[ds] = persistDayData(ds, localDay, firebaseUser.uid, true);
           });
           if (Object.keys(merged).length > 0) setPlans(merged);
         } else {
@@ -869,9 +926,8 @@ export default function App() {
     setPlans((prev) => {
       const cur = prev[todayStr] || newDay(todayStr);
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      const next = { ...prev, [todayStr]: nextDay };
-      saveDay(todayStr, nextDay);
-      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, todayStr, nextDay).catch(() => {});
+      const savedDay = persistDayData(todayStr, nextDay);
+      const next = { ...prev, [todayStr]: savedDay };
       return next;
     });
   };
@@ -880,9 +936,8 @@ export default function App() {
     setPlans((prev) => {
       const cur = prev[dateStr] || newDay(dateStr);
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      const next = { ...prev, [dateStr]: nextDay };
-      saveDay(dateStr, nextDay);
-      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, dateStr, nextDay).catch(() => {});
+      const savedDay = persistDayData(dateStr, nextDay);
+      const next = { ...prev, [dateStr]: savedDay };
       return next;
     });
   };
@@ -903,9 +958,8 @@ export default function App() {
       if (applicable.length > 0) {
         d.tasks = [...d.tasks.filter(t => t.title.trim()), ...applicable.map(t => ({id:`r${t.id}_${ds}`, title: t.title, done: false, checkedAt: null, priority: false}))];
       }
-      saveDay(ds, d);
-      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, ds, d).catch(() => {});
-      return { ...prev, [ds]: d };
+      const savedDay = persistDayData(ds, d);
+      return { ...prev, [ds]: savedDay };
     });
     setOpenDate(ds);
     setScrollToMemo(false);
@@ -923,9 +977,8 @@ export default function App() {
     setPlans((prev) => {
       const cur = prev[openDate] || newDay(openDate);
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      const next = { ...prev, [openDate]: nextDay };
-      saveDay(openDate, nextDay);
-      if (authUser && syncReadyRef.current) fsaveDay(authUser.uid, openDate, nextDay).catch(() => {});
+      const savedDay = persistDayData(openDate, nextDay);
+      const next = { ...prev, [openDate]: savedDay };
       return next;
     });
   };
@@ -1353,6 +1406,7 @@ export default function App() {
           toast={toast} setToast={setToast}
           habits={habits} scrollToMemo={scrollToMemo}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
+          onImportGcalEvents={importGcalEventsForDate}
           someday={someday} setSomeday={setSomeday}
         />
       );

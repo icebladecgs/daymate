@@ -11,6 +11,12 @@
 
 ## Entries
 
+### 2026-04-16 00:09
+- Google Calendar 일정 가져오기를 앱 공통 저장 경로로 통일해 상세 화면에서 가져온 일정도 DayMate 로컬 저장과 Firestore 저장을 같이 타도록 수정하고, imported task 중복은 `gcalEventId` 기준으로 정리
+- 관련 문서: overview
+- 검증: `npm run build`
+- 다음 작업 메모: 실제 기기에서 설정의 `불러오기`와 상세 화면의 `캘린더에서 가져오기`를 각각 2번씩 눌러 중복이 생기지 않는지 손확인
+
 ### 2026-04-15 23:57
 - 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 통일하고, 설정의 관리자 진입 버튼, 직접 admin 화면 접근 차단, 챌린지 종료/삭제 권한이 모두 `isPrimaryAdmin()`을 쓰도록 정리
 - 관련 문서: ops

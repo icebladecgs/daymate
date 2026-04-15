@@ -51,6 +51,12 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-04-16 (세션 저장 메모)
+- Google Calendar 일정 가져오기를 앱 공통 저장 경로로 묶어 설정의 `불러오기`와 상세 화면의 `캘린더에서 가져오기`가 모두 DayMate 내부 저장 + Firestore 저장을 같이 타도록 정리했다
+- imported task 중복은 `gcalEventId` 기준으로 정리하도록 보강했고, `2026-04-16 00:09` 기준 `npm run build`는 통과했다
+- 이어서 확인할 파일은 `src/App.jsx`와 `src/screens/DayDetail.jsx`다
+- 아직 배포는 안 했으니, 다른 머신에서 이어받으면 먼저 실제 버튼 두 경로를 각각 눌러 중복과 저장 유지 여부를 손확인한다
+
 ### 2026-04-15 (세션 저장 메모)
 - 최신 배포 기준선은 `v316`이고, Google Calendar에서 가져온 할 일이 로그인 복원/동기화 중 사라지지 않도록 보강한 상태까지 반영돼 있다. 프로덕션 alias는 `https://daymate-beta.vercel.app`
 - 현재 로컬 워크트리에는 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 정리한 미배포 변경이 추가로 남아 있고, `2026-04-15 23:57` 기준 `npm run build`는 통과했다
