@@ -566,12 +566,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
-            const gcalItems = dayGcalEvents.map(e => {
-              const time = e.start?.dateTime
-                ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
-                : null;
-              return { title: time ? `${time} ${e.summary || '(제목없음)'}` : (e.summary || '(제목없음)'), color: 'rgba(75,111,255,0.75)' };
-            });
+            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
             const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
             const allItems = [...gcalItems, ...taskItems];
             const visibleItems = allItems.slice(0, 2);
