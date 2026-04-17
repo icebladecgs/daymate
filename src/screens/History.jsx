@@ -538,7 +538,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const hasMemo = !!(plans[ds]?.memo?.trim());
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
-            const hasGcal = dayGcalEvents.length > 0;
+            const hasGcal = dayGcalEvents.length > 0 || (plans[ds]?.tasks || []).some(t => t.gcalEventId);
             return (
               <div
                 key={ds}
