@@ -525,15 +525,15 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         </div>
       </div>
 
-      <div style={{ padding: "0 18px 12px", boxSizing: "border-box" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 4, marginBottom: 6 }}>
+      <div style={{ padding: "0 10px 12px", boxSizing: "border-box" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
             <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>
               {d}
             </div>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3 }}>
           {Array(firstDay).fill(null).map((_, i) => <div key={"e" + i} />)}
           {Array(daysInMonth).fill(null).map((_, i) => {
             const day = i + 1;
@@ -568,7 +568,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   position: "relative",
                   cursor: "pointer",
                   overflow: "hidden",
-                  padding: "4px 3px 6px",
+                  padding: "4px 1px 5px",
                   boxSizing: "border-box",
                   ...st,
                 }}
@@ -582,9 +582,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 9,
+                    fontSize: 8,
                     lineHeight: 1.4,
-                    padding: '1px 3px',
+                    padding: '1px 2px',
                     borderRadius: 3,
                     background: item.color,
                     color: '#fff',
