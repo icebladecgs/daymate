@@ -559,7 +559,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 key={ds}
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
                 style={{
-                  minHeight: 70,
+                  minHeight: 80,
                   borderRadius: 10,
                   display: "flex",
                   flexDirection: "column",
@@ -582,23 +582,23 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 8,
-                    lineHeight: 1.3,
-                    padding: '1px 3px',
-                    borderRadius: 3,
+                    fontSize: 10,
+                    lineHeight: 1.4,
+                    padding: '2px 4px',
+                    borderRadius: 4,
                     background: item.color,
                     color: '#fff',
-                    marginBottom: 1,
+                    marginBottom: 2,
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                     textOverflow: 'ellipsis',
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}>
                     {item.title}
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <div style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}개</div>
+                  <div style={{ fontSize: 9, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}개</div>
                 )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
