@@ -664,7 +664,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         const d = plans[preview];
         const tasks = (d?.tasks || []).filter(t => t.title.trim());
         const done = tasks.filter(t => t.done).length;
-        const previewGcal = (gcalEvents[preview] || []).filter(e => !e.extendedProperties?.private?.daymateId);
         const mood = d?.journal?.mood;
         const moodMap = { '행복': '😊', '평온': '😌', '보통': '🤔', '피곤': '😴', '우울': '😔' };
         const isPast = preview <= today;
@@ -797,29 +796,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     추가
                   </button>
                 </div>
-
-                {/* 구글 캘린더 */}
-                {previewGcal.length > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-                    <div style={{ fontSize: 11, color: "#4B6FFF", fontWeight: 900, marginBottom: 6 }}>📅 구글 캘린더</div>
-                    {previewGcal.slice(0, 3).map((e, i) => {
-                      const time = e.start?.dateTime
-                        ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                        : '종일';
-                      return (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
-                          borderBottom: i < Math.min(previewGcal.length, 3) - 1 ? "1px solid var(--dm-row)" : "none" }}>
-                          <div style={{ width: 3, height: 24, borderRadius: 2, background: "#4B6FFF", flexShrink: 0 }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700 }}>{e.summary || '(제목 없음)'}</div>
-                            <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>{time}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {previewGcal.length > 3 && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 4 }}>+{previewGcal.length - 3}개 더</div>}
-                  </div>
-                )}
 
                 {/* 메모 */}
                 {d?.memo?.trim() && (
