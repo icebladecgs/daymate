@@ -991,8 +991,7 @@ export default function App() {
   // GCal 동기화 공통 함수 (날짜 무관)
   const syncTasksToGcal = (dateStr, prevTasks, nextTasks, onGcalIdsUpdated) => {
     const token = getValidGcalToken();
-    console.log('[GCal sync]', dateStr, 'token:', !!token, 'prev:', prevTasks.length, 'next:', nextTasks.length);
-    if (!token) { console.warn('[GCal sync] no token, skipping'); return; }
+    if (!token) return;
 
     const nextTaskMap = new Map(nextTasks.map(t => [t.id, t]));
     const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
@@ -1020,7 +1019,6 @@ export default function App() {
       if (pendingTodayGcalTaskIdsRef.current.has(t.id)) return false;
       return !prevTaskMap.get(t.id)?.gcalEventId;
     });
-    console.log('[GCal sync] toCreate:', toCreate.map(t => t.title));
     if (toCreate.length === 0) return;
     toCreate.forEach(t => pendingTodayGcalTaskIdsRef.current.add(t.id));
     Promise.all(toCreate.map(async task => {
