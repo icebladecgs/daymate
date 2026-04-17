@@ -247,7 +247,7 @@ export default async function handler(req, res) {
       const code = text.split(' ')[1];
       if (code) {
         const connectSnap = await db.doc(`tg_connect/${code}`).get();
-        if (connectSnap.exists()) {
+        if (connectSnap.exists) {
           const { uid } = connectSnap.data();
           const firstName = msg.from?.first_name || '';
           await db.doc(`tg_users/${uid}`).set({ chatId: fromChatId, connectedAt: new Date().toISOString(), firstName });
