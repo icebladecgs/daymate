@@ -84,6 +84,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const [quickTaskInput, setQuickTaskInput] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingTaskTitle, setEditingTaskTitle] = useState('');
 
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -544,7 +546,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             return (
               <div
                 key={ds}
-                onClick={() => { setPreview(ds); setQuickTaskInput(''); }}
+                onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
                 style={{
                   aspectRatio: 1,
                   borderRadius: 10,
@@ -701,20 +703,52 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
                 {/* 할일 목록 */}
                 {tasks.map((t, i) => (
-                  <div key={t.id || i}
-                    onClick={() => onToggleTaskForDate?.(preview, t.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
-                      borderBottom: i < tasks.length - 1 ? "1px solid var(--dm-row)" : "none",
-                      cursor: onToggleTaskForDate ? 'pointer' : 'default' }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
-                      background: t.done ? "#4B6FFF" : "transparent",
-                      border: t.done ? "none" : "2px solid var(--dm-border2)",
-                      display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>
+                  <div key={t.id || i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
+                    borderBottom: i < tasks.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                    {/* 체크박스 */}
+                    <div onClick={() => onToggleTaskForDate?.(preview, t.id)}
+                      style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+                        background: t.done ? "#4B6FFF" : "transparent",
+                        border: t.done ? "none" : "2px solid var(--dm-border2)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s", cursor: 'pointer' }}>
                       {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                     </div>
-                    <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                      textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4 }}>{t.title}</div>
-                    {t.time && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{t.time}</span>}
+                    {/* 제목 or 인라인 편집 */}
+                    {editingTaskId === t.id ? (
+                      <input
+                        autoFocus
+                        value={editingTaskTitle}
+                        onChange={e => setEditingTaskTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const title = editingTaskTitle.trim();
+                            if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
+                            setEditingTaskId(null);
+                          }
+                          if (e.key === 'Escape') setEditingTaskId(null);
+                        }}
+                        onBlur={() => {
+                          const title = editingTaskTitle.trim();
+                          if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
+                          setEditingTaskId(null);
+                        }}
+                        maxLength={60}
+                        style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '4px 8px' }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                        textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4 }}>{t.title}</div>
+                    )}
+                    {/* 수정/삭제 버튼 */}
+                    {editingTaskId !== t.id && (
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
+                        <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }))}
+                          style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
+                      </div>
+                    )}
                   </div>
                 ))}
 
