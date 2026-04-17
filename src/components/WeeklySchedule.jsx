@@ -69,11 +69,6 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask
                         {allDone ? '전부 완료' : `${done}/${tasks.length} 완료`}
                       </span>
                     )}
-                    {dayGcalEvents.length > 0 && (
-                      <span style={{ fontSize: 11, color: '#4B9EFF', fontWeight: 700 }}>
-                        구글 일정 {dayGcalEvents.length}개
-                      </span>
-                    )}
                     {hasHabits && d && (
                       <span style={{ fontSize: 11, color: habitDone === (habits||[]).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>
                         습관 {habitDone}/{(habits||[]).length}
@@ -161,33 +156,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask
               </div>
             )}
 
-            {dayGcalEvents.length > 0 && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {dayGcalEvents.slice(0, 2).map((event, index) => (
-                  <div key={`${ds}-gcal-${index}`} style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    maxWidth: '100%',
-                    padding: '6px 10px',
-                    borderRadius: 999,
-                    background: 'rgba(75,111,255,.08)',
-                    border: '1px solid rgba(75,111,255,.16)',
-                    color: '#AFC0FF',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}>
-                    <span style={{ flexShrink: 0 }}>📅</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.summary || '(제목 없음)'}</span>
-                  </div>
-                ))}
-                {dayGcalEvents.length > 2 && (
-                  <div style={{ fontSize: 11, color: 'var(--dm-muted)', display: 'flex', alignItems: 'center' }}>
-                    +{dayGcalEvents.length - 2}개 일정
-                  </div>
-                )}
-              </div>
-            )}
+
           </div>
         );
       })}
