@@ -1020,18 +1020,14 @@ export default function App() {
   const setDetailData = (updater) => {
     if (!openDate) return;
     const dateStr = openDate;
-    const prevTasks = [...((plans[dateStr] || newDay(dateStr)).tasks || [])];
-    let nextTasks = prevTasks;
+    const cur = plans[dateStr] || newDay(dateStr);
+    const prevTasks = cur.tasks || [];
+    const nextDay = typeof updater === "function" ? updater(cur) : updater;
+    const nextTasks = nextDay.tasks || [];
+    const savedDay = persistDayData(dateStr, nextDay);
 
-    setPlans((prev) => {
-      const cur = prev[dateStr] || newDay(dateStr);
-      const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      nextTasks = nextDay.tasks || []; // updater는 동기 실행되므로 캡처 가능
-      const savedDay = persistDayData(dateStr, nextDay);
-      return { ...prev, [dateStr]: savedDay };
-    });
+    setPlans(prev => ({ ...prev, [dateStr]: savedDay }));
 
-    // GCal 동기화 — 업데이터 밖에서 호출
     syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
       setPlans(p => {
         const d = p[dateStr];
