@@ -13,6 +13,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
   const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'weekly'
   const [goalsOpen, setGoalsOpen] = useState(initialGoalsOpen);
   const [editingYearGoals, setEditingYearGoals] = useState(false);
   const [editingMonthGoals, setEditingMonthGoals] = useState(false);
@@ -430,13 +431,26 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           >
             {gcalRefreshing ? '⟳' : '📅'}
           </button>
+          <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 8px', fontSize: 11, width: 'auto', fontWeight: 900 }}>오늘</button>
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 4px" }}>
-        <div style={{ fontSize: 16, fontWeight: 900 }}>{monthLabel(year, month0)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 16, fontWeight: 900 }}>{monthLabel(year, month0)}</div>
+          <div style={{ display: 'flex', background: 'var(--dm-input)', borderRadius: 8, padding: 2, gap: 2 }}>
+            {['monthly', 'weekly'].map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 900, cursor: 'pointer', border: 'none',
+                  background: viewMode === mode ? 'var(--dm-card)' : 'transparent',
+                  color: viewMode === mode ? 'var(--dm-text)' : 'var(--dm-muted)' }}>
+                {mode === 'monthly' ? '월간' : '주간'}
+              </button>
+            ))}
+          </div>
+        </div>
         <button onClick={() => setGoalsOpen(v => !v)} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 12px', fontSize: 12, width: 'auto' }}>
           🎯 목표 {goalsOpen ? '▲' : '▼'}
         </button>
@@ -479,6 +493,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         </div>
       )}
 
+      {viewMode === 'monthly' && <>
       {/* 월간 요약 */}
       <div style={{ display: 'flex', gap: 8, padding: '0 16px 10px', flexWrap: 'wrap' }}>
         {[
@@ -500,6 +515,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         {[
           { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
           { color: 'rgba(75,158,255,0.55)', label: '할일' },
+          { color: 'rgba(252,211,77,0.75)', label: '중요' },
         ].map(({ color, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 20, height: 10, borderRadius: 3, background: color }} />
@@ -550,7 +566,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
             const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
-            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: 'rgba(75,158,255,0.55)' }));
+            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
             const allItems = [...gcalItems, ...taskItems];
             const visibleItems = allItems.slice(0, 2);
             const moreCount = allItems.length - visibleItems.length;
@@ -642,19 +658,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           </div>
         );
       })()}
+      </>
+      }
 
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span>📅 이번주 일정</span>
-        <button
-          onClick={() => setWeeklyOpen(v => !v)}
-          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', fontWeight: 700 }}
-        >
-          {weeklyOpen ? '접기 ▲' : '펼치기 ▼'}
-        </button>
-      </div>
-      {weeklyOpen && (
-        <div style={{ padding: "0 16px" }}>
-          <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} onToggleTask={onToggleTaskForDate} />
+      {viewMode === 'weekly' && (
+        <div style={{ padding: "0 16px 12px" }}>
+          <WeeklySchedule plans={plans} habits={habits} onOpenDate={onOpenDate} onToggleTask={onToggleTaskForDate} gcalEvents={gcalEvents} />
         </div>
       )}
 
@@ -664,6 +673,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         const d = plans[preview];
         const tasks = (d?.tasks || []).filter(t => t.title.trim());
         const done = tasks.filter(t => t.done).length;
+        const sortedTasks = [...tasks].sort((a, b) => {
+          if (a.time && b.time) return a.time.localeCompare(b.time);
+          if (a.time) return -1;
+          if (b.time) return 1;
+          return 0;
+        });
         const mood = d?.journal?.mood;
         const moodMap = { '행복': '😊', '평온': '😌', '보통': '🤔', '피곤': '😴', '우울': '😔' };
         const isPast = preview <= today;
@@ -728,9 +743,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 20px 0" }}>
 
                 {/* 할일 목록 */}
-                {tasks.map((t, i) => (
+                {sortedTasks.map((t, i) => (
                   <div key={t.id || i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
-                    borderBottom: i < tasks.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                    borderBottom: i < sortedTasks.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
                     {/* 체크박스 */}
                     <div onClick={() => onToggleTaskForDate?.(preview, t.id)}
                       style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
@@ -767,6 +782,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
                         {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
                         {t.title}
+                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
                       </div>
                     )}
                     {/* 수정/삭제 버튼 */}
