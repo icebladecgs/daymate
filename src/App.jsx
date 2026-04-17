@@ -735,14 +735,20 @@ export default function App() {
         seenIncomingIds.add(event.id);
         return true;
       })
-      .map((event) => ({
-        id: `gcal_${event.id}`,
-        title: event.summary.trim(),
-        done: false,
-        checkedAt: null,
-        priority: false,
-        gcalEventId: event.id,
-      }));
+      .map((event) => {
+        const timeStr = event.start?.dateTime
+          ? new Date(event.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+          : undefined;
+        return {
+          id: `gcal_${event.id}`,
+          title: event.summary.trim(),
+          done: false,
+          checkedAt: null,
+          priority: false,
+          gcalEventId: event.id,
+          ...(timeStr ? { time: timeStr } : {}),
+        };
+      });
   };
 
   const mergeImportedGcalTasks = (baseDay, localDay) => {

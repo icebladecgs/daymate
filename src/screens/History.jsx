@@ -87,6 +87,15 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [quickTaskInput, setQuickTaskInput] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
+  const [previewMemoEdit, setPreviewMemoEdit] = useState(false);
+  const [previewMemoDraft, setPreviewMemoDraft] = useState('');
+
+  useEffect(() => {
+    if (preview) {
+      setPreviewMemoEdit(false);
+      setPreviewMemoDraft(plans[preview]?.memo ?? '');
+    }
+  }, [preview]); // eslint-disable-line
 
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -704,7 +713,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               border: "1px solid var(--dm-border2)",
               borderRadius: "24px 24px 0 0",
               width: "100%",
-              maxHeight: "78vh",
+              maxHeight: "92vh",
               display: "flex", flexDirection: "column",
               boxShadow: "0 -12px 48px rgba(0,0,0,0.5)",
               animation: "slideUp 0.22s ease-out",
@@ -837,27 +846,52 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </button>
                 </div>
 
-                {/* 메모 */}
-                {d?.memo?.trim() && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>📝 메모</div>
-                    <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.65,
-                      background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px",
-                      display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {d.memo.trim()}
-                    </div>
+                {/* 메모 — 인라인 편집 */}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900 }}>📝 메모</div>
+                    {!previewMemoEdit ? (
+                      <button onClick={() => setPreviewMemoEdit(true)}
+                        style={{ fontSize: 11, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>✏️ 편집</button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { onUpdateDayData?.(preview, prev => ({ ...prev, memo: previewMemoDraft })); setPreviewMemoEdit(false); }}
+                          style={{ fontSize: 11, color: '#4ADE80', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 900 }}>저장</button>
+                        <button onClick={() => { setPreviewMemoDraft(d?.memo ?? ''); setPreviewMemoEdit(false); }}
+                          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>취소</button>
+                      </div>
+                    )}
                   </div>
-                )}
+                  {previewMemoEdit ? (
+                    <textarea
+                      autoFocus
+                      value={previewMemoDraft}
+                      onChange={e => setPreviewMemoDraft(e.target.value)}
+                      rows={4}
+                      maxLength={1200}
+                      style={{ ...S.input, width: '100%', resize: 'none', lineHeight: 1.6, fontSize: 13, boxSizing: 'border-box' }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 13, color: previewMemoDraft.trim() ? "var(--dm-sub)" : 'var(--dm-muted)', lineHeight: 1.65,
+                      background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px", whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {previewMemoDraft.trim() || '메모 없음'}
+                    </div>
+                  )}
+                </div>
 
-                {/* 일기 */}
+                {/* 일기 — 전문 + 자세히 버튼 */}
                 {d?.journal?.body?.trim() && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-                    <div style={{ fontSize: 11, color: "#A78BFA", fontWeight: 900, marginBottom: 6 }}>
-                      📖 일기 {mood ? `· ${moodMap[mood] || ''} ${mood}` : ''}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ fontSize: 11, color: "#A78BFA", fontWeight: 900 }}>
+                        📖 일기 {mood ? `· ${moodMap[mood] || ''} ${mood}` : ''}
+                      </div>
+                      <button onClick={() => { onOpenDate(preview); setPreview(null); }}
+                        style={{ fontSize: 11, color: '#A78BFA', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>자세히 →</button>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.65,
                       background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px",
-                      display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                       {d.journal.body.trim()}
                     </div>
                   </div>
