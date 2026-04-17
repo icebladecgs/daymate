@@ -996,10 +996,11 @@ export default function App() {
     const nextTaskMap = new Map(nextTasks.map(t => [t.id, t]));
     const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
 
-    // 삭제: gcalEventId 있던 할일이 사라지거나 제목이 비워진 경우
+    // 삭제: gcalEventId 있던 할일이 사라지거나 제목이 비워진 경우 (가져온 일정 제외)
     prevTasks
       .filter(t => {
         if (!t.gcalEventId) return false;
+        if (isImportedGcalTask(t)) return false; // 구글에서 가져온 일정은 삭제 안 함
         const next = nextTaskMap.get(t.id);
         return !next || !next.title?.trim();
       })
