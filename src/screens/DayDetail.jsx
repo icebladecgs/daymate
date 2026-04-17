@@ -159,6 +159,9 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
               >
                 {t.done ? "✓" : idx + 1}
               </button>
+              {String(t.id || '').startsWith('gcal_') && (
+                <span style={{ fontSize: 13, flexShrink: 0, opacity: 0.8 }}>📅</span>
+              )}
               <input
                 style={{ ...S.input, flex: 1 }}
                 value={t.title}

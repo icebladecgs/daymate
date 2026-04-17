@@ -559,7 +559,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 key={ds}
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
                 style={{
-                  minHeight: 80,
+                  minHeight: 72,
                   borderRadius: 10,
                   display: "flex",
                   flexDirection: "column",
@@ -582,10 +582,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 10,
+                    fontSize: 9,
                     lineHeight: 1.4,
-                    padding: '2px 4px',
-                    borderRadius: 4,
+                    padding: '1px 3px',
+                    borderRadius: 3,
                     background: item.color,
                     color: '#fff',
                     marginBottom: 2,
@@ -765,7 +765,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       />
                     ) : (
                       <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                        textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4 }}>{t.title}</div>
+                        textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
+                        {t.title}
+                      </div>
                     )}
                     {/* 수정/삭제 버튼 */}
                     {editingTaskId !== t.id && (
