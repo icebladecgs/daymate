@@ -769,6 +769,10 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
               </div>
             ) : fortuneLoading ? (
               <div style={{ padding: "4px 0" }}>
+                <div style={{ textAlign: 'center', padding: '18px 0 14px' }}>
+                  <div className="dm-spin" style={{ fontSize: 36 }}>🔮</div>
+                  <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 10, fontWeight: 700 }}>운세를 읽는 중<span style={{ display: 'inline-block', minWidth: 18, textAlign: 'left' }}>...</span></div>
+                </div>
                 <div className="dm-skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 14 }} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
                   {[1,2,3,4].map(i => <div key={i} className="dm-skeleton" style={{ height: 72, borderRadius: 10 }} />)}

@@ -258,6 +258,15 @@ button:focus-visible {
   100% { content: ""; }
 }
 
+@keyframes dm-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.dm-spin {
+  display: inline-block;
+  animation: dm-spin 1.2s linear infinite;
+}
+
 @keyframes dm-skeleton {
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 1; }
