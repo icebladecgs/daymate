@@ -1019,32 +1019,34 @@ export default function App() {
 
   const setDetailData = (updater) => {
     if (!openDate) return;
+    const dateStr = openDate;
+    const prevTasks = [...((plans[dateStr] || newDay(dateStr)).tasks || [])];
+    let nextTasks = prevTasks;
+
     setPlans((prev) => {
-      const cur = prev[openDate] || newDay(openDate);
-      const prevTasks = cur.tasks || [];
+      const cur = prev[dateStr] || newDay(dateStr);
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      const nextTasks = nextDay.tasks || [];
-      const savedDay = persistDayData(openDate, nextDay);
-      // GCal 동기화 (tasks 변경이 있을 때만)
-      if (nextTasks !== prevTasks) {
-        const dateStr = openDate;
-        syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
-          setPlans(p => {
-            const d = p[dateStr] || newDay(dateStr);
-            return {
-              ...p,
-              [dateStr]: persistDayData(dateStr, {
-                ...d,
-                tasks: d.tasks.map(t => {
-                  const u = updates.find(r => r.id === t.id);
-                  return u ? { ...t, gcalEventId: u.gcalEventId } : t;
-                }),
-              }),
-            };
-          });
-        });
-      }
-      return { ...prev, [openDate]: savedDay };
+      nextTasks = nextDay.tasks || []; // updater는 동기 실행되므로 캡처 가능
+      const savedDay = persistDayData(dateStr, nextDay);
+      return { ...prev, [dateStr]: savedDay };
+    });
+
+    // GCal 동기화 — 업데이터 밖에서 호출
+    syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
+      setPlans(p => {
+        const d = p[dateStr];
+        if (!d) return p;
+        return {
+          ...p,
+          [dateStr]: persistDayData(dateStr, {
+            ...d,
+            tasks: d.tasks.map(t => {
+              const u = updates.find(r => r.id === t.id);
+              return u ? { ...t, gcalEventId: u.gcalEventId } : t;
+            }),
+          }),
+        };
+      });
     });
   };
 
