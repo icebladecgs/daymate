@@ -496,6 +496,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {/* 범례 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px 10px', flexWrap: 'wrap' }}>
         {[
+          { dot: '#4B9EFF', label: '할일' },
           { dot: '#6C8EFF', label: '메모' },
           { dot: '#A78BFA', label: '일기' },
           { dot: '#4B6FFF', label: '캘린더' },
@@ -535,6 +536,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const st = isFutureDate && r === null
               ? { background: "var(--dm-input)", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)" }
               : styleOf(r, isToday, perfect);
+            const hasTasks = (plans[ds]?.tasks || []).some(t => t.title?.trim());
             const hasMemo = !!(plans[ds]?.memo?.trim());
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
@@ -564,13 +566,17 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF", opacity: 0.9 }} />
                   </div>
                 )}
+                {/* 할일 점 */}
+                {hasTasks && (
+                  <span style={{ position: "absolute", top: 3, left: 3, width: 4, height: 4, borderRadius: 999, background: "#4B9EFF" }} />
+                )}
                 {/* 메모 점 */}
                 {hasMemo && (
-                  <span style={{ position: "absolute", top: 3, left: 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
+                  <span style={{ position: "absolute", top: 3, left: hasTasks ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
                 )}
                 {/* 일기 점 */}
                 {hasJournal && (
-                  <span style={{ position: "absolute", top: 3, left: hasMemo ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
+                  <span style={{ position: "absolute", top: 3, left: (hasTasks && hasMemo) ? 15 : (hasTasks || hasMemo) ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
                 )}
                 {/* 구글 캘린더 표시 */}
                 {hasGcal && (
