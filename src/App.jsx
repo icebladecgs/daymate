@@ -934,12 +934,27 @@ export default function App() {
   };
 
   const setDayData = (dateStr, updater) => {
-    setPlans((prev) => {
-      const cur = prev[dateStr] || newDay(dateStr);
-      const nextDay = typeof updater === "function" ? updater(cur) : updater;
-      const savedDay = persistDayData(dateStr, nextDay);
-      const next = { ...prev, [dateStr]: savedDay };
-      return next;
+    const cur = plans[dateStr] || newDay(dateStr);
+    const prevTasks = cur.tasks || [];
+    const nextDay = typeof updater === "function" ? updater(cur) : updater;
+    const nextTasks = nextDay.tasks || [];
+    const savedDay = persistDayData(dateStr, nextDay);
+    setPlans(prev => ({ ...prev, [dateStr]: savedDay }));
+    syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
+      setPlans(p => {
+        const d = p[dateStr];
+        if (!d) return p;
+        return {
+          ...p,
+          [dateStr]: persistDayData(dateStr, {
+            ...d,
+            tasks: d.tasks.map(t => {
+              const u = updates.find(r => r.id === t.id);
+              return u ? { ...t, gcalEventId: u.gcalEventId } : t;
+            }),
+          }),
+        };
+      });
     });
   };
 
