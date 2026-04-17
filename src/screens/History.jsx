@@ -498,10 +498,17 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {/* 범례 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px 10px', flexWrap: 'wrap' }}>
         {[
-          { dot: '#4B9EFF', label: '할일' },
+          { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
+          { color: 'rgba(75,158,255,0.55)', label: '할일' },
+        ].map(({ color, label }) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 20, height: 10, borderRadius: 3, background: color }} />
+            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+          </div>
+        ))}
+        {[
           { dot: '#6C8EFF', label: '메모' },
           { dot: '#A78BFA', label: '일기' },
-          { dot: '#4B6FFF', label: '캘린더' },
         ].map(({ dot, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
@@ -538,54 +545,74 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const st = isFutureDate && r === null
               ? { background: "var(--dm-input)", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)" }
               : styleOf(r, isToday, perfect);
-            const hasTasks = (plans[ds]?.tasks || []).some(t => t.title?.trim());
             const hasMemo = !!(plans[ds]?.memo?.trim());
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
-            const hasGcal = dayGcalEvents.length > 0 || (plans[ds]?.tasks || []).some(t => t.gcalEventId);
+            // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
+            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
+            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: 'rgba(75,158,255,0.55)' }));
+            const allItems = [...gcalItems, ...taskItems];
+            const visibleItems = allItems.slice(0, 2);
+            const moreCount = allItems.length - visibleItems.length;
             return (
               <div
                 key={ds}
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
                 style={{
-                  aspectRatio: 1,
+                  minHeight: 70,
                   borderRadius: 10,
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  alignItems: "stretch",
+                  justifyContent: "flex-start",
                   position: "relative",
                   cursor: "pointer",
                   overflow: "hidden",
+                  padding: "4px 3px 6px",
+                  boxSizing: "border-box",
                   ...st,
                 }}
                 title={perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : undefined}
               >
-                <span style={{ fontSize: 13, fontWeight: st.fontWeight }}>{day}</span>
+                {/* 날짜 숫자 + 별 */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, marginBottom: 2, minHeight: 18 }}>
+                  <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1 }}>{day}</span>
+                  {perfect && <span style={{ fontSize: 7, color: "#FBBF24", lineHeight: 1 }}>★</span>}
+                </div>
+                {/* 이벤트 칩 */}
+                {visibleItems.map((item, idx) => (
+                  <div key={idx} style={{
+                    fontSize: 8,
+                    lineHeight: 1.3,
+                    padding: '1px 3px',
+                    borderRadius: 3,
+                    background: item.color,
+                    color: '#fff',
+                    marginBottom: 1,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    fontWeight: 600,
+                  }}>
+                    {item.title}
+                  </div>
+                ))}
+                {moreCount > 0 && (
+                  <div style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}개</div>
+                )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3 }}>
                     <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF", opacity: 0.9 }} />
                   </div>
                 )}
-                {/* 할일 점 */}
-                {hasTasks && (
-                  <span style={{ position: "absolute", top: 3, left: 3, width: 4, height: 4, borderRadius: 999, background: "#4B9EFF" }} />
-                )}
                 {/* 메모 점 */}
                 {hasMemo && (
-                  <span style={{ position: "absolute", top: 3, left: hasTasks ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
+                  <span style={{ position: "absolute", top: 3, right: hasJournal ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
                 )}
                 {/* 일기 점 */}
                 {hasJournal && (
-                  <span style={{ position: "absolute", top: 3, left: (hasTasks && hasMemo) ? 15 : (hasTasks || hasMemo) ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
-                )}
-                {/* 구글 캘린더 표시 */}
-                {hasGcal && (
-                  <span style={{ position: "absolute", top: 3, right: perfect ? 10 : 3, width: 4, height: 4, borderRadius: 999, background: "#4B6FFF" }} />
-                )}
-                {perfect && (
-                  <span style={{ position: "absolute", top: 1, right: 2, fontSize: 8, lineHeight: 1, color: "#FBBF24" }}>★</span>
+                  <span style={{ position: "absolute", top: 3, right: 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
                 )}
               </div>
             );
