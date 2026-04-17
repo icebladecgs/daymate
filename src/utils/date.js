@@ -35,12 +35,12 @@ export const formatRelativeTime = (ts) => {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 };
 
-export const getWeekDates = () => {
+export const getWeekDates = (weekOffset = 0) => {
   const today = new Date();
   const day = today.getDay(); // 0=일
   const diffToMon = day === 0 ? -6 : 1 - day;
   const mon = new Date(today);
-  mon.setDate(today.getDate() + diffToMon);
+  mon.setDate(today.getDate() + diffToMon + weekOffset * 7);
   return Array(7).fill(null).map((_, i) => {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);

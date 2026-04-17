@@ -516,6 +516,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
           { color: 'rgba(75,158,255,0.55)', label: '할일' },
           { color: 'rgba(252,211,77,0.75)', label: '중요' },
+          { color: 'rgba(74,222,128,0.3)', label: '완료' },
         ].map(({ color, label }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 20, height: 10, borderRadius: 3, background: color }} />
@@ -565,8 +566,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
-            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
-            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
+            const gcalItems = dayGcalEvents.map(e => {
+              const time = e.start?.dateTime
+                ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+                : null;
+              return { title: time ? `${time} ${e.summary || '(제목없음)'}` : (e.summary || '(제목없음)'), color: 'rgba(75,111,255,0.75)' };
+            });
+            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
             const allItems = [...gcalItems, ...taskItems];
             const visibleItems = allItems.slice(0, 2);
             const moreCount = allItems.length - visibleItems.length;
@@ -742,60 +748,83 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               {/* 내용 스크롤 영역 */}
               <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 20px 0" }}>
 
-                {/* 할일 목록 */}
-                {sortedTasks.map((t, i) => (
-                  <div key={t.id || i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
-                    borderBottom: i < sortedTasks.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
-                    {/* 체크박스 */}
-                    <div onClick={() => onToggleTaskForDate?.(preview, t.id)}
-                      style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
-                        background: t.done ? "#4B6FFF" : "transparent",
-                        border: t.done ? "none" : "2px solid var(--dm-border2)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s", cursor: 'pointer' }}>
-                      {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
-                    </div>
-                    {/* 제목 or 인라인 편집 */}
-                    {editingTaskId === t.id ? (
-                      <input
-                        autoFocus
-                        value={editingTaskTitle}
-                        onChange={e => setEditingTaskTitle(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
+                {/* 할일 목록 — 시간 있는/없는 구분 */}
+                {(() => {
+                  const timed = sortedTasks.filter(t => t.time);
+                  const untimed = sortedTasks.filter(t => !t.time);
+                  const renderTask = (t, i, arr) => (
+                    <div key={t.id || i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
+                      borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
+                      {/* 체크박스 */}
+                      <div onClick={() => onToggleTaskForDate?.(preview, t.id)}
+                        style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+                          background: t.done ? "#4B6FFF" : "transparent",
+                          border: t.done ? "none" : "2px solid var(--dm-border2)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all 0.15s", cursor: 'pointer' }}>
+                        {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                      </div>
+                      {/* 제목 or 인라인 편집 */}
+                      {editingTaskId === t.id ? (
+                        <input
+                          autoFocus
+                          value={editingTaskTitle}
+                          onChange={e => setEditingTaskTitle(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              const title = editingTaskTitle.trim();
+                              if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
+                              setEditingTaskId(null);
+                            }
+                            if (e.key === 'Escape') setEditingTaskId(null);
+                          }}
+                          onBlur={() => {
                             const title = editingTaskTitle.trim();
                             if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
                             setEditingTaskId(null);
-                          }
-                          if (e.key === 'Escape') setEditingTaskId(null);
-                        }}
-                        onBlur={() => {
-                          const title = editingTaskTitle.trim();
-                          if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
-                          setEditingTaskId(null);
-                        }}
-                        maxLength={60}
-                        style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '4px 8px' }}
-                      />
-                    ) : (
-                      <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                        textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
-                        {t.title}
-                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
-                      </div>
-                    )}
-                    {/* 수정/삭제 버튼 */}
-                    {editingTaskId !== t.id && (
-                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
-                        <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }))}
-                          style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          }}
+                          maxLength={60}
+                          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '4px 8px' }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                          textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1 }}>
+                          {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
+                          {t.title}
+                          {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
+                        </div>
+                      )}
+                      {/* 수정/삭제 버튼 */}
+                      {editingTaskId !== t.id && (
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
+                          <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }))}
+                            style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                  return (
+                    <>
+                      {timed.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>⏰ 시간 일정</div>
+                          {timed.map((t, i) => renderTask(t, i, timed))}
+                        </>
+                      )}
+                      {timed.length > 0 && untimed.length > 0 && (
+                        <div style={{ borderTop: '1px dashed var(--dm-border)', margin: '8px 0 4px' }} />
+                      )}
+                      {untimed.length > 0 && (
+                        <>
+                          {timed.length > 0 && <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, padding: '2px 0' }}>할일</div>}
+                          {untimed.map((t, i) => renderTask(t, i, untimed))}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* 할일 빠른 추가 — 날짜 제한 없이 항상 표시 */}
                 <div style={{ display: 'flex', gap: 8, marginTop: tasks.length > 0 ? 10 : 0, marginBottom: 4 }}>

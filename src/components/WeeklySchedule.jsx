@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { toDateStr, getWeekDates } from "../utils/date.js";
 import S from "../styles.js";
 
@@ -5,10 +6,30 @@ const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
 export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask, gcalEvents = {} }) {
   const today = toDateStr();
-  const weekDates = getWeekDates();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekDates = getWeekDates(weekOffset);
+  const weekStart = weekDates[0];
+  const weekEnd = weekDates[6];
+  const weekLabel = (() => {
+    const s = new Date(weekStart + 'T00:00:00');
+    const e = new Date(weekEnd + 'T00:00:00');
+    if (s.getMonth() === e.getMonth()) return `${s.getMonth()+1}월 ${s.getDate()}일 ~ ${e.getDate()}일`;
+    return `${s.getMonth()+1}월 ${s.getDate()}일 ~ ${e.getMonth()+1}월 ${e.getDate()}일`;
+  })();
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
+      {/* 주간 네비게이션 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+        <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>‹</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{weekLabel}</span>
+          {weekOffset !== 0 && (
+            <button onClick={() => setWeekOffset(0)} style={{ fontSize: 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
+          )}
+        </div>
+        <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>›</button>
+      </div>
       {weekDates.map((ds, i) => {
         const d = plans[ds];
         const tasks = (d?.tasks || []).filter(t => t.title.trim());
