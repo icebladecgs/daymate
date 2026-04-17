@@ -973,14 +973,78 @@ export default function App() {
     setScrollToMemo(true);
   };
 
+  // GCal 동기화 공통 함수 (날짜 무관)
+  const syncTasksToGcal = (dateStr, prevTasks, nextTasks, onGcalIdsUpdated) => {
+    const token = getValidGcalToken();
+    if (!token) return;
+
+    const nextTaskMap = new Map(nextTasks.map(t => [t.id, t]));
+    const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
+
+    // 삭제: gcalEventId 있던 할일이 사라지거나 제목이 비워진 경우
+    prevTasks
+      .filter(t => {
+        if (!t.gcalEventId) return false;
+        const next = nextTaskMap.get(t.id);
+        return !next || !next.title?.trim();
+      })
+      .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(e => console.error('[App] gcal delete failed:', e)));
+
+    // 수정: 제목이 바뀐 경우
+    nextTasks.forEach(t => {
+      const prev = prevTaskMap.get(t.id);
+      if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
+        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(e => console.error('[App] gcal update failed:', e));
+      }
+    });
+
+    // 추가: gcalEventId 없는 새 할일
+    const toCreate = nextTasks.filter(t => {
+      if (!t.title.trim() || t.gcalEventId) return false;
+      if (pendingTodayGcalTaskIdsRef.current.has(t.id)) return false;
+      return !prevTaskMap.get(t.id)?.gcalEventId;
+    });
+    if (toCreate.length === 0) return;
+    toCreate.forEach(t => pendingTodayGcalTaskIdsRef.current.add(t.id));
+    Promise.all(toCreate.map(async task => {
+      try { return { id: task.id, gcalEventId: await gcalCreateEvent(token, dateStr, task) }; }
+      catch { return null; }
+    })).then(results => {
+      const updates = results.filter(Boolean);
+      if (updates.length > 0) onGcalIdsUpdated?.(updates);
+    }).finally(() => {
+      toCreate.forEach(t => pendingTodayGcalTaskIdsRef.current.delete(t.id));
+    });
+  };
+
   const setDetailData = (updater) => {
     if (!openDate) return;
     setPlans((prev) => {
       const cur = prev[openDate] || newDay(openDate);
+      const prevTasks = cur.tasks || [];
       const nextDay = typeof updater === "function" ? updater(cur) : updater;
+      const nextTasks = nextDay.tasks || [];
       const savedDay = persistDayData(openDate, nextDay);
-      const next = { ...prev, [openDate]: savedDay };
-      return next;
+      // GCal 동기화 (tasks 변경이 있을 때만)
+      if (nextTasks !== prevTasks) {
+        const dateStr = openDate;
+        syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
+          setPlans(p => {
+            const d = p[dateStr] || newDay(dateStr);
+            return {
+              ...p,
+              [dateStr]: persistDayData(dateStr, {
+                ...d,
+                tasks: d.tasks.map(t => {
+                  const u = updates.find(r => r.id === t.id);
+                  return u ? { ...t, gcalEventId: u.gcalEventId } : t;
+                }),
+              }),
+            };
+          });
+        });
+      }
+      return { ...prev, [openDate]: savedDay };
     });
   };
 
@@ -993,40 +1057,7 @@ export default function App() {
       return rest;
     });
     setTodayData(prev => ({ ...prev, tasks: normalizedTasks }));
-
-    const token = getValidGcalToken();
-    if (!token) return;
-
-    const nextTaskMap = new Map(normalizedTasks.map((task) => [task.id, task]));
-    prevTasks.filter((task) => {
-      if (!task.gcalEventId) return false;
-      const nextTask = nextTaskMap.get(task.id);
-      return !nextTask || !nextTask.title?.trim();
-    })
-      .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(e => console.error('[App] gcal delete failed:', e)));
-
-    const prevTaskMap = new Map(prevTasks.map(t => [t.id, t]));
-    normalizedTasks.forEach(t => {
-      const prev = prevTaskMap.get(t.id);
-      if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
-        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(e => console.error('[App] gcal update failed:', e));
-      }
-    });
-
-    const toCreate = normalizedTasks.filter((task) => {
-      if (!task.title.trim() || task.gcalEventId) return false;
-      if (pendingTodayGcalTaskIdsRef.current.has(task.id)) return false;
-      const prev = prevTaskMap.get(task.id);
-      return !prev?.gcalEventId;
-    });
-    if (toCreate.length === 0) return;
-    toCreate.forEach((task) => pendingTodayGcalTaskIdsRef.current.add(task.id));
-    Promise.all(toCreate.map(async task => {
-      try { return { id: task.id, gcalEventId: await gcalCreateEvent(token, todayStr, task) }; }
-      catch { return null; }
-    })).then(results => {
-      const updates = results.filter(Boolean);
-      if (updates.length === 0) return;
+    syncTasksToGcal(todayStr, prevTasks, normalizedTasks, (updates) => {
       setTodayData(prev => ({
         ...prev,
         tasks: prev.tasks.map(t => {
@@ -1034,8 +1065,6 @@ export default function App() {
           return u ? { ...t, gcalEventId: u.gcalEventId } : t;
         }),
       }));
-    }).finally(() => {
-      toCreate.forEach((task) => pendingTodayGcalTaskIdsRef.current.delete(task.id));
     });
   };
 
