@@ -28,6 +28,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [newMonthInput, setNewMonthInput] = useState('');
   const [actionDrafts, setActionDrafts] = useState({});
 
+  const [legendOpen, setLegendOpen] = useState(false);
   const [gcalRefreshing, setGcalRefreshing] = useState(false);
   const [gcalToast, setGcalToast] = useState(null);
 
@@ -503,52 +504,44 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       )}
 
       {viewMode === 'monthly' && <>
-      {/* 월간 요약 */}
-      <div style={{ display: 'flex', gap: 8, padding: '0 16px 10px', flexWrap: 'wrap' }}>
-        {[
-          { label: '완전완료', value: monthStats.completedDays, color: '#4ADE80', icon: '✅' },
-          { label: '메모', value: monthStats.memoDays, color: '#6C8EFF', icon: '📝' },
-          { label: '일기', value: monthStats.journalDays, color: '#A78BFA', icon: '📖' },
-          { label: '완벽', value: monthStats.perfectDays, color: '#FBBF24', icon: '★' },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 20, background: 'var(--dm-card)', border: '1px solid var(--dm-border)' }}>
-            <span style={{ fontSize: 12 }}>{icon}</span>
-            <span style={{ fontSize: 12, fontWeight: 900, color }}>{value}</span>
-            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+      {/* 범례 — 기본 숨김, 토글 */}
+      <div style={{ padding: '0 16px 8px' }}>
+        <button onClick={() => setLegendOpen(v => !v)}
+          style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 10, cursor: 'pointer', padding: 0, fontWeight: 700 }}>
+          {legendOpen ? '▲ 범례 숨기기' : '▼ 범례'}
+        </button>
+        {legendOpen && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            {[
+              { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
+              { color: 'rgba(75,158,255,0.55)', label: '할일' },
+              { color: 'rgba(252,211,77,0.75)', label: '중요' },
+              { color: 'rgba(74,222,128,0.3)', label: '완료' },
+            ].map(({ color, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 20, height: 10, borderRadius: 3, background: color }} />
+                <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+              </div>
+            ))}
+            {[
+              { dot: '#6C8EFF', label: '메모' },
+              { dot: '#A78BFA', label: '일기' },
+            ].map(({ dot, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
+                <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 10, color: '#FBBF24' }}>★</span>
+              <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완벽한 날</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 16, height: 3, borderRadius: 2, background: 'linear-gradient(to right, #4B6FFF, #4ADE80)' }} />
+              <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완료율</span>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* 범례 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 18px 10px', flexWrap: 'wrap' }}>
-        {[
-          { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
-          { color: 'rgba(75,158,255,0.55)', label: '할일' },
-          { color: 'rgba(252,211,77,0.75)', label: '중요' },
-          { color: 'rgba(74,222,128,0.3)', label: '완료' },
-        ].map(({ color, label }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 20, height: 10, borderRadius: 3, background: color }} />
-            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
-          </div>
-        ))}
-        {[
-          { dot: '#6C8EFF', label: '메모' },
-          { dot: '#A78BFA', label: '일기' },
-        ].map(({ dot, label }) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
-            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{label}</span>
-          </div>
-        ))}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 10, color: '#FBBF24' }}>★</span>
-          <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완벽한 날</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 16, height: 3, borderRadius: 2, background: 'linear-gradient(to right, #4B6FFF, #4ADE80)' }} />
-          <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완료율</span>
-        </div>
+        )}
       </div>
 
       <div style={{ padding: "0 10px 12px", boxSizing: "border-box" }}>
