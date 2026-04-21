@@ -1,91 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
-import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak, calcLevel } from "../data/stats.js";
-import { loadRankings } from "../firebase.js";
+import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../data/stats.js";
 import S from "../styles.js";
-
-function maskEmail(email) {
-  if (!email) return '익명';
-  const [local, domain] = email.split('@');
-  const masked = local.slice(0, 4) + '****';
-  return `${masked}@${domain}`;
-}
-
-const MEDALS = ['🥇', '🥈', '🥉'];
-
-function LevelPill({ levelInfo, score = 0, compact = false }) {
-  if (!levelInfo) return null;
-  return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: compact ? 4 : 6,
-      padding: compact ? '3px 8px' : '5px 10px',
-      borderRadius: 999,
-      background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
-      border: '1px solid rgba(108,142,255,.22)',
-      color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
-      fontSize: compact ? 10 : 11,
-      fontWeight: compact ? 800 : 900,
-      whiteSpace: 'nowrap',
-    }}>
-      <span>{levelInfo.icon}</span>
-      <span>Lv.{levelInfo.level}</span>
-      {!compact && <span>{levelInfo.title}</span>}
-      {!compact && <span style={{ color: 'var(--dm-muted)', fontWeight: 800 }}>{(score || 0).toLocaleString()} XP</span>}
-    </span>
-  );
-}
 
 export default function Stats({ plans, habits, authUser, onBack }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [barTooltip, setBarTooltip] = useState(null);
-  const [rankings, setRankings] = useState([]);
-  const [rankLoading, setRankLoading] = useState(true);
-  const [rankTab, setRankTab] = useState('total'); // 'total' | 'month' | 'invite'
-  const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
-  const currentMonthLabel = `${new Date().getMonth() + 1}월`;
-
-  useEffect(() => {
-    loadRankings()
-      .then(list => setRankings(list))
-      .catch(() => {})
-      .finally(() => setRankLoading(false));
-  }, []);
-
-  const sortedRankings = useMemo(() => {
-    const list = [...rankings];
-    if (rankTab === 'month') {
-      return list
-        .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
-        .filter(r => r.score > 0)
-        .sort((a, b) => b.score - a.score);
-    }
-    if (rankTab === 'invite') {
-      return list
-        .filter(r => (r.inviteCount || 0) > 0)
-        .sort((a, b) => (b.inviteCount || 0) - (a.inviteCount || 0));
-    }
-    return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-  }, [rankings, rankTab, currentYM]);
-
-  const myRanking = useMemo(
-    () => rankings.find(r => r.uid === authUser?.uid) || null,
-    [rankings, authUser]
-  );
-  const myLevelInfo = useMemo(
-    () => calcLevel(myRanking?.totalScore || 0),
-    [myRanking]
-  );
-  const myRankIndex = useMemo(
-    () => rankings
-      .slice()
-      .sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0))
-      .findIndex(r => r.uid === authUser?.uid),
-    [rankings, authUser]
-  );
-  const xpToNextLevel = Math.max(0, (myLevelInfo?.nextFloor || 0) - (myRanking?.totalScore || 0));
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
@@ -433,79 +354,6 @@ const last30 = useMemo(() => {
           </div>
         </>
       )}
-
-      {/* 전체 랭킹 */}
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>🏆</span> 랭킹</div>
-      <div style={S.card}>
-        <div style={{
-          marginBottom: 14,
-          padding: '14px 14px 12px',
-          borderRadius: 14,
-          background: 'linear-gradient(135deg, rgba(75,111,255,.14), rgba(108,142,255,.06))',
-          border: '1.5px solid rgba(108,142,255,.2)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 4 }}>내 레벨 현황</div>
-              <LevelPill levelInfo={myLevelInfo} score={myRanking?.totalScore || 0} />
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>전체 순위</div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)' }}>{myRankIndex >= 0 ? `#${myRankIndex + 1}` : '-'}</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6 }}>
-            <span>다음 레벨까지 {xpToNextLevel.toLocaleString()} XP</span>
-            <span>{myLevelInfo.progress}%</span>
-          </div>
-          <div style={{ height: 8, background: 'rgba(255,255,255,.35)', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, myLevelInfo.progress))}%`, borderRadius: 999, background: 'linear-gradient(90deg, #4B6FFF, #6C8EFF)' }} />
-          </div>
-        </div>
-
-        {/* 탭 */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-          {[['total', '전체'], ['month', `${currentMonthLabel}`], ['invite', '초대']].map(([key, label]) => (
-            <button key={key} onClick={() => setRankTab(key)} style={{
-              ...S.btn, marginTop: 0, flex: 1, fontSize: 12,
-              background: rankTab === key ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
-              color: rankTab === key ? '#fff' : 'var(--dm-sub)',
-              boxShadow: 'none',
-            }}>{label}</button>
-          ))}
-        </div>
-
-        {rankLoading ? (
-          <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>로딩 중...</div>
-        ) : sortedRankings.length === 0 ? (
-          <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 12 }}>아직 랭킹 데이터가 없어요</div>
-        ) : (
-          sortedRankings.map((r, i) => {
-            const isMe = authUser?.uid === r.uid;
-            const score = rankTab === 'month' ? r.score : r.totalScore;
-            const levelInfo = calcLevel(r.totalScore || 0);
-            return (
-              <div key={r.uid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < sortedRankings.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
-                <div style={{ fontSize: i < 3 ? 20 : 13, width: 28, textAlign: 'center', fontWeight: 900, color: 'var(--dm-muted)' }}>
-                  {i < 3 ? MEDALS[i] : `${i + 1}`}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: isMe ? 900 : 700, color: isMe ? '#6C8EFF' : 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {maskEmail(r.email)}{isMe ? ' 👈 나' : ''}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                    <LevelPill levelInfo={levelInfo} score={r.totalScore || 0} compact />
-                    <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{r.daysCount || 0}일 기록</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 900, color: rankTab === 'invite' ? '#F472B6' : '#FBBF24' }}>
-                  {rankTab === 'invite' ? `${r.inviteCount || 0}명` : `${(score || 0).toLocaleString()} XP`}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
 
       <div style={{ height: 12 }} />
     </div>

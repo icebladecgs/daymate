@@ -1,6 +1,36 @@
-import { useState, useEffect } from "react";
-import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin } from "../firebase.js";
+import { useState, useEffect, useMemo } from "react";
+import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
+import { calcLevel } from "../data/stats.js";
+import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
+
+function maskEmail(email) {
+  if (!email) return '익명';
+  const [local, domain] = email.split('@');
+  return `${local.slice(0, 4)}****@${domain}`;
+}
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function LevelPill({ levelInfo, score = 0, compact = false }) {
+  if (!levelInfo) return null;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      gap: compact ? 4 : 6, padding: compact ? '3px 8px' : '5px 10px',
+      borderRadius: 999,
+      background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
+      border: '1px solid rgba(108,142,255,.22)',
+      color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
+      fontSize: compact ? 10 : 11, fontWeight: compact ? 800 : 900, whiteSpace: 'nowrap',
+    }}>
+      <span>{levelInfo.icon}</span>
+      <span>Lv.{levelInfo.level}</span>
+      {!compact && <span>{levelInfo.title}</span>}
+      {!compact && <span style={{ color: 'var(--dm-muted)', fontWeight: 800 }}>{(score || 0).toLocaleString()} XP</span>}
+    </span>
+  );
+}
 
 function ago(isoStr) {
   if (!isoStr) return "-";
@@ -44,6 +74,11 @@ export default function Admin({ authUser, onBack }) {
   const [commLoading, setCommLoading] = useState(false);
   const [challenges, setChallenges] = useState([]);
   const [challLoading, setChallLoading] = useState(false);
+  const [rankings, setRankings] = useState([]);
+  const [rankLoading, setRankLoading] = useState(false);
+  const [rankTab, setRankTab] = useState('total');
+  const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
+  const currentMonthLabel = `${new Date().getMonth() + 1}월`;
 
   useEffect(() => {
     if (!authUser) { setStatus("denied"); return; }
@@ -59,12 +94,15 @@ export default function Admin({ authUser, onBack }) {
       const isAdm = isPrimaryAdmin(authUser.uid);
       if (!isAdm) { setStatus("denied"); return; }
       setStatus("loading");
-      const [list, suggs, comms, challs] = await Promise.all([loadAllUsersMeta(), loadSuggestions(), loadAllCommunities(), loadAllChallenges()]);
+      setRankLoading(true);
+      const [list, suggs, comms, challs, rankList] = await Promise.all([loadAllUsersMeta(), loadSuggestions(), loadAllCommunities(), loadAllChallenges(), loadRankings()]);
       list.sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
       setUsers(list);
       setSuggestions(suggs);
       setChallenges(challs);
       setCommunities(comms.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0)));
+      setRankings(rankList);
+      setRankLoading(false);
       setStatus("ready");
       loadDaysCounts(list);
     } catch (e) {
@@ -160,6 +198,23 @@ export default function Admin({ authUser, onBack }) {
     { label: "총 기록 일수", value: Object.keys(daysMap).length < users.length ? "..." : totalDays, color: "#A78BFA" },
   ];
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sortedRankings = useMemo(() => {
+    const list = [...rankings];
+    if (rankTab === 'month') {
+      return list
+        .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score);
+    }
+    if (rankTab === 'invite') {
+      return list
+        .filter(r => (r.inviteCount || 0) > 0)
+        .sort((a, b) => (b.inviteCount || 0) - (a.inviteCount || 0));
+    }
+    return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+  }, [rankings, rankTab]);
+
   return (
     <div style={S.content}>
       {/* 상단 바 */}
@@ -192,6 +247,7 @@ export default function Admin({ authUser, onBack }) {
             <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
               {[
                 { key: 'users', label: `유저 (${totalUsers})` },
+                { key: 'rankings', label: `랭킹 (${rankings.length})` },
                 { key: 'suggestions', label: '제안', badge: pendingCount },
                 { key: 'communities', label: `커뮤니티 (${communities.length})` },
                 { key: 'challenges', label: `챌린지 (${challenges.length})` },
@@ -212,6 +268,53 @@ export default function Admin({ authUser, onBack }) {
             </div>
           );
         })()}
+
+        {/* 랭킹 탭 */}
+        {activeTab === 'rankings' && (
+          <div style={{ marginBottom: 80 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+              {[['total', '전체'], ['month', currentMonthLabel], ['invite', '초대']].map(([key, label]) => (
+                <button key={key} onClick={() => setRankTab(key)} style={{
+                  flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                  border: 'none',
+                  background: rankTab === key ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
+                  color: rankTab === key ? '#fff' : 'var(--dm-sub)',
+                }}>{label}</button>
+              ))}
+            </div>
+            {rankLoading ? (
+              <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 32 }}>로딩 중...</div>
+            ) : sortedRankings.length === 0 ? (
+              <div style={{ color: 'var(--dm-muted)', fontSize: 13, textAlign: 'center', padding: 32 }}>랭킹 데이터가 없어요</div>
+            ) : (
+              <div style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '8px 14px' }}>
+                {sortedRankings.map((r, i) => {
+                  const score = rankTab === 'month' ? r.score : r.totalScore;
+                  const levelInfo = calcLevel(r.totalScore || 0);
+                  return (
+                    <div key={r.uid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < sortedRankings.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
+                      <div style={{ fontSize: i < 3 ? 20 : 13, width: 28, textAlign: 'center', fontWeight: 900, color: 'var(--dm-muted)' }}>
+                        {i < 3 ? MEDALS[i] : `${i + 1}`}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.email || maskEmail(r.email)}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          <LevelPill levelInfo={levelInfo} score={r.totalScore || 0} compact />
+                          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{r.daysCount || 0}일 기록</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: rankTab === 'invite' ? '#F472B6' : '#FBBF24' }}>
+                        {rankTab === 'invite' ? `${r.inviteCount || 0}명` : `${(score || 0).toLocaleString()} XP`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 유저 목록 탭 */}
         {activeTab === 'users' && (
