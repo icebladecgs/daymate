@@ -80,6 +80,22 @@ export default function Admin({ authUser, onBack }) {
   const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
   const currentMonthLabel = `${new Date().getMonth() + 1}월`;
 
+  const sortedRankings = useMemo(() => {
+    const list = [...rankings];
+    if (rankTab === 'month') {
+      return list
+        .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score);
+    }
+    if (rankTab === 'invite') {
+      return list
+        .filter(r => (r.inviteCount || 0) > 0)
+        .sort((a, b) => (b.inviteCount || 0) - (a.inviteCount || 0));
+    }
+    return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+  }, [rankings, rankTab, currentYM]);
+
   useEffect(() => {
     if (!authUser) { setStatus("denied"); return; }
     init();
@@ -198,22 +214,6 @@ export default function Admin({ authUser, onBack }) {
     { label: "총 기록 일수", value: Object.keys(daysMap).length < users.length ? "..." : totalDays, color: "#A78BFA" },
   ];
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sortedRankings = useMemo(() => {
-    const list = [...rankings];
-    if (rankTab === 'month') {
-      return list
-        .map(r => ({ ...r, score: (r.monthlyScores || {})[currentYM] || 0 }))
-        .filter(r => r.score > 0)
-        .sort((a, b) => b.score - a.score);
-    }
-    if (rankTab === 'invite') {
-      return list
-        .filter(r => (r.inviteCount || 0) > 0)
-        .sort((a, b) => (b.inviteCount || 0) - (a.inviteCount || 0));
-    }
-    return list.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-  }, [rankings, rankTab]);
 
   return (
     <div style={S.content}>
