@@ -424,7 +424,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto' }}>🔍</button>
+          <button onClick={() => setShowSearch(true)} title="날짜 검색" aria-label="날짜 검색" style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36 }}>🔍</button>
           <button
             onClick={async () => {
               const token = getValidGcalToken?.();
@@ -437,13 +437,15 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               }
             }}
             disabled={gcalRefreshing}
-            style={{ ...S.btnGhost, marginTop: 0, padding: '6px 10px', fontSize: 11, width: 'auto', opacity: gcalRefreshing ? 0.5 : 1 }}
+            title="구글 캘린더 동기화"
+            aria-label="구글 캘린더 동기화"
+            style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36, opacity: gcalRefreshing ? 0.5 : 1 }}
           >
             {gcalRefreshing ? '⟳' : '📅'}
           </button>
-          <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 8px', fontSize: 11, width: 'auto', fontWeight: 900 }}>오늘</button>
-          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
-          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
+          <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: 12, width: 'auto', fontWeight: 900, minHeight: 36 }}>오늘</button>
+          <button onClick={prev} title="이전 달" aria-label="이전 달" style={{ ...S.btnGhost, width: 44, height: 36, marginTop: 0, padding: 0, fontSize: 16 }}>‹</button>
+          <button onClick={next} title="다음 달" aria-label="다음 달" style={{ ...S.btnGhost, width: 44, height: 36, marginTop: 0, padding: 0, fontSize: 16 }}>›</button>
         </div>
       </div>
 
@@ -601,9 +603,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 8,
+                    fontSize: 10,
                     lineHeight: 1.4,
-                    padding: '1px 2px',
+                    padding: '1px 3px',
                     borderRadius: 3,
                     background: item.color,
                     color: '#fff',
@@ -617,21 +619,21 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <div style={{ fontSize: 9, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}개</div>
+                  <div style={{ fontSize: 10, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}</div>
                 )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3 }}>
-                    <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF", opacity: 0.9 }} />
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
+                    <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF" }} />
                   </div>
                 )}
                 {/* 메모 점 */}
                 {hasMemo && (
-                  <span style={{ position: "absolute", top: 3, right: hasJournal ? 9 : 3, width: 4, height: 4, borderRadius: 999, background: "#6C8EFF" }} />
+                  <span style={{ position: "absolute", top: 3, right: hasJournal ? 10 : 3, width: 5, height: 5, borderRadius: 999, background: "#6C8EFF" }} />
                 )}
                 {/* 일기 점 */}
                 {hasJournal && (
-                  <span style={{ position: "absolute", top: 3, right: 3, width: 4, height: 4, borderRadius: 999, background: "#A78BFA" }} />
+                  <span style={{ position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: 999, background: "#A78BFA" }} />
                 )}
               </div>
             );

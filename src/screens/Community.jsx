@@ -35,7 +35,7 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
         gap: 12,
         transform: isOverlay ? undefined : CSS.Transform.toString(transform),
         transition: isOverlay ? undefined : [transition, 'box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, padding 180ms ease'].filter(Boolean).join(', '),
-        opacity: isDragging ? 0.35 : 1,
+        opacity: isDragging ? 0.6 : 1,
         position: 'relative',
         zIndex: dragging ? 2 : 1,
         boxShadow: dragging ? '0 18px 36px rgba(0,0,0,.18)' : 'none',
