@@ -727,11 +727,16 @@ export default function App() {
 
   const buildImportedGcalTasks = (events, existingTasks = []) => {
     const existingGcalIds = new Set((existingTasks || []).map((task) => task.gcalEventId).filter(Boolean));
+    const existingTaskIds = new Set((existingTasks || []).map((task) => task.id).filter(Boolean));
+    const existingTitles = new Set((existingTasks || []).map((task) => task.title?.trim().toLowerCase()).filter(t => t));
     const seenIncomingIds = new Set();
     return (events || [])
       .filter((event) => !event.extendedProperties?.private?.daymateId && event.summary?.trim())
       .filter((event) => {
-        if (existingGcalIds.has(event.id) || seenIncomingIds.has(event.id)) return false;
+        if (seenIncomingIds.has(event.id)) return false;
+        if (existingGcalIds.has(event.id)) return false;
+        if (existingTaskIds.has(`gcal_${event.id}`)) return false;
+        if (existingTitles.has(event.summary.trim().toLowerCase())) return false;
         seenIncomingIds.add(event.id);
         return true;
       })
@@ -783,17 +788,24 @@ export default function App() {
   };
 
   const syncGcalByDate = (byDate) => {
-    const updates = {};
     let totalAdded = 0;
+    const updates = {};
     for (const [dateStr, events] of Object.entries(byDate)) {
-      const curDay = dedupeDayTasks(loadDay(dateStr) || plans[dateStr] || newDay(dateStr));
+      const curDay = dedupeDayTasks(loadDay(dateStr) || newDay(dateStr));
       const toAdd = buildImportedGcalTasks(events, curDay.tasks || []);
       if (toAdd.length === 0) continue;
       const updated = persistDayData(dateStr, mergeTasksIntoDay(curDay, toAdd));
       updates[dateStr] = updated;
       totalAdded += toAdd.length;
     }
-    if (totalAdded > 0) setPlans(prev => ({ ...prev, ...updates }));
+    if (totalAdded > 0) setPlans(prev => {
+      const next = { ...prev };
+      for (const [dateStr, updated] of Object.entries(updates)) {
+        const latest = dedupeDayTasks(loadDay(dateStr) || prev[dateStr]);
+        next[dateStr] = latest || updated;
+      }
+      return next;
+    });
     return totalAdded;
   };
 
