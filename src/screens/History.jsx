@@ -443,7 +443,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           >
             {gcalRefreshing ? '⟳' : '📅'}
           </button>
-          <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: 12, width: 'auto', fontWeight: 900, minHeight: 36 }}>오늘</button>
+          <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }} style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: 12, width: 'auto', fontWeight: 900, minHeight: 36, whiteSpace: 'nowrap' }}>오늘</button>
           <button onClick={prev} title="이전 달" aria-label="이전 달" style={{ ...S.btnGhost, width: 44, height: 36, marginTop: 0, padding: 0, fontSize: 16 }}>‹</button>
           <button onClick={next} title="다음 달" aria-label="다음 달" style={{ ...S.btnGhost, width: 44, height: 36, marginTop: 0, padding: 0, fontSize: 16 }}>›</button>
         </div>
