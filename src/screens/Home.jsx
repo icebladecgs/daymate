@@ -1269,22 +1269,28 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                 onClick={() => setQuickTaskPriority(v => !v)}
                 title="중요 표시"
                 style={{
-                  border: `1px solid ${quickTaskPriority ? 'rgba(108,142,255,.45)' : 'var(--dm-border)'}`,
-                  background: quickTaskPriority ? 'rgba(108,142,255,.16)' : 'transparent',
-                  color: quickTaskPriority ? '#6C8EFF' : 'var(--dm-muted)',
+                  border: `1px solid ${quickTaskPriority ? 'rgba(252,211,77,.6)' : 'var(--dm-border)'}`,
+                  background: quickTaskPriority ? 'rgba(252,211,77,.15)' : 'transparent',
                   borderRadius: 10, width: 36, height: 36,
-                  fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, cursor: 'pointer', flexShrink: 0,
+                  transition: 'transform 0.15s ease',
+                  transform: quickTaskPriority ? 'scale(1.15)' : 'scale(1)',
                 }}
               >
-                중요
+                {quickTaskPriority ? '★' : '☆'}
               </button>
               <button
                 type="button"
                 onClick={addQuickTask}
                 disabled={!quickTaskTitle.trim()}
-                style={{ ...S.btn, width: 'auto', minWidth: 52, marginTop: 0, padding: '0 14px', opacity: quickTaskTitle.trim() ? 1 : 0.5, flexShrink: 0 }}
+                style={{
+                  ...S.btn, width: 'auto', marginTop: 0, padding: '0 12px',
+                  fontSize: 13, fontWeight: 900,
+                  opacity: quickTaskTitle.trim() ? 1 : 0.4, flexShrink: 0,
+                }}
               >
-                추가
+                +추가
               </button>
             </div>
           </div>
