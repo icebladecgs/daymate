@@ -394,6 +394,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
+  const [levelExpanded, setLevelExpanded] = useState(false);
 
   // ── 포트폴리오 브리핑 ────────────────────────────────────────
   const pfCacheKey = `dm_portfolio_prices_${toDateStr()}`;
@@ -1059,97 +1060,81 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       <div style={{ display: 'flex', flexDirection: 'column' }}>
             {isSectionVisible('level') && (
             <div style={{ order: getSectionOrder('level') }}>
-            <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 32 }}>{levelInfo.icon}</div>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", lineHeight: 1.2 }}>{levelInfo.title}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {myRank && (
-                    <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
-                      <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
-                      <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
-                      <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
-                    </button>
-                  )}
-                  {(() => {
-                    const fl = fortuneLevel(todayFortuneScore);
-                    return (
-                      <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
-                        background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
-                        border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
-                        borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
-                      }}>
-                        <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
-                        <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
-                      </button>
-                    );
-                  })()}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "4px 0 12px" }}>
-                {(() => {
-                  const pct = filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0;
-                  const r = 26;
-                  const circ = 2 * Math.PI * r;
-                  const dash = (pct / 100) * circ;
-                  return (
-                    <svg width="68" height="68" viewBox="0 0 68 68" style={{ flexShrink: 0 }}>
-                      <defs>
-                        <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="#4B6FFF" />
-                          <stop offset="100%" stopColor="#b8c3ff" />
-                        </linearGradient>
-                      </defs>
-                      <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(75,111,255,0.15)" strokeWidth="6" />
-                      <circle cx="34" cy="34" r={r} fill="none" stroke="url(#ringGrad)" strokeWidth="6"
-                        strokeLinecap="round"
-                        strokeDasharray={`${dash} ${circ}`}
-                        transform="rotate(-90 34 34)"
-                        style={{ transition: "stroke-dasharray 0.5s ease" }}
-                      />
-                      <text x="34" y="37" textAnchor="middle" fill="var(--dm-text)" fontSize="13" fontWeight="900" fontFamily="'Plus Jakarta Sans',sans-serif">{pct}%</text>
-                    </svg>
-                  );
-                })()}
-                <div style={{ flex: 1, position: "relative" }}>
-                  {xpFloat && (
-                    <div key={xpFloat.key} className="xp-float"
-                      style={{ top: xpFloatPos.top, left: xpFloatPos.left }}
-                      onAnimationEnd={() => setXpFloat(null)}>
-                      +{xpFloat.xp} XP
-                    </div>
-                  )}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 30, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
-                    <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
-                    <button onClick={() => { setXpHelpOpen(true); history.pushState({ modal: 'xp' }, ''); }} style={{
-                      background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
-                      borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
-                    }}>?</button>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
-                    오늘 {doneCount}/{filledCount || 3} 완료
-                  </div>
-                </div>
-              </div>
-              <div style={{ height: 7, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+            <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "12px 14px" }}>
+              {/* ── 항상 보이는 한 줄 요약 ── */}
+              <button
+                onClick={() => setLevelExpanded(v => !v)}
+                style={{ width: "100%", background: "transparent", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <span style={{ fontSize: 24 }}>{levelInfo.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
+                <span style={{ fontSize: 12, color: "var(--dm-muted)", marginLeft: 2 }}>· {totalScore.toLocaleString()} XP</span>
+                {streak > 0 && <span style={{ fontSize: 12, color: "#F97316", fontWeight: 900, marginLeft: 2 }}>🔥{streak}</span>}
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--dm-muted)" }}>
+                  {(() => { const pct = filledCount > 0 ? Math.round((doneCount / filledCount) * 100) : 0; return `${doneCount}/${filledCount || 0} (${pct}%)`; })()}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--dm-muted)", marginLeft: 6 }}>{levelExpanded ? '▲' : '▼'}</span>
+              </button>
+              {/* ── 프로그레스 바 (항상 표시) ── */}
+              <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginTop: 8 }}>
                 <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
-                  {streak > 0 && <span style={{ color: "#F97316", fontWeight: 900 }}>🔥 {streak}일 연속 · </span>}
-                  {streak > 0 && streak % 7 !== 0 && <span style={{ color: "#FCD34D", fontWeight: 700 }}>({7 - (streak % 7)}일 후 보너스) · </span>}
-                  다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
-                </span>
-                <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
-              </div>
+              {/* ── 펼쳐지는 상세 ── */}
+              {levelExpanded && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {myRank && (
+                        <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center" }}>
+                          <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>전체 순위</div>
+                          <div style={{ fontSize: 15, fontWeight: 900, color: "#6C8EFF" }}>🏆 {myRank.rank}위</div>
+                          <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
+                        </button>
+                      )}
+                      {(() => {
+                        const fl = fortuneLevel(todayFortuneScore);
+                        return (
+                          <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
+                            background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
+                            border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
+                            borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
+                          }}>
+                            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
+                            <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
+                          </button>
+                        );
+                      })()}
+                    </div>
+                    <div style={{ position: "relative" }}>
+                      {xpFloat && (
+                        <div key={xpFloat.key} className="xp-float"
+                          style={{ top: xpFloatPos.top, left: xpFloatPos.left }}
+                          onAnimationEnd={() => setXpFloat(null)}>
+                          +{xpFloat.xp} XP
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 28, fontWeight: 900, color: "var(--dm-text)", letterSpacing: -1 }}>{totalScore.toLocaleString()}</span>
+                        <span style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
+                        <button onClick={() => { setXpHelpOpen(true); history.pushState({ modal: 'xp' }, ''); }} style={{
+                          background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)",
+                          borderRadius: 999, width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center",
+                          cursor: "pointer", fontSize: 11, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1,
+                        }}>?</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>
+                      {streak > 0 && streak % 7 !== 0 && <span style={{ color: "#FCD34D", fontWeight: 700 }}>{7 - (streak % 7)}일 후 주간 보너스 · </span>}
+                      다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
+                  </div>
+                </div>
+              )}
             </div>
             </div>
             )}
