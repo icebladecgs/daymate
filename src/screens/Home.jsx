@@ -503,6 +503,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [draftTasks, setDraftTasks] = useState([]);
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [quickTaskTime, setQuickTaskTime] = useState('');
+  const [quickTaskTimeOpen, setQuickTaskTimeOpen] = useState(false);
   const [quickTaskPriority, setQuickTaskPriority] = useState(false);
   const [prevAllDone, setPrevAllDone] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -680,6 +681,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     onSetTodayTasks(tasks);
     setQuickTaskTitle('');
     setQuickTaskTime('');
+    setQuickTaskTimeOpen(false);
     setQuickTaskPriority(false);
   };
 
@@ -1218,69 +1220,72 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             border: '1px solid rgba(108,142,255,.18)',
             background: 'rgba(255,255,255,.03)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--dm-text)' }}>바로 추가</div>
-              <button
-                type="button"
-                onClick={() => setQuickTaskPriority(v => !v)}
-                style={{
-                  border: `1px solid ${quickTaskPriority ? 'rgba(108,142,255,.45)' : 'var(--dm-border)'}`,
-                  background: quickTaskPriority ? 'rgba(108,142,255,.16)' : 'transparent',
-                  color: quickTaskPriority ? '#6C8EFF' : 'var(--dm-muted)',
-                  borderRadius: 999,
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                중요
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input
                 style={{ ...S.input, flex: 1, marginBottom: 0 }}
                 value={quickTaskTitle}
                 onChange={(e) => setQuickTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') addQuickTask();
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') addQuickTask(); }}
                 placeholder="지금 바로 추가할 할일"
                 maxLength={60}
               />
+              {/* 시간 — 아이콘 클릭 → 키보드 텍스트 입력 */}
+              {quickTaskTimeOpen ? (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={quickTaskTime}
+                  onChange={(e) => {
+                    let v = e.target.value.replace(/[^0-9:]/g, '');
+                    if (v.length === 2 && !v.includes(':') && !quickTaskTime.includes(':')) v += ':';
+                    setQuickTaskTime(v.slice(0, 5));
+                  }}
+                  onBlur={() => {
+                    if (!quickTaskTime || quickTaskTime === ':') { setQuickTaskTime(''); setQuickTaskTimeOpen(false); }
+                  }}
+                  placeholder="HH:MM"
+                  autoFocus
+                  style={{ ...S.input, width: 68, padding: '8px 6px', fontSize: 13, marginBottom: 0, textAlign: 'center' }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setQuickTaskTimeOpen(true)}
+                  title="시간 설정"
+                  style={{
+                    background: quickTaskTime ? 'rgba(108,142,255,.12)' : 'transparent',
+                    border: `1px solid ${quickTaskTime ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`,
+                    borderRadius: 10, width: 36, height: 36,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontSize: quickTaskTime ? 11 : 16,
+                    color: quickTaskTime ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0, fontWeight: 800,
+                  }}
+                >
+                  {quickTaskTime || '🕐'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setQuickTaskPriority(v => !v)}
+                title="중요 표시"
+                style={{
+                  border: `1px solid ${quickTaskPriority ? 'rgba(108,142,255,.45)' : 'var(--dm-border)'}`,
+                  background: quickTaskPriority ? 'rgba(108,142,255,.16)' : 'transparent',
+                  color: quickTaskPriority ? '#6C8EFF' : 'var(--dm-muted)',
+                  borderRadius: 10, width: 36, height: 36,
+                  fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                중요
+              </button>
               <button
                 type="button"
                 onClick={addQuickTask}
                 disabled={!quickTaskTitle.trim()}
-                style={{
-                  ...S.btn,
-                  width: 'auto',
-                  minWidth: 64,
-                  marginTop: 0,
-                  padding: '0 18px',
-                  opacity: quickTaskTitle.trim() ? 1 : 0.5,
-                }}
+                style={{ ...S.btn, width: 'auto', minWidth: 52, marginTop: 0, padding: '0 14px', opacity: quickTaskTitle.trim() ? 1 : 0.5, flexShrink: 0 }}
               >
                 추가
               </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--dm-muted)' }}>시간</span>
-              <input
-                type="time"
-                value={quickTaskTime}
-                onChange={(e) => setQuickTaskTime(e.target.value)}
-                style={{ ...S.input, width: 118, padding: '8px 10px', fontSize: 12, marginBottom: 0 }}
-              />
-              {quickTaskTime && (
-                <button
-                  type="button"
-                  onClick={() => setQuickTaskTime('')}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 12, cursor: 'pointer', padding: 0 }}
-                >
-                  시간 제거
-                </button>
-              )}
             </div>
           </div>
         )}
