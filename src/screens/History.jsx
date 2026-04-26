@@ -603,9 +603,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 10,
+                    fontSize: 8,
                     lineHeight: 1.4,
-                    padding: '1px 3px',
+                    padding: '1px 2px',
                     borderRadius: 3,
                     background: item.color,
                     color: '#fff',
@@ -619,7 +619,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <div style={{ fontSize: 10, color: 'var(--dm-muted)', paddingLeft: 3, lineHeight: 1.3 }}>+{moreCount}</div>
+                  <div style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 2, lineHeight: 1.3 }}>+{moreCount}</div>
                 )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
