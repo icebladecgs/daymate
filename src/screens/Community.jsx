@@ -591,6 +591,20 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     setCommunity(null);
   };
 
+  const handleSavePassword = async () => {
+    const val = passwordEditValue.trim();
+    if (val && !/^\d{4}$/.test(val)) { setToast('암호는 숫자 4자리로 입력해 주세요'); return; }
+    setSavingPassword(true);
+    try {
+      await setCommunityPassword(communityId, val || null);
+      setCommunity(prev => ({ ...prev, password: val || null }));
+      setShowPasswordEdit(false);
+      setPasswordEditValue('');
+      setToast(val ? '암호가 변경됐어요 🔒' : '암호가 제거됐어요 🔓');
+    } catch { setToast('저장 실패 ❌'); }
+    finally { setSavingPassword(false); }
+  };
+
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('일정을 삭제할까요?')) return;
     try { await deleteCommunityEvent(communityId, eventId); }
@@ -1105,6 +1119,38 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           </button>
         )}
       </div>
+
+      {isAdmin && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 16px 4px' }}>
+          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>커뮤니티 암호</span>
+          {showPasswordEdit ? (
+            <>
+              <input
+                value={passwordEditValue}
+                onChange={e => setPasswordEditValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={e => { if (e.key === 'Enter') handleSavePassword(); if (e.key === 'Escape') { setShowPasswordEdit(false); setPasswordEditValue(''); } }}
+                autoFocus
+                maxLength={4}
+                placeholder="숫자 4자리 (빈칸=제거)"
+                style={{ ...S.input, fontSize: 12, padding: '3px 8px', marginBottom: 0, width: 140 }}
+              />
+              <button onClick={handleSavePassword} disabled={savingPassword}
+                style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+                {savingPassword ? '저장 중' : '저장'}
+              </button>
+              <button onClick={() => { setShowPasswordEdit(false); setPasswordEditValue(''); }}
+                style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+                취소
+              </button>
+            </>
+          ) : (
+            <button onClick={() => { setPasswordEditValue(community?.password || ''); setShowPasswordEdit(true); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+              {community?.password ? `${community.password} 🔒` : '없음 🔓'} <span style={{ fontSize: 11 }}>✏️</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 일정 추가 폼 */}
       {showAdd && (
