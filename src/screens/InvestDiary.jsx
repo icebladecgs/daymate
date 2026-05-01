@@ -129,8 +129,8 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
       const data = await res.json();
       localStorage.setItem(portfolioCacheKey, JSON.stringify(data));
       setPortfolioData(data);
-    } catch {}
-    setPortfolioLoading(false);
+    } catch { setToast("시세 로드 실패"); }
+    finally { setPortfolioLoading(false); }
   };
 
   useEffect(() => {

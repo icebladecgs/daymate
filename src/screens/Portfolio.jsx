@@ -26,7 +26,7 @@ const pnlColor = (n) => n > 0 ? "#4ADE80" : n < 0 ? "#F87171" : "var(--dm-muted)
 
 function getDailyChange(d, qty) {
   if (d.change != null) return d.change * qty;
-  if (d.chgPct != null) return (d.price - d.price / (1 + d.chgPct / 100)) * qty;
+  if (d.chgPct != null) return (d.price * d.chgPct / 100) * qty;
   return 0;
 }
 
@@ -67,16 +67,18 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
   const fetchPrices = async (list = holdings) => {
     if (list.length === 0) return;
     setLoading(true);
-    const syms = [...new Set(list.map(h => h.sym))];
-    const customRegistry = Object.fromEntries(list.map(h => [h.sym, { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) }]));
-    const data = await fetchMarketDataFromServer(syms, customRegistry);
-    if (Object.keys(data).length > 0) {
-      localStorage.setItem(cacheKey, JSON.stringify(data));
-      setMarketData(data);
-    } else {
-      setToast("시세 로드 실패");
-    }
-    setLoading(false);
+    try {
+      const syms = [...new Set(list.map(h => h.sym))];
+      const customRegistry = Object.fromEntries(list.map(h => [h.sym, { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) }]));
+      const data = await fetchMarketDataFromServer(syms, customRegistry);
+      if (Object.keys(data).length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        setMarketData(data);
+      } else {
+        setToast("시세 로드 실패");
+      }
+    } catch { setToast("시세 로드 실패"); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -199,7 +201,7 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
             onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
             style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
           >
-            {loading ? "..." : "🔄"}
+            {loading ? "로딩 중..." : "🔄"}
           </button>
         </div>
       )}
