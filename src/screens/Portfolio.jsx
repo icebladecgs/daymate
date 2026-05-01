@@ -30,6 +30,9 @@ function getDailyChange(d, qty) {
   return 0;
 }
 
+// yahoo는 KRW 가능, 나머지(finnhub/coingecko)는 항상 USD
+const getMarketCurrency = (h) => h.src === 'yahoo' ? (h.currency || 'USD') : 'USD';
+
 const PF_CACHE_PREFIX = "dm_portfolio_prices_";
 
 export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, onBack, embedded = false, onOpenDiary }) {
@@ -104,12 +107,13 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
     if (isNaN(avgPrice) || avgPrice <= 0) { setToast("평균단가를 올바르게 입력해주세요"); return; }
 
     const preset = PRESET_ASSETS.find(p => p.sym === sym);
+    const src = preset?.src || fSrc;
     const holding = {
       id: editingId || `h_${sym}_${Date.now()}`,
-      sym, label,
-      src: preset?.src || fSrc,
+      sym, label, src,
       ...(preset?.coinId ? { coinId: preset.coinId } : {}),
-      qty, avgPrice, currency: fCurrency,
+      qty, avgPrice,
+      currency: src === 'yahoo' ? fCurrency : 'USD',
     };
 
     const next = editingId
@@ -144,11 +148,15 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
     const rows = holdings.map(h => {
       const d = marketData[h.sym];
       if (!d) return { ...h, noData: true };
+      const marketCurrency = getMarketCurrency(h);
+      if (h.currency && h.currency !== marketCurrency) {
+        return { ...h, price: d.price, marketCurrency, currencyMismatch: true };
+      }
       const value = h.qty * d.price;
       const cost = h.qty * h.avgPrice;
       const dailyChange = getDailyChange(d, h.qty);
       totalValue += value; totalCost += cost; totalDailyChange += dailyChange; count++;
-      return { ...h, price: d.price, value, cost, pnl: value - cost, pnlPct: cost > 0 ? ((value - cost) / cost) * 100 : 0, dailyChange };
+      return { ...h, price: d.price, marketCurrency, value, cost, pnl: value - cost, pnlPct: cost > 0 ? ((value - cost) / cost) * 100 : 0, dailyChange };
     });
     if (count === 0) return null;
     const pnl = totalValue - totalCost;
@@ -290,18 +298,20 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
                   {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
                   {!h.noData && h.price != null && (
-                    <> · 현재 {fmtPrice(h.price, h.currency)}</>
+                    <> · 현재 {fmtPrice(h.price, h.marketCurrency || getMarketCurrency(h))}</>
                   )}
                 </div>
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 {!h.noData && h.value != null ? (
                   <>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtUSD(h.value)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(h.value, h.marketCurrency || 'USD')}</div>
                     <div style={{ fontSize: 11, color: pnlColor(h.pnl) }}>
-                      {h.pnl >= 0 ? "+" : ""}{fmtUSD(h.pnl)} ({fmtPct(h.pnlPct)})
+                      {h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} ({fmtPct(h.pnlPct)})
                     </div>
                   </>
+                ) : h.currencyMismatch ? (
+                  <div style={{ fontSize: 11, color: "#F87171", lineHeight: 1.5 }}>통화 불일치<br/>USD로 재입력</div>
                 ) : (
                   <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>시세 없음</div>
                 )}
@@ -390,10 +400,16 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>통화</div>
-                <select style={{ ...inputStyle, appearance: "none" }} value={fCurrency} onChange={e => setFCurrency(e.target.value)}>
-                  <option value="USD">USD (달러)</option>
-                  <option value="KRW">KRW (원화)</option>
-                </select>
+                {fSrc !== 'yahoo' ? (
+                  <div style={{ fontSize: 12, color: "var(--dm-sub)", padding: "8px 12px", background: "var(--dm-row)", borderRadius: 10, border: "1px solid var(--dm-border)" }}>
+                    USD 고정 (시세 통화)
+                  </div>
+                ) : (
+                  <select style={{ ...inputStyle, appearance: "none" }} value={fCurrency} onChange={e => setFCurrency(e.target.value)}>
+                    <option value="KRW">KRW (원화)</option>
+                    <option value="USD">USD (달러)</option>
+                  </select>
+                )}
               </div>
               {!PRESET_ASSETS.find(p => p.sym === fSym) && fSym && (
                 <div>
