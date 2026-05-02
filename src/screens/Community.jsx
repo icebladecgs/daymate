@@ -385,9 +385,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     }, (err) => console.error('[notices onSnapshot]', err));
 
     const qBoard = query(collection(db, 'communities', communityId, 'board'), orderBy('createdAt', 'desc'));
-    const unsubBoard = onSnapshot(qBoard, (snap) => {
-      setBoardPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    let unsubBoard = () => {};
+    const subscribeBoard = () => {
+      unsubBoard();
+      unsubBoard = onSnapshot(qBoard, (snap) => {
+        setBoardPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }, () => { setTimeout(subscribeBoard, 3000); });
+    };
+    subscribeBoard();
 
     return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
   }, [communityId]); // eslint-disable-line
@@ -622,11 +627,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const handlePostBoard = async () => {
     if (!boardTitle.trim()) return;
     setPostingBoard(true);
+    const optimistic = { id: `tmp_${Date.now()}`, title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname, createdAt: new Date().toISOString() };
+    setBoardPosts(prev => [optimistic, ...prev]);
+    setBoardTitle(''); setBoardBody(''); setShowBoardForm(false);
     try {
-      await addBoardPost(communityId, { title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname });
-      setBoardTitle(''); setBoardBody(''); setShowBoardForm(false);
+      const realId = await addBoardPost(communityId, { title: optimistic.title, body: optimistic.body, uid: authUser.uid, nickname: myNickname });
+      setBoardPosts(prev => prev.map(p => p.id === optimistic.id ? { ...p, id: realId } : p));
       setToast('게시글 등록 완료 ✅');
-    } catch { setToast('등록 실패 ❌'); }
+    } catch {
+      setBoardPosts(prev => prev.filter(p => p.id !== optimistic.id));
+      setToast('등록 실패 ❌');
+    }
     setPostingBoard(false);
   };
 
