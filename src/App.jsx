@@ -163,12 +163,18 @@ export default function App() {
     store.set('dm_seen_app_commit', APP_COMMIT);
   };
 
-  const applyPendingUpdate = () => {
-    if (typeof window !== 'undefined' && typeof window.__daymateApplyUpdate === 'function') {
-      window.__daymateApplyUpdate();
-    } else {
-      window.location.reload();
-    }
+  const applyPendingUpdate = async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+    } catch {}
+    window.location.reload();
   };
 
   const openInviteFlow = () => {
