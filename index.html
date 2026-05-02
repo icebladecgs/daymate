@@ -51,6 +51,11 @@
                   window.location.reload();
                   return;
                 }
+                // controllerchange가 안 터지면 1.5초 후 강제 리로드
+                const fallback = setTimeout(() => window.location.reload(), 1500);
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                  clearTimeout(fallback);
+                }, { once: true });
                 workerToActivate.postMessage({ type: 'SKIP_WAITING' });
               };
               window.dispatchEvent(new CustomEvent('daymate-update-ready'));

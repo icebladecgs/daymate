@@ -166,9 +166,9 @@ export default function App() {
   const applyPendingUpdate = () => {
     if (typeof window !== 'undefined' && typeof window.__daymateApplyUpdate === 'function') {
       window.__daymateApplyUpdate();
-      return;
+    } else {
+      window.location.reload();
     }
-    dismissUpdateBanner();
   };
 
   const openInviteFlow = () => {
