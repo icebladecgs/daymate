@@ -320,7 +320,7 @@ export async function leaveCommunity(communityId, uid) {
 }
 
 export async function deleteCommunityFull(communityId) {
-  const subcollections = ['members', 'events', 'checkins', 'notices'];
+  const subcollections = ['members', 'events', 'checkins', 'notices', 'board'];
   for (const sub of subcollections) {
     const snap = await getDocs(collection(db, 'communities', communityId, sub));
     for (const d of snap.docs) {
@@ -332,6 +332,19 @@ export async function deleteCommunityFull(communityId) {
     }
   }
   await deleteDoc(doc(db, 'communities', communityId));
+}
+
+// ---------- 커뮤니티 자유게시판 ----------
+
+export async function addBoardPost(communityId, post) {
+  const ref = doc(collection(db, 'communities', communityId, 'board'));
+  await setDoc(ref, { ...post, createdAt: new Date().toISOString() });
+  await updateDoc(doc(db, 'communities', communityId), { lastActivityAt: new Date().toISOString() });
+  return ref.id;
+}
+
+export async function deleteBoardPost(communityId, postId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'board', postId));
 }
 
 export async function addCommunityNotice(communityId, notice) {

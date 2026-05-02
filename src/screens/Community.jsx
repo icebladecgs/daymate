@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -206,6 +206,15 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     } catch {}
   };
 
+  // 자유게시판
+  const [boardPosts, setBoardPosts] = useState([]);
+  const [showBoardForm, setShowBoardForm] = useState(false);
+  const [boardTitle, setBoardTitle] = useState('');
+  const [boardBody, setBoardBody] = useState('');
+  const [postingBoard, setPostingBoard] = useState(false);
+  const [selectedBoardPost, setSelectedBoardPost] = useState(null);
+  const [showAllBoard, setShowAllBoard] = useState(false);
+
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [comments, setComments] = useState([]);
@@ -375,7 +384,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.error('[notices onSnapshot]', err));
 
-    return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); };
+    const qBoard = query(collection(db, 'communities', communityId, 'board'), orderBy('createdAt', 'desc'));
+    const unsubBoard = onSnapshot(qBoard, (snap) => {
+      setBoardPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+
+    return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
   }, [communityId]); // eslint-disable-line
 
   useEffect(() => {
@@ -603,6 +617,25 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       setToast(val ? '암호가 변경됐어요 🔒' : '암호가 제거됐어요 🔓');
     } catch { setToast('저장 실패 ❌'); }
     finally { setSavingPassword(false); }
+  };
+
+  const handlePostBoard = async () => {
+    if (!boardTitle.trim()) return;
+    setPostingBoard(true);
+    try {
+      await addBoardPost(communityId, { title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname });
+      setBoardTitle(''); setBoardBody(''); setShowBoardForm(false);
+      setToast('게시글 등록 완료 ✅');
+    } catch { setToast('등록 실패 ❌'); }
+    setPostingBoard(false);
+  };
+
+  const handleDeleteBoard = async (postId) => {
+    try {
+      await deleteBoardPost(communityId, postId);
+      if (selectedBoardPost?.id === postId) setSelectedBoardPost(null);
+      setToast('삭제됐어요');
+    } catch { setToast('삭제 실패 ❌'); }
   };
 
   const handleDeleteEvent = async (eventId) => {
@@ -1274,6 +1307,70 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         </>
       )}
 
+      {/* ── 자유게시판 ── */}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>📝</span>자유게시판
+        </span>
+        <button onClick={() => setShowBoardForm(v => !v)}
+          style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          {showBoardForm ? '취소' : '+ 글쓰기'}
+        </button>
+      </div>
+
+      {/* 글쓰기 폼 */}
+      {showBoardForm && (
+        <div style={{ ...S.card, marginBottom: 8 }}>
+          <input value={boardTitle} onChange={e => setBoardTitle(e.target.value)}
+            placeholder="제목 (필수)"
+            style={{ ...S.input, marginBottom: 8, fontWeight: 700 }} maxLength={60} />
+          <textarea value={boardBody} onChange={e => setBoardBody(e.target.value)}
+            placeholder="내용 (선택)"
+            rows={4} style={{ ...S.input, resize: 'none', marginBottom: 10 }} maxLength={500} />
+          <button onClick={handlePostBoard} disabled={postingBoard || !boardTitle.trim()}
+            style={{ ...S.btn, marginTop: 0 }}>
+            {postingBoard ? '등록 중...' : '📝 글 등록'}
+          </button>
+        </div>
+      )}
+
+      {/* 게시글 목록 */}
+      {boardPosts.length > 0 && (
+        <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
+          {(showAllBoard ? boardPosts : boardPosts.slice(0, 5)).map((p, i) => {
+            const isMine = p.uid === authUser?.uid;
+            const list = showAllBoard ? boardPosts : boardPosts.slice(0, 5);
+            return (
+              <div key={p.id} onClick={() => setSelectedBoardPost(p)}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '12px 14px', borderBottom: i < list.length - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
+                    <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
+                  </div>
+                </div>
+                {(isMine || isAdmin) && (
+                  <button onClick={e => { e.stopPropagation(); handleDeleteBoard(p.id); }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 14, cursor: 'pointer', padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                )}
+              </div>
+            );
+          })}
+          {boardPosts.length > 5 && (
+            <button onClick={() => setShowAllBoard(v => !v)}
+              style={{ width: '100%', padding: '10px', background: 'var(--dm-input)', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', borderTop: '1px solid var(--dm-border)' }}>
+              {showAllBoard ? '접기 ▲' : `더보기 +${boardPosts.length - 5} ▼`}
+            </button>
+          )}
+        </div>
+      )}
+      {!loading && boardPosts.length === 0 && !showBoardForm && (
+        <div style={{ margin: '0 16px 8px', borderRadius: 14, background: 'var(--dm-card)', border: '1.5px dashed var(--dm-border)', padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 게시글이 없어요. 첫 글을 남겨보세요 ✍️</div>
+        </div>
+      )}
+
       {/* 오늘 출석 현황 */}
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>✋</span>오늘 출석</div>
       <div style={S.card}>
@@ -1428,6 +1525,52 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           커뮤니티 나가기
         </button>
       </div>
+
+      {/* ── 게시글 상세 모달 ── */}
+      {selectedBoardPost && (
+        <div onClick={() => setSelectedBoardPost(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+          zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
+            width: '100%', maxWidth: 480, maxHeight: 'calc(80vh - 84px)',
+            marginBottom: 84,
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
+            animation: 'slideUp 0.22s ease-out',
+          }}>
+            <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid var(--dm-border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{selectedBoardPost.title}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)' }}>{selectedBoardPost.nickname}</span>
+                  <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
+                    {new Date(selectedBoardPost.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedBoardPost(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {selectedBoardPost.body ? (
+                <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{selectedBoardPost.body}</div>
+              ) : (
+                <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
+              )}
+            </div>
+            {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (
+              <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--dm-border)' }}>
+                <button onClick={() => handleDeleteBoard(selectedBoardPost.id)}
+                  style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.4)', borderRadius: 10, padding: '8px 16px', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  삭제
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 댓글 모달 ── */}
       {selectedNotice && (
