@@ -202,7 +202,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
       <div style={S.content}>
         <div style={{ padding: "32px 22px 32px", position: "relative", zIndex: 1 }}>
           {/* 헤더 */}
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎯</div>
             <div style={{ fontSize: 20, fontWeight: 900 }}>{user?.name || ""}님의 액션플랜</div>
             {result.keywords?.length > 0 && (
@@ -218,14 +218,31 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
             )}
           </div>
 
-          {/* 분석 한 줄 */}
+          {/* 코치 메시지 */}
+          {result.message && (
+            <div style={{
+              background: "linear-gradient(135deg, rgba(108,142,255,0.12), rgba(139,92,246,0.12))",
+              border: "1px solid rgba(108,142,255,0.25)",
+              borderRadius: 16, padding: "18px 18px", marginBottom: 14,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "#818cf8", marginBottom: 8, letterSpacing: 1 }}>💬 코치의 말</div>
+              <div style={{ fontSize: 14, color: "var(--dm-text)", lineHeight: 1.8, fontWeight: 500 }}>
+                {result.message}
+              </div>
+            </div>
+          )}
+
+          {/* 핵심 문제 */}
           {result.analysis && (
             <div style={{
-              background: "var(--dm-card)", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 14, padding: "14px 16px", marginBottom: 12,
-              fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7,
+              background: "rgba(251,113,133,0.08)", border: "1px solid rgba(251,113,133,0.2)",
+              borderRadius: 14, padding: "12px 16px", marginBottom: 14,
+              display: "flex", gap: 10, alignItems: "flex-start",
             }}>
-              {result.analysis}
+              <span style={{ fontSize: 16, marginTop: 1 }}>⚡</span>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7, flex: 1 }}>
+                {result.analysis}
+              </div>
             </div>
           )}
 

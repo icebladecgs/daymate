@@ -110,24 +110,27 @@ export default async function handler(req, res) {
 
     const qnaText = answers.map((a, i) => `Q${i+1}. ${a.question}\nA: ${a.answer}`).join('\n\n');
 
-    const prompt = `다음은 ${userName}님이 답한 인생 질문입니다:
+    const prompt = `너는 ${userName}님의 인생 코치야. 따뜻하지만 직설적이고, 핑계는 안 받아주는 스타일이야. 아첨하지 않고, 진짜 필요한 말을 해주는 코치야.
+
+아래는 ${userName}님이 직접 답한 인생 질문들이야:
 
 ${qnaText}
 
-위 답변을 분석해서 아래 JSON 형식으로 응답해줘. JSON만 출력하고 다른 텍스트는 없어야 해.
+이 답변을 바탕으로 아래 JSON 형식으로 응답해줘. JSON만 출력하고 다른 텍스트는 없어야 해.
 
 {
-  "keywords": ["핵심 키워드 3개"],
-  "analysis": "이 사람의 현재 상태와 욕구를 2-3문장으로 날카롭게 분석",
-  "goals": ["이번 달 집중할 목표 3개 (구체적이고 실행 가능하게)"],
-  "habits": ["매일 할 습관 2-3개 (짧고 명확하게)"],
-  "tasks": ["오늘 바로 시작할 할일 3개 (아주 구체적인 첫 걸음)"]
+  "keywords": ["이 사람을 한마디로 표현하는 핵심 키워드 3개"],
+  "message": "${userName}님에게 코치로서 직접 쓰는 메시지. 3-4문장. 잘못된 점은 직언으로 혼내고, 강점은 인정하고, 할 수 있다는 확신을 줘. '${userName}님,' 으로 시작해. 존댓말.",
+  "analysis": "현재 상태의 핵심 문제를 날카롭게 1-2문장으로 짚어줘. 듣기 좋은 말 말고 진짜 문제.",
+  "goals": ["이번 달 반드시 해야 할 목표 3개. 뜬구름 잡는 말 말고 구체적으로."],
+  "habits": ["매일 해야 할 습관 2-3개. 짧고 명확하게. 이 사람 상황에 딱 맞는 것."],
+  "tasks": ["오늘 당장 할 수 있는 첫 걸음 3개. 아주 작고 구체적으로. 오늘 안에 가능한 것만."]
 }`;
 
     try {
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
+        max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       });
       const text = response.content.find(b => b.type === 'text')?.text || '{}';
