@@ -1240,6 +1240,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const SETTINGS_MENU = [
     { category: '핵심 설정', items: [
       { icon: '👤', title: '프로필 & 목표', sub: '이름 · 생년월일 · 연간 목표', action: () => setSubPage('profile') },
+      ...(onOpenLifeCoach ? [{ icon: '🌱', title: '인생 플랜 만들기', sub: 'AI가 질문으로 목표·습관·할 일을 설계', action: () => onOpenLifeCoach() }] : []),
       ...(onOpenStats ? [{ icon: '📊', title: '통계', sub: '달성률 · 습관 · 점수 분석', action: () => onOpenStats() }] : []),
       { icon: '🔔', title: '알림 설정', sub: '권한 · 소리 · 진동 · 시간', action: () => setSubPage('notifications') },
       { icon: '📨', title: '텔레그램 자동화', sub: '아침 브리핑 · 자산 선택 · 연결 관리', action: () => setSubPage('telegram') },
