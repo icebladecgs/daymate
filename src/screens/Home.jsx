@@ -975,16 +975,18 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
           <div style={S.title}>{user.name}님</div>
           <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button onClick={() => setIsDark?.(d => !d)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isDark ? '☀️' : '🌙'}
-          </button>
-          <button onClick={() => setHomePrefsOpen(true)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, borderRadius: '50%', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            ≡
-          </button>
-          <button onClick={onOpenChat} style={{ ...S.btnGhost, marginTop: 0, width: 40, height: 40, padding: 0, borderRadius: '50%', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            ✦
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {[
+            { icon: isDark ? '☀️' : '🌙', label: isDark ? '밝게' : '어둡게', onClick: () => setIsDark?.(d => !d) },
+            { icon: '☰', label: '홈 설정', onClick: () => setHomePrefsOpen(true) },
+            { icon: '🤖', label: 'AI 채팅', onClick: onOpenChat },
+          ].map(({ icon, label, onClick }) => (
+            <button key={label} onClick={onClick}
+              style={{ ...S.btnGhost, marginTop: 0, padding: '4px 8px', borderRadius: 10, fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, minWidth: 44 }}>
+              <span>{icon}</span>
+              <span style={{ fontSize: 9, color: 'var(--dm-muted)', letterSpacing: '-0.2px' }}>{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 

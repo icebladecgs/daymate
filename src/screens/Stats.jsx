@@ -4,8 +4,10 @@ import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../d
 import S from "../styles.js";
 
 export default function Stats({ plans, habits, authUser, user, onBack }) {
-  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
-  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  const nowMonth = new Date().getMonth();
+  const nowYear = new Date().getFullYear();
+  const [viewMonth, setViewMonth] = useState(nowMonth);
+  const [viewYear, setViewYear] = useState(nowYear);
   const [barTooltip, setBarTooltip] = useState(null);
   const [aiReview, setAiReview] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -134,7 +136,13 @@ const last30 = useMemo(() => {
             <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {(viewMonth !== nowMonth || viewYear !== nowYear) && (
+            <button onClick={() => { setViewMonth(nowMonth); setViewYear(nowYear); setAiReview(null); }}
+              style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: 11, fontWeight: 900, color: '#6C8EFF', borderColor: 'rgba(108,142,255,.4)' }}>
+              오늘
+            </button>
+          )}
           <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
           <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
