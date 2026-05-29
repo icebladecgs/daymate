@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { playSuccessSound } from "../utils/sound.js";
 import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "../api/gcal.js";
@@ -12,6 +12,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const memoRef = useRef(null);
   const contentRef = useRef(null);
   const pendingGcalRef = useRef(new Set());
+  const [gcalImporting, setGcalImporting] = useState(false);
   useEffect(() => {
     if (scrollToMemo && memoRef.current) {
       setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -82,7 +83,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   };
 
   const importCalendarTasks = async (token, emptyMessage, successPrefix = '') => {
-    if (!token || !onImportGcalEvents) return;
+    if (!token || !onImportGcalEvents || gcalImporting) return;
+    setGcalImporting(true);
     try {
       const events = await gcalFetchTodayEvents(token, dateStr);
       const external = events.filter((event) => !event.extendedProperties?.private?.daymateId && event.summary?.trim());
@@ -98,6 +100,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       setToast(successPrefix ? `${successPrefix}${added}개 가져왔어요 ✅` : `${added}개 추가됨`);
     } catch {
       setToast(successPrefix ? `${successPrefix}일정 가져오기 실패` : '캘린더 가져오기 실패');
+    } finally {
+      setGcalImporting(false);
     }
   };
 
@@ -127,17 +131,17 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             const token = getValidGcalToken();
             if (!token) return;
             await importCalendarTasks(token, '가져올 일정이 없어요');
-          }} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, cursor: 'pointer', color: 'var(--dm-sub)' }}>
-            📅 캘린더에서 가져오기
+          }} disabled={gcalImporting} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, cursor: gcalImporting ? 'default' : 'pointer', color: 'var(--dm-sub)', opacity: gcalImporting ? 0.5 : 1 }}>
+            {gcalImporting ? '⏳ 가져오는 중...' : '📅 캘린더에서 가져오기'}
           </button>
         ) : (
           <button onClick={async () => {
-            if (!onGcalConnect) return;
+            if (!onGcalConnect || gcalImporting) return;
             setToast('구글 로그인 중...');
             const token = await onGcalConnect();
             if (!token) { setToast('연동 실패'); return; }
             await importCalendarTasks(token, '연동 완료 · 가져올 일정 없음', '연동 완료 · ');
-          }} style={{ fontSize: 12, padding: '3px 8px', background: 'rgba(75,111,255,.12)', border: '1px solid #4B6FFF', borderRadius: 6, cursor: 'pointer', color: '#6C8EFF', fontWeight: 900 }}>
+          }} disabled={gcalImporting} style={{ fontSize: 12, padding: '3px 8px', background: 'rgba(75,111,255,.12)', border: '1px solid #4B6FFF', borderRadius: 6, cursor: gcalImporting ? 'default' : 'pointer', color: '#6C8EFF', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
             📅 캘린더 연동하기
           </button>
         ))}

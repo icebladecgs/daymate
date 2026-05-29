@@ -768,7 +768,11 @@ export default function App() {
     const localImportedTasks = (normalizedLocalDay?.tasks || []).filter(isImportedGcalTask);
     if (!localImportedTasks.length) return normalizedBaseDay;
     const existingGcalIds = new Set((normalizedBaseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
-    const missingImportedTasks = localImportedTasks.filter((task) => !existingGcalIds.has(task.gcalEventId));
+    const existingTitles = new Set((normalizedBaseDay?.tasks || []).map((task) => task.title?.trim().toLowerCase()).filter(Boolean));
+    const missingImportedTasks = localImportedTasks.filter((task) =>
+      !existingGcalIds.has(task.gcalEventId) &&
+      !existingTitles.has(task.title?.trim().toLowerCase())
+    );
     if (!missingImportedTasks.length) return normalizedBaseDay;
     return mergeTasksIntoDay(normalizedBaseDay, missingImportedTasks);
   };
@@ -882,7 +886,14 @@ export default function App() {
             if (!(localDay?.tasks || []).some(isImportedGcalTask)) return;
             merged[ds] = persistDayData(ds, localDay, firebaseUser.uid, true);
           });
-          if (Object.keys(merged).length > 0) setPlans(merged);
+          if (Object.keys(merged).length > 0) setPlans(prev => {
+            const next = { ...prev };
+            for (const [ds, mergedDay] of Object.entries(merged)) {
+              const latestLocal = loadDay(ds);
+              next[ds] = latestLocal ? mergeImportedGcalTasks(mergedDay, latestLocal) : mergedDay;
+            }
+            return next;
+          });
         } else {
           const localDays = {};
           listAllDays().forEach((ds) => { const d = loadDay(ds); if (d) localDays[ds] = d; });
