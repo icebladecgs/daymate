@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import S from "../styles.js";
 import Portfolio from "./Portfolio.jsx";
 import InvestDiary from "./InvestDiary.jsx";
+import InvestMonthly from "./InvestMonthly.jsx";
+import { loadInvestLogs } from "../firebase.js";
 
 const TAB_META = {
   briefing: {
@@ -14,15 +16,26 @@ const TAB_META = {
     label: "투자 기록",
     desc: "판단 기록 · 복기",
   },
+  monthly: {
+    icon: "📅",
+    label: "월별 손익",
+    desc: "실현손익 · 승률",
+  },
 };
 
 export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUser, onBack, initialTab = "briefing" }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [diaryDraft, setDiaryDraft] = useState(null);
+  const [investLogs, setInvestLogs] = useState(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab !== "monthly" || investLogs !== null || !uid) return;
+    loadInvestLogs(uid).then(setInvestLogs).catch(() => setInvestLogs([]));
+  }, [activeTab, uid, investLogs]);
 
   const openDiary = (draft = null) => {
     setDiaryDraft({ requestedAt: Date.now(), ...(draft || {}) });
@@ -50,7 +63,7 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "0 16px 12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, margin: "0 16px 12px" }}>
         {Object.entries(TAB_META).map(([key, meta]) => {
           const active = activeTab === key;
           return (
@@ -79,7 +92,7 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
         })}
       </div>
 
-      {activeTab === "briefing" ? (
+      {activeTab === "briefing" && (
         <Portfolio
           uid={uid}
           telegramCfg={telegramCfg}
@@ -88,7 +101,8 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
           embedded
           onOpenDiary={openDiary}
         />
-      ) : (
+      )}
+      {activeTab === "diary" && (
         <InvestDiary
           uid={uid}
           telegramCfg={telegramCfg}
@@ -96,6 +110,11 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
           diaryDraft={diaryDraft}
           onOpenBriefing={() => setActiveTab("briefing")}
         />
+      )}
+      {activeTab === "monthly" && (
+        investLogs === null
+          ? <div style={{ textAlign: "center", padding: 32, color: "var(--dm-muted)", fontSize: 13 }}>📊 불러오는 중...</div>
+          : <InvestMonthly logs={investLogs} />
       )}
     </div>
   );

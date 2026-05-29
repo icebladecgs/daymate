@@ -145,6 +145,41 @@ ${qnaText}
     }
   }
 
+  // ?action=monthly-review → 월간 AI 코치 리뷰
+  if (req.query.action === 'monthly-review') {
+    const { monthLabel, completionRate, filledDaysCount, perfectDaysCount, bestStreak, habitStats = [], userName = '사용자' } = req.body || {};
+
+    const habitLines = habitStats.length > 0
+      ? habitStats.map(h => `  - ${h.icon || ''} ${h.name}: ${h.rate}% 달성`).join('\n')
+      : '  (등록된 습관 없음)';
+
+    const prompt = `당신은 삶의 코치입니다. 아래 ${userName}님의 ${monthLabel} 월간 기록을 보고 솔직하고 실용적인 피드백을 주세요.
+
+[${monthLabel} 기록]
+- 기록한 날: ${filledDaysCount}일
+- 완벽한 날(할일+체크인+일기 모두): ${perfectDaysCount}일
+- 할일 완료율: ${completionRate}%
+- 최고 연속: ${bestStreak}일
+
+[습관 달성률]
+${habitLines}
+
+아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+{
+  "grade": "이 달 전반적인 등급 (S/A/B/C/D)",
+  "summary": "${userName}님에게 이 달을 총평하는 한 문장. 칭찬이든 쓴소리든 솔직하게.",
+  "strengths": ["잘한 점 1~2가지. 구체적으로."],
+  "improvements": ["개선할 점 1~2가지. 뜬구름 말고 이 수치 기반으로."],
+  "nextMonth": ["다음 달에 집중할 것 2가지. 아주 구체적으로."]
+}`;
+
+    try {
+      return res.status(200).json(await callHaikuJSON(prompt, 800));
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ?action=fortune → 오늘의 운세
   if (req.query.action === 'fortune') {
     const { birthDate, birthTime, userName = '사용자', today } = req.body || {};

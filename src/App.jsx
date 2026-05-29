@@ -5,7 +5,7 @@ import { toDateStr, getWeekKey } from "./utils/date.js";
 import { driveBackup } from "./api/drive.js";
 import { sendTelegramMessage } from "./api/telegram.js";
 import { scheduler } from "./api/scheduler.js";
-import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents } from "./api/gcal.js";
+import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
@@ -1107,6 +1107,17 @@ export default function App() {
         };
       });
     });
+
+    // GCal 완료 상태 변경 → 이벤트 색상 동기화 (sage=완료, null=기본)
+    const token = getValidGcalToken();
+    if (token) {
+      prevTasks.forEach(prev => {
+        const next = nextTasks.find(t => t.id === prev.id);
+        if (!next?.gcalEventId) return;
+        if (prev.done === next.done) return;
+        gcalSetEventColor(token, next.gcalEventId, next.done ? '2' : null).catch(() => {});
+      });
+    }
   };
 
   const onSetTodayTasks = (tasks) => {
@@ -1490,7 +1501,7 @@ export default function App() {
       return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} />;
     }
     if (screen === "stats") {
-      return <Stats plans={plans} habits={habits} authUser={authUser} onBack={() => history.back()} />;
+      return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
     }
     if (screen === "detail") {
       const d = plans[openDate];

@@ -41,6 +41,16 @@ export async function gcalUpdateEvent(token, eventId, title) {
   if (!res.ok) throw new Error(`gcal update ${res.status}`);
 }
 
+// colorId: "2"=sage(완료), null=기본색(미완료)
+export async function gcalSetEventColor(token, eventId, colorId) {
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ colorId: colorId ?? null }),
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`gcal color ${res.status}`);
+}
+
 export async function gcalFetchWeekEvents(token, weekDates) {
   const startDate = weekDates[0];
   const endDate = weekDates[weekDates.length - 1];

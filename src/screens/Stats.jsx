@@ -3,10 +3,12 @@ import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js"
 import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../data/stats.js";
 import S from "../styles.js";
 
-export default function Stats({ plans, habits, authUser, onBack }) {
+export default function Stats({ plans, habits, authUser, user, onBack }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [barTooltip, setBarTooltip] = useState(null);
+  const [aiReview, setAiReview] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const weeklyStats = useMemo(() => calcWeeklyStats(plans), [plans]);
@@ -110,10 +112,12 @@ const last30 = useMemo(() => {
   }, [plans, habits, viewYear, viewMonth]);
 
   const prev = () => {
+    setAiReview(null);
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
     else setViewMonth(m => m - 1);
   };
   const next = () => {
+    setAiReview(null);
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
     else setViewMonth(m => m + 1);
   };
@@ -265,7 +269,74 @@ const last30 = useMemo(() => {
         {monthlyReport.filledDaysCount === 0 && (
           <div style={{ fontSize: 13, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>이달 기록이 없어요</div>
         )}
+        {monthlyReport.filledDaysCount > 0 && (
+          <button
+            onClick={async () => {
+              if (aiLoading) return;
+              setAiLoading(true);
+              setAiReview(null);
+              try {
+                const res = await fetch('/api/chat?action=monthly-review', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    monthLabel: `${viewYear}년 ${viewMonth + 1}월`,
+                    completionRate: monthlyReport.completionRate,
+                    filledDaysCount: monthlyReport.filledDaysCount,
+                    perfectDaysCount: monthlyReport.perfectDaysCount,
+                    bestStreak: monthlyReport.bestStreak,
+                    habitStats: monthlyReport.habitStats,
+                    userName: user?.name || '사용자',
+                  }),
+                });
+                const data = await res.json();
+                setAiReview(data);
+              } catch {
+                setAiReview({ error: true });
+              } finally {
+                setAiLoading(false);
+              }
+            }}
+            style={{ width: '100%', marginTop: 12, padding: '10px 0', background: 'linear-gradient(135deg,rgba(108,142,255,.15),rgba(167,139,250,.1))', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, cursor: aiLoading ? 'default' : 'pointer', fontSize: 13, fontWeight: 900, color: '#6C8EFF', opacity: aiLoading ? 0.6 : 1 }}>
+            {aiLoading ? '🤔 코치가 분석 중...' : '🤖 AI 코치 리뷰 받기'}
+          </button>
+        )}
       </div>
+
+      {aiReview && !aiReview.error && (
+        <div style={{ ...S.card, margin: '0 0 10px', background: 'linear-gradient(135deg,rgba(108,142,255,.06),rgba(167,139,250,.04))', border: '1.5px solid rgba(108,142,255,.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 28, lineHeight: 1 }}>🤖</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>AI 코치 월간 리뷰</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{viewYear}년 {viewMonth + 1}월</div>
+            </div>
+            <div style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 900, color: aiReview.grade === 'S' ? '#4ADE80' : aiReview.grade === 'A' ? '#6C8EFF' : aiReview.grade === 'B' ? '#FCD34D' : '#F87171' }}>{aiReview.grade}</div>
+          </div>
+          {aiReview.summary && <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, marginBottom: 12, padding: '10px 12px', background: 'rgba(108,142,255,.08)', borderRadius: 8 }}>{aiReview.summary}</div>}
+          {aiReview.strengths?.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#4ADE80', marginBottom: 4 }}>✅ 잘한 점</div>
+              {aiReview.strengths.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+            </div>
+          )}
+          {aiReview.improvements?.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#F87171', marginBottom: 4 }}>⚠️ 개선할 점</div>
+              {aiReview.improvements.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+            </div>
+          )}
+          {aiReview.nextMonth?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 4 }}>🎯 다음 달 집중할 것</div>
+              {aiReview.nextMonth.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+      {aiReview?.error && (
+        <div style={{ ...S.card, margin: '0 0 10px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13 }}>리뷰 생성에 실패했어요. 다시 시도해주세요.</div>
+      )}
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>📊</span> 최근 30일</div>
       <div style={{ ...S.card, padding: "14px 12px" }}>
