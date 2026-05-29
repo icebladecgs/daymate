@@ -74,6 +74,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
       setStep(7);
     } catch (e) {
       setError(e.message || "오류가 발생했어요.");
+      setCurrent(ans[totalQ - 1] || ""); // 마지막 답변 복원
       setStep(5); // 마지막 질문으로 돌아가기
     }
   };

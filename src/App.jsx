@@ -213,6 +213,7 @@ export default function App() {
   const canOpenAdmin = isPrimaryAdmin(authUser?.uid);
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
+  const plansRef = useRef({});
   const gcalRefreshTimerRef = useRef(null);
   const driveRefreshTimerRef = useRef(null);
   const pendingTodayGcalTaskIdsRef = useRef(new Set());
@@ -428,6 +429,9 @@ export default function App() {
     return all;
   });
 
+  // plans → ref 동기화 (setState 외부에서 최신 상태 읽기용)
+  useEffect(() => { plansRef.current = plans; }, [plans]);
+
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
 
@@ -458,17 +462,6 @@ export default function App() {
     };
   }, []); // eslint-disable-line
 
-  // 구글 캘린더 자동 동기화 (토큰 있을 때 하루 1회, 앱 시작 시)
-  useEffect(() => {
-    const token = getValidGcalToken();
-    if (!token) return;
-    const today = toDateStr();
-    if (store.get('dm_last_gcal_sync', '') === today) return;
-    pullFromGcal(token).then(n => {
-      store.set('dm_last_gcal_sync', today);
-      if (n > 0) setToast(`구글 캘린더에서 ${n}개 일정을 가져왔어요`);
-    }).catch(e => console.error('[App] gcal auto-sync failed:', e));
-  }, []); // eslint-disable-line
 
   // Drive 자동 백업 (하루 1회)
   useEffect(() => {
@@ -768,10 +761,16 @@ export default function App() {
     const localImportedTasks = (normalizedLocalDay?.tasks || []).filter(isImportedGcalTask);
     if (!localImportedTasks.length) return normalizedBaseDay;
     const existingGcalIds = new Set((normalizedBaseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
-    const existingTitles = new Set((normalizedBaseDay?.tasks || []).map((task) => task.title?.trim().toLowerCase()).filter(Boolean));
+    // 수동 태스크(gcalEventId 없음)의 제목만 체크 — gcal 태스크끼리는 gcalEventId로만 비교
+    const existingManualTitles = new Set(
+      (normalizedBaseDay?.tasks || [])
+        .filter((task) => !task.gcalEventId)
+        .map((task) => task.title?.trim().toLowerCase())
+        .filter(Boolean)
+    );
     const missingImportedTasks = localImportedTasks.filter((task) =>
       !existingGcalIds.has(task.gcalEventId) &&
-      !existingTitles.has(task.title?.trim().toLowerCase())
+      !existingManualTitles.has(task.title?.trim().toLowerCase())
     );
     if (!missingImportedTasks.length) return normalizedBaseDay;
     return mergeTasksIntoDay(normalizedBaseDay, missingImportedTasks);
@@ -785,16 +784,18 @@ export default function App() {
   };
 
   const importGcalEventsForDate = (dateStr, events = []) => {
-    let addedCount = 0;
+    // plansRef로 최신 state 동기 참조 → addedCount를 updater 밖에서 계산
+    const currentDay = dedupeDayTasks(plansRef.current[dateStr] || loadDay(dateStr) || newDay(dateStr));
+    const toAdd = buildImportedGcalTasks(events, currentDay.tasks || []);
+    if (!toAdd.length) return 0;
+    const nextDay = persistDayData(dateStr, mergeTasksIntoDay(currentDay, toAdd));
     setPlans((prev) => {
-      const currentDay = dedupeDayTasks(prev[dateStr] || loadDay(dateStr) || newDay(dateStr));
-      const toAdd = buildImportedGcalTasks(events, currentDay.tasks || []);
-      if (!toAdd.length) return prev;
-      addedCount = toAdd.length;
-      const nextDay = persistDayData(dateStr, mergeTasksIntoDay(currentDay, toAdd));
-      return { ...prev, [dateStr]: nextDay };
+      // 동시 업데이트 대비: prev가 이미 최신이면 다시 dedup
+      const base = dedupeDayTasks(prev[dateStr] || nextDay);
+      const merged = dedupeDayTasks(mergeTasksIntoDay(base, toAdd));
+      return { ...prev, [dateStr]: merged };
     });
-    return addedCount;
+    return toAdd.length;
   };
 
   const syncGcalByDate = (byDate) => {
@@ -905,6 +906,17 @@ export default function App() {
         }
         syncReadyRef.current = true;
         setSyncStatus('synced');
+        // Firebase 동기화 완료 후 GCal 자동 동기화 — syncReadyRef=true 이후 실행해야 Firestore에 저장됨
+        const gcalToday = toDateStr();
+        if (store.get('dm_last_gcal_sync', '') !== gcalToday) {
+          const gcalToken = getValidGcalToken();
+          if (gcalToken) {
+            pullFromGcal(gcalToken).then(n => {
+              store.set('dm_last_gcal_sync', gcalToday);
+              if (n > 0) setToast(`구글 캘린더에서 ${n}개 일정을 가져왔어요`);
+            }).catch(e => console.error('[App] gcal auto-sync failed:', e));
+          }
+        }
       } catch {
         syncReadyRef.current = true;
         setSyncStatus('idle');

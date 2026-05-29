@@ -386,15 +386,16 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
     const qBoard = query(collection(db, 'communities', communityId, 'board'), orderBy('createdAt', 'desc'));
     let unsubBoard = () => {};
+    let boardRetryTimer = null;
     const subscribeBoard = () => {
       unsubBoard();
       unsubBoard = onSnapshot(qBoard, (snap) => {
         setBoardPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      }, () => { setTimeout(subscribeBoard, 3000); });
+      }, () => { boardRetryTimer = setTimeout(subscribeBoard, 3000); });
     };
     subscribeBoard();
 
-    return () => { unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
+    return () => { clearTimeout(boardRetryTimer); unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
   }, [communityId]); // eslint-disable-line
 
   useEffect(() => {

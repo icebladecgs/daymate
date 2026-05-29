@@ -2,6 +2,17 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const callHaikuJSON = async (prompt, maxTokens = 1200) => {
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const text = response.content.find(b => b.type === 'text')?.text || '{}';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  return jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+};
+
 const tools = [
   {
     name: 'add_task',
@@ -128,15 +139,7 @@ ${qnaText}
 }`;
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const text = response.content.find(b => b.type === 'text')?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      return res.status(200).json(data);
+      return res.status(200).json(await callHaikuJSON(prompt, 1200));
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -192,15 +195,7 @@ ${qnaText}
 }`;
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const text = response.content.find(b => b.type === 'text')?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      // 점수는 항상 해시 계산값으로 덮어쓰기 (AI가 바꿀 수 없도록)
+      const data = await callHaikuJSON(prompt, 600);
       return res.status(200).json({ ...data, ...scores });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -234,15 +229,7 @@ ${qnaText}
 }`;
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const text = response.content.find(b => b.type === 'text')?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      return res.status(200).json(data);
+      return res.status(200).json(await callHaikuJSON(prompt, 1200));
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
@@ -284,15 +271,7 @@ ${qnaText}
 }`;
 
     try {
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      const text = response.content.find(b => b.type === 'text')?.text || '{}';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-      return res.status(200).json(data);
+      return res.status(200).json(await callHaikuJSON(prompt, 1500));
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
