@@ -26,6 +26,8 @@ const Chat = lazy(() => import("./screens/Chat.jsx"));
 const Community = lazy(() => import("./screens/Community.jsx"));
 const InvestmentHub = lazy(() => import("./screens/InvestmentHub.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
+const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
+const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 
 export default function App() {
   const phoneRef = useRef(null);
@@ -54,6 +56,9 @@ export default function App() {
         }
       } else {
         setScreen(e.state.screen);
+        if (e.state.screen === 'keyword-detail' && e.state.keyword) {
+          setOpenKeyword(e.state.keyword);
+        }
       }
     };
     window.addEventListener('popstate', handler);
@@ -585,6 +590,7 @@ export default function App() {
 
   const [openDate, setOpenDate] = useState(null);
   const [scrollToMemo, setScrollToMemo] = useState(false);
+  const [openKeyword, setOpenKeyword] = useState(null);
 
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
@@ -1446,7 +1452,8 @@ export default function App() {
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
-          onOpenInvest={() => changeScreen("invest")} />
+          onOpenInvest={() => changeScreen("invest")}
+          onOpenKnowledge={() => changeScreen("knowledge")} />
       );
     }
     if (screen === "invest") {
@@ -1604,6 +1611,33 @@ export default function App() {
         someday={someday} setSomeday={setSomeday}
       />;
     }
+    if (screen === "knowledge") {
+      return (
+        <Knowledge
+          plans={plans}
+          onOpenKeyword={(kw) => {
+            setOpenKeyword(kw);
+            setScreen("keyword-detail");
+            history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
+          }}
+          onOpenDate={(ds) => openDetail(ds)}
+        />
+      );
+    }
+    if (screen === "keyword-detail") {
+      return (
+        <KeywordDetail
+          keyword={openKeyword || ''}
+          plans={plans}
+          onBack={() => history.back()}
+          onOpenKeyword={(kw) => {
+            setOpenKeyword(kw);
+            history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
+          }}
+          onOpenDate={(ds) => openDetail(ds)}
+        />
+      );
+    }
     if (screen === "life-coach") {
       return <LifeCoach
         user={user}
@@ -1668,7 +1702,7 @@ export default function App() {
         )}>
           {renderScreen()}
         </Suspense>
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}
