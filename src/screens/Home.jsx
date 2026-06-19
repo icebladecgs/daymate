@@ -176,7 +176,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onSetMemo }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onSetMemo, onToggleMode }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -980,6 +980,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             { icon: isDark ? '☀️' : '🌙', label: isDark ? '밝게' : '어둡게', onClick: () => setIsDark?.(d => !d) },
             { icon: '☰', label: '홈 설정', onClick: () => setHomePrefsOpen(true) },
             { icon: '🤖', label: 'AI 채팅', onClick: onOpenChat },
+            { icon: '📋', label: '데일리', onClick: onToggleMode },
           ].map(({ icon, label, onClick }) => (
             <button key={label} onClick={onClick}
               style={{ ...S.btnGhost, marginTop: 0, padding: '4px 8px', borderRadius: 10, fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, minWidth: 44 }}>

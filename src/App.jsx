@@ -16,6 +16,7 @@ import UpdateBanner from "./components/UpdateBanner.jsx";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
+const DailyPage = lazy(() => import("./screens/DailyPage.jsx"));
 const Today = lazy(() => import("./screens/Today.jsx"));
 const History = lazy(() => import("./screens/History.jsx"));
 const Stats = lazy(() => import("./screens/Stats.jsx"));
@@ -587,6 +588,15 @@ export default function App() {
       }).catch(() => {});
     }, 10000);
   }, [plans[todayStr], habits, scores, authUser]); // eslint-disable-line
+
+  const [homeMode, setHomeMode] = useState(() => store.get("dm_home_mode", "dashboard"));
+  const toggleHomeMode = () => {
+    setHomeMode(prev => {
+      const next = prev === "daily" ? "dashboard" : "daily";
+      store.set("dm_home_mode", next);
+      return next;
+    });
+  };
 
   const [openDate, setOpenDate] = useState(null);
   const [scrollToMemo, setScrollToMemo] = useState(false);
@@ -1397,6 +1407,16 @@ export default function App() {
 
   const renderScreen = () => {
     if (screen === "home") {
+      if (homeMode === "daily") {
+        return (
+          <DailyPage
+            plans={plans}
+            setDayData={setDayData}
+            todayStr={todayStr}
+            onToggleMode={toggleHomeMode}
+          />
+        );
+      }
       return (
         <Home
           user={user} goals={goals} todayData={todayData} plans={plans}
@@ -1444,6 +1464,7 @@ export default function App() {
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
           onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
+          onToggleMode={toggleHomeMode}
         />
       );
     }

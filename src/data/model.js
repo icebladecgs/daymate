@@ -13,6 +13,10 @@ export const newDay = (date) => ({
   journal: { body: "", savedAt: null },
   memo: "",
   habitChecks: {},
+  todayFocus: "",
+  wins: [],
+  regrets: [],
+  nextDay: [],
 });
 
 export function dayKey(dateStr) {
