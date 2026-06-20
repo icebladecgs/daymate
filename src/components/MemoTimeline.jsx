@@ -8,7 +8,6 @@ function getMemoTime() {
 
 function MemoItem({ item, onSave, onDelete }) {
   const [text, setText] = useState(item.text);
-  const [expanded, setExpanded] = useState(false);
   const prevText = useRef(item.text);
 
   useEffect(() => {
@@ -18,32 +17,21 @@ function MemoItem({ item, onSave, onDelete }) {
     }
   }, [item.text]);
 
-  const lineCount = (text.match(/\n/g) || []).length + 1;
-  const isLong = lineCount >= 3 || text.length > 120;
-  const rows = expanded ? Math.max(1, lineCount) : Math.min(Math.max(1, lineCount), 3);
+  const rows = Math.max(1, (text.match(/\n/g) || []).length + 1);
 
   return (
-    <div>
-      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-        <textarea
-          value={text}
-          rows={rows}
-          onChange={e => setText(e.target.value)}
-          onFocus={() => isLong && setExpanded(true)}
-          onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
-          style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", overflow: "hidden" }}
-        />
-        <button
-          onClick={() => onDelete(item.id)}
-          style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, padding: "8px 2px", flexShrink: 0, lineHeight: 1 }}
-        >✕</button>
-      </div>
-      {isLong && (
-        <button
-          onClick={() => setExpanded(v => !v)}
-          style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 11, cursor: "pointer", padding: "2px 0 0", fontFamily: "inherit", fontWeight: 700 }}
-        >{expanded ? "접기 ▲" : "펼치기 ▼"}</button>
-      )}
+    <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+      <textarea
+        value={text}
+        rows={rows}
+        onChange={e => setText(e.target.value)}
+        onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
+        style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px" }}
+      />
+      <button
+        onClick={() => onDelete(item.id)}
+        style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, padding: "8px 2px", flexShrink: 0, lineHeight: 1 }}
+      >✕</button>
     </div>
   );
 }
