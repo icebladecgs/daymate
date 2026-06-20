@@ -94,7 +94,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   useEffect(() => {
     if (preview) {
       setPreviewMemoEdit(false);
-      setPreviewMemoDraft(plans[preview]?.memo ?? '');
+      const d = plans[preview];
+      const legacyMemo = d?.memo?.trim() || '';
+      const memoText = d?.memos?.length
+        ? d.memos.map(m => m.createdAt ? `[${m.createdAt}] ${m.text}` : m.text).join('\n')
+        : legacyMemo;
+      setPreviewMemoDraft(memoText);
     }
   }, [preview]); // eslint-disable-line
 
@@ -111,7 +116,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       if (!d) continue;
       const tasks = (d.tasks || []).filter(t => t.title.trim());
       if (tasks.length > 0 && tasks.every(t => t.done)) completedDays++;
-      if (d.memo?.trim()) memoDays++;
+      if (d.memo?.trim() || d.memos?.length) memoDays++;
       if (d.journal?.body?.trim()) journalDays++;
       if (isPerfectDay(d)) perfectDays++;
     }
@@ -121,9 +126,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const rateOf = (dateStr) => {
     const d = plans[dateStr];
     if (!d) return null;
-    const filled = d.tasks.filter((t) => t.title.trim()).length;
+    const tasks = d.tasks || [];
+    const filled = tasks.filter((t) => t.title.trim()).length;
     if (filled === 0) return 0;
-    const done = d.tasks.filter((t) => t.done && t.title.trim()).length;
+    const done = tasks.filter((t) => t.done && t.title.trim()).length;
     return Math.min(100, Math.round((done / filled) * 100));
   };
 
@@ -566,7 +572,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const st = isFutureDate && r === null
               ? { background: "var(--dm-input)", color: "var(--dm-muted)", border: "1px dashed var(--dm-border)" }
               : styleOf(r, isToday, perfect);
-            const hasMemo = !!(plans[ds]?.memo?.trim());
+            const hasMemo = !!(plans[ds]?.memo?.trim()) || !!(plans[ds]?.memos?.length);
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
