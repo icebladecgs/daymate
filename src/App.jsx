@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
@@ -29,6 +29,24 @@ const InvestmentHub = lazy(() => import("./screens/InvestmentHub.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
+
+class ScreenErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidUpdate(prevProps) { if (prevProps.screen !== this.props.screen) this.setState({ error: null }); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, color: '#F87171', fontSize: 13, background: 'var(--dm-card)', margin: 16, borderRadius: 14, border: '1px solid #F87171' }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>⚠️ 화면 오류</div>
+          <div style={{ opacity: 0.8, wordBreak: 'break-all' }}>{String(this.state.error)}</div>
+          <button onClick={() => this.setState({ error: null })} style={{ marginTop: 12, padding: '8px 16px', background: '#4B6FFF', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>다시 시도</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const phoneRef = useRef(null);
@@ -1810,7 +1828,9 @@ export default function App() {
             </div>
           </div>
         )}>
-          {renderScreen()}
+          <ScreenErrorBoundary screen={screen}>
+            {renderScreen()}
+          </ScreenErrorBoundary>
         </Suspense>
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
