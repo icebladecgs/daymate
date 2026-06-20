@@ -36,7 +36,7 @@ const TYPE_META = {
 
 export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null }) {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
 
   const results = useMemo(() => {
@@ -114,7 +114,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
       </div>
 
       <div style={{ display: "flex", gap: 6, padding: "8px 16px", flexShrink: 0 }}>
-        {[["all", "전체"], ["task", "할일"], ["memo", "메모"], ["journal", "일기"]].map(([id, label]) => (
+        {[["memo", "메모"], ["task", "할일"], ["journal", "일기"], ["all", "전체"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ ...S.pill(tab === id), fontSize: 12, padding: "5px 12px" }}>
             {label}
           </button>
