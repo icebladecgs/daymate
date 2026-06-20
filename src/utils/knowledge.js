@@ -58,20 +58,23 @@ export function buildKeywordIndex(plans) {
   };
 
   Object.entries(plans || {}).forEach(([dateStr, day]) => {
+    const memoText = (day.memos || []).map(m => m.text || '').join(' ') || day.memo || '';
+    const journalText = [day.journal?.body, day.journal?.good, day.journal?.regret, day.journal?.tomorrow].filter(Boolean).join(' ');
     const sources = [
-      { type: '메모', text: day.memo || '' },
-      { type: '일기', text: day.journal?.body || '' },
+      { type: '메모', text: memoText },
+      { type: '일기', text: journalText },
     ];
 
     for (const { type, text } of sources) {
       if (!text.trim()) continue;
       const cleanPreview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
       parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, type, cleanPreview));
+      extractKeywords(text).forEach(kw => addEntry(kw, dateStr, type, cleanPreview));
     }
 
     (day.tags || []).forEach(tag => {
-      const preview = (day.memo || day.journal?.body || '').slice(0, 80);
-      addEntry(tag, dateStr, '태그', preview.replace(/\[\[([^\]]+)\]\]/g, '$1'));
+      const preview = memoText.slice(0, 80).replace(/\[\[([^\]]+)\]\]/g, '$1');
+      addEntry(tag, dateStr, '태그', preview);
     });
   });
 
