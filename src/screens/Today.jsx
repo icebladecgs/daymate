@@ -21,6 +21,7 @@ export default function Today({
   const filledCount = tasks.filter((t) => t.title.trim()).length;
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
   const [showSearch, setShowSearch] = useState(false);
+  const [showLongMemo, setShowLongMemo] = useState(false);
   const [recording, setRecording] = useState(null);
   const recognitionRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
@@ -165,6 +166,13 @@ export default function Today({
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
+  if (showLongMemo) return (
+    <LongMemoEditor
+      onSave={(text) => { addMemo(text, getMemoTimeStr()); setShowLongMemo(false); }}
+      onClose={() => setShowLongMemo(false)}
+    />
+  );
+
   const habitChecks = data.habitChecks || {};
   const visibleHabits = habits || [];
   const somedayList = someday || [];
@@ -213,6 +221,7 @@ export default function Today({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
           {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,0.12)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>지식</button>}
+          <button onClick={() => setShowLongMemo(true)} style={{ fontSize: 11, color: '#A78BFA', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>긴 메모</button>
           <button onClick={() => setShowSearch(true)} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}>🔍 검색</button>
         </div>
       </div>
@@ -462,3 +471,39 @@ export default function Today({
   );
 }
 
+function LongMemoEditor({ onSave, onClose }) {
+  const [text, setText] = useState('');
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  const handleSave = () => {
+    if (!text.trim()) { onClose(); return; }
+    onSave(text.trim());
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+        <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+        <button
+          onClick={handleSave}
+          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
+        >저장</button>
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="자유롭게 작성하세요"
+        style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit' }}
+      />
+      <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
+        {text.length}자 · 저장하면 현재 시간으로 메모에 추가됩니다
+      </div>
+    </div>
+  );
+}
