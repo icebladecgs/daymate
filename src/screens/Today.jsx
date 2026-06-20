@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatKoreanDate, getWeekDates } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
-import { parseWikiLinks, extractKeywords } from "../utils/knowledge.js";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
@@ -24,8 +23,6 @@ export default function Today({
   const [showSearch, setShowSearch] = useState(false);
   const [recording, setRecording] = useState(null);
   const recognitionRef = useRef(null);
-  const [tagInput, setTagInput] = useState('');
-  const tagInputRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
   const [somedayInput, setSomedayInput] = useState('');
   const [editingHabits, setEditingHabits] = useState(false);
@@ -68,8 +65,6 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).filter(m => m.id !== id),
   }));
-
-  const memoText = (data.memos || []).map(m => m.text).join(' ');
 
   // 일기 3개 필드 상태
   const [goodText, setGoodText] = useState(data.journal?.good ?? '');
@@ -441,18 +436,6 @@ export default function Today({
         </div>
       </div>
 
-      {/* 태그 & 연결 키워드 */}
-      <TagSection
-        data={data}
-        setData={setData}
-        memoText={memoText}
-        journalText={goodText + ' ' + regretText + ' ' + tomorrowText}
-        tagInput={tagInput}
-        setTagInput={setTagInput}
-        tagInputRef={tagInputRef}
-        onOpenKnowledge={onOpenKnowledge}
-      />
-
       {/* 투자 허브 바로가기 */}
       {onOpenInvest && (
         <div onClick={onOpenInvest} style={{ ...S.card, marginTop: 4, cursor: 'pointer', background: 'linear-gradient(135deg,rgba(167,139,250,0.12),rgba(108,142,255,0.08))', border: '1.5px solid rgba(167,139,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -472,91 +455,3 @@ export default function Today({
   );
 }
 
-function TagSection({ data, setData, memoText, journalText, tagInput, setTagInput, tagInputRef, onOpenKnowledge }) {
-  const existingTags = data.tags || [];
-
-  const suggested = useMemo(() => {
-    const text = memoText + ' ' + journalText;
-    const wikiLinks = parseWikiLinks(text);
-    const extracted = extractKeywords(text, 8);
-    return [...new Set([...wikiLinks, ...extracted])]
-      .filter(k => !existingTags.includes(k))
-      .slice(0, 5);
-  }, [memoText, journalText, existingTags]);
-
-  const addTag = (tag) => {
-    const t = tag.trim();
-    if (!t || existingTags.includes(t)) return;
-    setData(prev => ({ ...prev, tags: [...(prev.tags || []), t] }));
-    setTagInput('');
-  };
-
-  const removeTag = (tag) => {
-    setData(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }));
-  };
-
-  const handleInputKeyDown = (e) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
-      addTag(tagInput);
-    } else if (e.key === 'Backspace' && !tagInput && existingTags.length > 0) {
-      removeTag(existingTags[existingTags.length - 1]);
-    }
-  };
-
-  const hasContent = existingTags.length > 0 || suggested.length > 0;
-
-  return (
-    <div style={S.card}>
-      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-        <span>🏷️</span> 연결 태그
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: hasContent ? 10 : 0 }}>
-        {existingTags.map(tag => (
-          <span
-            key={tag}
-            style={{ background: 'rgba(108,142,255,0.18)', border: '1px solid rgba(108,142,255,0.35)', borderRadius: 999, padding: '5px 10px 5px 12px', fontSize: 12, color: '#b8c3ff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
-          >
-            {tag}
-            <button
-              onClick={() => removeTag(tag)}
-              style={{ background: 'none', border: 'none', color: 'rgba(184,195,255,0.5)', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0, fontFamily: 'inherit' }}
-            >×</button>
-          </span>
-        ))}
-
-        <input
-          ref={tagInputRef}
-          value={tagInput}
-          onChange={e => setTagInput(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-          placeholder={existingTags.length === 0 ? '태그 추가...' : '+'}
-          style={{ background: 'none', border: 'none', outline: 'none', fontSize: 12, color: 'var(--dm-text)', fontFamily: 'inherit', minWidth: 80, flex: 1, padding: '5px 4px' }}
-        />
-        {tagInput.trim() && (
-          <button
-            onClick={() => addTag(tagInput)}
-            style={{ background: 'rgba(108,142,255,0.2)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 999, padding: '4px 10px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontWeight: 900, fontFamily: 'inherit' }}
-          >추가</button>
-        )}
-      </div>
-
-      {suggested.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>추천 키워드 (탭하여 추가)</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-            {suggested.map(kw => (
-              <button
-                key={kw}
-                onClick={() => addTag(kw)}
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed var(--dm-border)', borderRadius: 999, padding: '4px 11px', fontSize: 11, color: 'var(--dm-muted)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
-              >
-                + {kw}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
