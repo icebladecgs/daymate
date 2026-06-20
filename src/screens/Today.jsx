@@ -218,7 +218,7 @@ export default function Today({
           onAdd={addMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
-          placeholder="메모 입력 후 Enter (시간 자동 기록)"
+          placeholder="메모 입력 후 + 버튼 (시간 자동 기록)"
           extraAction={
             <button
               onClick={startRecording}

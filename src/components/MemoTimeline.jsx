@@ -8,6 +8,7 @@ function getMemoTime() {
 
 function MemoItem({ item, onSave, onDelete }) {
   const [text, setText] = useState(item.text);
+  const [expanded, setExpanded] = useState(false);
   const prevText = useRef(item.text);
 
   useEffect(() => {
@@ -17,21 +18,32 @@ function MemoItem({ item, onSave, onDelete }) {
     }
   }, [item.text]);
 
-  const rows = Math.max(1, (text.match(/\n/g) || []).length + 1);
+  const lineCount = (text.match(/\n/g) || []).length + 1;
+  const isLong = lineCount >= 3 || text.length > 120;
+  const rows = expanded ? Math.max(1, lineCount) : Math.min(Math.max(1, lineCount), 3);
 
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-      <textarea
-        value={text}
-        rows={rows}
-        onChange={e => setText(e.target.value)}
-        onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
-        style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px" }}
-      />
-      <button
-        onClick={() => onDelete(item.id)}
-        style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, padding: "8px 2px", flexShrink: 0, lineHeight: 1 }}
-      >✕</button>
+    <div>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+        <textarea
+          value={text}
+          rows={rows}
+          onChange={e => setText(e.target.value)}
+          onFocus={() => isLong && setExpanded(true)}
+          onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
+          style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", overflow: "hidden" }}
+        />
+        <button
+          onClick={() => onDelete(item.id)}
+          style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, padding: "8px 2px", flexShrink: 0, lineHeight: 1 }}
+        >✕</button>
+      </div>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 11, cursor: "pointer", padding: "2px 0 0", fontFamily: "inherit", fontWeight: 700 }}
+        >{expanded ? "접기 ▲" : "펼치기 ▼"}</button>
+      )}
     </div>
   );
 }
@@ -56,6 +68,8 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
     inputRef.current?.focus();
   };
 
+  const inputRows = Math.max(1, (input.match(/\n/g) || []).length + 1);
+
   return (
     <div>
       {memos.map(memo => (
@@ -69,14 +83,14 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
         </div>
       ))}
 
-      <div style={{ display: "flex", gap: 8, marginTop: memos.length > 0 ? 10 : 0 }}>
-        <input
+      <div style={{ display: "flex", gap: 8, marginTop: memos.length > 0 ? 10 : 0, alignItems: "flex-end" }}>
+        <textarea
           ref={inputRef}
           value={input}
+          rows={inputRows}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-          placeholder={placeholder || "메모 입력 후 Enter"}
-          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13 }}
+          placeholder={placeholder || "메모 입력 후 + 버튼"}
+          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, resize: "none", lineHeight: 1.6 }}
         />
         {extraAction}
         <button
