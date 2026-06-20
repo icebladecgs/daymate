@@ -55,9 +55,10 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           });
         }
 
-        if ((tab === "all" || tab === "memo") && d.memo?.trim()) {
-          if (!q || d.memo.toLowerCase().includes(q)) {
-            matches.push({ type: "memo", text: d.memo.trim() });
+        if (tab === "all" || tab === "memo") {
+          const memoText = (d.memos || []).map(m => m.text || '').join('\n').trim() || d.memo?.trim() || '';
+          if (memoText && (!q || memoText.toLowerCase().includes(q))) {
+            matches.push({ type: "memo", text: memoText });
           }
         }
 

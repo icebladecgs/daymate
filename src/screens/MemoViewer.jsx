@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 
+const getMemoText = (d) =>
+  (d.memos || []).map(m => m.text || '').join('\n').trim() || d.memo?.trim() || '';
+
 export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEntry = null }) {
   const [copied, setCopied] = useState(false);
   const [query, setQuery] = useState('');
@@ -11,7 +14,7 @@ export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEnt
 
   const memoEntries = useMemo(() => (
     Object.entries(plans)
-      .filter(([, d]) => d?.memo?.trim())
+      .filter(([, d]) => getMemoText(d))
       .sort(([a], [b]) => b.localeCompare(a))
   ), [plans]);
 
@@ -19,7 +22,7 @@ export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEnt
 
   useEffect(() => {
     if (!focusDate) return;
-    setDraftText(focusedEntry?.[1]?.memo?.trim() || '');
+    setDraftText(focusedEntry ? getMemoText(focusedEntry[1]) : '');
     setSaveDone(false);
   }, [focusDate, focusedEntry]);
 
@@ -27,7 +30,7 @@ export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEnt
     ? (focusedEntry ? [focusedEntry] : [])
     : query.trim()
     ? memoEntries.filter(([ds, d]) =>
-        d.memo.toLowerCase().includes(query.toLowerCase()) ||
+        getMemoText(d).toLowerCase().includes(query.toLowerCase()) ||
         formatKoreanDate(ds).includes(query)
       )
     : memoEntries;
@@ -35,7 +38,7 @@ export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEnt
   const copySource = focusDate ? filtered : memoEntries;
 
   const allText = copySource
-    .map(([ds, d]) => `[${formatKoreanDate(ds)}]\n${d.memo.trim()}`)
+    .map(([ds, d]) => `[${formatKoreanDate(ds)}]\n${getMemoText(d)}`)
     .join('\n\n───────────\n\n');
 
   const copyAll = () => {
@@ -142,7 +145,7 @@ export default function MemoViewer({ plans, onClose, focusDate = null, onSaveEnt
                 flex: focusDate ? 1 : 'initial',
                 overflowY: focusDate ? 'auto' : 'visible',
               }}>
-                {d.memo.trim()}
+                {getMemoText(d)}
               </div>
             )}
           </div>
