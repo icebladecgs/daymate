@@ -1485,7 +1485,10 @@ export default function App() {
         <Today dateStr={todayStr} data={d} setData={setTodayData}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
-          onOpenKnowledge={() => changeScreen("knowledge")} />
+          onOpenKnowledge={() => changeScreen("knowledge")}
+          habits={habits} onToggleHabit={onToggleHabit}
+          someday={someday} setSomeday={setSomeday}
+          onSetTodayTasks={onSetTodayTasks} />
       );
     }
     if (screen === "invest") {
