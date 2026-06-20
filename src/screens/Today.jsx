@@ -67,39 +67,31 @@ export default function Today({
     memos: (prev.memos || []).filter(m => m.id !== id),
   }));
 
-  // 일기 3개 필드 상태
-  const [goodText, setGoodText] = useState(data.journal?.good ?? '');
-  const [regretText, setRegretText] = useState(data.journal?.regret ?? '');
-  const [tomorrowText, setTomorrowText] = useState(data.journal?.tomorrow ?? '');
-  const journalSavedRef = useRef({ good: goodText, regret: regretText, tomorrow: tomorrowText });
-  const journalSaved = goodText === journalSavedRef.current.good
-    && regretText === journalSavedRef.current.regret
-    && tomorrowText === journalSavedRef.current.tomorrow;
+  // 일기 단일 필드
+  const [bodyText, setBodyText] = useState(data.journal?.body ?? '');
+  const journalSavedRef = useRef(bodyText);
+  const journalSaved = bodyText === journalSavedRef.current;
 
   // Firebase 데이터 로드 후 동기화
   useEffect(() => {
-    const g = data.journal?.good ?? '';
-    const r = data.journal?.regret ?? '';
-    const t = data.journal?.tomorrow ?? '';
-    const ref = journalSavedRef.current;
-    if (g !== ref.good || r !== ref.regret || t !== ref.tomorrow) {
-      setGoodText(g); setRegretText(r); setTomorrowText(t);
-      journalSavedRef.current = { good: g, regret: r, tomorrow: t };
+    const b = data.journal?.body ?? '';
+    if (b !== journalSavedRef.current) {
+      setBodyText(b);
+      journalSavedRef.current = b;
     }
-  }, [data.journal?.good, data.journal?.regret, data.journal?.tomorrow]); // eslint-disable-line
+  }, [data.journal?.body]); // eslint-disable-line
 
   // 자동 저장 debounce
   useEffect(() => {
     if (journalSaved) return;
     const timer = setTimeout(() => {
-      setData(prev => ({ ...prev, journal: { ...prev.journal, good: goodText, regret: regretText, tomorrow: tomorrowText } }));
-      journalSavedRef.current = { good: goodText, regret: regretText, tomorrow: tomorrowText };
+      setData(prev => ({ ...prev, journal: { ...prev.journal, body: bodyText } }));
+      journalSavedRef.current = bodyText;
     }, 1500);
     return () => clearTimeout(timer);
-  }, [goodText, regretText, tomorrowText]); // eslint-disable-line
+  }, [bodyText]); // eslint-disable-line
 
-  const isPerfect = filledCount >= 3 && doneCount === filledCount
-    && !!(goodText.trim() || regretText.trim() || tomorrowText.trim());
+  const isPerfect = filledCount >= 3 && doneCount === filledCount && !!bodyText.trim();
 
   // 기획한일 핸들러
   const addTask = () => {
@@ -396,75 +388,18 @@ export default function Today({
           </div>
         )}
 
-        {/* 잘한 일 */}
-        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>잘한 일</div>
         <textarea
-          rows={3}
-          style={{ ...S.input, resize: 'none', lineHeight: 1.6 }}
-          value={goodText}
-          onChange={e => setGoodText(e.target.value)}
-          placeholder="오늘 잘한 일을 써봐요"
-          maxLength={400}
+          rows={5}
+          style={{ ...S.input, resize: 'none', lineHeight: 1.8 }}
+          value={bodyText}
+          onChange={e => setBodyText(e.target.value)}
+          placeholder="오늘 하루를 자유롭게 기록해보세요"
+          maxLength={2000}
         />
-
-        {/* 아쉬운 점 */}
-        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6, marginTop: 14 }}>아쉬운 점</div>
-        <textarea
-          rows={3}
-          style={{ ...S.input, resize: 'none', lineHeight: 1.6 }}
-          value={regretText}
-          onChange={e => setRegretText(e.target.value)}
-          placeholder="아쉬웠던 점을 써봐요"
-          maxLength={400}
-        />
-
-        {/* 내일 다짐 */}
-        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6, marginTop: 14 }}>내일 다짐</div>
-        <textarea
-          rows={3}
-          style={{ ...S.input, resize: 'none', lineHeight: 1.6 }}
-          value={tomorrowText}
-          onChange={e => setTomorrowText(e.target.value)}
-          placeholder="내일을 위한 다짐을 적어봐요"
-          maxLength={400}
-        />
-
         <div style={{ fontSize: 11, color: journalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: journalSaved ? 400 : 700, marginTop: 8, transition: 'color 0.3s' }}>
           {journalSaved ? '✓ 자동저장' : '저장 중...'}
         </div>
-
-        {/* 기분 선택 */}
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--dm-border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>오늘 기분은?</div>
-          <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-            {[['😊','행복'],['😌','평온'],['🤔','보통'],['😴','피곤'],['😔','우울']].map(([emoji, label]) => {
-              const selected = data.journal?.mood === label;
-              return (
-                <button key={label}
-                  onClick={() => setData(prev => ({ ...prev, journal: { ...prev.journal, mood: selected ? null : label } }))}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: selected ? 'rgba(184,195,255,0.12)' : 'transparent', border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 12, transition: 'all 0.2s', boxShadow: selected ? 'inset 0 0 0 1px rgba(184,195,255,0.25)' : 'none' }}>
-                  <span style={{ fontSize: 24, display: 'inline-block', filter: selected ? 'none' : 'grayscale(0.6)', transform: selected ? 'scale(1.15)' : 'scale(1)', transition: 'all 0.2s' }}>{emoji}</span>
-                  <span style={{ fontSize: 10, color: selected ? '#b8c3ff' : 'var(--dm-muted)', fontWeight: selected ? 700 : 400, transition: 'color 0.2s' }}>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
-
-      {/* 투자 허브 바로가기 */}
-      {onOpenInvest && (
-        <div onClick={onOpenInvest} style={{ ...S.card, marginTop: 4, cursor: 'pointer', background: 'linear-gradient(135deg,rgba(167,139,250,0.12),rgba(108,142,255,0.08))', border: '1.5px solid rgba(167,139,250,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>💹</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>투자 허브</div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>브리핑 확인 후 판단을 기록하세요</div>
-            </div>
-          </div>
-          <span style={{ fontSize: 18, color: 'var(--dm-muted)' }}>›</span>
-        </div>
-      )}
 
       <div style={{ height: 12 }} />
     </div>
