@@ -30,6 +30,7 @@ export default function Today({
   const [somedayInput, setSomedayInput] = useState('');
 
   const [gcalWeekEvents, setGcalWeekEvents] = useState({});
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   useEffect(() => {
     const token = getValidGcalToken?.();
     if (!token) return;
@@ -174,18 +175,23 @@ export default function Today({
       </div>
 
       {/* 📅 주간 일정 */}
-      <div style={S.sectionTitle}>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>주간 일정</span>
+        <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
+        </button>
       </div>
-      <div style={S.card}>
-        <WeeklySchedule
-          plans={plans}
-          habits={habits || []}
-          onOpenDate={onOpenDate}
-          onToggleTask={onToggleTask}
-          gcalEvents={gcalWeekEvents}
-        />
-      </div>
+      {scheduleOpen && (
+        <div style={S.card}>
+          <WeeklySchedule
+            plans={plans}
+            habits={habits || []}
+            onOpenDate={onOpenDate}
+            onToggleTask={onToggleTask}
+            gcalEvents={gcalWeekEvents}
+          />
+        </div>
+      )}
 
       {isPerfect && (
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))", border: "1.5px solid rgba(74,222,128,.35)" }}>
