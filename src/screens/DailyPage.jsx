@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { newDay } from "../data/model.js";
 import S from "../styles.js";
+import MemoTimeline, { genMemoId } from "../components/MemoTimeline.jsx";
 
 function shiftDate(dateStr, n) {
   const d = new Date(dateStr + "T00:00:00");
@@ -114,47 +115,34 @@ function SectionCard({ icon, title, onAdd, addLabel = "+ 추가", children, empt
 
 export default function DailyPage({ plans, setDayData, todayStr, onToggleMode }) {
   const [dateStr, setDateStr] = useState(todayStr);
-  const prevDateRef = useRef(dateStr);
 
   const dayData = plans[dateStr] || newDay(dateStr);
-
-  const [focusText, setFocusText] = useState(dayData.todayFocus || "");
-  const focusTextRef = useRef(focusText);
-  const focusSavedRef = useRef(dayData.todayFocus || "");
-  const focusDebounceRef = useRef(null);
-
-  // Date change: flush pending focus save for old date, load new date
-  useEffect(() => {
-    if (dateStr === prevDateRef.current) return;
-    clearTimeout(focusDebounceRef.current);
-    if (focusTextRef.current !== focusSavedRef.current) {
-      setDayData(prevDateRef.current, prev => ({ ...prev, todayFocus: focusTextRef.current }));
-    }
-    prevDateRef.current = dateStr;
-    const newFocus = (plans[dateStr] || newDay(dateStr)).todayFocus || "";
-    setFocusText(newFocus);
-    focusTextRef.current = newFocus;
-    focusSavedRef.current = newFocus;
-  }, [dateStr]); // eslint-disable-line
-
-  // Debounce save todayFocus
-  useEffect(() => {
-    focusTextRef.current = focusText;
-    if (focusText === focusSavedRef.current) return;
-    clearTimeout(focusDebounceRef.current);
-    focusDebounceRef.current = setTimeout(() => {
-      setDayData(dateStr, prev => ({ ...prev, todayFocus: focusText }));
-      focusSavedRef.current = focusText;
-    }, 1500);
-    return () => clearTimeout(focusDebounceRef.current);
-  }, [focusText]); // eslint-disable-line
-
   const canGoNext = dateStr < todayStr;
   const tasks = dayData.tasks || [];
   const doneTasks = tasks.filter(t => t.done && t.title.trim());
+  const memos = dayData.memos || [];
   const wins = dayData.wins || [];
   const regrets = dayData.regrets || [];
   const nextDayItems = dayData.nextDay || [];
+
+  const addMemo = (text, time) => {
+    setDayData(dateStr, prev => ({
+      ...prev,
+      memos: [...(prev.memos || []), { id: genMemoId(), text, createdAt: time }],
+    }));
+  };
+  const updateMemo = (id, text) => {
+    setDayData(dateStr, prev => ({
+      ...prev,
+      memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+    }));
+  };
+  const deleteMemo = (id) => {
+    setDayData(dateStr, prev => ({
+      ...prev,
+      memos: (prev.memos || []).filter(m => m.id !== id),
+    }));
+  };
 
   const toggleTask = (taskId) => {
     setDayData(dateStr, prev => ({
@@ -258,13 +246,14 @@ export default function DailyPage({ plans, setDayData, todayStr, onToggleMode })
       </div>
 
       <div style={{ padding: "10px 0 0" }}>
-        {/* 1. 오늘의 한 줄 */}
-        <SectionCard icon="✨" title="오늘의 한 줄">
-          <input
-            value={focusText}
-            onChange={e => setFocusText(e.target.value)}
-            placeholder="오늘 하루의 목표나 다짐을 한 줄로 적어보세요"
-            style={{ ...S.input, marginBottom: 0, fontSize: 13 }}
+        {/* 1. 메모 */}
+        <SectionCard icon="📝" title="메모">
+          <MemoTimeline
+            memos={memos}
+            onAdd={addMemo}
+            onUpdate={updateMemo}
+            onDelete={deleteMemo}
+            placeholder="메모 입력 후 Enter (시간 자동 기록)"
           />
         </SectionCard>
 

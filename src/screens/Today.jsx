@@ -4,6 +4,7 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import { parseWikiLinks, extractKeywords } from "../utils/knowledge.js";
+import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 
 export default function Today({ dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, onOpenInvest, onOpenKnowledge }) {
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
@@ -14,26 +15,35 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
   const [tagInput, setTagInput] = useState('');
   const tagInputRef = useRef(null);
 
-  const [memoText, setMemoText] = useState(data.memo ?? '');
-  const lastSavedMemoRef = useRef(data.memo ?? '');
-  const memoSaved = memoText === lastSavedMemoRef.current;
-
-  // 음성 인식 등 외부에서 data.memo가 바뀌면 로컬 상태 동기화
+  // 기존 memo 문자열 → memos 배열 마이그레이션 (1회)
   useEffect(() => {
-    if (data.memo !== lastSavedMemoRef.current) {
-      setMemoText(data.memo ?? '');
-      lastSavedMemoRef.current = data.memo ?? '';
+    if (data.memo?.trim() && !(data.memos?.length)) {
+      setData(prev => ({
+        ...prev,
+        memos: [{ id: `legacy_${Date.now()}`, text: prev.memo.trim(), createdAt: '00:00' }],
+        memo: '',
+      }));
     }
-  }, [data.memo]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
-  useEffect(() => {
-    if (memoText === lastSavedMemoRef.current) return;
-    const t = setTimeout(() => {
-      setData(prev => ({ ...prev, memo: memoText }));
-      lastSavedMemoRef.current = memoText;
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [memoText]); // eslint-disable-line
+  const addMemo = (text, time) => {
+    setData(prev => ({
+      ...prev,
+      memos: [...(prev.memos || []), { id: genMemoId(), text, createdAt: time }],
+    }));
+  };
+  const updateMemo = (id, text) => {
+    setData(prev => ({
+      ...prev,
+      memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+    }));
+  };
+  const deleteMemo = (id) => {
+    setData(prev => ({
+      ...prev,
+      memos: (prev.memos || []).filter(m => m.id !== id),
+    }));
+  };
 
   const [journalText, setJournalText] = useState(data.journal?.body ?? '');
   const lastSavedJournalRef = useRef(data.journal?.body ?? '');
@@ -72,7 +82,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
       }
       if (!text) return;
       if (field === 'memo') {
-        setMemoText(prev => prev + (prev.trim() ? '\n' : '') + text);
+        addMemo(text.trim(), getMemoTimeStr());
       } else {
         setJournalText(prev => prev + (prev.trim() ? '\n' : '') + text);
       }
@@ -116,27 +126,23 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
       )}
 
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>오늘 메모</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>메모</span>
         {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
       </div>
       <div style={S.card}>
-        <textarea
-          rows={10}
-          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
-          value={memoText}
-          onChange={(e) => setMemoText(e.target.value)}
-          placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
-          maxLength={1200}
+        <MemoTimeline
+          memos={data.memos || []}
+          onAdd={addMemo}
+          onUpdate={updateMemo}
+          onDelete={deleteMemo}
+          placeholder="메모 입력 후 Enter (시간 자동 기록)"
+          extraAction={
+            <button
+              onClick={() => startRecording('memo')}
+              style={{ width: 42, height: 42, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
+            >{recording === 'memo' ? '⏹' : '🎤'}</button>
+          }
         />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ fontSize: 11, color: memoSaved ? 'var(--dm-muted)' : '#6C8EFF', fontWeight: memoSaved ? 400 : 700, transition: 'color 0.3s' }}>
-            {memoSaved ? `✓ 자동저장 · ${memoText.length} / 1200` : '저장 중...'}
-          </span>
-          <button
-            onClick={() => startRecording('memo')}
-            style={{ width: 40, height: 36, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer' }}
-          >{recording === 'memo' ? '⏹' : '🎤'}</button>
-        </div>
       </div>
 
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>

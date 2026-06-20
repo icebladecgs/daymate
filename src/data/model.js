@@ -13,7 +13,7 @@ export const newDay = (date) => ({
   journal: { body: "", savedAt: null },
   memo: "",
   habitChecks: {},
-  todayFocus: "",
+  memos: [],
   wins: [],
   regrets: [],
   nextDay: [],

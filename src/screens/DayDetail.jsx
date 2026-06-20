@@ -4,6 +4,7 @@ import { playSuccessSound } from "../utils/sound.js";
 import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "../api/gcal.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
+import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday }) {
   const isToday = dateStr === toDateStr();
@@ -332,28 +333,23 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
 
       <div ref={memoRef} style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span>메모</div>
       <div style={S.card}>
-        <textarea
-          rows={3}
-          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
-          value={data.memo ?? ""}
-          onChange={(e) =>
-            setData((prev) => ({ ...prev, memo: e.target.value }))
-          }
-          placeholder="메모를 남겨보세요."
-          maxLength={1200}
+        <MemoTimeline
+          memos={data.memos || (data.memo?.trim() ? [{ id: 'legacy', text: data.memo.trim(), createdAt: '' }] : [])}
+          onAdd={(text, time) => setData(prev => ({
+            ...prev,
+            memos: [...(prev.memos || []), { id: genMemoId(), text, createdAt: time }],
+            memo: '',
+          }))}
+          onUpdate={(id, text) => setData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+          }))}
+          onDelete={(id) => setData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).filter(m => m.id !== id),
+          }))}
+          placeholder="메모를 남겨보세요"
         />
-        <button
-          style={S.btn}
-          onClick={() => {
-            setData((prev) => ({ ...prev, memo: prev.memo ?? "" }));
-            setToast("메모 저장 ✅");
-          }}
-        >
-          메모 저장
-        </button>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 6, textAlign: "right" }}>
-          {(data.memo ?? "").length} / 1200
-        </div>
       </div>
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>📖</span>일기</div>
