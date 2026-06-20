@@ -160,7 +160,15 @@ export default function App() {
     if (typeof window !== 'undefined' && typeof window.__daymateHasPendingUpdate === 'function' && window.__daymateHasPendingUpdate()) {
       onUpdateReady();
     }
-    return () => window.removeEventListener('daymate-update-ready', onUpdateReady);
+    // SW 업데이트 시 자동 리로드 (새 버전이 캐시 제거 후 clients.claim 완료한 경우)
+    const onSwMessage = (e) => {
+      if (e.data?.type === 'SW_UPDATED') window.location.reload();
+    };
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', onSwMessage);
+    return () => {
+      window.removeEventListener('daymate-update-ready', onUpdateReady);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', onSwMessage);
+    };
   }, []);
 
   const dismissUpdateBanner = () => {
@@ -264,7 +272,7 @@ export default function App() {
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
-  const [lifeGoals, setLifeGoalsState] = useState(() => store.get("dm_life_goals", []));
+  const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); return Array.isArray(v) ? v : []; });
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
   const [telegramCfg, setTelegramCfg] = useState(() => {
