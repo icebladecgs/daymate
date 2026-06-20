@@ -574,7 +574,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               : styleOf(r, isToday, perfect);
             const hasMemo = !!(plans[ds]?.memo?.trim()) || !!(plans[ds]?.memos?.length);
             const hasJournal = !!(plans[ds]?.journal?.body?.trim());
-            const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
+            const importedGcalIds = new Set((plans[ds]?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
+            const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
             const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
             const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));

@@ -41,7 +41,8 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask
         const habitDone = (habits || []).filter(h => habitChecks[h.id]).length;
         const hasHabits = (habits || []).length > 0;
         const allDone = tasks.length > 0 && done === tasks.length;
-        const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId);
+        const importedGcalIds = new Set((d?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
+        const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
         const visibleTasks = [...tasks].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).slice(0, 4);
 
         return (
