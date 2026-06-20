@@ -15,6 +15,7 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import HomeCustomizationModal from "../components/home/HomeCustomizationModal.jsx";
 import { DEFAULT_HOME_PREFS, DEFAULT_HOME_SECTION_ORDER, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals } from "../utils/goals.js";
+import MemoTimeline from "../components/MemoTimeline.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -176,7 +177,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onSetMemo, onToggleMode }) {
+export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -443,33 +444,6 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     return () => window.removeEventListener('popstate', handler);
   }, [fortuneModalOpen, xpHelpOpen, focusTask]); // eslint-disable-line
   const [quickMemoOpen, setQuickMemoOpen] = useState(false);
-  const [quickMemoText, setQuickMemoText] = useState('');
-  const quickMemoSavedRef = useRef('');
-  const quickMemoSaved = quickMemoText === quickMemoSavedRef.current;
-
-  const openQuickMemo = () => {
-    const cur = todayData?.memo ?? '';
-    setQuickMemoText(cur);
-    quickMemoSavedRef.current = cur;
-    setQuickMemoOpen(true);
-  };
-
-  const closeQuickMemo = () => {
-    if (quickMemoText !== quickMemoSavedRef.current) {
-      onSetMemo?.(quickMemoText);
-      quickMemoSavedRef.current = quickMemoText;
-    }
-    setQuickMemoOpen(false);
-  };
-
-  useEffect(() => {
-    if (!quickMemoOpen || quickMemoText === quickMemoSavedRef.current) return;
-    const t = setTimeout(() => {
-      onSetMemo?.(quickMemoText);
-      quickMemoSavedRef.current = quickMemoText;
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [quickMemoText]); // eslint-disable-line
 
   const saveSomeday = (next) => setSomeday(next);
   const addSomeday = () => {
@@ -2001,9 +1975,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       })()}
 
       {/* ── 빠른 메모 플로팅 버튼 ────────────────────────────── */}
-      {onSetMemo && (
+      {onAddMemo && (
         <button
-          onClick={openQuickMemo}
+          onClick={() => setQuickMemoOpen(true)}
           aria-label="빠른 메모"
           style={{
             position: 'fixed', bottom: 96, right: 18, zIndex: 200,
@@ -2019,36 +1993,37 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       {quickMemoOpen && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end' }}
-          onClick={closeQuickMemo}
+          onClick={() => setQuickMemoOpen(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', background: 'var(--dm-card)', borderRadius: '20px 20px 0 0', padding: '18px 16px 36px', border: '1px solid var(--dm-border2)', maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}
+            style={{ width: '100%', background: 'var(--dm-card)', borderRadius: '20px 20px 0 0', padding: '18px 16px 12px', border: '1px solid var(--dm-border2)', maxHeight: '75vh', display: 'flex', flexDirection: 'column', gap: 12 }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>📝 오늘 메모</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 11, color: quickMemoSaved ? '#4ADE80' : '#6C8EFF', fontWeight: 700, transition: 'color 0.3s' }}>
-                  {quickMemoSaved ? '✓ 저장됨' : '저장 중...'}
-                </span>
-                <button
-                  onClick={closeQuickMemo}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}
-                >✕</button>
-              </div>
+              <button
+                onClick={() => setQuickMemoOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 0 }}
+              >✕</button>
             </div>
-            <textarea
-              autoFocus
-              rows={8}
-              value={quickMemoText}
-              onChange={e => setQuickMemoText(e.target.value)}
-              placeholder="업무 메모, 떠오른 생각, 할 일... 뭐든 적어요."
-              maxLength={1200}
-              style={{ ...S.input, resize: 'none', lineHeight: 1.7, flex: 1, minHeight: 0, marginBottom: 6 }}
-            />
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', textAlign: 'right' }}>
-              {quickMemoText.length} / 1200
+            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              <MemoTimeline
+                memos={todayData?.memos || []}
+                onAdd={onAddMemo}
+                onUpdate={onUpdateMemo}
+                onDelete={onDeleteMemo}
+                placeholder="메모 입력 후 Enter 또는 + 버튼"
+              />
             </div>
+            <button
+              onClick={() => setQuickMemoOpen(false)}
+              style={{
+                background: 'rgba(75,111,255,0.15)', border: '1.5px solid rgba(75,111,255,0.4)',
+                color: '#6C8EFF', borderRadius: 12, padding: '12px 0', fontSize: 14,
+                fontWeight: 900, cursor: 'pointer', width: '100%', fontFamily: 'inherit',
+                marginBottom: 12,
+              }}
+            >✓ 저장 완료</button>
           </div>
         </div>
       )}

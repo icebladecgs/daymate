@@ -1463,7 +1463,18 @@ export default function App() {
           onOpenChallengeItem={(challengeId) => changeScreen('community', { communityTab: 'challenge', challengeId })}
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
-          onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
+          onAddMemo={(text, time) => setTodayData(prev => ({
+            ...prev,
+            memos: [...(prev.memos || []), { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`, text, createdAt: time }],
+          }))}
+          onUpdateMemo={(id, text) => setTodayData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+          }))}
+          onDeleteMemo={(id) => setTodayData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).filter(m => m.id !== id),
+          }))}
           onToggleMode={toggleHomeMode}
         />
       );

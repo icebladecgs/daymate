@@ -15,7 +15,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
   const [tagInput, setTagInput] = useState('');
   const tagInputRef = useRef(null);
 
-  // 기존 memo 문자열 → memos 배열 마이그레이션 (1회)
+  // 기존 memo 문자열 → memos 배열 마이그레이션 (Firebase 로드 후 data.memo 변경 시 실행)
   useEffect(() => {
     if (data.memo?.trim() && !(data.memos?.length)) {
       setData(prev => ({
@@ -24,7 +24,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
         memo: '',
       }));
     }
-  }, []); // eslint-disable-line
+  }, [data.memo]); // eslint-disable-line
 
   const addMemo = (text, time) => {
     setData(prev => ({
