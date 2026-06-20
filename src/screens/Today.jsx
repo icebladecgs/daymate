@@ -45,6 +45,7 @@ export default function Today({ dateStr, data, setData, toast, setToast, plans, 
     }));
   };
 
+  const memoText = (data.memos || []).map(m => m.text).join(' ');
   const [journalText, setJournalText] = useState(data.journal?.body ?? '');
   const lastSavedJournalRef = useRef(data.journal?.body ?? '');
   const journalSaved = journalText === lastSavedJournalRef.current;
