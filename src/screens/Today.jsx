@@ -11,7 +11,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
   onOpenInvest, onOpenKnowledge,
-  habits, onToggleHabit,
+  habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
   getValidGcalToken,
@@ -28,6 +28,14 @@ export default function Today({
   const tagInputRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
   const [somedayInput, setSomedayInput] = useState('');
+  const [editingHabits, setEditingHabits] = useState(false);
+  const [newHabitIcon, setNewHabitIcon] = useState('');
+  const [newHabitName, setNewHabitName] = useState('');
+  const [clock, setClock] = useState(() => new Date().toLocaleTimeString('ko-KR', { hour12: false }));
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date().toLocaleTimeString('ko-KR', { hour12: false })), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const [gcalWeekEvents, setGcalWeekEvents] = useState({});
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -169,7 +177,7 @@ export default function Today({
       <div style={S.topbar}>
         <div>
           <div style={S.title}>오늘의 페이지</div>
-          <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
+          <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
         <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 11, width: 'auto' }}>🔍 검색</button>
       </div>
@@ -283,31 +291,76 @@ export default function Today({
       </div>
 
       {/* 💪 오늘습관 */}
-      {visibleHabits.length > 0 && (
-        <>
-          <div style={S.sectionTitle}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>💪</span>오늘습관</span>
-          </div>
-          <div style={S.card}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {visibleHabits.map(h => {
-                const checked = !!habitChecks[h.id];
-                return (
-                  <button
-                    key={h.id}
-                    onClick={() => onToggleHabit?.(h.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}
-                  >
-                    <span style={{ fontSize: 20, minWidth: 24, textAlign: 'center' }}>{h.icon || '🎯'}</span>
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
-                    {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
-                  </button>
-                );
-              })}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>💪</span>오늘습관</span>
+        <button
+          onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
+          style={{ fontSize: 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+        >{editingHabits ? '완료 ✓' : '수정'}</button>
+      </div>
+      <div style={S.card}>
+        {editingHabits ? (
+          <>
+            {visibleHabits.map(h => (
+              <div key={h.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  value={h.icon || ''} maxLength={2} placeholder="🎯"
+                  onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
+                  style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
+                />
+                <input
+                  value={h.name || ''} maxLength={20} placeholder="습관 이름"
+                  onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
+                  style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                />
+                <button onClick={() => setHabits?.(prev => prev.filter(x => x.id !== h.id))}
+                  style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8, marginTop: visibleHabits.length > 0 ? 4 : 0, alignItems: 'center' }}>
+              <input value={newHabitIcon} maxLength={2} placeholder="🎯"
+                onChange={e => setNewHabitIcon(e.target.value)}
+                style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }} />
+              <input value={newHabitName} maxLength={20} placeholder="새 습관 이름"
+                onChange={e => setNewHabitName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newHabitName.trim()) {
+                    setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
+                    setNewHabitIcon(''); setNewHabitName('');
+                  }
+                }}
+                style={{ ...S.input, flex: 1, marginBottom: 0 }} />
+              <button
+                onClick={() => {
+                  if (!newHabitName.trim()) return;
+                  setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
+                  setNewHabitIcon(''); setNewHabitName('');
+                }}
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
             </div>
+            {visibleHabits.length === 0 && !newHabitName && (
+              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {visibleHabits.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
+            )}
+            {visibleHabits.map(h => {
+              const checked = !!habitChecks[h.id];
+              return (
+                <button key={h.id} onClick={() => onToggleHabit?.(h.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  <span style={{ fontSize: 20, minWidth: 24, textAlign: 'center' }}>{h.icon || '🎯'}</span>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
+                  {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
+                </button>
+              );
+            })}
           </div>
-        </>
-      )}
+        )}
+      </div>
 
       {/* 📖 일기 */}
       <div style={S.sectionTitle}>

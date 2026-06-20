@@ -14,7 +14,7 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import HomeCustomizationModal from "../components/home/HomeCustomizationModal.jsx";
 import { DEFAULT_HOME_PREFS, DEFAULT_HOME_SECTION_ORDER, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
-import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals } from "../utils/goals.js";
+import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
@@ -177,7 +177,7 @@ function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onToggleP
   );
 }
 
-export default function Home({ user, goals, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -206,6 +206,40 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
     } catch { return null; }
   })();
   const fortuneXpKey = `dm_fortune_xp_${today}`;
+
+  // 목표 편집 상태 (My탭)
+  const [editingLifeGoals, setEditingLifeGoals] = useState(false);
+  const [lifeDraft, setLifeDraft] = useState([]);
+  const [newLifeInput, setNewLifeInput] = useState('');
+  const [editingYearGoalsState, setEditingYearGoalsState] = useState(false);
+  const [yearDraft, setYearDraft] = useState([]);
+  const [newYearInput, setNewYearInput] = useState('');
+  const [editingMonthGoalsState, setEditingMonthGoalsState] = useState(false);
+  const [monthDraft, setMonthDraft] = useState([]);
+  const [newMonthInput, setNewMonthInput] = useState('');
+
+  const saveLifeGoalsFn = () => {
+    const final = [...lifeDraft, ...(newLifeInput.trim() ? [newLifeInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
+    setLifeGoals(final);
+    setEditingLifeGoals(false);
+    setNewLifeInput('');
+  };
+  const saveYearGoalsFn = () => {
+    const final = [...yearDraft, ...(newYearInput.trim() ? [newYearInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
+    const next = setYearGoalsUtil(goals, final);
+    setGoals(next);
+    store.set('dm_goals', next);
+    setEditingYearGoalsState(false);
+    setNewYearInput('');
+  };
+  const saveMonthGoalsFn = () => {
+    const final = [...monthDraft, ...(newMonthInput.trim() ? [newMonthInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
+    const next = setMonthGoalsUtil(goals, getCurrentGoalMonthKey(), final);
+    setGoals(next);
+    store.set('dm_goals', next);
+    setEditingMonthGoalsState(false);
+    setNewMonthInput('');
+  };
 
   // XP 플로팅 애니메이션
   const [xpFloat, setXpFloat] = useState(null);
@@ -1115,6 +1149,64 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
             </div>
             </div>
             )}
+            {isMyTab && (() => {
+              const currentYearGoals = yearGoals.map(g => g.title);
+              const currentMonthGoals = monthGoals;
+              const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave }) => (
+                <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
+                    </div>
+                    <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+                      {editing ? '저장 ✓' : '편집'}
+                    </button>
+                  </div>
+                  {editing ? (
+                    <>
+                      {draft.map((g, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <input style={{ ...S.input, flex: 1, marginBottom: 0 }} value={g} onChange={(e) => setDraft(prev => prev.map((item, idx) => idx === i ? e.target.value : item))} placeholder={`${title} ${i + 1}`} maxLength={40} />
+                          <button onClick={() => setDraft(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>✕</button>
+                        </div>
+                      ))}
+                      {draft.length < 5 && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input style={{ ...S.input, flex: 1, marginBottom: 0 }} value={newInput} onChange={(e) => setNewInput(e.target.value)} placeholder={`${title} 추가`} maxLength={40}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && newInput.trim()) { setDraft(prev => [...prev, newInput.trim()]); setNewInput(''); } }} />
+                          <button onClick={() => { if (!newInput.trim()) return; setDraft(prev => [...prev, newInput.trim()]); setNewInput(''); }} style={{ ...S.btn, width: 'auto', marginTop: 0, padding: '0 14px', fontSize: 18 }}>+</button>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={onSave} style={{ ...S.btn, flex: 1, marginTop: 0 }}>저장</button>
+                        <button onClick={() => { setDraft([]); setNewInput(''); if (title === '인생목표') setEditingLifeGoals(false); else if (title === '올해 목표') setEditingYearGoalsState(false); else setEditingMonthGoalsState(false); }} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>취소</button>
+                      </div>
+                    </>
+                  ) : items.length > 0 ? (
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {items.map((g, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 999, background: accent, color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
+                          <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '4px 0' }}>편집을 눌러 목표를 추가해보세요</div>
+                  )}
+                </div>
+              );
+              return (
+                <div style={{ margin: '0 16px 10px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
+                  {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn })}
+                  {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn })}
+                  {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn })}
+                </div>
+              );
+            })()}
+
             {isSectionVisible('quote') && (
             <div style={{ order: getSectionOrder('quote') }}>
           <div style={{ margin: "0 16px 10px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))", border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", boxShadow: "none" }}>

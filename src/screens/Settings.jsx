@@ -546,7 +546,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           placeholder="한 줄에 하나씩 입력"
         />
         <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
-          💡 이달 목표는 홈 화면에서 직접 추가/편집할 수 있어요
+          💡 이달 목표는 My 탭에서 직접 추가/편집할 수 있어요
         </div>
         <button style={S.btn} onClick={save}>저장</button>
       </div>

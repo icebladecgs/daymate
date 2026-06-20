@@ -20,7 +20,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
 
   const applyActions = (actions) => {
     let tasks = [...(todayData?.tasks || [])];
-    let memo = todayData?.memo || '';
+    let memo = '';
 
     for (const action of actions) {
       if (action.type === 'add_task') {
@@ -37,7 +37,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
         const target = filled[action.number - 1];
         if (target) tasks = tasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
       } else if (action.type === 'add_memo') {
-        memo = memo ? `${memo}\n${action.content}` : action.content;
+        memo = action.content;
       } else if (action.type === 'toggle_habit') {
         const target = (habits || []).find(h => h.name.toLowerCase().includes(action.habit_name.toLowerCase()));
         if (target) {
@@ -76,7 +76,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
     }
 
     onSetTodayTasks?.(tasks);
-    if (memo !== (todayData?.memo || '')) onSetMemo?.(memo);
+    if (memo) onSetMemo?.(memo);
   };
 
   const send = async () => {

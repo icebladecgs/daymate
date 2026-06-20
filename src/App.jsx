@@ -1410,7 +1410,8 @@ export default function App() {
       // My 탭 — 대시보드만 (DailyPage 없음)
       return (
         <Home
-          user={user} goals={goals} todayData={todayData} plans={plans}
+          user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
+          todayData={todayData} plans={plans}
           onToggleTask={(id) => {
             setTodayData(prev => {
               const next = { ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) };
@@ -1550,7 +1551,7 @@ export default function App() {
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
           onOpenKnowledge={() => changeScreen("knowledge")}
-          habits={habits} onToggleHabit={onToggleHabit}
+          habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
           someday={someday} setSomeday={setSomeday}
           onSetTodayTasks={onSetTodayTasks}
           getValidGcalToken={getValidGcalToken}
@@ -1707,7 +1708,7 @@ export default function App() {
     if (screen === "chat") {
       return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")}
         onSetTodayTasks={onSetTodayTasks}
-        onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memo }))}
+        onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memos: [...(prev.memos || []), { id: `m_${Date.now()}`, text: memo, createdAt: new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' }) }] }))}
         onToggleHabit={onToggleHabit}
         someday={someday} setSomeday={setSomeday}
       />;
