@@ -2,10 +2,9 @@ import S from "../styles.js";
 
 export default function BottomNav({ screen, setScreen, badge = {} }) {
   const items = [
-    { id: "home", icon: "🏠", label: "홈" },
+    { id: "today", icon: "📋", label: "오늘" },
+    { id: "my", icon: "👤", label: "My" },
     { id: "history", icon: "📅", label: "달력" },
-    { id: "today", icon: "📖", label: "일기" },
-    { id: "knowledge", icon: "🧠", label: "지식" },
     { id: "community", icon: "👥", label: "커뮤니티" },
     { id: "settings", icon: "⚙️", label: "설정" },
   ];
@@ -14,7 +13,7 @@ export default function BottomNav({ screen, setScreen, badge = {} }) {
       {items.map((it) => (
         <button
           key={it.id}
-          style={{ ...S.navItem(screen === it.id), position: "relative", padding: "6px 8px" }}
+          style={{ ...S.navItem(screen === it.id || (it.id === "today" && screen === "home")), position: "relative", padding: "6px 8px" }}
           onClick={() => setScreen(it.id)}
         >
           <span style={{ fontSize: screen === it.id ? 20 : 18, position: "relative", display: "inline-block", transition: "font-size 0.2s ease" }}>

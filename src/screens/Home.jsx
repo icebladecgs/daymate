@@ -568,6 +568,9 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   );
 
   const isSectionVisible = (sectionId) => {
+    // My 탭 전용 — 오늘 탭과 중복되는 섹션 숨김 (코드 보관)
+    const HIDDEN_IN_MY = ['quote', 'tasks', 'challenges', 'someday', 'habits', 'recurring', 'goalsShortcut'];
+    if (HIDDEN_IN_MY.includes(sectionId)) return false;
     const sectionMeta = HOME_SECTION_CONFIG.find((section) => section.id === sectionId);
     if (!sectionMeta?.visibleKey) return true;
     return homePrefs[sectionMeta.visibleKey] !== false;
@@ -946,7 +949,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>{user.name}님</div>
+          <div style={S.title}>My</div>
           <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1071,20 +1074,15 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
                           <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
                         </button>
                       )}
+                      {/* 운세 버튼 보관 (숨김)
                       {(() => {
                         const fl = fortuneLevel(todayFortuneScore);
                         return (
-                          <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{
-                            background: todayFortuneScore ? `${fl.color}1a` : "rgba(167,139,250,.08)",
-                            border: `1px solid ${todayFortuneScore ? `${fl.color}66` : "rgba(167,139,250,.3)"}`,
-                            borderRadius: 20, padding: "5px 12px", cursor: "pointer", textAlign: "center",
-                          }}>
-                            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginBottom: 1 }}>오늘의 운세</div>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: fl.color }}>{fl.label}</div>
-                            <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{fl.desc}</div>
+                          <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{...}}>
+                            오늘의 운세
                           </button>
                         );
-                      })()}
+                      })()} */}
                     </div>
                     <div style={{ position: "relative" }}>
                       {xpFloat && (
@@ -1974,8 +1972,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         );
       })()}
 
-      {/* ── 빠른 메모 플로팅 버튼 ────────────────────────────── */}
-      {onAddMemo && (
+      {/* ── 빠른 메모 플로팅 버튼 (오늘 탭으로 이동, 보관) */}
+      {false && onAddMemo && (
         <button
           onClick={() => setQuickMemoOpen(true)}
           aria-label="빠른 메모"
@@ -1989,8 +1987,8 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
         >📝</button>
       )}
 
-      {/* ── 빠른 메모 모달 ──────────────────────────────────── */}
-      {quickMemoOpen && (
+      {/* ── 빠른 메모 모달 (보관) */}
+      {false && quickMemoOpen && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setQuickMemoOpen(false)}

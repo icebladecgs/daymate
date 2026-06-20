@@ -40,15 +40,15 @@ export default function App() {
       const s = params.get('screen') || window.location.hash.replace('#','');
       if (s) return s;
     } catch {}
-    return "home";
+    return "today";
   });
   const screenRef = useRef(null);
   useEffect(() => { screenRef.current = screen; }, [screen]);
 
   // 안드로이드 뒤로가기 처리
   useEffect(() => {
-    history.replaceState({ screen: 'home', isRoot: true }, '', window.location.href);
-    history.pushState({ screen: 'home', isRoot: false }, '', window.location.href);
+    history.replaceState({ screen: 'today', isRoot: true }, '', window.location.href);
+    history.pushState({ screen: 'today', isRoot: false }, '', window.location.href);
     const handler = (e) => {
       if (!e.state || e.state.isRoot) {
         const confirmed = window.confirm('앱을 종료하시겠습니까?');
@@ -1406,7 +1406,7 @@ export default function App() {
   };
 
   const renderScreen = () => {
-    if (screen === "home") {
+    if (screen === "home" || screen === "my") {
       if (homeMode === "daily") {
         return (
           <DailyPage
@@ -1488,7 +1488,9 @@ export default function App() {
           onOpenKnowledge={() => changeScreen("knowledge")}
           habits={habits} onToggleHabit={onToggleHabit}
           someday={someday} setSomeday={setSomeday}
-          onSetTodayTasks={onSetTodayTasks} />
+          onSetTodayTasks={onSetTodayTasks}
+          getValidGcalToken={getValidGcalToken}
+          onToggleTask={toggleTaskForDate} />
       );
     }
     if (screen === "invest") {

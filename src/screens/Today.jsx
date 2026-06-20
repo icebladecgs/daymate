@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { formatKoreanDate } from "../utils/date.js";
+import { formatKoreanDate, getWeekDates } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import { parseWikiLinks, extractKeywords } from "../utils/knowledge.js";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
+import WeeklySchedule from "../components/WeeklySchedule.jsx";
+import { gcalFetchWeekEvents } from "../api/gcal.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -12,6 +14,8 @@ export default function Today({
   habits, onToggleHabit,
   someday, setSomeday,
   onSetTodayTasks,
+  getValidGcalToken,
+  onToggleTask,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -24,6 +28,13 @@ export default function Today({
   const tagInputRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
   const [somedayInput, setSomedayInput] = useState('');
+
+  const [gcalWeekEvents, setGcalWeekEvents] = useState({});
+  useEffect(() => {
+    const token = getValidGcalToken?.();
+    if (!token) return;
+    gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
+  }, []); // eslint-disable-line
 
   // 기존 memo 문자열 → memos 배열 마이그레이션
   useEffect(() => {
@@ -160,6 +171,20 @@ export default function Today({
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
         <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 11, width: 'auto' }}>🔍 검색</button>
+      </div>
+
+      {/* 📅 주간 일정 */}
+      <div style={S.sectionTitle}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>주간 일정</span>
+      </div>
+      <div style={S.card}>
+        <WeeklySchedule
+          plans={plans}
+          habits={habits || []}
+          onOpenDate={onOpenDate}
+          onToggleTask={onToggleTask}
+          gcalEvents={gcalWeekEvents}
+        />
       </div>
 
       {isPerfect && (
