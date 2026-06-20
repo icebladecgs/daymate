@@ -395,7 +395,7 @@ export default function Home({ user, goals, todayData, plans, onToggleTask, onSe
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
-  const [levelExpanded, setLevelExpanded] = useState(false);
+  const [levelExpanded, setLevelExpanded] = useState(true);
 
   // ── 포트폴리오 브리핑 ────────────────────────────────────────
   const pfCacheKey = `dm_portfolio_prices_${toDateStr()}`;

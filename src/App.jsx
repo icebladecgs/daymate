@@ -1406,7 +1406,71 @@ export default function App() {
   };
 
   const renderScreen = () => {
-    if (screen === "home" || screen === "my") {
+    if (screen === "my") {
+      // My 탭 — 대시보드만 (DailyPage 없음)
+      return (
+        <Home
+          user={user} goals={goals} todayData={todayData} plans={plans}
+          onToggleTask={(id) => {
+            setTodayData(prev => {
+              const next = { ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) };
+              const nowDone = next.tasks.find(t => t.id === id)?.done;
+              if (nowDone) {
+                const filled = next.tasks.filter(t => t.title.trim());
+                const allDone = filled.length > 0 && filled.every(t => t.done);
+                if (allDone) setToast(`🎉 할일 전부 완료! +${10 + 20} XP`);
+                else setToast(`✅ 할일 완료 · +10 XP`);
+              }
+              return next;
+            });
+          }}
+          onSetTodayTasks={onSetTodayTasks}
+          habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
+          recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+          someday={someday} setSomeday={setSomeday}
+          scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
+          installPrompt={installPrompt} handleInstall={handleInstall}
+          showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
+          isIOS={isIOS} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
+          onOpenChat={() => changeScreen("chat")}
+          isDark={isDark} setIsDark={setIsDark}
+          getValidGcalToken={getValidGcalToken}
+          myRank={myRank} onOpenStats={() => changeScreen("stats")}
+          onLuckyXp={addInviteBonus}
+          onOpenGoalsHub={() => changeScreen('history', { openGoals: true })}
+          onOpenSettings={() => changeScreen("settings")}
+          pendingInviteCode={pendingInviteCode}
+          invitePromptCode={!showInstallBanner && pendingInviteCode && dismissedInvitePromptCode !== pendingInviteCode ? pendingInviteCode : ''}
+          recentInviteReward={recentInviteReward}
+          onOpenInviteFlow={openInviteFlow}
+          onDismissInvitePrompt={dismissInvitePrompt}
+          onDismissInviteReward={dismissInviteReward}
+          levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
+          myChallenges={myChallenges}
+          communityEventsToday={communityEventsToday}
+          communityEventChecks={communityEventChecks}
+          onToggleCommunityEvent={onToggleCommunityEvent}
+          onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
+          onOpenChallengeItem={(challengeId) => changeScreen('community', { communityTab: 'challenge', challengeId })}
+          telegramCfg={telegramCfg}
+          onOpenPortfolio={() => changeScreen("portfolio")}
+          onAddMemo={(text, time) => setTodayData(prev => ({
+            ...prev,
+            memos: [...(prev.memos || []), { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`, text, createdAt: time }],
+          }))}
+          onUpdateMemo={(id, text) => setTodayData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+          }))}
+          onDeleteMemo={(id) => setTodayData(prev => ({
+            ...prev,
+            memos: (prev.memos || []).filter(m => m.id !== id),
+          }))}
+          onToggleMode={toggleHomeMode}
+        />
+      );
+    }
+    if (screen === "home") {
       if (homeMode === "daily") {
         return (
           <DailyPage
