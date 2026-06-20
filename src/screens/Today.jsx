@@ -179,7 +179,6 @@ export default function Today({
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
-        <button onClick={() => setShowSearch(true)} style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 11, width: 'auto' }}>🔍 검색</button>
       </div>
 
       {/* 📅 주간 일정 */}
@@ -212,7 +211,11 @@ export default function Today({
       {/* 📝 메모 */}
       <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>메모</span>
-        {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
+          {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}>지식 →</button>}
+          <button onClick={() => setShowSearch(true)} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}>🔍 검색</button>
+        </div>
       </div>
       <div style={S.card}>
         <MemoTimeline
@@ -504,18 +507,8 @@ function TagSection({ data, setData, memoText, journalText, tagInput, setTagInpu
 
   return (
     <div style={S.card}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>🏷️</span> 연결 태그
-        </div>
-        {onOpenKnowledge && (
-          <button
-            onClick={onOpenKnowledge}
-            style={{ fontSize: 11, color: '#6C8EFF', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}
-          >
-            지식 대시보드 →
-          </button>
-        )}
+      <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <span>🏷️</span> 연결 태그
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: hasContent ? 10 : 0 }}>

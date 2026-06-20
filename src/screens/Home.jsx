@@ -12,8 +12,7 @@ import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
-import HomeCustomizationModal from "../components/home/HomeCustomizationModal.jsx";
-import { DEFAULT_HOME_PREFS, DEFAULT_HOME_SECTION_ORDER, HOME_PREFS_KEY, HOME_SECTION_CONFIG, HOME_SECTION_LABELS, HOME_SECTION_ORDER_KEY, normalizeHomeSectionOrder } from "../components/home/config.js";
+import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
@@ -78,104 +77,6 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   );
 }
 
-function SortableHomeSectionRow({ sectionId, homePrefs, onMoveSection, onTogglePref, orderIndex, totalCount }) {
-  const sectionMeta = HOME_SECTION_CONFIG.find(section => section.id === sectionId);
-  const isVisible = sectionMeta?.visibleKey ? homePrefs?.[sectionMeta.visibleKey] !== false : true;
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        padding: '12px 14px',
-        borderRadius: 16,
-        border: '1px solid var(--dm-border)',
-        background: 'var(--dm-card)',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-text)' }}>{sectionMeta?.label || HOME_SECTION_LABELS[sectionId]}</div>
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 4 }}>{sectionMeta?.description || '홈 화면에서 보이는 위치를 바꿉니다.'}</div>
-      </div>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          if (sectionMeta?.visibleKey) onTogglePref?.(sectionMeta.visibleKey);
-        }}
-        aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 표시 전환`}
-        style={{
-          minWidth: 58,
-          height: 32,
-          borderRadius: 999,
-          padding: 4,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isVisible ? 'flex-end' : 'flex-start',
-          background: isVisible ? 'rgba(74,222,128,.18)' : 'var(--dm-row)',
-          border: `1px solid ${isVisible ? 'rgba(74,222,128,.35)' : 'var(--dm-border)'}`,
-          cursor: 'pointer',
-          flexShrink: 0,
-          marginLeft: 12,
-        }}
-      >
-        <div style={{ width: 22, height: 22, borderRadius: '50%', background: isVisible ? '#4ADE80' : 'var(--dm-muted)' }} />
-      </button>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 10 }}>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onMoveSection?.(sectionId, -1);
-          }}
-          disabled={orderIndex <= 0}
-          aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 위로 이동`}
-          style={{
-            width: 28,
-            height: 20,
-            borderRadius: 8,
-            border: '1px solid var(--dm-border)',
-            background: orderIndex <= 0 ? 'var(--dm-row)' : 'var(--dm-bg)',
-            color: orderIndex <= 0 ? 'var(--dm-muted)' : 'var(--dm-text)',
-            cursor: orderIndex <= 0 ? 'default' : 'pointer',
-            fontSize: 10,
-            lineHeight: 1,
-            padding: 0,
-          }}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onMoveSection?.(sectionId, 1);
-          }}
-          disabled={orderIndex >= totalCount - 1}
-          aria-label={`${sectionMeta?.label || HOME_SECTION_LABELS[sectionId]} 아래로 이동`}
-          style={{
-            width: 28,
-            height: 20,
-            borderRadius: 8,
-            border: '1px solid var(--dm-border)',
-            background: orderIndex >= totalCount - 1 ? 'var(--dm-row)' : 'var(--dm-bg)',
-            color: orderIndex >= totalCount - 1 ? 'var(--dm-muted)' : 'var(--dm-text)',
-            cursor: orderIndex >= totalCount - 1 ? 'default' : 'pointer',
-            fontSize: 10,
-            lineHeight: 1,
-            padding: 0,
-          }}
-        >
-          ▼
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode }) {
   const today = toDateStr();
@@ -519,9 +420,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
-  const [homePrefsOpen, setHomePrefsOpen] = useState(false);
-  const [homePrefs, setHomePrefs] = useState(() => ({ ...DEFAULT_HOME_PREFS, ...(store.get(HOME_PREFS_KEY, {}) || {}) }));
-  const [homeSectionOrder, setHomeSectionOrder] = useState(() => normalizeHomeSectionOrder(store.get(HOME_SECTION_ORDER_KEY, HOME_SECTION_CONFIG.map(section => section.id))));
   const [showCompletedHabits, setShowCompletedHabits] = useState(false);
   const [srAnnouncement, setSrAnnouncement] = useState('');
   const habitsSectionRef = useRef(null);
@@ -531,13 +429,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 10 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-  const updateHomePrefs = (patch) => {
-    setHomePrefs(prev => {
-      const next = { ...prev, ...patch };
-      store.set(HOME_PREFS_KEY, next);
-      return next;
-    });
-  };
 
   const announce = (message) => {
     setSrAnnouncement('');
@@ -554,64 +445,15 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     });
   };
 
-  const reorderHomeSections = (activeId, overId) => {
-    if (!activeId || !overId || activeId === overId) return;
-    setHomeSectionOrder(prev => {
-      const oldIndex = prev.indexOf(activeId);
-      const newIndex = prev.indexOf(overId);
-      if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      store.set(HOME_SECTION_ORDER_KEY, next);
-      return next;
-    });
-  };
-
-  const moveHomeSectionByStep = (sectionId, step) => {
-    if (!sectionId || !step) return;
-    setHomeSectionOrder(prev => {
-      const currentIndex = prev.indexOf(sectionId);
-      if (currentIndex < 0) return prev;
-      const nextIndex = currentIndex + step;
-      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
-      const next = arrayMove(prev, currentIndex, nextIndex);
-      store.set(HOME_SECTION_ORDER_KEY, next);
-      return next;
-    });
-  };
-
-  const resetHomeCustomization = () => {
-    const nextPrefs = { ...DEFAULT_HOME_PREFS };
-    const nextOrder = [...DEFAULT_HOME_SECTION_ORDER];
-    setHomePrefs(nextPrefs);
-    setHomeSectionOrder(nextOrder);
-    store.set(HOME_PREFS_KEY, nextPrefs);
-    store.set(HOME_SECTION_ORDER_KEY, nextOrder);
-    announce('홈 구성을 기본 추천 상태로 되돌렸습니다.');
-  };
-
-  const renderHomeSectionRow = (sectionId) => (
-    <SortableHomeSectionRow
-      key={sectionId}
-      sectionId={sectionId}
-      homePrefs={homePrefs}
-      onMoveSection={moveHomeSectionByStep}
-      onTogglePref={(key) => updateHomePrefs({ [key]: !homePrefs[key] })}
-      orderIndex={homeSectionOrder.indexOf(sectionId)}
-      totalCount={homeSectionOrder.length}
-    />
-  );
 
   const isSectionVisible = (sectionId) => {
-    // My 탭 전용 — 오늘 탭과 중복되는 섹션 숨김 (코드 보관)
     const HIDDEN_IN_MY = ['quote', 'tasks', 'challenges', 'someday', 'habits', 'recurring', 'goalsShortcut'];
-    if (HIDDEN_IN_MY.includes(sectionId)) return false;
-    const sectionMeta = HOME_SECTION_CONFIG.find((section) => section.id === sectionId);
-    if (!sectionMeta?.visibleKey) return true;
-    return homePrefs[sectionMeta.visibleKey] !== false;
+    if (isMyTab && HIDDEN_IN_MY.includes(sectionId)) return false;
+    return true;
   };
 
   const getSectionOrder = (sectionId, fallback = 999) => {
-    const index = homeSectionOrder.indexOf(sectionId);
+    const index = DEFAULT_HOME_SECTION_ORDER.indexOf(sectionId);
     return index < 0 ? fallback : index * 10;
   };
 
@@ -1038,9 +880,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {[
             { icon: isDark ? '☀️' : '🌙', label: isDark ? '밝게' : '어둡게', onClick: () => setIsDark?.(d => !d) },
-            { icon: '☰', label: '홈 설정', onClick: () => setHomePrefsOpen(true) },
             { icon: '🤖', label: 'AI 채팅', onClick: onOpenChat },
-            { icon: '📋', label: '데일리', onClick: onToggleMode },
           ].map(({ icon, label, onClick }) => (
             <button key={label} onClick={onClick}
               style={{ ...S.btnGhost, marginTop: 0, padding: '4px 8px', borderRadius: 10, fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, minWidth: 44 }}>
@@ -1940,13 +1780,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       </div>
       <div style={{ height: 12 }} />
 
-      <HomeCustomizationModal
-        open={homePrefsOpen}
-        homeSectionOrder={homeSectionOrder}
-        renderSectionRow={renderHomeSectionRow}
-        onReset={resetHomeCustomization}
-        onClose={() => setHomePrefsOpen(false)}
-      />
 
       {showInvitePrompt && (
         <div onClick={onDismissInvitePrompt} style={{
