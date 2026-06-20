@@ -220,8 +220,8 @@ export default function Today({
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>메모</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
+          <button onClick={() => setShowLongMemo(true)} style={{ fontSize: 11, color: '#4B6FFF', background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900, padding: '3px 9px' }}>긴 메모</button>
           {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,0.12)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>지식</button>}
-          <button onClick={() => setShowLongMemo(true)} style={{ fontSize: 11, color: '#A78BFA', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>긴 메모</button>
           <button onClick={() => setShowSearch(true)} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}>🔍 검색</button>
         </div>
       </div>
