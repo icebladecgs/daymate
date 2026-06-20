@@ -290,7 +290,7 @@ export default function App() {
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
   const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
-  const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); return Array.isArray(v) ? v : []; });
+  const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); if (!Array.isArray(v)) return []; return v.map(g => typeof g === 'string' ? g : (g?.title || '')).filter(Boolean); });
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
   const [telegramCfg, setTelegramCfg] = useState(() => {
