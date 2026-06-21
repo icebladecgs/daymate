@@ -174,10 +174,11 @@ export default function Today({
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       <div style={S.topbar}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
+        <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
       {/* 📅 주간 일정 */}
@@ -214,7 +215,6 @@ export default function Today({
           {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
           <button onClick={() => setShowLongMemo(true)} style={{ fontSize: 11, color: '#4B6FFF', background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900, padding: '3px 9px' }}>긴 메모</button>
           {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,0.12)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>지식</button>}
-          <button onClick={() => setShowSearch(true)} style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: 0 }}>🔍 검색</button>
         </div>
       </div>
       <div style={S.card}>
