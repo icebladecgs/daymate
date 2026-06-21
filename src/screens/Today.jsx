@@ -411,7 +411,8 @@ function LongMemoEditor({ onSave, onClose }) {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
+    const t = setTimeout(() => textareaRef.current?.focus(), 150);
+    return () => clearTimeout(t);
   }, []);
 
   const handleSave = () => {
