@@ -74,7 +74,9 @@ export default function App() {
     const handler = (e) => {
       if (!e.state || e.state.isRoot) {
         const confirmed = window.confirm('앱을 종료하시겠습니까?');
-        if (!confirmed) {
+        if (confirmed) {
+          history.go(-1); // 히스토리 바닥 이전으로 → Android PWA 종료
+        } else {
           history.pushState({ screen: screenRef.current, isRoot: false }, '', `?screen=${screenRef.current}`);
         }
       } else {
