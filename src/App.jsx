@@ -95,6 +95,9 @@ export default function App() {
   const [dismissedInvitePromptCode, setDismissedInvitePromptCode] = useState(() => store.get('dm_invite_prompt_dismissed_code', ''));
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [canApplyUpdate, setCanApplyUpdate] = useState(false);
+  const [showFabMemo, setShowFabMemo] = useState(false);
+  const [fabMemoText, setFabMemoText] = useState('');
+  const fabTextareaRef = useRef(null);
   const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
 
   // PWA 설치 프롬프트
@@ -1016,6 +1019,30 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
+  useEffect(() => {
+    if (showFabMemo) {
+      const t = setTimeout(() => fabTextareaRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [showFabMemo]);
+
+  const saveFabMemo = () => {
+    if (!fabMemoText.trim()) { setShowFabMemo(false); return; }
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setTodayData(prev => ({
+      ...prev,
+      memos: [...(prev.memos || []), {
+        id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`,
+        text: fabMemoText.trim(),
+        createdAt: time,
+      }],
+    }));
+    setFabMemoText('');
+    setShowFabMemo(false);
+    setToast('메모 저장됐어요 ✅');
+  };
+
   const setTodayData = (updater) => {
     setPlans((prev) => {
       const cur = prev[todayStr] || newDay(todayStr);
@@ -1841,6 +1868,52 @@ export default function App() {
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}
+
+        {/* 긴메모 플로팅 버튼 */}
+        {authUser && !showFabMemo && screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && (
+          <button
+            onClick={() => { setFabMemoText(''); setShowFabMemo(true); }}
+            style={{
+              position: 'fixed',
+              bottom: 90,
+              right: 'max(20px, calc(50% - 195px))',
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #A78BFA, #7C6FCD)',
+              border: 'none',
+              boxShadow: '0 4px 18px rgba(167,139,250,0.55)',
+              cursor: 'pointer',
+              fontSize: 22,
+              zIndex: 95,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >✏️</button>
+        )}
+
+        {/* 긴메모 입력 오버레이 */}
+        {showFabMemo && (
+          <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
+              <button onClick={() => setShowFabMemo(false)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+              <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+              <button onClick={saveFabMemo} style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}>저장</button>
+            </div>
+            <textarea
+              ref={fabTextareaRef}
+              value={fabMemoText}
+              onChange={e => setFabMemoText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveFabMemo(); }}
+              placeholder="자유롭게 작성하세요"
+              style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit' }}
+            />
+            <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
+              {fabMemoText.length}자 · 오늘 날짜 메모로 저장됩니다
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
