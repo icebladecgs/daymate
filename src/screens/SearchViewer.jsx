@@ -3,6 +3,7 @@ import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import MemoViewer from "./MemoViewer.jsx";
 import JournalViewer from "./JournalViewer.jsx";
+import { getTopKeywords } from "../utils/knowledge.js";
 
 function highlight(text, query) {
   if (!query.trim()) return text;
@@ -38,6 +39,8 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
+
+  const topKeywords = useMemo(() => getTopKeywords(plans, 20), [plans]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -112,6 +115,20 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           />
         </div>
       </div>
+
+      {!query.trim() && topKeywords.length > 0 && (
+        <div style={{ padding: "8px 16px 4px", flexShrink: 0 }}>
+          <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6 }}>자주 쓰는 키워드</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {topKeywords.slice(0, 12).map(k => (
+              <button key={k.name} onClick={() => setQuery(k.name)}
+                style={{ fontSize: 12, color: "#6C8EFF", background: "rgba(108,142,255,0.12)", border: "1px solid rgba(108,142,255,0.25)", borderRadius: 20, padding: "4px 11px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+                {k.name} <span style={{ fontSize: 10, opacity: 0.7 }}>{k.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 6, padding: "8px 16px", flexShrink: 0 }}>
         {[["memo", "메모"], ["task", "할일"], ["journal", "일기"], ["all", "전체"]].map(([id, label]) => (
