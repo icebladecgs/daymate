@@ -50,11 +50,15 @@ class ScreenErrorBoundary extends Component {
 
 export default function App() {
   const phoneRef = useRef(null);
+  const [autoOpenLongMemo] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('longmemo') === '1'; } catch { return false; }
+  });
   const [screen, setScreen] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const inviteParam = params.get('invite');
       if (inviteParam) store.set('dm_pending_invite', inviteParam.toUpperCase());
+      if (params.get('longmemo') === '1') return "today";
       const s = params.get('screen') || window.location.hash.replace('#','');
       if (s) return s;
     } catch {}
@@ -1581,7 +1585,8 @@ export default function App() {
           someday={someday} setSomeday={setSomeday}
           onSetTodayTasks={onSetTodayTasks}
           getValidGcalToken={getValidGcalToken}
-          onToggleTask={toggleTaskForDate} />
+          onToggleTask={toggleTaskForDate}
+          autoOpenLongMemo={autoOpenLongMemo} />
       );
     }
     if (screen === "invest") {

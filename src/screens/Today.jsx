@@ -15,6 +15,7 @@ export default function Today({
   onSetTodayTasks,
   getValidGcalToken,
   onToggleTask,
+  autoOpenLongMemo,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -22,6 +23,10 @@ export default function Today({
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
   const [showSearch, setShowSearch] = useState(false);
   const [showLongMemo, setShowLongMemo] = useState(false);
+
+  useEffect(() => {
+    if (autoOpenLongMemo) setShowLongMemo(true);
+  }, [autoOpenLongMemo]);
   const [recording, setRecording] = useState(null);
   const recognitionRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
