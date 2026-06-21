@@ -174,7 +174,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [birthTime, setBirthTime] = useState(() => store.get('dm_birth_time', ''));
   const [permission, setPermission] = useState(getPermission());
   const [showInstallGuide, setShowInstallGuide] = useState(false);
-  const [showShortcutGuide, setShowShortcutGuide] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [gcalStatus, setGcalStatus] = useState('');
   const gcalConnected = !!(gcalToken && Date.now() < gcalTokenExp);
@@ -1398,53 +1397,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           sub="단축키(Ctrl+Shift+M/C/S)로 메모·달력·검색을 빠르게 열 수 있어요"
           onClick={() => window.open('https://github.com/icebladecgs/daymate/releases/download/desktop-v1.0.0/Daymate.Setup.1.0.0.exe', '_blank')}
         />
-        <MenuRow
-          icon="📱"
-          title="긴메모 바로가기 만들기"
-          sub="홈화면 아이콘으로 긴메모를 바로 열 수 있어요"
-          onClick={() => setShowShortcutGuide(true)}
-        />
       </MenuGroup>
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
-
-      {/* 긴메모 바로가기 가이드 */}
-      {showShortcutGuide && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={() => setShowShortcutGuide(false)}>
-          <div style={{ background: 'var(--dm-card)', border: '1px solid rgba(255,255,255,.1)', borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', width: '100%', marginBottom: 84 }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontSize: 15, fontWeight: 900 }}>📱 긴메모 바로가기 만들기</div>
-              <button onClick={() => setShowShortcutGuide(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>✕</button>
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 14, lineHeight: 1.6 }}>
-              아래 URL을 홈화면에 추가하면 긴메모 전용 아이콘이 생겨요.
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-              <div style={{ flex: 1, background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: 'var(--dm-text)', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-                {window.location.origin}/?longmemo=1
-              </div>
-              <button
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?longmemo=1`); setToast('URL 복사됨 ✅'); }}
-                style={{ flexShrink: 0, background: 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--dm-text)', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}
-              >복사</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ background: 'rgba(75,111,255,.1)', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: '#4B6FFF', marginBottom: 3 }}>iOS (Safari)</div>
-                <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.5 }}>하단 공유 버튼 → 홈 화면에 추가</div>
-              </div>
-              <div style={{ background: 'rgba(108,142,255,.1)', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: '#6C8EFF', marginBottom: 3 }}>Android (Chrome)</div>
-                <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.5 }}>우측 상단 메뉴(⋮) → 홈 화면에 추가</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 제안 모달 */}
       {suggestionOpen && (
