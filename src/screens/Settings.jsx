@@ -1390,6 +1390,15 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </MenuGroup>
       ))}
 
+      <MenuGroup label="데스크탑 앱">
+        <MenuRow
+          icon="💻"
+          title="Windows 앱 다운로드"
+          sub="단축키(Ctrl+Shift+M/C)로 메모·달력을 빠르게 열 수 있어요"
+          onClick={() => window.open('https://github.com/icebladecgs/daymate/releases/download/desktop-v1.0.0/Daymate.Setup.1.0.0.exe', '_blank')}
+        />
+      </MenuGroup>
+
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
 
