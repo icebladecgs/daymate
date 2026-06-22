@@ -917,6 +917,7 @@ export default function App() {
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
+            if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             const ym = todayStr.slice(0, 7);
             if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
@@ -951,7 +952,7 @@ export default function App() {
           const localDays = {};
           listAllDays().forEach((ds) => { const d = loadDay(ds); if (d) localDays[ds] = d; });
           await uploadLocalToFirestore(firebaseUser.uid, {
-            settings: { name: user.name, notifEnabled, alarmTimes, telegram: telegramCfg },
+            settings: { name: user.name, notifEnabled, alarmTimes, telegram: telegramCfg, lifeGoals, scores },
             goals,
             days: localDays,
           });
@@ -988,6 +989,9 @@ export default function App() {
   useEffect(() => {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoals }).catch(() => {});
   }, [lifeGoals, authUser]);
+  useEffect(() => {
+    if (authUser && syncReadyRef.current && Object.keys(scores).length > 0) saveSettings(authUser.uid, { scores }).catch(() => {});
+  }, [scores, authUser]); // eslint-disable-line
   useEffect(() => { store.set("dm_notif_enabled", notifEnabled); }, [notifEnabled]);
   useEffect(() => {
     store.set("dm_habits", habits);
