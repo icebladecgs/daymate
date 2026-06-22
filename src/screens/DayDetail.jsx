@@ -251,14 +251,19 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 )}
                 {t.title?.trim() && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: activeTaskId === t.id ? 'auto' : 0 }}>
-                    <span style={{ fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)' }}>⏰</span>
-                    <input type="time" value={t.time || ''}
-                      onFocus={() => setActiveTaskId(t.id)}
-                      onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
-                      style={{ ...S.input, width: 95, padding: '3px 6px', fontSize: 11, color: t.time ? 'var(--dm-text)' : 'var(--dm-muted)' }} />
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${t.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                        <span>⏰</span>
+                        {t.time && <span style={{ fontWeight: 700 }}>{t.time}</span>}
+                      </div>
+                      <input type="time" value={t.time || ''}
+                        onFocus={() => setActiveTaskId(t.id)}
+                        onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
+                        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
+                    </div>
                     {t.time && (
                       <button onMouseDown={e => e.preventDefault()} onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                        style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
                     )}
                   </div>
                 )}
