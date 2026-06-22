@@ -6,30 +6,77 @@ function getMemoTime() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-function MemoItem({ item, onSave, onDelete }) {
-  const [text, setText] = useState(item.text);
-  const prevText = useRef(item.text);
+const chipBtn = (color) => ({
+  background: `${color}1A`,
+  border: `1px solid ${color}44`,
+  color,
+  borderRadius: 8,
+  padding: '4px 10px',
+  fontSize: 12,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+});
 
-  useEffect(() => {
-    if (item.text !== prevText.current) {
-      setText(item.text);
-      prevText.current = item.text;
-    }
-  }, [item.text]);
+function MemoItem({ item, onSave, onDelete }) {
+  const [mode, setMode] = useState('collapsed');
+  const [editText, setEditText] = useState(item.text);
+
+  useEffect(() => { setEditText(item.text); }, [item.text]);
+
+  const isLong = item.text.includes('\n') || item.text.length > 35;
+  const editRows = Math.max(2, (editText.match(/\n/g) || []).length + 1);
+
+  const handleCopy = () => navigator.clipboard.writeText(item.text);
+  const handleSave = () => { onSave(item.id, editText); setMode('collapsed'); };
+  const handleCancel = () => { setEditText(item.text); setMode('collapsed'); };
+
+  if (mode === 'editing') {
+    return (
+      <div>
+        <textarea
+          value={editText}
+          rows={editRows}
+          autoFocus
+          onChange={e => setEditText(e.target.value)}
+          style={{ ...S.input, marginBottom: 6, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px" }}
+        />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={handleSave} style={chipBtn('#4B6FFF')}>저장</button>
+          <button onClick={handleCancel} style={chipBtn('#888')}>취소</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'expanded') {
+    return (
+      <div>
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
+          {item.text}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>
+          <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
+          <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
+          <div style={{ flex: 1 }} />
+          <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-      <textarea
-        value={text}
-        rows={1}
-        onChange={e => setText(e.target.value)}
-        onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
-        style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", overflowY: "auto" }}
-      />
-      <button
-        onClick={() => onDelete(item.id)}
-        style={{ background: "none", border: "none", color: "#F87171", cursor: "pointer", fontSize: 16, padding: "8px 2px", flexShrink: 0, lineHeight: 1 }}
-      >✕</button>
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div
+        onClick={() => isLong ? setMode('expanded') : setMode('editing')}
+        style={{ flex: 1, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
+      >
+        {item.text.replace(/\n/g, ' ')}
+      </div>
+      {isLong && (
+        <button onClick={() => setMode('expanded')} style={{ background: 'none', border: 'none', color: '#6C8EFF', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0 }}>∨</button>
+      )}
+      <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
     </div>
   );
 }
