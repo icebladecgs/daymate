@@ -62,13 +62,25 @@ export async function gcalFetchWeekEvents(token, weekDates) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`gcal fetch ${res.status}`);
   const items = (await res.json()).items || [];
-  // 날짜별로 그룹핑
   const byDate = {};
+  const rangeStart = weekDates[0];
+  const rangeEnd = weekDates[weekDates.length - 1];
   items.forEach(e => {
-    const ds = e.start?.date || e.start?.dateTime?.slice(0, 10);
-    if (!ds) return;
-    if (!byDate[ds]) byDate[ds] = [];
-    byDate[ds].push(e);
+    const startDs = e.start?.date || e.start?.dateTime?.slice(0, 10);
+    if (!startDs) return;
+    const isAllDay = !!e.start?.date;
+    const endDsRaw = e.end?.date || e.end?.dateTime?.slice(0, 10) || startDs;
+    const endDate = new Date(endDsRaw + 'T00:00:00');
+    if (isAllDay) endDate.setDate(endDate.getDate() - 1);
+    const cur = new Date(startDs + 'T00:00:00');
+    while (cur <= endDate) {
+      const ds = `${cur.getFullYear()}-${pad2(cur.getMonth() + 1)}-${pad2(cur.getDate())}`;
+      if (ds >= rangeStart && ds <= rangeEnd) {
+        if (!byDate[ds]) byDate[ds] = [];
+        if (!byDate[ds].find(x => x.id === e.id)) byDate[ds].push(e);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
   });
   return byDate;
 }
@@ -90,10 +102,21 @@ export async function gcalFetchRangeEvents(token, startDateStr, days = 30) {
   } while (pageToken);
   const byDate = {};
   allItems.forEach(e => {
-    const ds = e.start?.date || e.start?.dateTime?.slice(0, 10);
-    if (!ds) return;
-    if (!byDate[ds]) byDate[ds] = [];
-    byDate[ds].push(e);
+    const startDs = e.start?.date || e.start?.dateTime?.slice(0, 10);
+    if (!startDs) return;
+    const isAllDay = !!e.start?.date;
+    const endDsRaw = e.end?.date || e.end?.dateTime?.slice(0, 10) || startDs;
+    const endDate = new Date(endDsRaw + 'T00:00:00');
+    if (isAllDay) endDate.setDate(endDate.getDate() - 1); // GCal all-day end is exclusive
+    const cur = new Date(startDs + 'T00:00:00');
+    while (cur <= endDate) {
+      const ds = `${cur.getFullYear()}-${pad2(cur.getMonth() + 1)}-${pad2(cur.getDate())}`;
+      if (ds >= startDateStr && ds < endDateStr) {
+        if (!byDate[ds]) byDate[ds] = [];
+        if (!byDate[ds].find(x => x.id === e.id)) byDate[ds].push(e);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
   });
   return byDate;
 }
