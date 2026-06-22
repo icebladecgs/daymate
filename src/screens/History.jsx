@@ -832,6 +832,25 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   );
                 })()}
 
+                {/* GCal 미연동 배너 */}
+                {onGcalConnect && !getValidGcalToken?.() && (
+                  <div onClick={async () => {
+                    showToast('구글 로그인 중...');
+                    const token = await onGcalConnect();
+                    if (token) { fetchGcal(true); showToast('📅 구글 캘린더 연동 완료!'); }
+                    else showToast('연동 실패');
+                  }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12,
+                    background: 'linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))',
+                    border: '1.5px dashed rgba(108,142,255,.35)', cursor: 'pointer', marginBottom: 10 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>📅</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF' }}>구글 캘린더 연동하기</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>연동하면 캘린더 일정이 자동으로 표시돼요</div>
+                    </div>
+                    <span style={{ fontSize: 14, color: 'rgba(108,142,255,.6)' }}>›</span>
+                  </div>
+                )}
+
                 {/* 할일 빠른 추가 — 날짜 제한 없이 항상 표시 */}
                 <div style={{ display: 'flex', gap: 8, marginTop: tasks.length > 0 ? 10 : 0, marginBottom: 4 }}>
                   <input
