@@ -229,7 +229,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
               />
             </div>
             {/* 2행: 액션 버튼들 — 포커스 시 표시, 시간 설정된 경우 항상 표시 */}
-            {(activeTaskId === t.id || t.time) && (
+            {(activeTaskId === t.id || t.time || t.title?.trim()) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, paddingLeft: 44 }}>
                 {activeTaskId === t.id && (
                   <>
