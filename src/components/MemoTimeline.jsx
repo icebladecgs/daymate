@@ -17,16 +17,14 @@ function MemoItem({ item, onSave, onDelete }) {
     }
   }, [item.text]);
 
-  const rows = Math.max(1, (text.match(/\n/g) || []).length + 1);
-
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
       <textarea
         value={text}
-        rows={rows}
+        rows={1}
         onChange={e => setText(e.target.value)}
         onBlur={() => { if (text !== item.text) onSave(item.id, text); }}
-        style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px" }}
+        style={{ ...S.input, flex: 1, marginBottom: 0, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", overflowY: "auto" }}
       />
       <button
         onClick={() => onDelete(item.id)}
@@ -65,7 +63,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
 
   return (
     <div>
-      <div ref={listRef} style={{ maxHeight: 48, overflowY: 'auto' }}>
+      <div ref={listRef}>
         {memos.map(memo => (
           <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
             <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>
