@@ -47,6 +47,11 @@ export function getMemoTimeStr() {
 export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [memos.length]);
 
   const handleAdd = () => {
     const text = input.trim();
@@ -60,7 +65,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
 
   return (
     <div>
-      <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+      <div ref={listRef} style={{ maxHeight: 48, overflowY: 'auto' }}>
         {memos.map(memo => (
           <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
             <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>

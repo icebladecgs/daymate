@@ -25,3 +25,7 @@ dist-ssr
 
 .vercel
 .venv/
+
+# Desktop app
+desktop/node_modules/
+desktop/dist/
