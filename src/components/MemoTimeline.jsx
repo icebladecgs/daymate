@@ -60,16 +60,18 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
 
   return (
     <div>
-      {memos.map(memo => (
-        <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
-          <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>
-            {memo.createdAt || ""}
+      <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+        {memos.map(memo => (
+          <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
+            <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>
+              {memo.createdAt || ""}
+            </div>
+            <div style={{ flex: 1 }}>
+              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} />
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} />
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: memos.length > 0 ? 10 : 0, alignItems: "flex-end" }}>
         <textarea
