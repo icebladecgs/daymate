@@ -244,33 +244,31 @@ export default function Today({
       </div>
       <div style={S.card}>
         {tasks.filter(t => t.title.trim()).map(task => (
-          <div key={task.id} style={{ marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => toggleTask(task.id)}
-                style={{ width: 28, height: 28, borderRadius: 8, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 14, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
-              >{task.done ? '✓' : ''}</button>
-              <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
-              {!task.done && (
-                <button onClick={() => moveTaskToSomeday(task)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
-              )}
-              <button onClick={() => deleteTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, paddingLeft: 36 }}>
-              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: task.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${task.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '2px 7px', fontSize: 11, color: task.time ? '#6C8EFF' : 'var(--dm-muted)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-                  <span>⏰</span>
-                  {task.time && <span style={{ fontWeight: 700 }}>{task.time}</span>}
+          <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <button
+              onClick={() => toggleTask(task.id)}
+              style={{ width: 28, height: 28, borderRadius: 8, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 14, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
+            >{task.done ? '✓' : ''}</button>
+            <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
+            {!task.done && (
+              <>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: task.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${task.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '4px 7px', fontSize: 11, color: task.time ? '#6C8EFF' : 'var(--dm-muted)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                    <span>⏰</span>
+                    {task.time && <span style={{ fontWeight: 700 }}>{task.time}</span>}
+                  </div>
+                  <input type="time" value={task.time || ''}
+                    onChange={e => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
+                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
                 </div>
-                <input type="time" value={task.time || ''}
-                  onChange={e => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
-                  style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
-              </div>
-              {task.time && (
-                <button onClick={() => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: undefined } : t))}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
-              )}
-            </div>
+                {task.time && (
+                  <button onClick={() => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: undefined } : t))}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0', flexShrink: 0 }}>✕</button>
+                )}
+                <button onClick={() => moveTaskToSomeday(task)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+              </>
+            )}
+            <button onClick={() => deleteTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
         ))}
         {tasks.filter(t => t.title.trim()).length === 0 && (
