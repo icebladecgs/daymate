@@ -809,12 +809,17 @@ export default function App() {
   const mergeImportedGcalTasks = (baseDay, localDay) => {
     const normalizedBaseDay = dedupeDayTasks(baseDay);
     const normalizedLocalDay = dedupeDayTasks(localDay);
+    // 같은 ID 태스크는 로컬 버전 우선 (Firebase 비동기 지연으로 인한 stale 데이터 방지)
+    const localTaskMap = new Map((normalizedLocalDay?.tasks || []).map(t => [String(t.id), t]));
+    const baseWithLocalOverride = normalizedBaseDay
+      ? { ...normalizedBaseDay, tasks: (normalizedBaseDay.tasks || []).map(t => localTaskMap.get(String(t.id)) || t) }
+      : normalizedBaseDay;
     const localImportedTasks = (normalizedLocalDay?.tasks || []).filter(isImportedGcalTask);
-    if (!localImportedTasks.length) return normalizedBaseDay;
-    const existingGcalIds = new Set((normalizedBaseDay?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
+    if (!localImportedTasks.length) return baseWithLocalOverride;
+    const existingGcalIds = new Set((baseWithLocalOverride?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
     // 수동 태스크(gcalEventId 없음)의 제목만 체크 — gcal 태스크끼리는 gcalEventId로만 비교
     const existingManualTitles = new Set(
-      (normalizedBaseDay?.tasks || [])
+      (baseWithLocalOverride?.tasks || [])
         .filter((task) => !task.gcalEventId)
         .map((task) => task.title?.trim().toLowerCase())
         .filter(Boolean)
@@ -823,8 +828,8 @@ export default function App() {
       !existingGcalIds.has(task.gcalEventId) &&
       !existingManualTitles.has(task.title?.trim().toLowerCase())
     );
-    if (!missingImportedTasks.length) return normalizedBaseDay;
-    return mergeTasksIntoDay(normalizedBaseDay, missingImportedTasks);
+    if (!missingImportedTasks.length) return baseWithLocalOverride;
+    return mergeTasksIntoDay(baseWithLocalOverride, missingImportedTasks);
   };
 
   const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
