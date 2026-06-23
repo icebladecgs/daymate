@@ -658,6 +658,30 @@ export default function App() {
     return t && Date.now() < e ? t : null;
   };
 
+  const syncExistingTasksToGcal = () => {
+    const today = todayStr;
+    Object.entries(plansRef.current)
+      .filter(([ds]) => ds >= today)
+      .forEach(([dateStr, day]) => {
+        const toSync = (day?.tasks || []).filter(t =>
+          t.title?.trim() && !t.gcalEventId && !isImportedGcalTask(t)
+        );
+        if (!toSync.length) return;
+        syncTasksToGcal(dateStr, [], toSync, (updates) => {
+          setPlans(prev => {
+            const d = prev[dateStr];
+            if (!d) return prev;
+            const updatedDay = { ...d, tasks: d.tasks.map(t => {
+              const u = updates.find(r => r.id === t.id);
+              return u ? { ...t, gcalEventId: u.gcalEventId } : t;
+            })};
+            const saved = persistDayData(dateStr, updatedDay);
+            return { ...prev, [dateStr]: saved };
+          });
+        });
+      });
+  };
+
   const connectGcal = async () => {
     try {
       if (!window.google?.accounts?.oauth2) {
@@ -672,6 +696,7 @@ export default function App() {
       if (gcalRefreshTimerRef.current) clearTimeout(gcalRefreshTimerRef.current);
       const delay = expiresAt - Date.now() - 5 * 60 * 1000;
       if (delay > 0) gcalRefreshTimerRef.current = setTimeout(connectGcal, delay);
+      syncExistingTasksToGcal();
       return accessToken;
     } catch {
       // 자동 재시도 금지 — 반복 팝업 방지. 사용자가 Settings에서 수동 재연결
