@@ -638,17 +638,18 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "flex", alignItems: isFsTab ? "stretch" : "flex-end", justifyContent: "center" }}
           onClick={() => setFortuneModalOpen(false)}>
-          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: "20px 16px 24px", width: "100%", maxHeight: isFsTab ? "100%" : "calc(90vh - 84px)", marginBottom: isFsTab ? 0 : 84, overflowY: "auto" }}
+          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: 0, width: "100%", maxHeight: isFsTab ? "100%" : "calc(90vh - 84px)", marginBottom: isFsTab ? 0 : 84, overflowY: "auto", display: "flex", flexDirection: "column" }}
             onClick={e => e.stopPropagation()}>
-            {/* 헤더 */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontSize: 15, fontWeight: 900 }}>🔮 오늘의 운세</div>
-              <button onClick={() => setFortuneModalOpen(false)}
-                style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: "0 4px" }}>✕</button>
-            </div>
-            {/* 탭 */}
-            {birthDate && (
-              <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "var(--dm-input)", borderRadius: 999, padding: 4 }}>
+            {/* 헤더 — sticky */}
+            <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--dm-card)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: "18px 16px 12px", borderBottom: "1px solid var(--dm-border)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: birthDate ? 12 : 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 900 }}>🔮 오늘의 운세</div>
+                <button onClick={() => setFortuneModalOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: "0 4px" }}>✕</button>
+              </div>
+              {/* 탭 */}
+              {birthDate && (
+                <div style={{ display: "flex", gap: 4, background: "var(--dm-input)", borderRadius: 999, padding: 4 }}>
                 {[{ key: 'daily', label: '오늘의 운세' }, { key: 'saju', label: '평생 사주' }, { key: 'tojeong', label: '토정비결' }].map(t => (
                   <button key={t.key} onClick={() => {
                     setFortuneTab(t.key);
@@ -664,10 +665,12 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   }}>{t.label}</button>
                 ))}
               </div>
-            )}
-            {/* 컨텐츠 — 기존 운세 섹션 내용 재사용 */}
+              )}
+            </div>
+            {/* 컨텐츠 스크롤 영역 */}
+            <div style={{ padding: "16px 16px 24px", overflowY: "auto" }}>
             {!birthDate ? (
-              <div style={{ textAlign: "center", padding: "20px 16px" }}>
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 12 }}>생년월일을 입력하면 오늘의 운세를 볼 수 있어요</div>
                 <button onClick={() => { setFortuneModalOpen(false); onOpenSettings?.(); }}
                   style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>⚙️ 설정에서 입력하기</button>
@@ -844,6 +847,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
       );})()}
@@ -1053,10 +1057,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
                     {lottoNums ? (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
                         {lottoNums.map((n, i) => {
                           const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                          return <div key={i} style={{ width: 30, height: 30, borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
+                          return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
                         })}
                       </div>
                     ) : (
