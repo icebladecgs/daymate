@@ -1049,10 +1049,22 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🔮 운세 · 로또</div>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
                   <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
-                    style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>오늘의 운세</div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 2 }}>{fl.label}</div>
-                    <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{fl.desc}</div>
+                    style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>오늘의 운세</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 3 }}>{fl.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 10 }}>{fl.desc}</div>
+                    </div>
+                    {todayFortuneScore ? (
+                      <div>
+                        <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 999, background: fl.color, width: `${todayFortuneScore * 20}%`, transition: 'width 0.6s ease', boxShadow: `0 0 6px ${fl.color}88` }} />
+                        </div>
+                        <div style={{ fontSize: 10, color: fl.color, fontWeight: 700, marginTop: 4, textAlign: 'right' }}>{todayFortuneScore * 20}점</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', opacity: 0.6 }}>탭해서 확인</div>
+                    )}
                   </button>
                   <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
