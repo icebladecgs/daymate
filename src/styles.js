@@ -158,8 +158,8 @@ const S = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 3,
-    fontSize: 11,
+    gap: 4,
+    fontSize: 12,
     color: active ? "#b8c3ff" : "var(--dm-muted)",
     cursor: "pointer",
     padding: "6px 14px",
@@ -172,6 +172,7 @@ const S = {
     fontFamily: "inherit",
     transition: "all 0.2s ease",
     fontWeight: active ? 700 : 500,
+    position: "relative",
   }),
   toast: {
     position: "fixed",
