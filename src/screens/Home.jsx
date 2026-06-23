@@ -1038,6 +1038,38 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             </div>
             </div>
             )}
+            {isMyTab && (() => {
+              const fl = fortuneLevel(todayFortuneScore);
+              return (
+              <div style={{ margin: '0 16px 10px' }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🔮 운세 · 로또</div>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                  <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
+                    style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>오늘의 운세</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 2 }}>{fl.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{fl.desc}</div>
+                  </button>
+                  <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
+                    {lottoNums ? (
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {lottoNums.map((n, i) => {
+                          const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
+                          return <div key={i} style={{ width: 30, height: 30, borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
+                        })}
+                      </div>
+                    ) : (
+                      <button onClick={drawLotto} disabled={lottoAnim}
+                        style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 10, padding: '8px 0', fontSize: 13, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                        {lottoAnim ? '추출 중...' : '번호 뽑기'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              );
+            })()}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
