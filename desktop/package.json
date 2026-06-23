@@ -1,0 +1,29 @@
+{
+  "name": "daymate-desktop",
+  "version": "1.1.0",
+  "description": "Daymate Desktop App",
+  "author": "icebladecgs",
+  "main": "main.js",
+  "scripts": {
+    "start": "node launcher.js",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.daymate.desktop",
+    "productName": "Daymate",
+    "files": ["main.js", "settings.html", "assets/**"],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
