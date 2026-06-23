@@ -887,9 +887,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             { icon: '🤖', label: 'AI 채팅', onClick: onOpenChat },
           ].map(({ icon, label, onClick }) => (
             <button key={label} onClick={onClick}
-              style={{ ...S.btnGhost, marginTop: 0, padding: '4px 8px', borderRadius: 10, fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, minWidth: 44 }}>
+              style={{ ...S.btnGhost, marginTop: 0, padding: '7px 10px', borderRadius: 20, fontSize: 13, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, whiteSpace: 'nowrap' }}>
               <span>{icon}</span>
-              <span style={{ fontSize: 9, color: 'var(--dm-muted)', letterSpacing: '-0.2px' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 600 }}>{label}</span>
             </button>
           ))}
         </div>
@@ -1054,18 +1054,18 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 2 }}>{fl.label}</div>
                     <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{fl.desc}</div>
                   </button>
-                  <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
+                  <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
                     {lottoNums ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
                         {lottoNums.map((n, i) => {
                           const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                          return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
+                          return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
                         })}
                       </div>
                     ) : (
                       <button onClick={drawLotto} disabled={lottoAnim}
-                        style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 10, padding: '8px 0', fontSize: 13, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                        style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 10, padding: '10px 0', fontSize: 14, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%', marginTop: 'auto' }}>
                         {lottoAnim ? '추출 중...' : '번호 뽑기'}
                       </button>
                     )}
