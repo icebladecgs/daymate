@@ -100,6 +100,9 @@ export default function App() {
   const [showFabMemo, setShowFabMemo] = useState(false);
   const [fabMemoText, setFabMemoText] = useState('');
   const fabTextareaRef = useRef(null);
+  const [fabPos, setFabPos] = useState(null);
+  const [fabDragging, setFabDragging] = useState(false);
+  const fabDragRef = useRef({ longPressTimer: null, isLongPress: false, hasMoved: false, startX: 0, startY: 0, startBottom: 0, startRight: 0 });
   const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
 
   // PWA 설치 프롬프트
@@ -1909,26 +1912,75 @@ export default function App() {
           community: screen !== "community" ? communityUnread : 0,
         }} />}
 
-        {/* 긴메모 플로팅 버튼 */}
+        {/* 긴메모 플로팅 버튼 (꾹 누르면 드래그) */}
         {authUser && !showFabMemo && screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && (
           <button
-            onClick={() => { setFabMemoText(''); setShowFabMemo(true); }}
+            onPointerDown={e => {
+              const ds = fabDragRef.current;
+              ds.hasMoved = false;
+              ds.isLongPress = false;
+              ds.startX = e.clientX;
+              ds.startY = e.clientY;
+              const rect = e.currentTarget.getBoundingClientRect();
+              ds.startBottom = window.innerHeight - rect.bottom;
+              ds.startRight = window.innerWidth - rect.right;
+              e.currentTarget.setPointerCapture(e.pointerId);
+              ds.longPressTimer = setTimeout(() => {
+                ds.isLongPress = true;
+                setFabDragging(true);
+                if (navigator.vibrate) navigator.vibrate(40);
+              }, 450);
+            }}
+            onPointerMove={e => {
+              const ds = fabDragRef.current;
+              const dx = e.clientX - ds.startX;
+              const dy = e.clientY - ds.startY;
+              if (!ds.isLongPress) {
+                if (Math.hypot(dx, dy) > 8) clearTimeout(ds.longPressTimer);
+                return;
+              }
+              ds.hasMoved = true;
+              setFabPos({
+                bottom: Math.max(75, Math.min(window.innerHeight - 60, ds.startBottom - dy)),
+                right: Math.max(10, Math.min(window.innerWidth - 60, ds.startRight - dx)),
+              });
+            }}
+            onPointerUp={() => {
+              const ds = fabDragRef.current;
+              clearTimeout(ds.longPressTimer);
+              setFabDragging(false);
+              if (!ds.isLongPress && !ds.hasMoved) {
+                setFabMemoText('');
+                setShowFabMemo(true);
+              }
+              ds.isLongPress = false;
+              ds.hasMoved = false;
+            }}
+            onPointerCancel={() => {
+              clearTimeout(fabDragRef.current.longPressTimer);
+              setFabDragging(false);
+              fabDragRef.current.isLongPress = false;
+            }}
             style={{
               position: 'fixed',
-              bottom: 90,
-              right: 'max(20px, calc(50% - 195px))',
+              bottom: fabPos ? fabPos.bottom : 90,
+              right: fabPos ? fabPos.right : 'max(20px, calc(50% - 195px))',
               width: 52,
               height: 52,
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #A78BFA, #7C6FCD)',
               border: 'none',
-              boxShadow: '0 4px 18px rgba(167,139,250,0.55)',
-              cursor: 'pointer',
+              boxShadow: fabDragging ? '0 8px 28px rgba(167,139,250,0.85)' : '0 4px 18px rgba(167,139,250,0.55)',
+              cursor: fabDragging ? 'grabbing' : 'pointer',
               fontSize: 22,
-              zIndex: 95,
+              zIndex: fabDragging ? 999 : 95,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transform: fabDragging ? 'scale(1.18)' : 'scale(1)',
+              transition: fabDragging ? 'none' : 'transform 0.2s, box-shadow 0.2s',
+              touchAction: 'none',
+              userSelect: 'none',
             }}
           >✏️</button>
         )}
