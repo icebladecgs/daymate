@@ -276,6 +276,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
+  const [pushMorningTime, setPushMorningTime] = useState(alarmTimes.pushMorning || '07:00');
 
   const toggleAsset = (sym) => {
     setSelectedAssets(prev =>
@@ -377,7 +378,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   };
 
   const saveAlarmTimes = () => {
-    const times = { morning: morningTime, morningWork: morningWorkTime, noon: noonTime, evening: eveningTime, night: nightTime };
+    const times = { morning: morningTime, morningWork: morningWorkTime, noon: noonTime, evening: eveningTime, night: nightTime, pushMorning: pushMorningTime };
     setAlarmTimes(times);
     store.set('dm_alarm_times', times);
     if (authUser) saveSettings(authUser.uid, { alarmTimes: times }).catch(() => {});
@@ -631,6 +632,24 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         >
           🔔 알림 권한 허용 / 테스트
         </button>
+        <button
+          style={{ ...S.btnGhost, marginTop: 8 }}
+          onClick={async () => {
+            if (!authUser) { setToast('로그인이 필요해요'); return; }
+            try {
+              setToast('📱 잠금화면 알림 전송 중...');
+              const res = await fetch('/api/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: authUser.uid, title: '☀️ 아침 할일 알림 테스트', body: '⬜ 이렇게 잠금화면에 표시돼요!\n⬜ 탭하면 앱이 열립니다' }),
+              });
+              const json = await res.json();
+              setToast(json.ok ? '📱 잠금화면 알림 전송 ✅ (폰 확인해보세요)' : `전송 실패: ${json.reason || json.error || '구독 없음'}`);
+            } catch { setToast('전송 실패 🚫'); }
+          }}
+        >
+          📱 잠금화면 푸시 테스트
+        </button>
       </div>
 
       <div style={S.sectionTitle}>소리 / 진동</div>
@@ -685,6 +704,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           { label: "점심 체크인", value: noonTime, set: setNoonTime },
           { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
           { label: "밤 마감 알람", value: nightTime, set: setNightTime },
+          { label: "📱 잠금화면 할일 알림", value: pushMorningTime, set: setPushMorningTime },
         ].map(({ label, value, set }) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>{label}</div>
