@@ -1929,7 +1929,7 @@ export default function App() {
                 ds.isLongPress = true;
                 setFabDragging(true);
                 if (navigator.vibrate) navigator.vibrate(40);
-              }, 450);
+              }, 250);
             }}
             onPointerMove={e => {
               const ds = fabDragRef.current;
