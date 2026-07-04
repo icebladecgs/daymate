@@ -136,7 +136,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
-  driveToken, driveTokenExp, onDriveConnect, onDriveBackup, lastDriveBackup,
+  driveToken, driveTokenExp, onDriveConnect, onDriveBackup, onMemoHistoryBackup, lastDriveBackup,
   onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen }) {
 
   const [subPage, setSubPage] = useState(() => {
@@ -202,6 +202,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   // Drive
   const driveConnected = !!(driveToken && Date.now() < driveTokenExp);
   const [driveStatus, setDriveStatus] = useState('');
+  const [memoHistoryStatus, setMemoHistoryStatus] = useState('');
 
   useEffect(() => {
     setYearText(getYearGoalTitles(goals).join("\n"));
@@ -1052,8 +1053,28 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             {driveStatus}
           </div>
         )}
+        {driveConnected && (
+          <button onClick={async () => {
+            setMemoHistoryStatus('내보내는 중...');
+            try {
+              const count = await onMemoHistoryBackup?.(driveToken);
+              setMemoHistoryStatus(`✓ ${count}개월치 내보내기 완료`);
+            } catch {
+              setMemoHistoryStatus('✗ 내보내기 실패');
+            }
+            setTimeout(() => setMemoHistoryStatus(''), 4000);
+          }} style={{ ...S.btnGhost, marginTop: 8, fontSize: 13 }}>
+            📂 전체 히스토리 내보내기
+          </button>
+        )}
+        {memoHistoryStatus && (
+          <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: memoHistoryStatus.startsWith('✓') ? '#4ADE80' : memoHistoryStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
+            {memoHistoryStatus}
+          </div>
+        )}
         <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
           💡 연동하면 매일 자동으로 구글 드라이브에 백업돼요.<br/>
+          📝 메모/일기는 <b>Daymate 메모/YYYY-MM.md</b> 파일로 따로 저장돼서 나중에 찾아보기 편해요.<br/>
           ⚠️ 1시간마다 재연동이 필요해요.
         </div>
       </div>

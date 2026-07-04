@@ -2,7 +2,8 @@ import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey } from "./utils/date.js";
-import { driveBackup } from "./api/drive.js";
+import { driveBackup, findOrCreateFolder, uploadMarkdownFile } from "./api/drive.js";
+import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
 import { sendTelegramMessage } from "./api/telegram.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
@@ -760,6 +761,20 @@ export default function App() {
     const now = new Date().toISOString();
     store.set('dm_last_drive_backup', now);
     setLastDriveBackup(now);
+    try {
+      const folderId = await findOrCreateFolder(token, 'Daymate 메모');
+      const monthKey = toDateStr().slice(0, 7);
+      await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
+    } catch (e) { console.error('[App] memo markdown backup failed:', e); }
+  };
+
+  const performMemoHistoryBackup = async (token) => {
+    const folderId = await findOrCreateFolder(token, 'Daymate 메모');
+    const monthKeys = listMonthKeys(plans);
+    for (const monthKey of monthKeys) {
+      await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
+    }
+    return monthKeys.length;
   };
 
   const addInviteBonus = (pts) => {
@@ -1763,6 +1778,7 @@ export default function App() {
           onAddInviteBonus={addInviteBonus}
           driveToken={driveToken} driveTokenExp={driveTokenExp}
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
+          onMemoHistoryBackup={performMemoHistoryBackup}
           lastDriveBackup={lastDriveBackup}
           onOpenAdmin={canOpenAdmin ? () => changeScreen("admin") : undefined}
           onOpenStats={() => changeScreen("stats")}
@@ -1797,6 +1813,7 @@ export default function App() {
           onAddInviteBonus={addInviteBonus}
           driveToken={driveToken} driveTokenExp={driveTokenExp}
           onDriveConnect={connectDrive} onDriveBackup={performDriveBackup}
+          onMemoHistoryBackup={performMemoHistoryBackup}
           lastDriveBackup={lastDriveBackup}
           onOpenAdmin={undefined}
           onOpenStats={() => changeScreen("stats")}
