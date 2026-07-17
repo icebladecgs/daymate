@@ -51,6 +51,14 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-07-17 (v427~v428)
+- **3개월간(v340~v426, 2026-04-17~07-17) 이 파일과 `AI_WIKI/update-log.md`가 갱신되지 않고 방치됐던 것을 확인, 이번에 최신화함.** 그 사이 상세 변경 이력이 필요하면 `git log --oneline`으로 직접 확인
+- 오늘탭 메모 버그수정 3종: 모바일 가로 스크롤, 메모 확장화면 "긴메모편집" 버튼, 긴메모 자동저장(2초 debounce)
+- **배포 파이프라인이 3주간(v405~v427) 조용히 막혀 있던 것 발견/수정** — `vercel.json` cron이 Vercel Hobby 플랜의 "하루 1회" 제한을 넘겨서 그 이후 모든 `vercel deploy`가 실패하고 있었음. `.vercelignore` 부재로 인한 100MB 제한 초과도 겹쳐 있었음. 상세는 `AI_WIKI/known-issues.md`의 "Deploy Pipeline Silent Failure" 항목
+- **중요: 이 프로젝트는 GitHub push만으로 자동 배포되지 않는다.** `vercel deploy --prod --yes`를 수동 실행해야 한다 — 이전에 "push만 하면 자동 배포"라고 잘못 알려져 있었음. 정확한 절차는 `AI_WIKI/ops.md` Deploy 섹션
+- 검증: `npm run build` 통과, Playwright로 로컬 시나리오 확인, `curl`로 프로덕션 실제 반영 확인
+- 다음 작업자 메모: push-morning(잠금화면 아침 알림)이 이제 07:00 KST 고정 발송으로 바뀜(전엔 사용자 지정 시간에 맞춰 발송) — 사용자가 다른 시간을 쓰고 있었는지 확인 필요
+
 ### 2026-04-16 (세션 추가 메모)
 - 홈/오늘 화면의 DayMate 할 일 입력이 다시 Google Calendar 생성 경로를 타도록 복구했다. 핵심은 `src/App.jsx`의 `onSetTodayTasks()`가 새 task id만 보지 않고, 제목이 생겼지만 아직 `gcalEventId`가 없는 task도 생성 대상으로 잡게 바꾼 점이다
 - 제목을 비워 저장하면 연결된 Google Calendar 이벤트를 삭제하고, pending 생성 중복도 막도록 보강했다
@@ -179,22 +187,19 @@
 ## Current Risks / Notes
 - Mac 쪽 저장소도 최신 코드로 `git pull` 되어 있어야 한다.
 - Mac 쪽 `.env.local`도 Windows와 같은 값으로 맞아야 한다.
-- 현재 로컬 미배포 변경은 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 묶는 정리다. 다른 머신에서 이어받을 때 이 값이 없거나 다르면 관리자 화면 진입과 챌린지 종료/삭제가 막힌다.
-- 최신 로컬 빌드 검증은 `2026-04-15 23:57`의 `npm run build` 기준 통과했고, `src/version.js`와 `public/sw.js`는 그 시각의 생성값을 반영한다.
 - Mac 쪽 파이썬 환경에도 `anthropic`, `python-telegram-bot`가 설치되어 있어야 한다.
 - Mac에서 LaunchAgent가 봇을 KeepAlive 중이면 수동 `pkill` 만으로는 중지가 안 될 수 있다. 이 경우 `npm run tg:mac:stop` 또는 `launchctl bootout`을 사용한다.
 - Windows helper의 `tg:start`는 Mac 봇이 살아 있으면 충돌 때문에 바로 종료될 수 있다. 이 경우 먼저 Mac 봇을 끈 뒤 Windows에서 시작한다.
-- 홈 구성 팝업의 모바일 드래그는 원인 미확정 상태로 남겨뒀다. 필요하면 Claude 등 다른 관점에서 `dnd-kit + modal + touch scroll` 조합을 별도 조사하면 된다.
-- 월별 목표 수정은 아직 배포하지 않은 로컬 변경일 수 있으니, 이어받는 AI는 `src/utils/goals.js`와 마지막 배포 시점을 같이 확인해야 한다.
+- **`git push`만으로는 배포되지 않는다.** `vercel deploy --prod --yes` 수동 실행 필수, `VERCEL_TOKEN` 만료 여부도 매번 확인. 절차는 `AI_WIKI/ops.md` Deploy 섹션, 과거 3주간 이걸 몰라서 배포가 막혔던 사고는 `AI_WIKI/known-issues.md` 참고.
+- `vercel.json`의 cron은 Hobby 플랜에서 하루 1회 초과 시 배포 자체가 실패한다. cron 추가/수정 시 반드시 확인.
+- 홈 구성 드래그 불안정, 월별 목표 레거시 fallback 이슈는 `AI_WIKI/known-issues.md`에서 이미 해결 완료로 표시돼 있다(각 항목의 ✅ 표시 참고).
 
 ## Claude Handoff Focus
-- 먼저 `AI_WIKI/README.md`, `AI_WIKI/frontend.md`, `AI_WIKI/known-issues.md`, `AI_WIKI/update-log.md` 순서로 읽는다.
-- 최신 배포 기준선은 `v316` / alias `https://daymate-beta.vercel.app` 이다.
-- 그 위에 관리자 접근을 `VITE_ADMIN_UID` 단일 기준으로 정리한 로컬 변경이 얹혀 있으니, 이어서 작업할 때 `src/App.jsx`, `src/firebase.js`, `src/screens/Admin.jsx`, `src/screens/Challenge.jsx`를 먼저 같이 본다.
+- 먼저 `AI_WIKI/README.md`, `AI_WIKI/ops.md`, `AI_WIKI/known-issues.md`, `AI_WIKI/update-log.md` 순서로 읽는다.
+- 최신 배포 기준선은 `v428` / alias `https://daymate-beta.vercel.app` 이다. 버전 숫자만 보지 말고 `curl -s https://daymate-beta.vercel.app/assets/index-*.js`로 실제 반영 커밋을 확인하는 습관을 들일 것 — 배포가 조용히 실패했던 전례가 있다(`AI_WIKI/known-issues.md`).
+- 코드 변경 후에는 `git commit` → `git push` → **`vercel deploy --prod --yes`까지 실행**해야 실제로 반영된다. push만으로 끝내지 말 것.
 - 로컬 전용 `.claude/settings.local.json`은 작업 참고만 하고 커밋 대상에서는 계속 제외한다.
-- 홈 구성 쪽은 `src/components/home/HomeCustomizationModal.jsx`, `src/components/home/config.js`, `src/screens/Home.jsx`를 같이 본다.
-- 월별 목표 쪽은 `src/utils/goals.js`, `src/screens/History.jsx`, `src/App.jsx`를 같이 본다.
-- 현재 실무적으로 중요한 미해결 이슈는 `홈 구성 드래그 불안정 원인 분석`과 `월별 목표 구조의 자동 마이그레이션 여부` 두 가지다.
+- 현재 실무적으로 중요한 미해결 이슈는 PWA 프리징(`AI_WIKI/known-issues.md`, `vite-plugin-pwa` 도입 미완료)와 push-morning 알림이 07:00 KST 고정으로 바뀐 것에 대한 사용자 확인이다.
 
 ## Suggested Next Steps
 - Mac helper script를 `launchd`에 연결하면 부팅 후 자동 복구가 쉬워진다.

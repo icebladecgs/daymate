@@ -11,6 +11,13 @@
 
 ## Entries
 
+### 2026-07-17 (v427~v428) — 배포 파이프라인 복구 + 메모 버그수정
+- **v340~v426 사이(2026-04-17~07-17, 약 3개월)는 이 로그가 갱신되지 않았다.** 필요하면 `git log --oneline`으로 직접 확인할 것. 세부 기록 없이 방치된 기간이라는 점만 남겨둔다.
+- 오늘탭 메모 3종 버그수정: 모바일 가로 스크롤(`S.content overflowX`), 메모 확장화면 "긴메모편집" 버튼 추가, 긴메모 2초 debounce 자동저장 (`src/styles.js`, `src/components/MemoTimeline.jsx`, `src/screens/Today.jsx`)
+- **배포 파이프라인 자체가 3주간(v405~v427) 막혀 있던 것 발견/수정** — 상세는 [[known-issues]] "Deploy Pipeline Silent Failure", 절차는 [[ops]] Deploy 섹션 참고
+- 버전/빌드 영향: v426→v428, 검증: `npm run build` + Playwright로 로컬 3개 시나리오 확인 + `curl`로 프로덕션 실반영 확인
+- 다음 작업자 메모: push-morning 알림이 07:00 KST 고정으로 바뀐 것에 대해 사용자가 실제 알람 시간을 07:00 외로 쓰는지 확인 필요. `HANDOFF.md`의 "Current State"/"Claude Handoff Focus"도 v316 기준으로 멈춰 있어 같이 갱신함
+
 ### 2026-04-17 (v340~v342)
 - 설정화면 핵심 설정 섹션에 📊 통계 메뉴 항목 추가 (v340) — `onOpenStats` props 연결
 - 달력 탭 정리: 월간 요약 통계 pill 4개 삭제, 범례 기본 숨김 + ▼ 범례 토글 버튼 (v341)
