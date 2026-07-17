@@ -23,7 +23,7 @@ const S = {
     width: "100%",
     minWidth: 0,
     overflowY: "auto",
-    overflowX: "auto",
+    overflowX: "hidden",
     paddingBottom: 90,
     boxSizing: "border-box",
     position: "relative",
@@ -96,6 +96,8 @@ const S = {
     fontFamily: "inherit",
     outline: "none",
     boxSizing: "border-box",
+    wordBreak: "break-word",
+    overflowWrap: "break-word",
   },
   btn: {
     width: "100%",

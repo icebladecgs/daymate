@@ -17,7 +17,7 @@ const chipBtn = (color) => ({
   fontFamily: 'inherit',
 });
 
-function MemoItem({ item, onSave, onDelete }) {
+function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
   const [mode, setMode] = useState('collapsed');
   const [editText, setEditText] = useState(item.text);
 
@@ -38,7 +38,7 @@ function MemoItem({ item, onSave, onDelete }) {
           rows={editRows}
           autoFocus
           onChange={e => setEditText(e.target.value)}
-          style={{ ...S.input, marginBottom: 6, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px" }}
+          style={{ ...S.input, marginBottom: 6, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", wordBreak: "break-word", overflowWrap: "break-word" }}
         />
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={handleSave} style={chipBtn('#4B6FFF')}>저장</button>
@@ -51,12 +51,13 @@ function MemoItem({ item, onSave, onDelete }) {
   if (mode === 'expanded') {
     return (
       <div>
-        <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
           {item.text}
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>
           <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
+          {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={chipBtn('#A78BFA')}>긴메모편집</button>}
           <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
           <div style={{ flex: 1 }} />
           <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
@@ -89,7 +90,7 @@ export function getMemoTimeStr() {
   return getMemoTime();
 }
 
-export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction }) {
+export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
   const listRef = useRef(null);
@@ -117,7 +118,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1 }}>
-              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} />
+              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} />
             </div>
           </div>
         ))}

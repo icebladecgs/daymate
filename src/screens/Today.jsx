@@ -22,10 +22,10 @@ export default function Today({
   const filledCount = tasks.filter((t) => t.title.trim()).length;
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
   const [showSearch, setShowSearch] = useState(false);
-  const [showLongMemo, setShowLongMemo] = useState(false);
+  const [longMemo, setLongMemo] = useState(null); // null | { id: string|null, text: string }
 
   useEffect(() => {
-    if (autoOpenLongMemo) setShowLongMemo(true);
+    if (autoOpenLongMemo) setLongMemo({ id: null, text: '' });
   }, [autoOpenLongMemo]);
   const [recording, setRecording] = useState(null);
   const recognitionRef = useRef(null);
@@ -59,10 +59,13 @@ export default function Today({
     }
   }, [data.memo]); // eslint-disable-line
 
-  const addMemo = (text, time) => setData(prev => ({
-    ...prev,
-    memos: [...(prev.memos || []), { id: genMemoId(), text, createdAt: time }],
-  }));
+  const addMemo = (text, time, id = genMemoId()) => {
+    setData(prev => ({
+      ...prev,
+      memos: [...(prev.memos || []), { id, text, createdAt: time }],
+    }));
+    return id;
+  };
   const updateMemo = (id, text) => setData(prev => ({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
@@ -163,10 +166,13 @@ export default function Today({
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
-  if (showLongMemo) return (
+  if (longMemo) return (
     <LongMemoEditor
-      onSave={(text) => { addMemo(text, getMemoTimeStr()); setShowLongMemo(false); }}
-      onClose={() => setShowLongMemo(false)}
+      initialId={longMemo.id}
+      initialText={longMemo.text}
+      onCreate={(text) => addMemo(text, getMemoTimeStr())}
+      onUpdate={updateMemo}
+      onClose={() => setLongMemo(null)}
     />
   );
 
@@ -218,7 +224,7 @@ export default function Today({
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>메모</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
-          <button onClick={() => setShowLongMemo(true)} style={{ fontSize: 11, color: '#4B6FFF', background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900, padding: '3px 9px' }}>긴 메모</button>
+          <button onClick={() => setLongMemo({ id: null, text: '' })} style={{ fontSize: 11, color: '#4B6FFF', background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900, padding: '3px 9px' }}>긴 메모</button>
           {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,0.12)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>지식</button>}
         </div>
       </div>
@@ -228,6 +234,7 @@ export default function Today({
           onAdd={addMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
+          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text })}
           placeholder="메모 입력 후 + 버튼"
           extraAction={
             <button
@@ -426,27 +433,43 @@ export default function Today({
   );
 }
 
-function LongMemoEditor({ onSave, onClose }) {
-  const [text, setText] = useState('');
+function LongMemoEditor({ initialId = null, initialText = '', onCreate, onUpdate, onClose }) {
+  const [text, setText] = useState(initialText);
+  const [savedAt, setSavedAt] = useState(null);
   const textareaRef = useRef(null);
+  const idRef = useRef(initialId);
+  const savedTextRef = useRef(initialText);
 
   useEffect(() => {
     const t = setTimeout(() => textareaRef.current?.focus(), 150);
     return () => clearTimeout(t);
   }, []);
 
-  const handleSave = () => {
-    if (!text.trim()) { onClose(); return; }
-    onSave(text.trim());
+  const flush = (value) => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === savedTextRef.current) return;
+    if (idRef.current) onUpdate(idRef.current, trimmed);
+    else idRef.current = onCreate(trimmed);
+    savedTextRef.current = trimmed;
+    setSavedAt(getMemoTimeStr());
   };
+
+  // 자동 저장 debounce (2초)
+  useEffect(() => {
+    if (text.trim() === savedTextRef.current) return;
+    const timer = setTimeout(() => flush(text), 2000);
+    return () => clearTimeout(timer);
+  }, [text]); // eslint-disable-line
+
+  const handleClose = () => { flush(text); onClose(); };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
         <button
-          onClick={handleSave}
+          onClick={handleClose}
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
         >저장</button>
       </div>
@@ -455,10 +478,10 @@ function LongMemoEditor({ onSave, onClose }) {
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="자유롭게 작성하세요"
-        style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit' }}
+        style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
       />
       <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
-        {text.length}자 · 저장하면 현재 시간으로 메모에 추가됩니다
+        {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '2초간 멈추면 자동저장돼요'}
       </div>
     </div>
   );
