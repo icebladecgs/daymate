@@ -1,0 +1,7 @@
+node_modules
+desktop
+.git
+dist
+dist-ssr
+*.log
+.venv
