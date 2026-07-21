@@ -51,6 +51,15 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-07-22 (v429~v433)
+- 화면마다 겹쳐서 불편하다는 피드백으로 드래그형 플로팅 메모 버튼을 제거하고, 하단 네비를 오늘/My/**메모**/달력/소셜/설정 6개 균등 아이콘으로 재구성 (`src/components/BottomNav.jsx`, `src/App.jsx`)
+- 통합검색 메모 탭이 하루치 메모를 전부 합쳐서 보여주던 것을 메모별 개별 결과로 분리 (`src/screens/SearchViewer.jsx`)
+- 지식 화면 "최근 기록"이 레거시 `day.memo`만 읽어 최근 메모(`day.memos`)를 놓치던 문제 수정 (`src/screens/Knowledge.jsx`)
+- 긴 메모 입력창 헤더에 🔍검색 / 🧠지식 바로가기 버튼 추가 (`src/App.jsx`)
+- 상세 내역은 `AI_WIKI/update-log.md`의 2026-07-22 항목 참고
+- 검증: `npm run build` 통과, Playwright 격리 harness로 UI 변경 스크린샷/클릭 동작 확인, `curl`로 프로덕션 실반영 확인 (커밋 c6ea2a3 → 80d5d6b → 7bf4130, v433 배포 완료)
+- 다음 작업자 메모: 검색 화면과 지식 화면이 기능적으로 겹쳐 보인다는 사용자 의견이 있었음 — 완전 통합은 보류, 긴 메모 화면에서 두 화면 바로가기만 추가한 상태. 유사한 레거시 `day.memo` 단일 필드 참조가 다른 화면에도 남아있는지 점검 여지 있음
+
 ### 2026-07-17 (v427~v428)
 - **3개월간(v340~v426, 2026-04-17~07-17) 이 파일과 `AI_WIKI/update-log.md`가 갱신되지 않고 방치됐던 것을 확인, 이번에 최신화함.** 그 사이 상세 변경 이력이 필요하면 `git log --oneline`으로 직접 확인
 - 오늘탭 메모 버그수정 3종: 모바일 가로 스크롤, 메모 확장화면 "긴메모편집" 버튼, 긴메모 자동저장(2초 debounce)
@@ -196,7 +205,7 @@
 
 ## Claude Handoff Focus
 - 먼저 `AI_WIKI/README.md`, `AI_WIKI/ops.md`, `AI_WIKI/known-issues.md`, `AI_WIKI/update-log.md` 순서로 읽는다.
-- 최신 배포 기준선은 `v428` / alias `https://daymate-beta.vercel.app` 이다. 버전 숫자만 보지 말고 `curl -s https://daymate-beta.vercel.app/assets/index-*.js`로 실제 반영 커밋을 확인하는 습관을 들일 것 — 배포가 조용히 실패했던 전례가 있다(`AI_WIKI/known-issues.md`).
+- 최신 배포 기준선은 `v433` / alias `https://daymate-beta.vercel.app` 이다. 버전 숫자만 보지 말고 `curl -s https://daymate-beta.vercel.app/assets/index-*.js`로 실제 반영 커밋을 확인하는 습관을 들일 것 — 배포가 조용히 실패했던 전례가 있다(`AI_WIKI/known-issues.md`).
 - 코드 변경 후에는 `git commit` → `git push` → **`vercel deploy --prod --yes`까지 실행**해야 실제로 반영된다. push만으로 끝내지 말 것.
 - 로컬 전용 `.claude/settings.local.json`은 작업 참고만 하고 커밋 대상에서는 계속 제외한다.
 - 현재 실무적으로 중요한 미해결 이슈는 PWA 프리징(`AI_WIKI/known-issues.md`, `vite-plugin-pwa` 도입 미완료)와 push-morning 알림이 07:00 KST 고정으로 바뀐 것에 대한 사용자 확인이다.
