@@ -14,6 +14,7 @@ import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
+import SearchViewer from "./screens/SearchViewer.jsx";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
@@ -99,6 +100,7 @@ export default function App() {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [canApplyUpdate, setCanApplyUpdate] = useState(false);
   const [showFabMemo, setShowFabMemo] = useState(false);
+  const [showFabMemoSearch, setShowFabMemoSearch] = useState(false);
   const [fabMemoText, setFabMemoText] = useState('');
   const fabTextareaRef = useRef(null);
   const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
@@ -1932,6 +1934,8 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
               <button onClick={() => setShowFabMemo(false)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
               <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+              <button onClick={() => setShowFabMemoSearch(true)} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>
+              <button onClick={() => { setShowFabMemo(false); changeScreen("knowledge"); }} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>
               <button onClick={saveFabMemo} style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}>저장</button>
             </div>
             <textarea
@@ -1946,6 +1950,15 @@ export default function App() {
               {fabMemoText.length}자 · 오늘 날짜 메모로 저장됩니다
             </div>
           </div>
+        )}
+
+        {showFabMemo && showFabMemoSearch && (
+          <SearchViewer
+            plans={plans}
+            onClose={() => setShowFabMemoSearch(false)}
+            onOpenDate={(ds) => { setShowFabMemoSearch(false); setShowFabMemo(false); openDetail(ds); }}
+            onUpdateDayData={setDayData}
+          />
         )}
       </div>
     </div>

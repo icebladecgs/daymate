@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
-import MemoViewer from "./MemoViewer.jsx";
 import JournalViewer from "./JournalViewer.jsx";
 import { getTopKeywords } from "../utils/knowledge.js";
 
@@ -59,10 +58,15 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         }
 
         if (tab === "all" || tab === "memo") {
-          const memoText = (d.memos || []).map(m => m.text || '').join('\n').trim() || d.memo?.trim() || '';
-          if (memoText && (!q || memoText.toLowerCase().includes(q))) {
-            matches.push({ type: "memo", text: memoText });
-          }
+          const memoItems = (d.memos && d.memos.length > 0)
+            ? d.memos
+            : (d.memo?.trim() ? [{ id: `legacy_${ds}`, text: d.memo.trim(), createdAt: '' }] : []);
+          memoItems.forEach(m => {
+            const text = (m.text || '').trim();
+            if (text && (!q || text.toLowerCase().includes(q))) {
+              matches.push({ type: "memo", id: m.id, text, createdAt: m.createdAt || '' });
+            }
+          });
         }
 
         if ((tab === "all" || tab === "journal") && d.journal?.body?.trim()) {
@@ -79,9 +83,32 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   const totalCount = results.reduce((a, r) => a + r.matches.length, 0);
 
   if (focusedResult?.type === 'memo') {
-    return <MemoViewer plans={plans} onClose={() => setFocusedResult(null)} focusDate={focusedResult.ds} onSaveEntry={async (dateStr, text) => {
-      await onUpdateDayData?.(dateStr, (prev) => ({ ...prev, memo: text }));
-    }} />;
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "var(--dm-bg)", zIndex: 500, display: "flex", flexDirection: "column" }}>
+        <div style={{ ...S.topbar, flexShrink: 0 }}>
+          <button onClick={() => setFocusedResult(null)} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
+          <div style={{ flex: 1 }}>
+            <div style={S.title}>메모</div>
+            <div style={S.sub}>{formatKoreanDate(focusedResult.ds)}{focusedResult.createdAt ? ` · ${focusedResult.createdAt}` : ''}</div>
+          </div>
+          {onOpenDate && (
+            <button onClick={() => { onOpenDate(focusedResult.ds); onClose(); }} style={{
+              padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 900, flexShrink: 0,
+            }}>
+              날짜 열기
+            </button>
+          )}
+        </div>
+        <div style={{ ...S.content, paddingBottom: 32 }}>
+          <div style={S.card}>
+            <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {highlight(focusedResult.text, query)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (focusedResult?.type === 'journal') {
@@ -157,7 +184,6 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
             {matches.map((m, i) => {
               const meta = TYPE_META[m.type];
               const snip = snippet(m.text, query);
-              const canFocus = m.type === 'memo' || m.type === 'journal';
               return (
                 <button
                   key={i}
@@ -168,7 +194,8 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
                       onClose?.();
                       return;
                     }
-                    if (canFocus) setFocusedResult({ type: m.type, ds });
+                    if (m.type === 'memo') setFocusedResult({ type: 'memo', ds, memoId: m.id, text: m.text, createdAt: m.createdAt });
+                    else if (m.type === 'journal') setFocusedResult({ type: 'journal', ds });
                   }}
                   style={{
                     width: '100%',

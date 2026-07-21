@@ -3,6 +3,9 @@ import S from "../styles.js";
 import { getTopKeywords, parseWikiLinks } from "../utils/knowledge.js";
 import { formatKoreanDate } from "../utils/date.js";
 
+const getMemoText = (day) =>
+  (day.memos || []).map(m => m.text || '').join('\n').trim() || (day.memo || '').trim();
+
 export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
   const [searchText, setSearchText] = useState('');
 
@@ -11,7 +14,7 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
   const recentDays = useMemo(() => {
     return Object.entries(plans)
       .filter(([, day]) => {
-        const hasMemo = !!(day.memo || '').trim();
+        const hasMemo = !!getMemoText(day);
         const hasJournal = !!(day.journal?.body || '').trim();
         const hasTags = (day.tags || []).length > 0;
         return hasMemo || hasJournal || hasTags;
@@ -126,7 +129,7 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
             <span style={S.sectionEmoji}>📋</span>최근 기록
           </div>
           {recentDays.map(([dateStr, day]) => {
-            const text = day.journal?.body || day.memo || '';
+            const text = day.journal?.body || getMemoText(day);
             const links = parseWikiLinks(text);
             const tags = day.tags || [];
             const allKeywords = [...new Set([...links, ...tags])];
