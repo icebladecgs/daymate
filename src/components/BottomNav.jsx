@@ -34,43 +34,68 @@ const NavIcon = ({ id, active }) => {
   return null;
 };
 
-export default function BottomNav({ screen, setScreen, badge = {} }) {
-  const items = [
-    { id: "today", label: "오늘" },
-    { id: "my", label: "My" },
-    { id: "history", label: "달력" },
-    { id: "community", label: "소셜" },
-    { id: "settings", label: "설정" },
-  ];
+const leftItems = [
+  { id: "today", label: "오늘" },
+  { id: "my", label: "My" },
+];
+const rightItems = [
+  { id: "history", label: "달력" },
+  { id: "community", label: "소셜" },
+  { id: "settings", label: "설정" },
+];
+
+export default function BottomNav({ screen, setScreen, badge = {}, onMemo }) {
+  const renderItem = (it) => {
+    const active = screen === it.id || (it.id === "today" && screen === "home");
+    return (
+      <button key={it.id} style={S.navItem(active)} onClick={() => setScreen(it.id)}>
+        {active && (
+          <span style={{
+            position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+            width: 24, height: 3, borderRadius: 999,
+            background: "linear-gradient(90deg, #6C8EFF, #A78BFA)",
+          }} />
+        )}
+        <span style={{ position: "relative", display: "inline-flex" }}>
+          <NavIcon id={it.id} active={active} />
+          {badge[it.id] > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -6,
+              minWidth: 16, height: 16, borderRadius: 999,
+              background: "#F87171", color: "#fff",
+              fontSize: 10, fontWeight: 900, lineHeight: "16px",
+              textAlign: "center", padding: "0 3px",
+            }}>{badge[it.id]}</span>
+          )}
+        </span>
+        <span style={{ letterSpacing: "0.01em" }}>{it.label}</span>
+      </button>
+    );
+  };
+
   return (
     <div style={S.bottomNav}>
-      {items.map((it) => {
-        const active = screen === it.id || (it.id === "today" && screen === "home");
-        return (
-          <button key={it.id} style={S.navItem(active)} onClick={() => setScreen(it.id)}>
-            {active && (
-              <span style={{
-                position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
-                width: 24, height: 3, borderRadius: 999,
-                background: "linear-gradient(90deg, #6C8EFF, #A78BFA)",
-              }} />
-            )}
-            <span style={{ position: "relative", display: "inline-flex" }}>
-              <NavIcon id={it.id} active={active} />
-              {badge[it.id] > 0 && (
-                <span style={{
-                  position: "absolute", top: -4, right: -6,
-                  minWidth: 16, height: 16, borderRadius: 999,
-                  background: "#F87171", color: "#fff",
-                  fontSize: 10, fontWeight: 900, lineHeight: "16px",
-                  textAlign: "center", padding: "0 3px",
-                }}>{badge[it.id]}</span>
-              )}
-            </span>
-            <span style={{ letterSpacing: "0.01em" }}>{it.label}</span>
-          </button>
-        );
-      })}
+      <div style={{ flex: 1, display: "flex", justifyContent: "space-around" }}>
+        {leftItems.map(renderItem)}
+      </div>
+      {onMemo && (
+        <button
+          onClick={onMemo}
+          aria-label="빠른 메모"
+          style={{
+            position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)",
+            width: 54, height: 54, borderRadius: "50%",
+            background: "linear-gradient(135deg, #A78BFA, #7C6FCD)",
+            border: "none",
+            boxShadow: "0 4px 18px rgba(167,139,250,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 22, cursor: "pointer",
+          }}
+        >✏️</button>
+      )}
+      <div style={{ flex: 1, display: "flex", justifyContent: "space-around" }}>
+        {rightItems.map(renderItem)}
+      </div>
     </div>
   );
 }
