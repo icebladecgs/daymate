@@ -9,6 +9,12 @@ export const formatKoreanDate = (dateStr) => {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
 };
 
+export const addDays = (dateStr, delta) => {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + delta);
+  return toDateStr(d);
+};
+
 export const monthLabel = (y, m0) => `${y}년 ${m0 + 1}월`;
 
 export const getWeekKey = (date = new Date()) => {

@@ -1,4 +1,18 @@
 const S = {
+  // 검색/일기/메모/긴메모 등 전체화면 편집 오버레이 — .phone과 동일한 430px 폭으로 고정
+  fullScreenPanel: (bottom = 0) => ({
+    position: "fixed",
+    top: 0,
+    bottom,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "100%",
+    maxWidth: 430,
+    background: "var(--dm-bg)",
+    zIndex: 500,
+    display: "flex",
+    flexDirection: "column",
+  }),
   app: {
     background: "var(--dm-bg)",
     color: "var(--dm-text)",

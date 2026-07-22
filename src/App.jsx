@@ -1,7 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
 import { store } from "./utils/storage.js";
-import { toDateStr, getWeekKey } from "./utils/date.js";
+import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
 import { driveBackup, findOrCreateFolder, uploadMarkdownFile } from "./api/drive.js";
 import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
 import { sendTelegramMessage } from "./api/telegram.js";
@@ -34,10 +34,22 @@ const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 
+const CHUNK_LOAD_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
+
 class ScreenErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
   componentDidUpdate(prevProps) { if (prevProps.screen !== this.props.screen) this.setState({ error: null }); }
+  componentDidCatch(error) {
+    if (!CHUNK_LOAD_ERROR_RE.test(error?.message || '')) return;
+    // 배포 직후 옛 청크 해시가 남아있는 경우 자동 새로고침 (10초 내 재시도 방지)
+    const key = 'dm_chunk_reload_at';
+    const last = Number(sessionStorage.getItem(key) || 0);
+    if (Date.now() - last > 10000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+    }
+  }
   render() {
     if (this.state.error) {
       return (
@@ -1154,6 +1166,12 @@ export default function App() {
     setScrollToMemo(true);
   };
 
+  const navigateDay = (fromDateStr, delta) => {
+    const nextDs = addDays(fromDateStr, delta);
+    if (nextDs === todayStr) changeScreen('today');
+    else openDetail(nextDs);
+  };
+
   // GCal 동기화 공통 함수 (날짜 무관)
   const syncTasksToGcal = (dateStr, prevTasks, nextTasks, onGcalIdsUpdated) => {
     const token = getValidGcalToken();
@@ -1652,6 +1670,7 @@ export default function App() {
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
+          onNavigateDay={(delta) => navigateDay(todayStr, delta)}
           onOpenInvest={() => changeScreen("invest")}
           onOpenKnowledge={() => changeScreen("knowledge")}
           habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
@@ -1740,6 +1759,7 @@ export default function App() {
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onImportGcalEvents={importGcalEventsForDate}
           someday={someday} setSomeday={setSomeday}
+          onNavigateDay={(delta) => navigateDay(openDate, delta)}
         />
       );
     }

@@ -6,8 +6,9 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 
-export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday }) {
+export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay }) {
   const isToday = dateStr === toDateStr();
+  const isPast = dateStr < toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = data.tasks.filter((t) => t.title.trim()).length;
   const memoRef = useRef(null);
@@ -132,7 +133,12 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             {isPerfect && " · 🎉 완벽한 하루"}
           </div>
         </div>
-        <div />
+        {onNavigateDay && (
+          <div style={{ display: 'flex', gap: 2 }}>
+            <button onClick={() => onNavigateDay(-1)} aria-label="전날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>‹</button>
+            <button onClick={() => onNavigateDay(1)} aria-label="다음날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>›</button>
+          </div>
+        )}
       </div>
 
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between' }}>
@@ -274,7 +280,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         <button style={{ ...S.btn, marginTop: 8 }} onClick={addTask}>➕ 할 일 추가</button>
         {!isToday && (
           <div style={{ marginTop: 8, fontSize: 11, color: "var(--dm-muted)" }}>
-            ✏️ 과거 날짜 기록을 편집 중이에요
+            {isPast ? "✏️ 과거 날짜 기록을 편집 중이에요" : "📝 미래 날짜를 미리 계획 중이에요"}
           </div>
         )}
       </div>

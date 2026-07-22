@@ -84,7 +84,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
 
   if (focusedResult?.type === 'memo') {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "var(--dm-bg)", zIndex: 500, display: "flex", flexDirection: "column" }}>
+      <div style={S.fullScreenPanel()}>
         <div style={{ ...S.topbar, flexShrink: 0 }}>
           <button onClick={() => setFocusedResult(null)} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
           <div style={{ flex: 1 }}>
@@ -121,7 +121,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "var(--dm-bg)", zIndex: 500, display: "flex", flexDirection: "column" }}>
+    <div style={S.fullScreenPanel()}>
       <div style={{ ...S.topbar, flexShrink: 0 }}>
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1 }}>

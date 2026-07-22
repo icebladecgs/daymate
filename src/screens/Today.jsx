@@ -10,7 +10,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
-  onOpenInvest, onOpenKnowledge,
+  onOpenInvest, onOpenKnowledge, onNavigateDay,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
@@ -192,6 +192,12 @@ export default function Today({
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
+        {onNavigateDay && (
+          <div style={{ display: 'flex', gap: 2 }}>
+            <button onClick={() => onNavigateDay(-1)} aria-label="전날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>‹</button>
+            <button onClick={() => onNavigateDay(1)} aria-label="다음날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>›</button>
+          </div>
+        )}
         <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 

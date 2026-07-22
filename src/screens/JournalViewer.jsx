@@ -66,7 +66,7 @@ export default function JournalViewer({ plans, onClose, focusDate = null, onSave
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+    <div style={S.fullScreenPanel()}>
       <div style={{ ...S.topbar, flexShrink: 0 }}>
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1 }}>
