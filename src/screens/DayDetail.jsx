@@ -360,10 +360,10 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       <div style={{
         ...S.card,
         transition: 'box-shadow 0.4s, border-color 0.4s',
-        ...(highlightMemo ? {
-          borderColor: 'rgba(108,142,255,0.7)',
-          boxShadow: '0 0 0 3px rgba(108,142,255,0.35), 0 4px 24px rgba(0,0,0,0.25)',
-        } : null),
+        border: highlightMemo ? '1px solid rgba(108,142,255,0.7)' : S.card.border,
+        boxShadow: highlightMemo
+          ? '0 0 0 3px rgba(108,142,255,0.35), 0 4px 24px rgba(0,0,0,0.25)'
+          : S.card.boxShadow,
       }}>
         <MemoTimeline
           memos={data.memos || (data.memo?.trim() ? [{ id: 'legacy', text: data.memo.trim(), createdAt: '' }] : [])}
