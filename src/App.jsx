@@ -1931,10 +1931,10 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={(s) => { setShowFabMemo(false); setShowFabMemoSearch(false); changeScreen(s); }} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
-        }} onMemo={authUser ? () => setShowFabMemo(true) : undefined} />}
+        }} onMemo={authUser ? () => setShowFabMemo(true) : undefined} memoActive={showFabMemo} />}
 
         {/* 긴메모 입력 오버레이 */}
         {showFabMemo && (
