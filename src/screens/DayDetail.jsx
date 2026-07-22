@@ -18,6 +18,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const taskInputsRef = useRef({});
   const [gcalImporting, setGcalImporting] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState(null);
+  const [editingTimeId, setEditingTimeId] = useState(null);
   useEffect(() => {
     if (scrollToMemo && memoRef.current) {
       setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -257,16 +258,25 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 )}
                 {t.title?.trim() && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: activeTaskId === t.id ? 'auto' : 0 }}>
-                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${t.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                    {editingTimeId === t.id ? (
+                      <input
+                        type="time"
+                        autoFocus
+                        value={t.time || ''}
+                        onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
+                        onBlur={() => setEditingTimeId(null)}
+                        style={{ fontSize: 13, padding: '3px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', width: 96, fontFamily: 'inherit' }}
+                      />
+                    ) : (
+                      <button
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setActiveTaskId(t.id); setEditingTimeId(t.id); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${t.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
                         <span>⏰</span>
                         {t.time && <span style={{ fontWeight: 700 }}>{t.time}</span>}
-                      </div>
-                      <input type="time" value={t.time || ''}
-                        onFocus={() => setActiveTaskId(t.id)}
-                        onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
-                        style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
-                    </div>
+                      </button>
+                    )}
                     {t.time && (
                       <button onMouseDown={e => e.preventDefault()} onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
                         style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>

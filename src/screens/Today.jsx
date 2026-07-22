@@ -33,6 +33,7 @@ export default function Today({
   const [taskInput, setTaskInput] = useState('');
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
+  const [editingTimeId, setEditingTimeId] = useState(null);
   const [somedayInput, setSomedayInput] = useState('');
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
@@ -308,15 +309,24 @@ export default function Today({
             <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
             {!task.done && (
               <>
-                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: task.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${task.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '4px 7px', fontSize: 11, color: task.time ? '#6C8EFF' : 'var(--dm-muted)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                {editingTimeId === task.id ? (
+                  <input
+                    type="time"
+                    autoFocus
+                    value={task.time || ''}
+                    onChange={e => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
+                    onBlur={() => setEditingTimeId(null)}
+                    style={{ fontSize: 13, padding: '4px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', flexShrink: 0, width: 96, fontFamily: 'inherit' }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setEditingTimeId(task.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, background: task.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${task.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '4px 7px', fontSize: 11, color: task.time ? '#6C8EFF' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}
+                  >
                     <span>⏰</span>
                     {task.time && <span style={{ fontWeight: 700 }}>{task.time}</span>}
-                  </div>
-                  <input type="time" value={task.time || ''}
-                    onChange={e => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
-                </div>
+                  </button>
+                )}
                 {task.time && (
                   <button onClick={() => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: undefined } : t))}
                     style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0', flexShrink: 0 }}>✕</button>
