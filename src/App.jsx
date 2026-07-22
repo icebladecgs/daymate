@@ -15,6 +15,8 @@ import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
 import SearchViewer from "./screens/SearchViewer.jsx";
+import LongMemoEditor from "./components/LongMemoEditor.jsx";
+import { genMemoId, getMemoTimeStr } from "./components/MemoTimeline.jsx";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
@@ -101,8 +103,6 @@ export default function App() {
   const [canApplyUpdate, setCanApplyUpdate] = useState(false);
   const [showFabMemo, setShowFabMemo] = useState(false);
   const [showFabMemoSearch, setShowFabMemoSearch] = useState(false);
-  const [fabMemoText, setFabMemoText] = useState('');
-  const fabTextareaRef = useRef(null);
   const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
 
   // PWA 설치 프롬프트
@@ -1076,29 +1076,18 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
-  useEffect(() => {
-    if (showFabMemo) {
-      const t = setTimeout(() => fabTextareaRef.current?.focus(), 100);
-      return () => clearTimeout(t);
-    }
-  }, [showFabMemo]);
-
-  const saveFabMemo = () => {
-    if (!fabMemoText.trim()) { setShowFabMemo(false); return; }
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const addFabMemo = (text, time, id = genMemoId()) => {
     setTodayData(prev => ({
       ...prev,
-      memos: [...(prev.memos || []), {
-        id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`,
-        text: fabMemoText.trim(),
-        createdAt: time,
-      }],
+      memos: [...(prev.memos || []), { id, text, createdAt: time }],
     }));
-    setFabMemoText('');
-    setShowFabMemo(false);
     setToast('메모 저장됐어요 ✅');
+    return id;
   };
+  const updateFabMemo = (id, text) => setTodayData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+  }));
 
   const setTodayData = (updater) => {
     setPlans((prev) => {
@@ -1926,30 +1915,19 @@ export default function App() {
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
-        }} onMemo={authUser ? () => { setFabMemoText(''); setShowFabMemo(true); } : undefined} />}
+        }} onMemo={authUser ? () => setShowFabMemo(true) : undefined} />}
 
         {/* 긴메모 입력 오버레이 */}
         {showFabMemo && (
-          <div style={{ position: 'fixed', inset: 0, background: 'var(--dm-bg)', zIndex: 500, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
-              <button onClick={() => setShowFabMemo(false)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
-              <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
-              <button onClick={() => setShowFabMemoSearch(true)} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>
-              <button onClick={() => { setShowFabMemo(false); changeScreen("knowledge"); }} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>
-              <button onClick={saveFabMemo} style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}>저장</button>
-            </div>
-            <textarea
-              ref={fabTextareaRef}
-              value={fabMemoText}
-              onChange={e => setFabMemoText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveFabMemo(); }}
-              placeholder="자유롭게 작성하세요"
-              style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit' }}
-            />
-            <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
-              {fabMemoText.length}자 · 오늘 날짜 메모로 저장됩니다
-            </div>
-          </div>
+          <LongMemoEditor
+            initialId={null}
+            initialText=""
+            onCreate={(text) => addFabMemo(text, getMemoTimeStr())}
+            onUpdate={updateFabMemo}
+            onClose={() => setShowFabMemo(false)}
+            onSearch={() => setShowFabMemoSearch(true)}
+            onOpenKnowledge={() => { setShowFabMemo(false); changeScreen("knowledge"); }}
+          />
         )}
 
         {showFabMemo && showFabMemoSearch && (
