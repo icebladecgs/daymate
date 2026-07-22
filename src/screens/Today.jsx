@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { formatKoreanDate, getWeekDates } from "../utils/date.js";
+import { formatKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
@@ -10,7 +10,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
-  onOpenInvest, onOpenKnowledge, onNavigateDay,
+  onOpenInvest, onOpenKnowledge,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
@@ -31,6 +31,7 @@ export default function Today({
   const [recording, setRecording] = useState(null);
   const recognitionRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
+  const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const [somedayInput, setSomedayInput] = useState('');
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
@@ -121,6 +122,32 @@ export default function Today({
     deleteTask(task.id);
   };
 
+  // 오늘의 할일 섹션만 다른 날짜로 미리보기/입력 (나머지 섹션은 항상 오늘 기준 유지)
+  const targetDs = taskDayOffset === 0 ? dateStr : addDays(dateStr, taskDayOffset);
+  const targetTasks = taskDayOffset === 0 ? tasks : (plans?.[targetDs]?.tasks || []);
+  const setTargetTasks = (next) => {
+    if (taskDayOffset === 0) onSetTodayTasks?.(next);
+    else onUpdateDayData?.(targetDs, prev => ({ ...prev, tasks: next }));
+  };
+  const addTargetTask = () => {
+    const title = taskInput.trim();
+    if (!title) return;
+    const newTask = { id: `t_${Date.now()}`, title, done: false };
+    const all = [...targetTasks];
+    const emptyIdx = all.findIndex(t => !t.title.trim());
+    if (emptyIdx >= 0) all[emptyIdx] = newTask;
+    else all.push(newTask);
+    setTargetTasks(all);
+    setTaskInput('');
+  };
+  const toggleTargetTask = (id) => setTargetTasks(targetTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const deleteTargetTask = (id) => setTargetTasks(targetTasks.filter(t => t.id !== id));
+  const moveTargetTaskToSomeday = (task) => {
+    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false }]);
+    deleteTargetTask(task.id);
+  };
+  const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : formatKoreanDate(targetDs);
+
   // 언젠가할일 핸들러
   const saveSomeday = (list) => setSomeday?.(list);
   const addSomeday = () => {
@@ -192,12 +219,6 @@ export default function Today({
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {doneCount}/{filledCount || 3} 완료</div>
         </div>
-        {onNavigateDay && (
-          <div style={{ display: 'flex', gap: 2 }}>
-            <button onClick={() => onNavigateDay(-1)} aria-label="전날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>‹</button>
-            <button onClick={() => onNavigateDay(1)} aria-label="다음날" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: '8px 6px', color: 'var(--dm-muted)' }}>›</button>
-          </div>
-        )}
         <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
@@ -254,15 +275,22 @@ export default function Today({
         />
       </div>
 
-      {/* ✅ 오늘의 할일 */}
-      <div style={S.sectionTitle}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>오늘의 할일</span>
+      {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>{taskDayLabel}의 할일</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        </div>
       </div>
       <div style={S.card}>
-        {tasks.filter(t => t.title.trim()).map(task => (
+        {taskDayOffset !== 0 && (
+          <div style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, marginBottom: 8 }}>{formatKoreanDate(targetDs)} 할일을 보고 있어요</div>
+        )}
+        {targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <button
-              onClick={() => toggleTask(task.id)}
+              onClick={() => toggleTargetTask(task.id)}
               style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
             <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
@@ -274,32 +302,32 @@ export default function Today({
                     {task.time && <span style={{ fontWeight: 700 }}>{task.time}</span>}
                   </div>
                   <input type="time" value={task.time || ''}
-                    onChange={e => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
+                    onChange={e => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
                     style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', fontSize: 0 }} />
                 </div>
                 {task.time && (
-                  <button onClick={() => onSetTodayTasks?.(tasks.map(t => t.id === task.id ? { ...t, time: undefined } : t))}
+                  <button onClick={() => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: undefined } : t))}
                     style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0', flexShrink: 0 }}>✕</button>
                 )}
-                <button onClick={() => moveTaskToSomeday(task)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+                <button onClick={() => moveTargetTaskToSomeday(task)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
               </>
             )}
-            <button onClick={() => deleteTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+            <button onClick={() => deleteTargetTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
         ))}
-        {tasks.filter(t => t.title.trim()).length === 0 && (
-          <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>오늘 할 일을 추가해보세요</div>
+        {targetTasks.filter(t => t.title.trim()).length === 0 && (
+          <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>{taskDayLabel} 할 일을 추가해보세요</div>
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             style={{ ...S.input, flex: 1, marginBottom: 0 }}
             value={taskInput}
             onChange={e => setTaskInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addTask()}
+            onKeyDown={e => e.key === 'Enter' && addTargetTask()}
             placeholder="할 일 추가 후 Enter"
             maxLength={60}
           />
-          <button onClick={addTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
+          <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
       </div>
 

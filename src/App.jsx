@@ -1670,7 +1670,6 @@ export default function App() {
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
-          onNavigateDay={(delta) => navigateDay(todayStr, delta)}
           onOpenInvest={() => changeScreen("invest")}
           onOpenKnowledge={() => changeScreen("knowledge")}
           habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
