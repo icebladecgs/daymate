@@ -139,7 +139,7 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
               <div
                 key={dateStr}
                 style={{ ...S.card, cursor: 'pointer' }}
-                onClick={() => onOpenDate(dateStr)}
+                onClick={() => onOpenDate(dateStr, type === '📝 메모')}
               >
                 <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>{formatKoreanDate(dateStr)}</span>

@@ -1847,7 +1847,7 @@ export default function App() {
             setScreen("keyword-detail");
             history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
           }}
-          onOpenDate={(ds) => openDetail(ds)}
+          onOpenDate={(ds, viaMemo) => viaMemo ? openDetailMemo(ds) : openDetail(ds)}
         />
       );
     }

@@ -19,9 +19,13 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   const [gcalImporting, setGcalImporting] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [editingTimeId, setEditingTimeId] = useState(null);
+  const [highlightMemo, setHighlightMemo] = useState(false);
   useEffect(() => {
     if (scrollToMemo && memoRef.current) {
       setTimeout(() => memoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      setHighlightMemo(true);
+      const t = setTimeout(() => setHighlightMemo(false), 1600);
+      return () => clearTimeout(t);
     } else {
       setTimeout(() => { if (contentRef.current) contentRef.current.scrollTop = 0; }, 50);
     }
@@ -353,7 +357,14 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       })()}
 
       <div ref={memoRef} style={S.sectionTitle}><span style={S.sectionEmoji}>📝</span>메모</div>
-      <div style={S.card}>
+      <div style={{
+        ...S.card,
+        transition: 'box-shadow 0.4s, border-color 0.4s',
+        ...(highlightMemo ? {
+          borderColor: 'rgba(108,142,255,0.7)',
+          boxShadow: '0 0 0 3px rgba(108,142,255,0.35), 0 4px 24px rgba(0,0,0,0.25)',
+        } : null),
+      }}>
         <MemoTimeline
           memos={data.memos || (data.memo?.trim() ? [{ id: 'legacy', text: data.memo.trim(), createdAt: '' }] : [])}
           onAdd={(text, time) => setData(prev => ({
