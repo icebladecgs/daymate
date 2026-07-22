@@ -1934,7 +1934,7 @@ export default function App() {
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={(s) => { setShowFabMemo(false); setShowFabMemoSearch(false); changeScreen(s); }} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
-        }} onMemo={authUser ? () => setShowFabMemo(true) : undefined} memoActive={showFabMemo} />}
+        }} onMemo={() => authUser ? setShowFabMemo(true) : googleSignIn().catch(() => {})} memoActive={showFabMemo} />}
 
         {/* 긴메모 입력 오버레이 */}
         {showFabMemo && (

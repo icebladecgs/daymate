@@ -70,7 +70,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <div
         onClick={() => isLong ? setMode('expanded') : setMode('editing')}
-        style={{ flex: 1, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
+        style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
       >
         {item.text.replace(/\n/g, ' ')}
       </div>
@@ -117,7 +117,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
             <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>
               {memo.createdAt || ""}
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} />
             </div>
           </div>

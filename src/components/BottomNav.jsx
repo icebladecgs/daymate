@@ -43,7 +43,7 @@ export default function BottomNav({ screen, setScreen, badge = {}, onMemo, memoA
   const items = [
     { id: "today", label: "오늘" },
     { id: "my", label: "My" },
-    ...(onMemo ? [{ id: "memo", label: "메모" }] : []),
+    { id: "memo", label: "메모" },
     { id: "history", label: "달력" },
     { id: "community", label: "소셜" },
     { id: "settings", label: "설정" },
