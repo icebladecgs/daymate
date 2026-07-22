@@ -1675,7 +1675,7 @@ export default function App() {
           habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
           someday={someday} setSomeday={setSomeday}
           onSetTodayTasks={onSetTodayTasks}
-          getValidGcalToken={getValidGcalToken}
+          getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onToggleTask={toggleTaskForDate}
           autoOpenLongMemo={autoOpenLongMemo} />
       );

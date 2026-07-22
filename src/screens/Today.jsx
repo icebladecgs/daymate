@@ -14,7 +14,7 @@ export default function Today({
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
-  getValidGcalToken,
+  getValidGcalToken, onGcalConnect,
   onToggleTask,
   autoOpenLongMemo,
 }) {
@@ -32,6 +32,7 @@ export default function Today({
   const recognitionRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
+  const [gcalConnecting, setGcalConnecting] = useState(false);
   const [somedayInput, setSomedayInput] = useState('');
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
@@ -147,6 +148,14 @@ export default function Today({
     deleteTargetTask(task.id);
   };
   const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : formatKoreanDate(targetDs);
+  const connectGcalFromTask = async () => {
+    if (!onGcalConnect || gcalConnecting) return;
+    setGcalConnecting(true);
+    setToast('구글 로그인 중...');
+    const token = await onGcalConnect();
+    setGcalConnecting(false);
+    setToast(token ? '캘린더 연동 완료 ✅' : '연동 실패');
+  };
 
   // 언젠가할일 핸들러
   const saveSomeday = (list) => setSomeday?.(list);
@@ -279,6 +288,9 @@ export default function Today({
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>{taskDayLabel}의 할일</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
+            <button onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
+          )}
           <button onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
           <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
