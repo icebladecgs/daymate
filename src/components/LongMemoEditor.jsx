@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
 
-export default function LongMemoEditor({ initialId = null, initialText = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const textareaRef = useRef(null);
@@ -36,7 +36,10 @@ export default function LongMemoEditor({ initialId = null, initialText = '', onC
     <div style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
         <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
-        <div style={{ flex: 1, fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+          {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
+        </div>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button

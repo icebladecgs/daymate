@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import JournalViewer from "./JournalViewer.jsx";
+import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { getTopKeywords } from "../utils/knowledge.js";
 
 function highlight(text, query) {
@@ -84,30 +85,16 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
 
   if (focusedResult?.type === 'memo') {
     return (
-      <div style={S.fullScreenPanel()}>
-        <div style={{ ...S.topbar, flexShrink: 0 }}>
-          <button onClick={() => setFocusedResult(null)} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
-          <div style={{ flex: 1 }}>
-            <div style={S.title}>메모</div>
-            <div style={S.sub}>{formatKoreanDate(focusedResult.ds)}{focusedResult.createdAt ? ` · ${focusedResult.createdAt}` : ''}</div>
-          </div>
-          {onOpenDate && (
-            <button onClick={() => { onOpenDate(focusedResult.ds); onClose(); }} style={{
-              padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 900, flexShrink: 0,
-            }}>
-              날짜 열기
-            </button>
-          )}
-        </div>
-        <div style={{ ...S.content, paddingBottom: 32 }}>
-          <div style={S.card}>
-            <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {highlight(focusedResult.text, query)}
-            </div>
-          </div>
-        </div>
-      </div>
+      <LongMemoEditor
+        initialId={focusedResult.memoId}
+        initialText={focusedResult.text}
+        subtitle={`${formatKoreanDate(focusedResult.ds)}${focusedResult.createdAt ? ` · ${focusedResult.createdAt}` : ''}`}
+        onUpdate={(id, text) => onUpdateDayData?.(focusedResult.ds, prev => ({
+          ...prev,
+          memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
+        }))}
+        onClose={() => setFocusedResult(null)}
+      />
     );
   }
 
