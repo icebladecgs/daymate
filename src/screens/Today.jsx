@@ -454,10 +454,10 @@ function LongMemoEditor({ initialId = null, initialText = '', onCreate, onUpdate
     setSavedAt(getMemoTimeStr());
   };
 
-  // 자동 저장 debounce (2초)
+  // 자동 저장 debounce (1초)
   useEffect(() => {
     if (text.trim() === savedTextRef.current) return;
-    const timer = setTimeout(() => flush(text), 2000);
+    const timer = setTimeout(() => flush(text), 1000);
     return () => clearTimeout(timer);
   }, [text]); // eslint-disable-line
 
@@ -481,7 +481,7 @@ function LongMemoEditor({ initialId = null, initialText = '', onCreate, onUpdate
         style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
       />
       <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
-        {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '2초간 멈추면 자동저장돼요'}
+        {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
       </div>
     </div>
   );
