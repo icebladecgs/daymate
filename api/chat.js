@@ -145,6 +145,36 @@ ${qnaText}
     }
   }
 
+  // ?action=voice-diary → 음성 Q&A 답변을 하나의 일기로 정리
+  if (req.query.action === 'voice-diary') {
+    const { answers = [], userName = '사용자' } = req.body || {};
+    if (!answers.length) return res.status(400).json({ error: 'answers 필요' });
+
+    const qnaText = answers.map((a, i) => `Q${i + 1}. ${a.question}\nA: ${a.answer}`).join('\n\n');
+
+    const prompt = `너는 ${userName}님이 음성으로 답한 오늘의 질문/답변을 자연스러운 일기 한 편으로 정리해주는 도우미야.
+
+${qnaText}
+
+규칙:
+- 1인칭 시점, 자연스러운 문단으로 이어 쓸 것 (Q1, A 같은 표시 절대 금지)
+- 답변에 없는 내용을 지어내지 말 것
+- 4~8문장 분량
+- 일기 본문 텍스트만 출력, 다른 설명 없이`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const content = response.content.find(b => b.type === 'text')?.text || '';
+      return res.status(200).json({ content });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ?action=monthly-review → 월간 AI 코치 리뷰
   if (req.query.action === 'monthly-review') {
     const { monthLabel, completionRate, filledDaysCount, perfectDaysCount, bestStreak, habitStats = [], userName = '사용자' } = req.body || {};

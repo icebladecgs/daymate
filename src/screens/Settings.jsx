@@ -7,6 +7,7 @@ import { ASSET_META, fetchMarketDataFromServer, buildBriefingText, searchFinnhub
 import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebase.js";
 import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
+import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
@@ -132,6 +133,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
   habits, setHabits, recurringTasks, setRecurringTasks,
+  diaryQuestions, setDiaryQuestions,
   installPrompt, handleInstall, setShowInstallBanner,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
   isDark, setIsDark, fontScale, setFontScale,
@@ -170,6 +172,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   };
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState(getYearGoalTitles(goals).join("\n"));
+  const [diaryQText, setDiaryQText] = useState((diaryQuestions || []).join("\n"));
   const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
   const [birthTime, setBirthTime] = useState(() => store.get('dm_birth_time', ''));
   const [permission, setPermission] = useState(getPermission());
@@ -207,6 +210,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   useEffect(() => {
     setYearText(getYearGoalTitles(goals).join("\n"));
   }, [goals]);
+  useEffect(() => {
+    setDiaryQText((diaryQuestions || []).join("\n"));
+  }, [diaryQuestions]);
 
   const applyInviteCode = (code) => {
     if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return false; }
@@ -417,6 +423,14 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     setToast("저장 완료 ✅");
   };
 
+  const saveDiaryQuestions = () => {
+    const next = clampList(parseLines(diaryQText), MAX_DIARY_QUESTIONS);
+    if (!next.length) { setToast("질문을 1개 이상 입력해주세요"); return; }
+    setDiaryQuestions(next);
+    setDiaryQText(next.join("\n"));
+    setToast("저장 완료 ✅");
+  };
+
   const notificationSummary = permission === 'granted'
     ? (notifEnabled ? '권한 허용 · 켜짐' : '권한 허용 · 꺼짐')
     : permission === 'denied'
@@ -551,6 +565,33 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           💡 이달 목표는 My 탭에서 직접 추가/편집할 수 있어요
         </div>
         <button style={S.btn} onClick={save}>저장</button>
+      </div>
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
+  // ── 서브페이지: 음성 일기 질문 ──────────────────────────────
+  if (subPage === 'voiceDiaryQuestions') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="음성 일기 질문" onBack={() => setSubPage(null)} />
+
+      <div style={S.sectionTitle}>질문 편집 (최대 {MAX_DIARY_QUESTIONS}개)</div>
+      <div style={S.card}>
+        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+          🎙️ 음성 일기 작성 시 순서대로 물어볼 질문이에요
+        </div>
+        <textarea
+          rows={8}
+          style={{ ...S.input, resize: "none", lineHeight: 1.6 }}
+          value={diaryQText}
+          onChange={(e) => setDiaryQText(e.target.value)}
+          placeholder="한 줄에 하나씩 입력"
+        />
+        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
+          💡 순서대로 질문이 나오고, 답변을 모아 AI가 일기 한 편으로 정리해드려요
+        </div>
+        <button style={S.btn} onClick={saveDiaryQuestions}>저장</button>
       </div>
       <div style={{ height: 12 }} />
     </div>
@@ -1281,6 +1322,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const SETTINGS_MENU = [
     { category: '핵심 설정', items: [
       { icon: '👤', title: '프로필 & 목표', sub: '이름 · 생년월일 · 연간 목표', action: () => setSubPage('profile') },
+      { icon: '🎙️', title: '음성 일기 질문', sub: `질문 편집 · 최대 ${MAX_DIARY_QUESTIONS}개`, action: () => setSubPage('voiceDiaryQuestions') },
       ...(onOpenLifeCoach ? [{ icon: '🌱', title: '인생 플랜 만들기', sub: 'AI가 질문으로 목표·습관·할 일을 설계', action: () => onOpenLifeCoach() }] : []),
       ...(onOpenStats ? [{ icon: '📊', title: '통계', sub: '달성률 · 습관 · 점수 분석', action: () => onOpenStats() }] : []),
       { icon: '🔔', title: '알림 설정', sub: '권한 · 소리 · 진동 · 시간', action: () => setSubPage('notifications') },

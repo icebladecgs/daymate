@@ -10,7 +10,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
-  onOpenInvest, onOpenKnowledge,
+  onOpenInvest, onOpenKnowledge, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
@@ -472,6 +472,18 @@ export default function Today({
               </div>
             ))}
           </div>
+        )}
+
+        {onOpenVoiceDiary && (
+          <button
+            onClick={onOpenVoiceDiary}
+            style={{
+              width: '100%', marginBottom: 12, padding: '10px 14px', borderRadius: 12,
+              border: '1.5px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)',
+              color: '#818cf8', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >🎙️ 음성으로 일기 쓰기</button>
         )}
 
         <textarea

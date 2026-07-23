@@ -10,6 +10,7 @@ import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
+import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
@@ -31,6 +32,7 @@ const Chat = lazy(() => import("./screens/Chat.jsx"));
 const Community = lazy(() => import("./screens/Community.jsx"));
 const InvestmentHub = lazy(() => import("./screens/InvestmentHub.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
+const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 
@@ -330,6 +332,7 @@ export default function App() {
     store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
+  const [diaryQuestions, setDiaryQuestions] = useState(() => store.get("dm_diary_questions", DEFAULT_DIARY_QUESTIONS));
   const [scores, setScores] = useState(() => store.get("dm_scores", {}));
   const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
   const [event, setEvent] = useState(() => store.get("dm_event", { name: "", startDate: "", endDate: "", active: false }));
@@ -973,6 +976,7 @@ export default function App() {
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
+            if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
@@ -1056,6 +1060,10 @@ export default function App() {
     store.set("dm_habits", habits);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { habits }).catch(() => {});
   }, [habits, authUser]);
+  useEffect(() => {
+    store.set("dm_diary_questions", diaryQuestions);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { diaryQuestions }).catch(() => {});
+  }, [diaryQuestions, authUser]);
   useEffect(() => {
     store.set("dm_recurring", recurringTasks);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { recurringTasks }).catch(() => {});
@@ -1672,12 +1680,33 @@ export default function App() {
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
           onOpenKnowledge={() => changeScreen("knowledge")}
+          onOpenVoiceDiary={() => changeScreen("voice-diary")}
           habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
           someday={someday} setSomeday={setSomeday}
           onSetTodayTasks={onSetTodayTasks}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onToggleTask={toggleTaskForDate}
           autoOpenLongMemo={autoOpenLongMemo} />
+      );
+    }
+    if (screen === "voice-diary") {
+      return (
+        <VoiceDiary
+          user={user}
+          questions={diaryQuestions}
+          toast={toast} setToast={setToast}
+          onBack={() => changeScreen("today")}
+          onComplete={(composedText) => {
+            setTodayData(prev => ({
+              ...prev,
+              journal: {
+                ...prev.journal,
+                body: prev.journal?.body?.trim() ? `${prev.journal.body}\n\n${composedText}` : composedText,
+              },
+            }));
+            changeScreen("today");
+          }}
+        />
       );
     }
     if (screen === "invest") {
@@ -1773,6 +1802,7 @@ export default function App() {
           authUser={authUser} syncStatus={syncStatus}
           onGoogleSignIn={googleSignIn} onGoogleSignOut={googleSignOut}
           habits={habits} setHabits={setHabits}
+          diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           setShowInstallBanner={setShowInstallBanner}
@@ -1808,6 +1838,7 @@ export default function App() {
           authUser={authUser} syncStatus={syncStatus}
           onGoogleSignIn={googleSignIn} onGoogleSignOut={googleSignOut}
           habits={habits} setHabits={setHabits}
+          diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           setShowInstallBanner={setShowInstallBanner}
