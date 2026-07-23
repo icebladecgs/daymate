@@ -14,18 +14,18 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const recognitionRef = useRef(null);
+  const intentionalStopRef = useRef(false);
 
   const qIdx = step - 1;
 
   const stopListening = () => {
+    intentionalStopRef.current = true;
     recognitionRef.current?.stop();
     setListening(false);
   };
 
-  const toggleListening = () => {
+  const startRecognition = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setToast?.('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
-    if (listening) { stopListening(); return; }
     const r = new SR();
     r.lang = 'ko-KR';
     r.interimResults = false;
@@ -38,10 +38,31 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
       }
       if (text) setCurrent(prev => (prev ? `${prev} ${text.trim()}` : text.trim()));
     };
-    r.onerror = () => setListening(false);
-    r.onend = () => setListening(false);
+    r.onerror = (e) => {
+      // 무음(no-speech)으로 인한 자동 종료는 onend에서 재시작 처리하므로 여기서는 무시
+      if (e.error === 'no-speech') return;
+      intentionalStopRef.current = true;
+      setListening(false);
+    };
+    r.onend = () => {
+      // 사용자가 직접 멈춘 게 아니라면 브라우저가 짧은 침묵에도 인식을 끊어버리므로
+      // 자동으로 재시작해서 사용자 입장에선 끊김 없이 이어지는 것처럼 보이게 한다.
+      if (!intentionalStopRef.current) {
+        startRecognition();
+      } else {
+        setListening(false);
+      }
+    };
     r.start();
     setListening(true);
+  };
+
+  const toggleListening = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setToast?.('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
+    if (listening) { stopListening(); return; }
+    intentionalStopRef.current = false;
+    startRecognition();
   };
 
   const goNext = () => {
