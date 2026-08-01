@@ -44,7 +44,7 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
 
       {photos.map((p, idx) => (
         <div key={p.path || idx} style={{ position: 'relative' }}>
