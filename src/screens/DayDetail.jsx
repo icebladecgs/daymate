@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { playSuccessSound } from "../utils/sound.js";
 import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "../api/gcal.js";
+import { deletePhoto } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
@@ -375,10 +376,14 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             ...prev,
             memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
           }))}
-          onDelete={(id) => setData(prev => ({
-            ...prev,
-            memos: (prev.memos || []).filter(m => m.id !== id),
-          }))}
+          onDelete={(id) => {
+            const target = (data.memos || []).find(m => m.id === id);
+            (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+            setData(prev => ({
+              ...prev,
+              memos: (prev.memos || []).filter(m => m.id !== id),
+            }));
+          }}
           placeholder="메모를 남겨보세요"
         />
       </div>

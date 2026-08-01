@@ -1108,9 +1108,9 @@ export default function App() {
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
   }));
-  const updateFabMemoPhoto = (id, photo) => setTodayData(prev => ({
+  const updateFabMemoPhotos = (id, photos) => setTodayData(prev => ({
     ...prev,
-    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
 
   const setTodayData = (updater) => {
@@ -1988,7 +1988,7 @@ export default function App() {
             initialText=""
             onCreate={(text) => addFabMemo(text, getMemoTimeStr())}
             onUpdate={updateFabMemo}
-            onUpdatePhoto={updateFabMemoPhoto}
+            onUpdatePhotos={updateFabMemoPhotos}
             onClose={() => setShowFabMemo(false)}
             onSearch={() => setShowFabMemoSearch(true)}
             onOpenKnowledge={() => { setShowFabMemo(false); changeScreen("knowledge"); }}

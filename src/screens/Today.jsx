@@ -67,10 +67,10 @@ export default function Today({
     }
   }, [data.memo]); // eslint-disable-line
 
-  const addMemo = (text, time, photo = null, id = genMemoId()) => {
+  const addMemo = (text, time, id = genMemoId()) => {
     setData(prev => ({
       ...prev,
-      memos: [...(prev.memos || []), { id, text, createdAt: time, photoUrl: photo?.url || null, photoPath: photo?.path || null }],
+      memos: [...(prev.memos || []), { id, text, createdAt: time }],
     }));
     return id;
   };
@@ -78,13 +78,13 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
   }));
-  const updateMemoPhoto = (id, photo) => setData(prev => ({
+  const updateMemoPhotos = (id, photos) => setData(prev => ({
     ...prev,
-    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
   const deleteMemo = (id) => {
     const target = (data.memos || []).find(m => m.id === id);
-    if (target?.photoPath) deletePhoto(target.photoPath);
+    (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
     setData(prev => ({
       ...prev,
       memos: (prev.memos || []).filter(m => m.id !== id),
@@ -224,11 +224,10 @@ export default function Today({
     <LongMemoEditor
       initialId={longMemo.id}
       initialText={longMemo.text}
-      initialPhotoUrl={longMemo.photoUrl}
-      initialPhotoPath={longMemo.photoPath}
+      initialPhotos={longMemo.photos || []}
       onCreate={(text) => addMemo(text, getMemoTimeStr())}
       onUpdate={updateMemo}
-      onUpdatePhoto={updateMemoPhoto}
+      onUpdatePhotos={updateMemoPhotos}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); setShowSearch(true); }}
       onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
@@ -296,12 +295,8 @@ export default function Today({
           onAdd={addMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
-          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photoUrl: item.photoUrl, photoPath: item.photoPath })}
+          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [] })}
           placeholder="메모 입력 후 + 버튼"
-          uid={uid}
-          pathPrefix={uid ? `users/${uid}/memos` : undefined}
-          onUpdatePhoto={updateMemoPhoto}
-          onPhotoError={setToast}
           extraAction={
             <button
               onClick={startRecording}

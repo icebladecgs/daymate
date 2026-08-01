@@ -65,7 +65,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           memoItems.forEach(m => {
             const text = (m.text || '').trim();
             if (text && (!q || text.toLowerCase().includes(q))) {
-              matches.push({ type: "memo", id: m.id, text, createdAt: m.createdAt || '', photoUrl: m.photoUrl, photoPath: m.photoPath });
+              matches.push({ type: "memo", id: m.id, text, createdAt: m.createdAt || '', photos: m.photos || [] });
             }
           });
         }
@@ -88,16 +88,15 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
       <LongMemoEditor
         initialId={focusedResult.memoId}
         initialText={focusedResult.text}
-        initialPhotoUrl={focusedResult.photoUrl}
-        initialPhotoPath={focusedResult.photoPath}
+        initialPhotos={focusedResult.photos || []}
         subtitle={`${formatKoreanDate(focusedResult.ds)}${focusedResult.createdAt ? ` · ${focusedResult.createdAt}` : ''}`}
         onUpdate={(id, text) => onUpdateDayData?.(focusedResult.ds, prev => ({
           ...prev,
           memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
         }))}
-        onUpdatePhoto={(id, photo) => onUpdateDayData?.(focusedResult.ds, prev => ({
+        onUpdatePhotos={(id, photos) => onUpdateDayData?.(focusedResult.ds, prev => ({
           ...prev,
-          memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+          memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
         }))}
         onClose={() => setFocusedResult(null)}
         uid={uid}
@@ -190,7 +189,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
                       onClose?.();
                       return;
                     }
-                    if (m.type === 'memo') setFocusedResult({ type: 'memo', ds, memoId: m.id, text: m.text, createdAt: m.createdAt, photoUrl: m.photoUrl, photoPath: m.photoPath });
+                    if (m.type === 'memo') setFocusedResult({ type: 'memo', ds, memoId: m.id, text: m.text, createdAt: m.createdAt, photos: m.photos });
                     else if (m.type === 'journal') setFocusedResult({ type: 'journal', ds });
                   }}
                   style={{
