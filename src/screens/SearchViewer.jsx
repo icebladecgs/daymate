@@ -212,6 +212,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
                     {meta.label}
                   </span>
                   <span style={{ fontSize: 13, color: m.done ? "var(--dm-muted)" : "var(--dm-text)", lineHeight: 1.6, textDecoration: m.done ? "line-through" : "none", flex: 1, wordBreak: "break-word" }}>
+                    {m.photos?.length > 0 && <span style={{ marginRight: 4 }}>📷</span>}
                     {highlight(snip, query)}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--dm-muted)', flexShrink: 0, marginTop: 1 }}>
