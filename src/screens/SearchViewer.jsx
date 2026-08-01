@@ -35,7 +35,7 @@ const TYPE_META = {
   journal: { label: "일기",  color: "#A78BFA", bg: "rgba(167,139,250,.12)" },
 };
 
-export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null }) {
+export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
@@ -65,7 +65,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           memoItems.forEach(m => {
             const text = (m.text || '').trim();
             if (text && (!q || text.toLowerCase().includes(q))) {
-              matches.push({ type: "memo", id: m.id, text, createdAt: m.createdAt || '' });
+              matches.push({ type: "memo", id: m.id, text, createdAt: m.createdAt || '', photoUrl: m.photoUrl, photoPath: m.photoPath });
             }
           });
         }
@@ -88,12 +88,21 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
       <LongMemoEditor
         initialId={focusedResult.memoId}
         initialText={focusedResult.text}
+        initialPhotoUrl={focusedResult.photoUrl}
+        initialPhotoPath={focusedResult.photoPath}
         subtitle={`${formatKoreanDate(focusedResult.ds)}${focusedResult.createdAt ? ` · ${focusedResult.createdAt}` : ''}`}
         onUpdate={(id, text) => onUpdateDayData?.(focusedResult.ds, prev => ({
           ...prev,
           memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
         }))}
+        onUpdatePhoto={(id, photo) => onUpdateDayData?.(focusedResult.ds, prev => ({
+          ...prev,
+          memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+        }))}
         onClose={() => setFocusedResult(null)}
+        uid={uid}
+        pathPrefix={uid ? `users/${uid}/memos` : undefined}
+        onPhotoError={setToast}
       />
     );
   }
@@ -181,7 +190,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
                       onClose?.();
                       return;
                     }
-                    if (m.type === 'memo') setFocusedResult({ type: 'memo', ds, memoId: m.id, text: m.text, createdAt: m.createdAt });
+                    if (m.type === 'memo') setFocusedResult({ type: 'memo', ds, memoId: m.id, text: m.text, createdAt: m.createdAt, photoUrl: m.photoUrl, photoPath: m.photoPath });
                     else if (m.type === 'journal') setFocusedResult({ type: 'journal', ds });
                   }}
                   style={{

@@ -1108,6 +1108,10 @@ export default function App() {
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
   }));
+  const updateFabMemoPhoto = (id, photo) => setTodayData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+  }));
 
   const setTodayData = (updater) => {
     setPlans((prev) => {
@@ -1975,9 +1979,13 @@ export default function App() {
             initialText=""
             onCreate={(text) => addFabMemo(text, getMemoTimeStr())}
             onUpdate={updateFabMemo}
+            onUpdatePhoto={updateFabMemoPhoto}
             onClose={() => setShowFabMemo(false)}
             onSearch={() => setShowFabMemoSearch(true)}
             onOpenKnowledge={() => { setShowFabMemo(false); changeScreen("knowledge"); }}
+            uid={authUser?.uid}
+            pathPrefix={authUser?.uid ? `users/${authUser.uid}/memos` : undefined}
+            onPhotoError={setToast}
           />
         )}
 
@@ -1987,6 +1995,8 @@ export default function App() {
             onClose={() => setShowFabMemoSearch(false)}
             onOpenDate={(ds) => { setShowFabMemoSearch(false); setShowFabMemo(false); openDetail(ds); }}
             onUpdateDayData={setDayData}
+            uid={authUser?.uid}
+            setToast={setToast}
           />
         )}
       </div>
