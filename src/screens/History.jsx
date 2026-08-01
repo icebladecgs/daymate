@@ -7,6 +7,7 @@ import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
+import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -805,13 +806,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       {editingTaskId !== t.id && (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                           {editingTimeId === t.id ? (
-                            <input
-                              type="time"
+                            <TimeSelect
                               autoFocus
-                              value={t.time || ''}
-                              onChange={e => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: e.target.value || undefined } : tk) }))}
-                              onBlur={() => setEditingTimeId(null)}
-                              style={{ fontSize: 13, padding: '3px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', width: 96, fontFamily: 'inherit' }}
+                              value={t.time}
+                              onChange={v => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: v || undefined } : tk) }))}
+                              onClose={() => setEditingTimeId(null)}
                             />
                           ) : (
                             <button onClick={() => setEditingTimeId(t.id)}

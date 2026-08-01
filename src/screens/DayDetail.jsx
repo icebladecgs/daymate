@@ -5,6 +5,7 @@ import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
+import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay }) {
   const isToday = dateStr === toDateStr();
@@ -263,13 +264,11 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 {t.title?.trim() && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: activeTaskId === t.id ? 'auto' : 0 }}>
                     {editingTimeId === t.id ? (
-                      <input
-                        type="time"
+                      <TimeSelect
                         autoFocus
-                        value={t.time || ''}
-                        onChange={e => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: e.target.value || undefined } : x) }))}
-                        onBlur={() => setEditingTimeId(null)}
-                        style={{ fontSize: 13, padding: '3px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', width: 96, fontFamily: 'inherit' }}
+                        value={t.time}
+                        onChange={v => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: v || undefined } : x) }))}
+                        onClose={() => setEditingTimeId(null)}
                       />
                     ) : (
                       <button

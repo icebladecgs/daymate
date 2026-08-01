@@ -9,6 +9,7 @@ import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
 import { deletePhoto } from "../firebase.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
+import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -335,13 +336,11 @@ export default function Today({
             {!task.done && (
               <>
                 {editingTimeId === task.id ? (
-                  <input
-                    type="time"
+                  <TimeSelect
                     autoFocus
-                    value={task.time || ''}
-                    onChange={e => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: e.target.value || undefined } : t))}
-                    onBlur={() => setEditingTimeId(null)}
-                    style={{ fontSize: 13, padding: '4px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', flexShrink: 0, width: 96, fontFamily: 'inherit' }}
+                    value={task.time}
+                    onChange={v => setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, time: v || undefined } : t))}
+                    onClose={() => setEditingTimeId(null)}
                   />
                 ) : (
                   <button
