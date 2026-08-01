@@ -30,6 +30,7 @@ export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onCh
 
   const handleRemove = async (e) => {
     e.stopPropagation();
+    if (!window.confirm('사진을 삭제할까요?')) return;
     if (photoPath) deletePhoto(photoPath);
     onChange(null);
   };
