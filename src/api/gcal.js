@@ -27,17 +27,21 @@ function buildEventTimeFields(dateStr, task) {
 }
 
 export async function gcalCreateEvent(token, dateStr, task) {
+  const body = {
+    summary: task.title,
+    ...buildEventTimeFields(dateStr, task),
+    extendedProperties: { private: { daymateId: task.id } },
+  };
+  console.log('[gcal-debug] CREATE request body', body);
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      summary: task.title,
-      ...buildEventTimeFields(dateStr, task),
-      extendedProperties: { private: { daymateId: task.id } },
-    }),
+    body: JSON.stringify(body),
   });
+  const json = await res.json().catch(() => null);
+  console.log('[gcal-debug] CREATE response', res.status, json);
   if (!res.ok) throw new Error(`gcal ${res.status}`);
-  return (await res.json()).id;
+  return json.id;
 }
 
 export async function gcalDeleteEvent(token, eventId) {
@@ -49,11 +53,15 @@ export async function gcalDeleteEvent(token, eventId) {
 }
 
 export async function gcalUpdateEvent(token, eventId, dateStr, task) {
+  const body = { summary: task.title, ...buildEventTimeFields(dateStr, task) };
+  console.log('[gcal-debug] UPDATE request body', eventId, body);
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ summary: task.title, ...buildEventTimeFields(dateStr, task) }),
+    body: JSON.stringify(body),
   });
+  const json = await res.json().catch(() => null);
+  console.log('[gcal-debug] UPDATE response', res.status, json);
   if (!res.ok) throw new Error(`gcal update ${res.status}`);
 }
 

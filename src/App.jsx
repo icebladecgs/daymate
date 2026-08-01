@@ -1206,6 +1206,7 @@ export default function App() {
     nextTasks.forEach(t => {
       const prev = prevTaskMap.get(t.id);
       if (prev && prev.gcalEventId && t.title.trim() && (prev.title !== t.title || prev.time !== t.time)) {
+        console.log('[gcal-debug] UPDATE branch firing', { id: t.id, gcalEventId: prev.gcalEventId, prevTime: prev.time, nextTime: t.time });
         gcalUpdateEvent(token, prev.gcalEventId, dateStr, t).catch(e => console.error('[App] gcal update failed:', e));
       }
     });
@@ -1216,6 +1217,7 @@ export default function App() {
       if (pendingTodayGcalTaskIdsRef.current.has(t.id)) return false;
       return !prevTaskMap.get(t.id)?.gcalEventId;
     });
+    console.log('[gcal-debug] toCreate', toCreate.map(t => ({ id: t.id, title: t.title, time: t.time })));
     if (toCreate.length === 0) return;
     toCreate.forEach(t => pendingTodayGcalTaskIdsRef.current.add(t.id));
     Promise.all(toCreate.map(async task => {
@@ -1223,13 +1225,16 @@ export default function App() {
       catch { return null; }
     })).then(results => {
       const updates = results.filter(Boolean);
+      console.log('[gcal-debug] create results', updates);
       if (updates.length > 0) onGcalIdsUpdated?.(updates);
       // 생성 요청이 날아간 사이(비동기) 제목/시간이 바뀌었으면 방금 만든 이벤트를 최신 상태로 보정
       const latestTasks = plansRef.current[dateStr]?.tasks || [];
       updates.forEach(u => {
         const original = toCreate.find(t => t.id === u.id);
         const latest = latestTasks.find(t => t.id === u.id);
+        console.log('[gcal-debug] reconcile check', { id: u.id, original: original && { title: original.title, time: original.time }, latest: latest && { title: latest.title, time: latest.time } });
         if (latest && original && (latest.title !== original.title || latest.time !== original.time)) {
+          console.log('[gcal-debug] reconcile PATCH firing', { id: u.id, gcalEventId: u.gcalEventId, time: latest.time });
           gcalUpdateEvent(token, u.gcalEventId, dateStr, latest).catch(e => console.error('[App] gcal reconcile failed:', e));
         }
       });
