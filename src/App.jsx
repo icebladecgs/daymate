@@ -1224,6 +1224,15 @@ export default function App() {
     })).then(results => {
       const updates = results.filter(Boolean);
       if (updates.length > 0) onGcalIdsUpdated?.(updates);
+      // 생성 요청이 날아간 사이(비동기) 제목/시간이 바뀌었으면 방금 만든 이벤트를 최신 상태로 보정
+      const latestTasks = plansRef.current[dateStr]?.tasks || [];
+      updates.forEach(u => {
+        const original = toCreate.find(t => t.id === u.id);
+        const latest = latestTasks.find(t => t.id === u.id);
+        if (latest && original && (latest.title !== original.title || latest.time !== original.time)) {
+          gcalUpdateEvent(token, u.gcalEventId, dateStr, latest).catch(e => console.error('[App] gcal reconcile failed:', e));
+        }
+      });
     }).finally(() => {
       toCreate.forEach(t => pendingTodayGcalTaskIdsRef.current.delete(t.id));
     });
