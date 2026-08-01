@@ -55,12 +55,8 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, uid, pathPrefix, o
         <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
           {item.text}
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>
-          <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
-          {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={chipBtn('#A78BFA')}>긴메모편집</button>}
-          <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
-          {uid && (
+        {uid && (
+          <div style={{ marginBottom: 6 }}>
             <PhotoAttach
               uid={uid}
               pathPrefix={pathPrefix}
@@ -68,9 +64,15 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, uid, pathPrefix, o
               photoPath={item.photoPath}
               onChange={(photo) => onUpdatePhoto(item.id, photo)}
               onError={onPhotoError}
-              size={30}
+              size={64}
             />
-          )}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>
+          <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
+          {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={chipBtn('#A78BFA')}>긴메모편집</button>}
+          <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
           <div style={{ flex: 1 }} />
           <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
         </div>

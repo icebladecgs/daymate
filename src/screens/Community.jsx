@@ -1586,13 +1586,13 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-              {selectedBoardPost.photoUrl && (
-                <img src={selectedBoardPost.photoUrl} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 12, display: 'block' }} />
-              )}
               {selectedBoardPost.body ? (
                 <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{selectedBoardPost.body}</div>
               ) : (
                 <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
+              )}
+              {selectedBoardPost.photoUrl && (
+                <img src={selectedBoardPost.photoUrl} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
               )}
             </div>
             {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (

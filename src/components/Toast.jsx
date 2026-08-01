@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import S from "../styles.js";
 
 // msg에 "+ N XP" 패턴이 있으면 XP 부분을 강조 렌더링
@@ -37,10 +37,12 @@ function getToastStyle(msg) {
 }
 
 export default function Toast({ msg, onDone }) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
   useEffect(() => {
-    const t = setTimeout(onDone, 2400);
+    const t = setTimeout(() => onDoneRef.current(), 2400);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, [msg]);
   const extra = getToastStyle(msg);
   return (
     <div style={{ ...S.toast, ...extra }}>

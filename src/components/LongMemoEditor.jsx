@@ -51,18 +51,6 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         </div>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
-        {uid && (
-          <PhotoAttach
-            uid={uid}
-            pathPrefix={pathPrefix}
-            photoUrl={photo.url}
-            photoPath={photo.path}
-            onChange={handlePhotoChange}
-            onError={onPhotoError}
-            disabled={!hasId}
-            size={30}
-          />
-        )}
         <button
           onClick={handleClose}
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -76,8 +64,22 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         placeholder="자유롭게 작성하세요"
         style={{ flex: 1, background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
       />
-      <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
-        {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 20px', flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
+          {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
+        </div>
+        {uid && (
+          <PhotoAttach
+            uid={uid}
+            pathPrefix={pathPrefix}
+            photoUrl={photo.url}
+            photoPath={photo.path}
+            onChange={handlePhotoChange}
+            onError={onPhotoError}
+            disabled={!hasId}
+            size={34}
+          />
+        )}
       </div>
     </div>
   );
