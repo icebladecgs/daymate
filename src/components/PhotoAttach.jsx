@@ -43,7 +43,7 @@ export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onCh
 
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }}>
-      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 
       {uploading ? (
         <div style={{ ...boxStyle, background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)' }}>

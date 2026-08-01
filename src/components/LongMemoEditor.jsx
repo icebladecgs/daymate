@@ -111,7 +111,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         />
         {uid && (
           <div style={{ padding: '0 20px 20px' }}>
-            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 
             {photos.map((p, idx) => (
               <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
