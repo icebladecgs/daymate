@@ -7,7 +7,7 @@ import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEv
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
-import PhotoAttach from "../components/PhotoAttach.jsx";
+import PhotoGallery from "../components/PhotoGallery.jsx";
 import S from "../styles.js";
 
 function vibrateIfAvailable(pattern) {
@@ -212,7 +212,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [showBoardForm, setShowBoardForm] = useState(false);
   const [boardTitle, setBoardTitle] = useState('');
   const [boardBody, setBoardBody] = useState('');
-  const [boardPhoto, setBoardPhoto] = useState(null);
+  const [boardPhotos, setBoardPhotos] = useState([]);
   const [postingBoard, setPostingBoard] = useState(false);
   const [selectedBoardPost, setSelectedBoardPost] = useState(null);
   const [showAllBoard, setShowAllBoard] = useState(false);
@@ -630,13 +630,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const handlePostBoard = async () => {
     if (!boardTitle.trim()) return;
     setPostingBoard(true);
-    const photoUrl = boardPhoto?.url || null;
-    const photoPath = boardPhoto?.path || null;
-    const optimistic = { id: `tmp_${Date.now()}`, title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname, createdAt: new Date().toISOString(), photoUrl, photoPath };
+    const photos = boardPhotos;
+    const optimistic = { id: `tmp_${Date.now()}`, title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname, createdAt: new Date().toISOString(), photos };
     setBoardPosts(prev => [optimistic, ...prev]);
-    setBoardTitle(''); setBoardBody(''); setBoardPhoto(null); setShowBoardForm(false);
+    setBoardTitle(''); setBoardBody(''); setBoardPhotos([]); setShowBoardForm(false);
     try {
-      const realId = await addBoardPost(communityId, { title: optimistic.title, body: optimistic.body, uid: authUser.uid, nickname: myNickname, photoUrl, photoPath });
+      const realId = await addBoardPost(communityId, { title: optimistic.title, body: optimistic.body, uid: authUser.uid, nickname: myNickname, photos });
       setBoardPosts(prev => prev.map(p => p.id === optimistic.id ? { ...p, id: realId } : p));
       setToast('게시글 등록 완료 ✅');
     } catch {
@@ -649,7 +648,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const handleDeleteBoard = async (postId) => {
     try {
       const target = boardPosts.find(p => p.id === postId);
-      if (target?.photoPath) deletePhoto(target.photoPath);
+      const legacyPhotos = target?.photoPath ? [{ path: target.photoPath }] : [];
+      [...(target?.photos || []), ...legacyPhotos].forEach(p => p?.path && deletePhoto(p.path));
       await deleteBoardPost(communityId, postId);
       if (selectedBoardPost?.id === postId) setSelectedBoardPost(null);
       setToast('삭제됐어요');
@@ -1346,14 +1346,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             placeholder="내용 (선택)"
             rows={4} style={{ ...S.input, resize: 'none', marginBottom: 10 }} maxLength={500} />
           <div style={{ marginBottom: 10 }}>
-            <PhotoAttach
+            <PhotoGallery
               uid={authUser?.uid}
               pathPrefix={`community_photos/${communityId}`}
-              photoUrl={boardPhoto?.url}
-              photoPath={boardPhoto?.path}
-              onChange={setBoardPhoto}
+              photos={boardPhotos}
+              onChange={setBoardPhotos}
               onError={setToast}
-              size={44}
             />
           </div>
           <button onClick={handlePostBoard} disabled={postingBoard || !boardTitle.trim()}
@@ -1372,8 +1370,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             return (
               <div key={p.id} onClick={() => setSelectedBoardPost(p)}
                 style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '12px 14px', borderBottom: i < list.length - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
-                {p.photoUrl && (
-                  <img src={p.photoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--dm-border)' }} />
+                {(p.photos?.[0]?.url || p.photoUrl) && (
+                  <img src={p.photos?.[0]?.url || p.photoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--dm-border)' }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
@@ -1591,9 +1589,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               ) : (
                 <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
               )}
-              {selectedBoardPost.photoUrl && (
-                <img src={selectedBoardPost.photoUrl} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
-              )}
+              {(selectedBoardPost.photos?.length > 0 ? selectedBoardPost.photos : (selectedBoardPost.photoUrl ? [{ url: selectedBoardPost.photoUrl }] : [])).map((p, i) => (
+                <img key={p.path || i} src={p.url} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
+              ))}
             </div>
             {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (
               <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--dm-border)' }}>
