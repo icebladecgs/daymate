@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import S from "../styles.js";
+import PhotoAttach from "./PhotoAttach.jsx";
 
 function getMemoTime() {
   const now = new Date();
@@ -17,7 +18,7 @@ const chipBtn = (color) => ({
   fontFamily: 'inherit',
 });
 
-function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
+function MemoItem({ item, onSave, onDelete, onOpenLongEditor, uid, pathPrefix, onUpdatePhoto, onPhotoError }) {
   const [mode, setMode] = useState('collapsed');
   const [editText, setEditText] = useState(item.text);
 
@@ -59,6 +60,17 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
           <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
           {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={chipBtn('#A78BFA')}>긴메모편집</button>}
           <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
+          {uid && (
+            <PhotoAttach
+              uid={uid}
+              pathPrefix={pathPrefix}
+              photoUrl={item.photoUrl}
+              photoPath={item.photoPath}
+              onChange={(photo) => onUpdatePhoto(item.id, photo)}
+              onError={onPhotoError}
+              size={30}
+            />
+          )}
           <div style={{ flex: 1 }} />
           <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
         </div>
@@ -72,6 +84,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
         onClick={() => isLong ? setMode('expanded') : setMode('editing')}
         style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
       >
+        {item.photoUrl && <span style={{ marginRight: 4 }}>📷</span>}
         {item.text.replace(/\n/g, ' ')}
       </div>
       {isLong && (
@@ -90,8 +103,9 @@ export function getMemoTimeStr() {
   return getMemoTime();
 }
 
-export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor }) {
+export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, uid, pathPrefix, onUpdatePhoto, onPhotoError }) {
   const [input, setInput] = useState("");
+  const [pendingPhoto, setPendingPhoto] = useState(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
@@ -102,8 +116,9 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
   const handleAdd = () => {
     const text = input.trim();
     if (!text) return;
-    onAdd(text, getMemoTime());
+    onAdd(text, getMemoTime(), pendingPhoto);
     setInput("");
+    setPendingPhoto(null);
     inputRef.current?.focus();
   };
 
@@ -118,7 +133,8 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} />
+              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor}
+                uid={uid} pathPrefix={pathPrefix} onUpdatePhoto={onUpdatePhoto} onPhotoError={onPhotoError} />
             </div>
           </div>
         ))}
@@ -133,6 +149,17 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
           placeholder={placeholder || "메모 입력 후 + 버튼"}
           style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, resize: "none", lineHeight: 1.6 }}
         />
+        {uid && (
+          <PhotoAttach
+            uid={uid}
+            pathPrefix={pathPrefix}
+            photoUrl={pendingPhoto?.url}
+            photoPath={pendingPhoto?.path}
+            onChange={setPendingPhoto}
+            onError={onPhotoError}
+            size={36}
+          />
+        )}
         {extraAction}
         <button
           onClick={handleAdd}

@@ -28,6 +28,13 @@ import {
   addDoc,
   onSnapshot,
 } from "firebase/firestore";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -42,6 +49,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // ---------- Auth ----------
 export function googleSignIn() {
@@ -636,4 +644,18 @@ export async function disconnectTelegram(uid) {
 export async function getTgChatId(uid) {
   const snap = await getDoc(doc(db, 'tg_users', uid));
   return snap.exists() ? snap.data().chatId : null;
+}
+
+// ---------- 사진 업로드 (메모/일기/게시판 공용) ----------
+
+export async function uploadPhoto(path, blob, uid) {
+  const r = storageRef(storage, path);
+  await uploadBytes(r, blob, { contentType: 'image/jpeg', customMetadata: { uid } });
+  const url = await getDownloadURL(r);
+  return { url, path };
+}
+
+export async function deletePhoto(path) {
+  if (!path) return;
+  try { await deleteObject(storageRef(storage, path)); } catch { /* best-effort */ }
 }

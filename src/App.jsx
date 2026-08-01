@@ -1677,6 +1677,7 @@ export default function App() {
       const d = plans[todayStr] || newDay(todayStr);
       return (
         <Today dateStr={todayStr} data={d} setData={setTodayData}
+          uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
           onOpenKnowledge={() => changeScreen("knowledge")}

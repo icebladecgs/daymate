@@ -7,6 +7,8 @@ import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimel
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
+import { deletePhoto } from "../firebase.js";
+import PhotoAttach from "../components/PhotoAttach.jsx";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -17,6 +19,7 @@ export default function Today({
   getValidGcalToken, onGcalConnect,
   onToggleTask,
   autoOpenLongMemo,
+  uid,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -63,10 +66,10 @@ export default function Today({
     }
   }, [data.memo]); // eslint-disable-line
 
-  const addMemo = (text, time, id = genMemoId()) => {
+  const addMemo = (text, time, photo = null, id = genMemoId()) => {
     setData(prev => ({
       ...prev,
-      memos: [...(prev.memos || []), { id, text, createdAt: time }],
+      memos: [...(prev.memos || []), { id, text, createdAt: time, photoUrl: photo?.url || null, photoPath: photo?.path || null }],
     }));
     return id;
   };
@@ -74,9 +77,21 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
   }));
-  const deleteMemo = (id) => setData(prev => ({
+  const updateMemoPhoto = (id, photo) => setData(prev => ({
     ...prev,
-    memos: (prev.memos || []).filter(m => m.id !== id),
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, photoUrl: photo?.url || null, photoPath: photo?.path || null } : m),
+  }));
+  const deleteMemo = (id) => {
+    const target = (data.memos || []).find(m => m.id === id);
+    if (target?.photoPath) deletePhoto(target.photoPath);
+    setData(prev => ({
+      ...prev,
+      memos: (prev.memos || []).filter(m => m.id !== id),
+    }));
+  };
+  const updateJournalPhoto = (photo) => setData(prev => ({
+    ...prev,
+    journal: { ...prev.journal, photoUrl: photo?.url || null, photoPath: photo?.path || null },
   }));
 
   // 일기 단일 필드
@@ -208,11 +223,17 @@ export default function Today({
     <LongMemoEditor
       initialId={longMemo.id}
       initialText={longMemo.text}
+      initialPhotoUrl={longMemo.photoUrl}
+      initialPhotoPath={longMemo.photoPath}
       onCreate={(text) => addMemo(text, getMemoTimeStr())}
       onUpdate={updateMemo}
+      onUpdatePhoto={updateMemoPhoto}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); setShowSearch(true); }}
       onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
+      uid={uid}
+      pathPrefix={uid ? `users/${uid}/memos` : undefined}
+      onPhotoError={setToast}
     />
   );
 
@@ -274,8 +295,12 @@ export default function Today({
           onAdd={addMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
-          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text })}
+          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photoUrl: item.photoUrl, photoPath: item.photoPath })}
           placeholder="메모 입력 후 + 버튼"
+          uid={uid}
+          pathPrefix={uid ? `users/${uid}/memos` : undefined}
+          onUpdatePhoto={updateMemoPhoto}
+          onPhotoError={setToast}
           extraAction={
             <button
               onClick={startRecording}
@@ -494,8 +519,21 @@ export default function Today({
           placeholder="오늘 하루를 자유롭게 기록해보세요"
           maxLength={2000}
         />
-        <div style={{ fontSize: 11, color: journalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: journalSaved ? 400 : 700, marginTop: 8, transition: 'color 0.3s' }}>
-          {journalSaved ? '✓ 자동저장' : '저장 중...'}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: journalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: journalSaved ? 400 : 700, transition: 'color 0.3s' }}>
+            {journalSaved ? '✓ 자동저장' : '저장 중...'}
+          </div>
+          {uid && (
+            <PhotoAttach
+              uid={uid}
+              pathPrefix={`users/${uid}/journal`}
+              photoUrl={data.journal?.photoUrl}
+              photoPath={data.journal?.photoPath}
+              onChange={updateJournalPhoto}
+              onError={setToast}
+              size={34}
+            />
+          )}
         </div>
       </div>
 

@@ -3,10 +3,11 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, deletePhoto } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
+import PhotoAttach from "../components/PhotoAttach.jsx";
 import S from "../styles.js";
 
 function vibrateIfAvailable(pattern) {
@@ -211,6 +212,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [showBoardForm, setShowBoardForm] = useState(false);
   const [boardTitle, setBoardTitle] = useState('');
   const [boardBody, setBoardBody] = useState('');
+  const [boardPhoto, setBoardPhoto] = useState(null);
   const [postingBoard, setPostingBoard] = useState(false);
   const [selectedBoardPost, setSelectedBoardPost] = useState(null);
   const [showAllBoard, setShowAllBoard] = useState(false);
@@ -628,11 +630,13 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const handlePostBoard = async () => {
     if (!boardTitle.trim()) return;
     setPostingBoard(true);
-    const optimistic = { id: `tmp_${Date.now()}`, title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname, createdAt: new Date().toISOString() };
+    const photoUrl = boardPhoto?.url || null;
+    const photoPath = boardPhoto?.path || null;
+    const optimistic = { id: `tmp_${Date.now()}`, title: boardTitle.trim(), body: boardBody.trim(), uid: authUser.uid, nickname: myNickname, createdAt: new Date().toISOString(), photoUrl, photoPath };
     setBoardPosts(prev => [optimistic, ...prev]);
-    setBoardTitle(''); setBoardBody(''); setShowBoardForm(false);
+    setBoardTitle(''); setBoardBody(''); setBoardPhoto(null); setShowBoardForm(false);
     try {
-      const realId = await addBoardPost(communityId, { title: optimistic.title, body: optimistic.body, uid: authUser.uid, nickname: myNickname });
+      const realId = await addBoardPost(communityId, { title: optimistic.title, body: optimistic.body, uid: authUser.uid, nickname: myNickname, photoUrl, photoPath });
       setBoardPosts(prev => prev.map(p => p.id === optimistic.id ? { ...p, id: realId } : p));
       setToast('게시글 등록 완료 ✅');
     } catch {
@@ -644,6 +648,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleDeleteBoard = async (postId) => {
     try {
+      const target = boardPosts.find(p => p.id === postId);
+      if (target?.photoPath) deletePhoto(target.photoPath);
       await deleteBoardPost(communityId, postId);
       if (selectedBoardPost?.id === postId) setSelectedBoardPost(null);
       setToast('삭제됐어요');
@@ -1339,6 +1345,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           <textarea value={boardBody} onChange={e => setBoardBody(e.target.value)}
             placeholder="내용 (선택)"
             rows={4} style={{ ...S.input, resize: 'none', marginBottom: 10 }} maxLength={500} />
+          <div style={{ marginBottom: 10 }}>
+            <PhotoAttach
+              uid={authUser?.uid}
+              pathPrefix={`community_photos/${communityId}`}
+              photoUrl={boardPhoto?.url}
+              photoPath={boardPhoto?.path}
+              onChange={setBoardPhoto}
+              onError={setToast}
+              size={44}
+            />
+          </div>
           <button onClick={handlePostBoard} disabled={postingBoard || !boardTitle.trim()}
             style={{ ...S.btn, marginTop: 0 }}>
             {postingBoard ? '등록 중...' : '📝 글 등록'}
@@ -1355,6 +1372,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             return (
               <div key={p.id} onClick={() => setSelectedBoardPost(p)}
                 style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '12px 14px', borderBottom: i < list.length - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
+                {p.photoUrl && (
+                  <img src={p.photoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--dm-border)' }} />
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1566,6 +1586,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {selectedBoardPost.photoUrl && (
+                <img src={selectedBoardPost.photoUrl} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 12, display: 'block' }} />
+              )}
               {selectedBoardPost.body ? (
                 <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{selectedBoardPost.body}</div>
               ) : (

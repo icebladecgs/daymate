@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
+import PhotoAttach from "./PhotoAttach.jsx";
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotoUrl = null, initialPhotoPath = null, onUpdatePhoto, onPhotoError }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
+  const [photo, setPhoto] = useState({ url: initialPhotoUrl, path: initialPhotoPath });
+  const [hasId, setHasId] = useState(!!initialId);
   const textareaRef = useRef(null);
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
+
+  const handlePhotoChange = (next) => {
+    setPhoto(next || { url: null, path: null });
+    onUpdatePhoto?.(idRef.current, next);
+  };
 
   useEffect(() => {
     const t = setTimeout(() => textareaRef.current?.focus(), 150);
@@ -21,6 +29,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     else idRef.current = onCreate(trimmed);
     savedTextRef.current = trimmed;
     setSavedAt(getMemoTimeStr());
+    setHasId(true);
   };
 
   // 자동 저장 debounce (1초)
@@ -42,6 +51,18 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         </div>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
+        {uid && (
+          <PhotoAttach
+            uid={uid}
+            pathPrefix={pathPrefix}
+            photoUrl={photo.url}
+            photoPath={photo.path}
+            onChange={handlePhotoChange}
+            onError={onPhotoError}
+            disabled={!hasId}
+            size={30}
+          />
+        )}
         <button
           onClick={handleClose}
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
