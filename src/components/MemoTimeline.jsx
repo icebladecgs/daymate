@@ -159,7 +159,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
             photoPath={pendingPhoto?.path}
             onChange={setPendingPhoto}
             onError={onPhotoError}
-            size={36}
+            size={42}
           />
         )}
         {extraAction}

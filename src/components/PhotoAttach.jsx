@@ -35,7 +35,7 @@ export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onCh
   };
 
   const boxStyle = {
-    width: size, height: size, borderRadius: 8, flexShrink: 0,
+    width: size, height: size, borderRadius: 10, flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: disabled || uploading ? 'default' : 'pointer',
   };
