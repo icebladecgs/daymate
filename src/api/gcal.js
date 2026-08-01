@@ -14,16 +14,22 @@ function buildTimedRange(dateStr, time, durationMin = 30) {
   return { startStr: fmt(start), endStr: fmt(end) };
 }
 
-function buildEventTimeFields(dateStr, task) {
+function buildEventTimeFields(dateStr, task, { clearOther = false } = {}) {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (task.time) {
     const tzSuffix = getTzSuffix();
     const { startStr, endStr } = buildTimedRange(dateStr, task.time);
-    return { start: { dateTime: startStr + tzSuffix }, end: { dateTime: endStr + tzSuffix } };
+    const extra = clearOther ? { date: null } : {};
+    return {
+      start: { dateTime: startStr + tzSuffix, timeZone, ...extra },
+      end: { dateTime: endStr + tzSuffix, timeZone, ...extra },
+    };
   }
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
   const endDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  return { start: { date: dateStr }, end: { date: endDate } };
+  const extra = clearOther ? { dateTime: null } : {};
+  return { start: { date: dateStr, ...extra }, end: { date: endDate, ...extra } };
 }
 
 export async function gcalCreateEvent(token, dateStr, task) {
@@ -32,14 +38,14 @@ export async function gcalCreateEvent(token, dateStr, task) {
     ...buildEventTimeFields(dateStr, task),
     extendedProperties: { private: { daymateId: task.id } },
   };
-  console.log('[gcal-debug] CREATE request body', body);
+  console.log('[gcal-debug] CREATE request body', JSON.stringify(body));
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
-  console.log('[gcal-debug] CREATE response', res.status, json);
+  console.log('[gcal-debug] CREATE response', res.status, JSON.stringify(json));
   if (!res.ok) throw new Error(`gcal ${res.status}`);
   return json.id;
 }
@@ -53,15 +59,15 @@ export async function gcalDeleteEvent(token, eventId) {
 }
 
 export async function gcalUpdateEvent(token, eventId, dateStr, task) {
-  const body = { summary: task.title, ...buildEventTimeFields(dateStr, task) };
-  console.log('[gcal-debug] UPDATE request body', eventId, body);
+  const body = { summary: task.title, ...buildEventTimeFields(dateStr, task, { clearOther: true }) };
+  console.log('[gcal-debug] UPDATE request body', eventId, JSON.stringify(body));
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
-  console.log('[gcal-debug] UPDATE response', res.status, json);
+  console.log('[gcal-debug] UPDATE response', res.status, JSON.stringify(json));
   if (!res.ok) throw new Error(`gcal update ${res.status}`);
 }
 
