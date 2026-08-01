@@ -6,17 +6,33 @@ const getTzSuffix = () => {
   return `${sign}${pad2(Math.floor(Math.abs(offsetMin) / 60))}:${pad2(Math.abs(offsetMin) % 60)}`;
 };
 
-export async function gcalCreateEvent(token, dateStr, task) {
+// 시작시간 + 기본 소요시간(30분)으로 종료시간 계산. 자정을 넘어가면 자동으로 다음날로 넘어감.
+function buildTimedRange(dateStr, time, durationMin = 30) {
+  const start = new Date(`${dateStr}T${time}:00`);
+  const end = new Date(start.getTime() + durationMin * 60000);
+  const fmt = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`;
+  return { startStr: fmt(start), endStr: fmt(end) };
+}
+
+function buildEventTimeFields(dateStr, task) {
+  if (task.time) {
+    const tzSuffix = getTzSuffix();
+    const { startStr, endStr } = buildTimedRange(dateStr, task.time);
+    return { start: { dateTime: startStr + tzSuffix }, end: { dateTime: endStr + tzSuffix } };
+  }
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + 1);
   const endDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return { start: { date: dateStr }, end: { date: endDate } };
+}
+
+export async function gcalCreateEvent(token, dateStr, task) {
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       summary: task.title,
-      start: { date: dateStr },
-      end: { date: endDate },
+      ...buildEventTimeFields(dateStr, task),
       extendedProperties: { private: { daymateId: task.id } },
     }),
   });
@@ -32,11 +48,11 @@ export async function gcalDeleteEvent(token, eventId) {
   if (!res.ok && res.status !== 404) throw new Error(`gcal delete ${res.status}`);
 }
 
-export async function gcalUpdateEvent(token, eventId, title) {
+export async function gcalUpdateEvent(token, eventId, dateStr, task) {
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ summary: title }),
+    body: JSON.stringify({ summary: task.title, ...buildEventTimeFields(dateStr, task) }),
   });
   if (!res.ok) throw new Error(`gcal update ${res.status}`);
 }

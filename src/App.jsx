@@ -1202,11 +1202,11 @@ export default function App() {
       })
       .forEach(t => gcalDeleteEvent(token, t.gcalEventId).catch(e => console.error('[App] gcal delete failed:', e)));
 
-    // 수정: 제목이 바뀐 경우
+    // 수정: 제목 또는 시간이 바뀐 경우
     nextTasks.forEach(t => {
       const prev = prevTaskMap.get(t.id);
-      if (prev && prev.gcalEventId && t.title.trim() && prev.title !== t.title) {
-        gcalUpdateEvent(token, prev.gcalEventId, t.title).catch(e => console.error('[App] gcal update failed:', e));
+      if (prev && prev.gcalEventId && t.title.trim() && (prev.title !== t.title || prev.time !== t.time)) {
+        gcalUpdateEvent(token, prev.gcalEventId, dateStr, t).catch(e => console.error('[App] gcal update failed:', e));
       }
     });
 

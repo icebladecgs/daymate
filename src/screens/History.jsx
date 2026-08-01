@@ -17,10 +17,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [goalsOpen, setGoalsOpen] = useState(initialGoalsOpen);
   const [editingYearGoals, setEditingYearGoals] = useState(false);
   const [editingMonthGoals, setEditingMonthGoals] = useState(false);
-  const normalizedGoals = normalizeGoals(goals, getCurrentGoalMonthKey());
-  const yearGoals = getYearGoals(normalizedGoals);
+  const normalizedGoals = useMemo(() => normalizeGoals(goals, getCurrentGoalMonthKey()), [goals]);
+  const yearGoals = useMemo(() => getYearGoals(normalizedGoals), [normalizedGoals]);
   const [selectedGoalMonthKey, setSelectedGoalMonthKey] = useState(getCurrentGoalMonthKey());
-  const monthGoals = getMonthGoals(normalizedGoals, selectedGoalMonthKey);
+  const monthGoals = useMemo(() => getMonthGoals(normalizedGoals, selectedGoalMonthKey), [normalizedGoals, selectedGoalMonthKey]);
   const [expandedYearGoalId, setExpandedYearGoalId] = useState(null);
   const [yearDraft, setYearDraft] = useState(() => yearGoals.map((goal) => goal.title));
   const [monthDraft, setMonthDraft] = useState(() => [...monthGoals]);
@@ -88,6 +88,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [quickTaskInput, setQuickTaskInput] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
+  const [editingTimeId, setEditingTimeId] = useState(null);
   const [previewMemoEdit, setPreviewMemoEdit] = useState(false);
   const [previewMemoDraft, setPreviewMemoDraft] = useState('');
 
@@ -800,9 +801,26 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                           {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
                         </div>
                       )}
-                      {/* 수정/삭제 버튼 */}
+                      {/* 시간/수정/삭제 버튼 */}
                       {editingTaskId !== t.id && (
-                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                          {editingTimeId === t.id ? (
+                            <input
+                              type="time"
+                              autoFocus
+                              value={t.time || ''}
+                              onChange={e => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: e.target.value || undefined } : tk) }))}
+                              onBlur={() => setEditingTimeId(null)}
+                              style={{ fontSize: 13, padding: '3px 6px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'var(--dm-input)', color: 'var(--dm-text)', width: 96, fontFamily: 'inherit' }}
+                            />
+                          ) : (
+                            <button onClick={() => setEditingTimeId(t.id)}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>⏰</button>
+                          )}
+                          {t.time && editingTimeId !== t.id && (
+                            <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: undefined } : tk) }))}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
+                          )}
                           <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
                             style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
                           <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }))}

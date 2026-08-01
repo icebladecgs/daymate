@@ -223,7 +223,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                   const title = e.target.value.trim();
                   if (!token || !title) return;
                   if (t.gcalEventId) {
-                    gcalUpdateEvent(token, t.gcalEventId, title).catch(() => setToast('캘린더 수정 실패'));
+                    gcalUpdateEvent(token, t.gcalEventId, dateStr, { ...t, title }).catch(() => setToast('캘린더 수정 실패'));
                   } else if (!pendingGcalRef.current.has(t.id)) {
                     pendingGcalRef.current.add(t.id);
                     gcalCreateEvent(token, dateStr, { ...t, title })
