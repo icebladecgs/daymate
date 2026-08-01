@@ -85,6 +85,15 @@ export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onCh
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
           }}
         >
+          <button
+            onClick={() => setPreview(false)}
+            aria-label="닫기"
+            style={{
+              position: 'fixed', top: 16, right: 16, width: 36, height: 36, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
+              fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >✕</button>
           <img src={photoUrl} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 12 }} alt="첨부 사진 확대보기" />
         </div>
       )}
