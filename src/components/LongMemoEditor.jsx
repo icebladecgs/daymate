@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
-import PhotoGallery from "./PhotoGallery.jsx";
+import { uploadPhoto, deletePhoto } from "../firebase.js";
+import { compressImage } from "../utils/image.js";
+
+function genPhotoPath(prefix) {
+  return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+}
 
 export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
+  const [uploading, setUploading] = useState(false);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
 
@@ -21,10 +28,38 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     return idRef.current;
   };
 
-  const handlePhotosChange = (next) => {
+  const commitPhotos = (next) => {
     const id = ensureId();
     setPhotos(next);
     onUpdatePhotos?.(id, next);
+  };
+
+  const handleAddPhoto = () => {
+    if (uploading || !uid) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const blob = await compressImage(file);
+      const path = genPhotoPath(pathPrefix);
+      const result = await uploadPhoto(path, blob, uid);
+      commitPhotos([...photos, result]);
+    } catch {
+      onPhotoError?.('사진 업로드 실패 ❌');
+    }
+    setUploading(false);
+  };
+
+  const handleRemovePhoto = (idx) => {
+    if (!window.confirm('사진을 삭제할까요?')) return;
+    const target = photos[idx];
+    if (target?.path) deletePhoto(target.path);
+    commitPhotos(photos.filter((_, i) => i !== idx));
   };
 
   useEffect(() => {
@@ -75,14 +110,33 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           style={{ minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
         />
         {uid && (
-          <div style={{ padding: '0 20px 16px' }}>
-            <PhotoGallery
-              uid={uid}
-              pathPrefix={pathPrefix}
-              photos={photos}
-              onChange={handlePhotosChange}
-              onError={onPhotoError}
-            />
+          <div style={{ padding: '0 20px 20px' }}>
+            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+
+            {photos.map((p, idx) => (
+              <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
+                <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+                <button
+                  onClick={() => handleRemovePhoto(idx)}
+                  aria-label="사진 삭제"
+                  style={{
+                    position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+                    fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                  }}
+                >✕</button>
+              </div>
+            ))}
+
+            <button
+              onClick={handleAddPhoto}
+              disabled={uploading}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
+                border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+                cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
+              }}
+            >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
           </div>
         )}
       </div>
