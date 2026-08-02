@@ -133,6 +133,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [bcBusy, setBcBusy] = useState(false);
   const [bcMsg, setBcMsg] = useState('');
   const bcFileInputRef = useRef(null);
+  // navigator.share()는 사용자 클릭 직후 "동기적으로" 호출되지 않으면(중간에 await가 끼면)
+  // 일부 브라우저(특히 iOS Safari)가 user-activation 만료로 거부해 전송이 실패함 —
+  // 그래서 사진을 미리 fetch해 blob으로 캐싱해두고, 버튼 클릭 시엔 그 blob으로 즉시 share() 호출
+  const bcBlobRef = useRef(null);
+  const bcBlobUrlRef = useRef(null); // bcBlobRef가 어느 photoUrl의 캐시인지
   const bcPickPhoto = () => { if (!bcUploading && authUser?.uid) bcFileInputRef.current?.click(); };
   const bcHandleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -144,13 +149,30 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       const path = `users/${authUser.uid}/businessCard/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
       const prevPath = businessCard?.photoPath;
       const result = await uploadPhoto(path, blob, authUser.uid);
+      bcBlobRef.current = blob;
+      bcBlobUrlRef.current = result.url; // 아래 prefetch useEffect가 이미 있는 캐시를 다시 지우지 않도록 미리 표시
       setBusinessCard({ photoUrl: result.url, photoPath: result.path });
       if (prevPath) deletePhoto(prevPath);
+      setBcMsg('사진이 변경되었습니다 ✅');
     } catch {
       setBcMsg('사진 업로드 실패 ❌');
     }
     setBcUploading(false);
   };
+  // Firebase Storage 다운로드 URL은 브라우저 fetch()에 CORS가 안 걸려있을 수 있어
+  // 같은 출처(same-origin)인 api/photo-proxy를 통해 우회해서 blob을 받아옴
+  useEffect(() => {
+    if (businessCard?.photoUrl && bcBlobUrlRef.current === businessCard.photoUrl && bcBlobRef.current) return; // 업로드 직후 이미 캐싱됨
+    bcBlobRef.current = null;
+    bcBlobUrlRef.current = null;
+    if (!businessCard?.photoUrl) return;
+    let cancelled = false;
+    fetch(`/api/photo-proxy?url=${encodeURIComponent(businessCard.photoUrl)}`)
+      .then(r => r.blob())
+      .then(blob => { if (!cancelled) { bcBlobRef.current = blob; bcBlobUrlRef.current = businessCard.photoUrl; } })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [businessCard?.photoUrl]);
   const downloadBcBlob = (blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -158,15 +180,19 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   };
-  const fetchBcBlob = async () => {
+  const ensureBcBlob = async () => {
+    if (bcBlobRef.current) return bcBlobRef.current;
     if (!businessCard?.photoUrl) return null;
-    const res = await fetch(businessCard.photoUrl);
-    return await res.blob();
+    const res = await fetch(`/api/photo-proxy?url=${encodeURIComponent(businessCard.photoUrl)}`);
+    const blob = await res.blob();
+    bcBlobRef.current = blob;
+    bcBlobUrlRef.current = businessCard.photoUrl;
+    return blob;
   };
   const handleSaveBcImage = async () => {
     setBcBusy(true); setBcMsg('');
     try {
-      const blob = await fetchBcBlob();
+      const blob = await ensureBcBlob();
       if (!blob) throw new Error('no photo');
       downloadBcBlob(blob);
       setBcMsg('저장 완료 ✅');
@@ -175,22 +201,32 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     }
     setBcBusy(false);
   };
-  const handleSendBcImage = async () => {
+  const handleSendBcImage = () => {
+    // 이미 캐싱된 blob이 있으면(대부분의 경우) 클릭과 동시에 동기적으로 share() 호출
+    const cached = bcBlobRef.current;
+    if (cached) {
+      const file = new File([cached], `${(user?.name || '내') + '_명함'}.jpg`, { type: cached.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: '명함' }).catch((e) => { if (e?.name !== 'AbortError') setBcMsg('전송 실패 ❌'); });
+      } else {
+        downloadBcBlob(cached);
+        setBcMsg('이 브라우저는 공유를 지원하지 않아요. 저장된 이미지를 카톡으로 직접 보내주세요 📤');
+      }
+      return;
+    }
+    // 아직 캐싱 전이면(막 로그인 직후 등) 비동기로 최선을 다해 시도
     setBcBusy(true); setBcMsg('');
-    try {
-      const blob = await fetchBcBlob();
-      if (!blob) throw new Error('no photo');
+    ensureBcBlob().then((blob) => {
+      setBcBusy(false);
+      if (!blob) { setBcMsg('전송 실패 ❌'); return; }
       const file = new File([blob], `${(user?.name || '내') + '_명함'}.jpg`, { type: blob.type || 'image/jpeg' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '명함' });
+        navigator.share({ files: [file], title: '명함' }).catch((e) => { if (e?.name !== 'AbortError') setBcMsg('전송 실패 ❌'); });
       } else {
         downloadBcBlob(blob);
         setBcMsg('이 브라우저는 공유를 지원하지 않아요. 저장된 이미지를 카톡으로 직접 보내주세요 📤');
       }
-    } catch (e) {
-      if (e?.name !== 'AbortError') setBcMsg('전송 실패 ❌');
-    }
-    setBcBusy(false);
+    }).catch(() => { setBcBusy(false); setBcMsg('전송 실패 ❌'); });
   };
   const saveYearGoalsFn = () => {
     const final = [...yearDraft, ...(newYearInput.trim() ? [newYearInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
