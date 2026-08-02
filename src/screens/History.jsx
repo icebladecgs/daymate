@@ -582,14 +582,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
             const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
             const allItems = [...gcalItems, ...taskItems];
-            const visibleItems = allItems.slice(0, 2);
+            const visibleItems = allItems.slice(0, 3);
             const moreCount = allItems.length - visibleItems.length;
             return (
               <div
                 key={ds}
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
                 style={{
-                  minHeight: 72,
+                  minHeight: 80,
                   borderRadius: 10,
                   display: "flex",
                   flexDirection: "column",
@@ -612,13 +612,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: 8,
-                    lineHeight: 1.4,
+                    fontSize: 7,
+                    lineHeight: 1.25,
                     padding: '1px 2px',
                     borderRadius: 3,
                     background: item.color,
                     color: '#fff',
-                    marginBottom: 2,
+                    marginBottom: 1.5,
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                     textOverflow: 'ellipsis',

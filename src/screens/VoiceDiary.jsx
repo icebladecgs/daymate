@@ -176,8 +176,9 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
               border: `1.5px solid ${listening ? '#F87171' : 'var(--dm-border)'}`,
               background: listening ? 'rgba(248,113,113,.15)' : 'var(--dm-input)',
               fontSize: 18, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
             }}
-          >{listening ? '⏹' : '🎤'}</button>
+          >{listening ? '⏹' : <span style={{ display: 'inline-block', transform: 'translateX(-2px)' }}>🎤</span>}</button>
         </div>
         {listening && <div style={{ fontSize: 11, color: "#F87171", fontWeight: 900, marginTop: 6 }}>● 듣는 중...</div>}
         {error && <div style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>{error}</div>}

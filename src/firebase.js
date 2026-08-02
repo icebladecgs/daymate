@@ -355,6 +355,31 @@ export async function deleteBoardPost(communityId, postId) {
   await deleteDoc(doc(db, 'communities', communityId, 'board', postId));
 }
 
+export async function addBoardComment(communityId, postId, comment) {
+  const ref = doc(collection(db, 'communities', communityId, 'board', postId, 'comments'));
+  await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });
+  await updateDoc(doc(db, 'communities', communityId, 'board', postId), { commentCount: increment(1) });
+  return ref.id;
+}
+
+export async function deleteBoardComment(communityId, postId, commentId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'board', postId, 'comments', commentId));
+  await updateDoc(doc(db, 'communities', communityId, 'board', postId), { commentCount: increment(-1) });
+}
+
+export async function syncBoardCommentCount(communityId, postId, actualCount) {
+  await updateDoc(doc(db, 'communities', communityId, 'board', postId), { commentCount: actualCount });
+}
+
+export async function toggleBoardCommentLike(communityId, postId, commentId, uid) {
+  const ref = doc(db, 'communities', communityId, 'board', postId, 'comments', commentId);
+  const snap = await getDoc(ref);
+  const likedBy = snap.data()?.likedBy || [];
+  const isLiked = likedBy.includes(uid);
+  await updateDoc(ref, { likedBy: isLiked ? arrayRemove(uid) : arrayUnion(uid) });
+  return !isLiked;
+}
+
 export async function addCommunityNotice(communityId, notice) {
   const ref = doc(collection(db, 'communities', communityId, 'notices'));
   await setDoc(ref, { ...notice, createdAt: new Date().toISOString() });

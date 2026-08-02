@@ -300,8 +300,8 @@ export default function Today({
           extraAction={
             <button
               onClick={startRecording}
-              style={{ width: 42, height: 42, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
-            >{recording === 'memo' ? '⏹' : '🎤'}</button>
+              style={{ width: 42, height: 42, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            >{recording === 'memo' ? '⏹' : <span style={{ display: 'inline-block', transform: 'translateX(-2px)' }}>🎤</span>}</button>
           }
         />
       </div>

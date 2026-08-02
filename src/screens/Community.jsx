@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, deletePhoto } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -222,6 +222,13 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+
+  // 게시글 댓글
+  const [boardComments, setBoardComments] = useState([]);
+  const [boardCommentText, setBoardCommentText] = useState('');
+  const [postingBoardComment, setPostingBoardComment] = useState(false);
+  const boardCommentInitRef = useRef(false);
+
   const myNickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameEdit, setNicknameEdit] = useState('');
@@ -450,6 +457,48 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     } catch { setToast('삭제 실패 ❌'); }
   };
 
+  // 게시글 댓글 실시간 구독
+  useEffect(() => {
+    if (!selectedBoardPost) { setBoardComments([]); return; }
+    boardCommentInitRef.current = false;
+    const q = query(
+      collection(db, 'communities', communityId, 'board', selectedBoardPost.id, 'comments'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsub = onSnapshot(q, snap => {
+      if (boardCommentInitRef.current) {
+        const hasNew = snap.docChanges().some(ch => ch.type === 'added' && ch.doc.data().uid !== authUser?.uid);
+        if (hasNew && soundOnRef.current) playNotifySound('comment');
+      } else {
+        boardCommentInitRef.current = true;
+        const actual = snap.docs.length;
+        if (selectedBoardPost.commentCount !== actual) {
+          syncBoardCommentCount(communityId, selectedBoardPost.id, actual).catch(() => {});
+        }
+      }
+      setBoardComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return () => unsub();
+  }, [selectedBoardPost, communityId]); // eslint-disable-line
+
+  const handlePostBoardComment = async () => {
+    if (!boardCommentText.trim() || !selectedBoardPost) return;
+    setPostingBoardComment(true);
+    try {
+      await addBoardComment(communityId, selectedBoardPost.id, {
+        text: boardCommentText.trim(), uid: authUser.uid, nickname: myNickname,
+      });
+      setBoardCommentText('');
+    } catch { setToast('댓글 등록 실패 ❌'); }
+    setPostingBoardComment(false);
+  };
+
+  const handleDeleteBoardComment = async (commentId) => {
+    try {
+      await deleteBoardComment(communityId, selectedBoardPost.id, commentId);
+    } catch { setToast('삭제 실패 ❌'); }
+  };
+
   const handleUpdateNickname = async () => {
     const trimmed = nicknameEdit.trim();
     if (!trimmed || trimmed === myNickname) { setEditingNickname(false); return; }
@@ -646,6 +695,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   };
 
   const handleDeleteBoard = async (postId) => {
+    if (!window.confirm('게시글을 삭제할까요?')) return;
     try {
       const target = boardPosts.find(p => p.id === postId);
       const legacyPhotos = target?.photoPath ? [{ path: target.photoPath }] : [];
@@ -1029,6 +1079,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   // 달력 뷰에서 선택된 날짜의 일정
   const calSelectedEvents = selectedCalDate ? (grouped[selectedCalDate] || []) : [];
   const hasCommentText = !!commentText.trim();
+  const hasBoardCommentText = !!boardCommentText.trim();
 
   return (
     <div style={S.content}>
@@ -1378,6 +1429,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
                     <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
+                    {p.commentCount > 0 && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
                   </div>
                 </div>
                 {(isMine || isAdmin) && (
@@ -1564,7 +1616,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             background: 'var(--dm-bg)', borderRadius: '22px 22px 0 0',
-            width: '100%', maxWidth: 480, maxHeight: 'calc(80vh - 84px)',
+            width: '100%', maxWidth: 480, maxHeight: 'calc(90vh - 84px)',
             marginBottom: 84,
             display: 'flex', flexDirection: 'column',
             boxShadow: '0 -12px 48px rgba(0,0,0,0.5)',
@@ -1580,8 +1632,16 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   </span>
                 </div>
               </div>
-              <button onClick={() => setSelectedBoardPost(null)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (
+                  <button onClick={() => handleDeleteBoard(selectedBoardPost.id)}
+                    style={{ background: 'transparent', border: 'none', color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    삭제
+                  </button>
+                )}
+                <button onClick={() => setSelectedBoardPost(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+              </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {selectedBoardPost.body ? (
@@ -1592,15 +1652,78 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               {(selectedBoardPost.photos?.length > 0 ? selectedBoardPost.photos : (selectedBoardPost.photoUrl ? [{ url: selectedBoardPost.photoUrl }] : [])).map((p, i) => (
                 <img key={p.path || i} src={p.url} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
               ))}
-            </div>
-            {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (
-              <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--dm-border)' }}>
-                <button onClick={() => handleDeleteBoard(selectedBoardPost.id)}
-                  style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.4)', borderRadius: 10, padding: '8px 16px', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  삭제
-                </button>
+
+              {/* 댓글 목록 */}
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--dm-border)' }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12 }}>💬 댓글 {boardComments.length > 0 ? boardComments.length : ''}</div>
+                {boardComments.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '12px 0' }}>
+                    아직 댓글이 없어요. 첫 댓글을 남겨보세요 💬
+                  </div>
+                ) : (
+                  boardComments.map((c) => {
+                    const isMine = c.uid === authUser?.uid;
+                    const likedBy = c.likedBy || [];
+                    const isLiked = likedBy.includes(authUser?.uid);
+                    return (
+                      <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
+                          {(c.nickname || '?')[0]}
+                        </div>
+                        <div style={{ flex: 1, background: isMine ? 'rgba(75,111,255,.07)' : 'var(--dm-card)', border: `1px solid ${isMine ? 'rgba(108,142,255,.25)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                                {formatRelativeTime(c.createdAt)}
+                              </span>
+                              {(isMine || isAdmin) && (
+                                <button onClick={() => handleDeleteBoardComment(c.id)}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>{c.text}</div>
+                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
+                            <button
+                              onClick={() => toggleBoardCommentLike(communityId, selectedBoardPost.id, c.id, authUser?.uid).catch(() => {})}
+                              style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: 11, fontWeight: isLiked ? 700 : 400 }}
+                            >
+                              {isLiked ? '❤️' : '🤍'} {likedBy.length > 0 && likedBy.length}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            )}
+            </div>
+
+            {/* 댓글 입력 */}
+            <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--dm-border)', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, position: 'sticky', bottom: 0, background: 'var(--dm-bg)', zIndex: 10 }}>
+              <input
+                value={boardCommentText}
+                onChange={e => setBoardCommentText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePostBoardComment()}
+                placeholder={postingBoardComment ? '등록 중...' : '댓글을 입력하세요'}
+                maxLength={200}
+                disabled={postingBoardComment}
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 14, boxSizing: 'border-box' }}
+              />
+              <button
+                onClick={handlePostBoardComment}
+                disabled={postingBoardComment || !hasBoardCommentText}
+                style={{
+                  background: hasBoardCommentText ? '#4B6FFF' : 'var(--dm-input)',
+                  border: 'none', borderRadius: 12, padding: '0 16px', height: 40,
+                  color: hasBoardCommentText ? '#fff' : 'var(--dm-muted)',
+                  fontSize: 13, fontWeight: 700, cursor: hasBoardCommentText ? 'pointer' : 'default',
+                  flexShrink: 0, transition: 'background 0.15s',
+                }}>
+                등록
+              </button>
+            </div>
           </div>
         </div>
       )}
