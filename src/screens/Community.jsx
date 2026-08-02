@@ -489,7 +489,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         text: boardCommentText.trim(), uid: authUser.uid, nickname: myNickname,
       });
       setBoardCommentText('');
-    } catch { setToast('댓글 등록 실패 ❌'); }
+    } catch (e) {
+      console.error('[board comment] post failed:', e);
+      setToast(`댓글 등록 실패 ❌ ${e?.code || e?.message || ''}`);
+    }
     setPostingBoardComment(false);
   };
 
