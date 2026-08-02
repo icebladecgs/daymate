@@ -315,7 +315,13 @@ export default function App() {
 
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
-  const [businessCard, setBusinessCard] = useState(() => store.get('dm_business_card', null));
+  const [businessCards, setBusinessCards] = useState(() => {
+    const arr = store.get('dm_business_cards', null);
+    if (Array.isArray(arr)) return arr;
+    const legacy = store.get('dm_business_card', null);
+    if (legacy?.photoUrl) return [{ id: 'legacy', photoUrl: legacy.photoUrl, photoPath: legacy.photoPath, label: '', addedAt: new Date().toISOString(), isDefault: true }];
+    return [];
+  });
   const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
   const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); if (!Array.isArray(v)) return []; return v.map(g => typeof g === 'string' ? g : (g?.title || '')).filter(Boolean); });
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
@@ -981,7 +987,11 @@ export default function App() {
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
-            if (s.businessCard) { setBusinessCard(s.businessCard); store.set("dm_business_card", s.businessCard); }
+            if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
+            else if (s.businessCard?.photoUrl) {
+              const migrated = [{ id: 'legacy', photoUrl: s.businessCard.photoUrl, photoPath: s.businessCard.photoPath, label: '', addedAt: new Date().toISOString(), isDefault: true }];
+              setBusinessCards(migrated); store.set("dm_business_cards", migrated);
+            }
             if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             const ym = todayStr.slice(0, 7);
@@ -1052,9 +1062,9 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, goals).catch(() => {});
   }, [goals, authUser]);
   useEffect(() => {
-    store.set("dm_business_card", businessCard);
-    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { businessCard }).catch(() => {});
-  }, [businessCard, authUser]);
+    store.set("dm_business_cards", businessCards);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { businessCards }).catch(() => {});
+  }, [businessCards, authUser]);
   useEffect(() => {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoals }).catch(() => {});
   }, [lifeGoals, authUser]);
@@ -1559,7 +1569,7 @@ export default function App() {
       return (
         <Home
           user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
-          businessCard={businessCard} setBusinessCard={setBusinessCard} authUser={authUser}
+          businessCards={businessCards} setBusinessCards={setBusinessCards} authUser={authUser}
           todayData={todayData} plans={plans}
           onToggleTask={(id) => {
             setTodayData(prev => {

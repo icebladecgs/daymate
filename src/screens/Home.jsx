@@ -80,7 +80,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCard, setBusinessCard, authUser }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -128,11 +128,15 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     setNewLifeInput('');
   };
 
-  // 명함 관리 (My탭) — 명함 사진 한 장을 그대로 저장/전송
+  // 명함 관리 (My탭) — 기본 명함은 그대로 저장/전송, 나머지는 이력으로 보관
   const [bcUploading, setBcUploading] = useState(false);
   const [bcBusy, setBcBusy] = useState(false);
   const [bcMsg, setBcMsg] = useState('');
+  const [bcViewerId, setBcViewerId] = useState(null);
+  const [bcLabelDraft, setBcLabelDraft] = useState('');
   const bcFileInputRef = useRef(null);
+  const bcDefault = businessCards.find(c => c.isDefault) || businessCards[businessCards.length - 1] || null;
+  const bcViewerCard = businessCards.find(c => c.id === bcViewerId) || null;
   // navigator.share()는 사용자 클릭 직후 "동기적으로" 호출되지 않으면(중간에 await가 끼면)
   // 일부 브라우저(특히 iOS Safari)가 user-activation 만료로 거부해 전송이 실패함 —
   // 그래서 사진을 미리 fetch해 blob으로 캐싱해두고, 버튼 클릭 시엔 그 blob으로 즉시 share() 호출
@@ -147,32 +151,51 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     try {
       const blob = await compressImage(file);
       const path = `users/${authUser.uid}/businessCard/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-      const prevPath = businessCard?.photoPath;
       const result = await uploadPhoto(path, blob, authUser.uid);
-      bcBlobRef.current = blob;
-      bcBlobUrlRef.current = result.url; // 아래 prefetch useEffect가 이미 있는 캐시를 다시 지우지 않도록 미리 표시
-      setBusinessCard({ photoUrl: result.url, photoPath: result.path });
-      if (prevPath) deletePhoto(prevPath);
-      setBcMsg('사진이 변경되었습니다 ✅');
+      const entry = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, photoUrl: result.url, photoPath: result.path, label: '', addedAt: new Date().toISOString(), isDefault: businessCards.length === 0 };
+      if (entry.isDefault) { bcBlobRef.current = blob; bcBlobUrlRef.current = result.url; } // 아래 prefetch useEffect가 이미 있는 캐시를 다시 지우지 않도록 미리 표시
+      setBusinessCards(prev => [...prev, entry]);
+      setBcMsg(businessCards.length === 0 ? '명함이 저장되었습니다 ✅' : '이전 명함으로 추가되었습니다 ✅');
     } catch {
       setBcMsg('사진 업로드 실패 ❌');
     }
     setBcUploading(false);
   };
+  const bcSetDefault = (id) => {
+    setBusinessCards(prev => prev.map(c => ({ ...c, isDefault: c.id === id })));
+    bcBlobRef.current = null; bcBlobUrlRef.current = null; // 기본이 바뀌었으니 캐시 무효화, prefetch useEffect가 다시 받아옴
+    setBcViewerId(null);
+  };
+  const bcDelete = (id) => {
+    const target = businessCards.find(c => c.id === id);
+    if (!target) return;
+    if (!window.confirm('이 명함을 삭제할까요?')) return;
+    if (target.photoPath) deletePhoto(target.photoPath);
+    setBusinessCards(prev => {
+      const next = prev.filter(c => c.id !== id);
+      if (target.isDefault && next.length > 0) next[next.length - 1] = { ...next[next.length - 1], isDefault: true };
+      return next;
+    });
+    setBcViewerId(null);
+  };
+  const bcSaveLabel = () => {
+    if (!bcViewerId) return;
+    setBusinessCards(prev => prev.map(c => c.id === bcViewerId ? { ...c, label: bcLabelDraft } : c));
+  };
   // Firebase Storage 다운로드 URL은 브라우저 fetch()에 CORS가 안 걸려있을 수 있어
   // 같은 출처(same-origin)인 api/photo-proxy를 통해 우회해서 blob을 받아옴
   useEffect(() => {
-    if (businessCard?.photoUrl && bcBlobUrlRef.current === businessCard.photoUrl && bcBlobRef.current) return; // 업로드 직후 이미 캐싱됨
+    if (bcDefault?.photoUrl && bcBlobUrlRef.current === bcDefault.photoUrl && bcBlobRef.current) return; // 업로드 직후 이미 캐싱됨
     bcBlobRef.current = null;
     bcBlobUrlRef.current = null;
-    if (!businessCard?.photoUrl) return;
+    if (!bcDefault?.photoUrl) return;
     let cancelled = false;
-    fetch(`/api/photo-proxy?url=${encodeURIComponent(businessCard.photoUrl)}`)
+    fetch(`/api/photo-proxy?url=${encodeURIComponent(bcDefault.photoUrl)}`)
       .then(r => r.blob())
-      .then(blob => { if (!cancelled) { bcBlobRef.current = blob; bcBlobUrlRef.current = businessCard.photoUrl; } })
+      .then(blob => { if (!cancelled) { bcBlobRef.current = blob; bcBlobUrlRef.current = bcDefault.photoUrl; } })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [businessCard?.photoUrl]);
+  }, [bcDefault?.photoUrl]);
   const downloadBcBlob = (blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -182,11 +205,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   };
   const ensureBcBlob = async () => {
     if (bcBlobRef.current) return bcBlobRef.current;
-    if (!businessCard?.photoUrl) return null;
-    const res = await fetch(`/api/photo-proxy?url=${encodeURIComponent(businessCard.photoUrl)}`);
+    if (!bcDefault?.photoUrl) return null;
+    const res = await fetch(`/api/photo-proxy?url=${encodeURIComponent(bcDefault.photoUrl)}`);
     const blob = await res.blob();
     bcBlobRef.current = blob;
-    bcBlobUrlRef.current = businessCard.photoUrl;
+    bcBlobUrlRef.current = bcDefault.photoUrl;
     return blob;
   };
   const handleSaveBcImage = async () => {
@@ -1202,9 +1225,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>💳 내 명함</div>
                 <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                   <input ref={bcFileInputRef} type="file" accept="image/*" onChange={bcHandleFile} style={{ display: 'none' }} />
-                  {businessCard?.photoUrl ? (
+                  {bcDefault?.photoUrl ? (
                     <div style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, overflow: 'hidden', background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={businessCard.photoUrl} alt="내 명함" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={bcDefault.photoUrl} alt="내 명함" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                   ) : (
                     <button onClick={bcPickPhoto} disabled={bcUploading || !authUser}
@@ -1214,10 +1237,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     </button>
                   )}
 
-                  {businessCard?.photoUrl && (
+                  {bcDefault?.photoUrl && (
                     <>
                       <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
-                        {bcUploading ? '업로드 중...' : '🔄 다른 사진으로 변경'}
+                        {bcUploading ? '업로드 중...' : '＋ 명함 추가'}
                       </button>
                       <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                         <button onClick={handleSaveBcImage} disabled={bcBusy} style={{ ...S.btnGhost, flex: 1, marginTop: 0, opacity: bcBusy ? 0.6 : 1 }}>{bcBusy ? '처리 중...' : '💾 저장하기'}</button>
@@ -1226,6 +1249,39 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     </>
                   )}
                   {bcMsg && <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 8, textAlign: 'center' }}>{bcMsg}</div>}
+
+                  {businessCards.length > 1 && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-row)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', marginBottom: 8 }}>지난 명함 {businessCards.length - 1}장</div>
+                      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                        {businessCards.slice().reverse().map(c => (
+                          <button key={c.id} onClick={() => { setBcViewerId(c.id); setBcLabelDraft(c.label || ''); }}
+                            style={{ flexShrink: 0, width: 72, height: 45, borderRadius: 8, overflow: 'hidden', border: c.isDefault ? '2px solid #6C8EFF' : '1px solid var(--dm-border)', padding: 0, cursor: 'pointer', background: 'var(--dm-input)' }}>
+                            <img src={c.photoUrl} alt={c.label || '명함'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {bcViewerCard && (
+              <div onClick={() => setBcViewerId(null)}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <button onClick={() => setBcViewerId(null)} aria-label="닫기"
+                  style={{ position: 'fixed', top: 16, right: 16, width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 360 }}>
+                  <img src={bcViewerCard.photoUrl} alt={bcViewerCard.label || '명함'} style={{ width: '100%', borderRadius: 12, marginBottom: 12 }} />
+                  <input value={bcLabelDraft} onChange={(e) => setBcLabelDraft(e.target.value)} onBlur={bcSaveLabel} placeholder="라벨 (예: 대리 시절)" maxLength={20}
+                    style={{ ...S.input, marginBottom: 10 }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {!bcViewerCard.isDefault && (
+                      <button onClick={() => bcSetDefault(bcViewerCard.id)} style={{ ...S.btn, flex: 1, marginTop: 0 }}>⭐ 기본으로 설정</button>
+                    )}
+                    <button onClick={() => bcDelete(bcViewerCard.id)} style={{ ...S.btnGhost, flex: 1, marginTop: 0, color: '#F87171', border: '1.5px solid #F87171' }}>🗑 삭제</button>
+                  </div>
                 </div>
               </div>
             )}
