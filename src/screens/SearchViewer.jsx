@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import JournalViewer from "./JournalViewer.jsx";
@@ -84,6 +84,31 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
 
   const totalCount = results.reduce((a, r) => a + r.matches.length, 0);
 
+  // 결과 카드 간 순서대로 훑어보기 (윈도우 찾기처럼 </> 로 이동)
+  const flatMatches = useMemo(() => {
+    const flat = [];
+    results.forEach(({ ds, matches }) => matches.forEach((m, mi) => flat.push({ ds, mi, m })));
+    return flat;
+  }, [results]);
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const queryTabKey = `${query}__${tab}`;
+  const [prevQueryTabKey, setPrevQueryTabKey] = useState(queryTabKey);
+  if (queryTabKey !== prevQueryTabKey) {
+    setPrevQueryTabKey(queryTabKey);
+    setActiveMatchIndex(0);
+  }
+  const activeMatchKey = flatMatches[activeMatchIndex] ? `${flatMatches[activeMatchIndex].ds}_${flatMatches[activeMatchIndex].mi}` : null;
+  const matchRefs = useRef({});
+  useEffect(() => {
+    if (activeMatchKey && matchRefs.current[activeMatchKey]) {
+      matchRefs.current[activeMatchKey].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeMatchKey]);
+  const goToMatch = (delta) => {
+    if (flatMatches.length === 0) return;
+    setActiveMatchIndex(i => (i + delta + flatMatches.length) % flatMatches.length);
+  };
+
   if (focusedResult?.type === 'memo') {
     return (
       <LongMemoEditor
@@ -120,10 +145,21 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
     <div style={S.fullScreenPanel()}>
       <div style={{ ...S.topbar, flexShrink: 0 }}>
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={S.title}>통합 검색</div>
           <div style={S.sub}>{query.trim() ? `${totalCount}개 결과` : "할일 · 메모 · 일기"}</div>
         </div>
+        {query.trim() && totalCount > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: 'var(--dm-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>
+              {activeMatchIndex + 1}/{totalCount}
+            </span>
+            <button onClick={() => goToMatch(-1)} aria-label="이전 결과"
+              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-text)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <button onClick={() => goToMatch(1)} aria-label="다음 결과"
+              style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-text)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
@@ -180,9 +216,12 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
             {matches.map((m, i) => {
               const meta = TYPE_META[m.type];
               const snip = snippet(m.text, query);
+              const matchKey = `${ds}_${i}`;
+              const isActive = !!query.trim() && matchKey === activeMatchKey;
               return (
                 <button
                   key={i}
+                  ref={el => { matchRefs.current[matchKey] = el; }}
                   type="button"
                   onClick={() => {
                     if (m.type === 'task') {
@@ -198,9 +237,10 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
                     display: "flex",
                     gap: 8,
                     alignItems: "flex-start",
-                    padding: "9px 0",
+                    padding: "9px 8px",
                     borderTop: i > 0 ? "1px solid var(--dm-row)" : "none",
-                    background: 'transparent',
+                    background: isActive ? 'rgba(251,191,36,.12)' : 'transparent',
+                    boxShadow: isActive ? 'inset 3px 0 0 #FBBF24' : 'none',
                     borderLeft: 'none',
                     borderRight: 'none',
                     borderBottom: 'none',
