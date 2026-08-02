@@ -98,7 +98,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
           history: history.slice(-10), // 최근 10개만 전송
           context: {
             tasks: todayData?.tasks || [],
-            memo: todayData?.memo || '',
+            memo: (todayData?.memos?.length ? todayData.memos.map(m => m.text).join('\n') : todayData?.memo) || '',
             habits: habits || [],
             habitChecks: todayData?.habitChecks || {},
             scores: scores || {},

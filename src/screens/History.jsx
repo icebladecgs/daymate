@@ -93,15 +93,17 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [previewMemoEdit, setPreviewMemoEdit] = useState(false);
   const [previewMemoDraft, setPreviewMemoDraft] = useState('');
 
+  const computeMemoDraft = (d) => {
+    const legacyMemo = d?.memo?.trim() || '';
+    return d?.memos?.length
+      ? d.memos.map(m => m.createdAt ? `[${m.createdAt}] ${m.text}` : m.text).join('\n')
+      : legacyMemo;
+  };
+
   useEffect(() => {
     if (preview) {
       setPreviewMemoEdit(false);
-      const d = plans[preview];
-      const legacyMemo = d?.memo?.trim() || '';
-      const memoText = d?.memos?.length
-        ? d.memos.map(m => m.createdAt ? `[${m.createdAt}] ${m.text}` : m.text).join('\n')
-        : legacyMemo;
-      setPreviewMemoDraft(memoText);
+      setPreviewMemoDraft(computeMemoDraft(plans[preview]));
     }
   }, [preview]); // eslint-disable-line
 
@@ -895,7 +897,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button onClick={() => { onUpdateDayData?.(preview, prev => ({ ...prev, memos: previewMemoDraft.trim() ? [{ id: `m_hist_${Date.now()}`, text: previewMemoDraft, createdAt: '편집됨' }] : [] })); setPreviewMemoEdit(false); }}
                           style={{ fontSize: 11, color: '#4ADE80', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 900 }}>저장</button>
-                        <button onClick={() => { setPreviewMemoDraft(d?.memo ?? ''); setPreviewMemoEdit(false); }}
+                        <button onClick={() => { setPreviewMemoDraft(computeMemoDraft(d)); setPreviewMemoEdit(false); }}
                           style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>취소</button>
                       </div>
                     )}

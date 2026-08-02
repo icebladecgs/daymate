@@ -120,7 +120,7 @@ export default function DailyPage({ plans, setDayData, todayStr, onToggleMode })
   const canGoNext = dateStr < todayStr;
   const tasks = dayData.tasks || [];
   const doneTasks = tasks.filter(t => t.done && t.title.trim());
-  const memos = dayData.memos || [];
+  const memos = dayData.memos?.length ? dayData.memos : (dayData.memo?.trim() ? [{ id: `legacy_${dateStr}`, text: dayData.memo.trim(), createdAt: '' }] : []);
   const wins = dayData.wins || [];
   const regrets = dayData.regrets || [];
   const nextDayItems = dayData.nextDay || [];

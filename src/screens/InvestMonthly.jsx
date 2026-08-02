@@ -62,7 +62,7 @@ export default function InvestMonthly({ logs = [] }) {
         const pnlUSD = m.sellUSD - m.buyUSD;
         const pnlKRW = m.sellKRW - m.buyKRW;
         const hasPnl = m.sellUSD > 0 || m.sellKRW > 0 || m.buyUSD > 0 || m.buyKRW > 0;
-        const reviewedCount = m.wins + m.loses + m.unknowns;
+        const reviewedCount = m.wins + m.loses;
         const winRate = reviewedCount > 0 ? Math.round((m.wins / reviewedCount) * 100) : null;
         const isOpen = selectedMonth === m.ym;
 

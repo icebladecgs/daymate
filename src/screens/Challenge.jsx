@@ -517,7 +517,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
             <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 인증이 없어요. 첫 번째로 인증해보세요!</div>
           ) : certs.map(cert => {
             const certLevel = cert.uid === authUser.uid ? myLevel : calcLevel(memberRankings[cert.uid]?.totalScore || 0);
-            const certScore = cert.uid === authUser.uid ? (myMember?.totalScore || 0) : (memberRankings[cert.uid]?.totalScore || 0);
+            const certScore = cert.uid === authUser.uid ? (memberRankings[authUser.uid]?.totalScore || 0) : (memberRankings[cert.uid]?.totalScore || 0);
             return (
             <div key={cert.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cert.text && cert.text !== '✓' ? 6 : 0 }}>
