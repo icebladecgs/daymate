@@ -223,11 +223,13 @@ async function executeTool(name, input, today, todayData, uid) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('ok');
 
-  if (WEBHOOK_SECRET_TOKEN) {
-    const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
-    if (secretHeader !== WEBHOOK_SECRET_TOKEN) {
-      return res.status(401).send('unauthorized');
-    }
+  if (!WEBHOOK_SECRET_TOKEN) {
+    console.error('[telegram-webhook] TELEGRAM_WEBHOOK_SECRET_TOKEN not configured — rejecting all requests');
+    return res.status(401).send('unauthorized');
+  }
+  const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
+  if (secretHeader !== WEBHOOK_SECRET_TOKEN) {
+    return res.status(401).send('unauthorized');
   }
 
   const body = req.body;

@@ -283,7 +283,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
-  const [pushMorningTime, setPushMorningTime] = useState(alarmTimes.pushMorning || '07:00');
+  const [pushMorningTime] = useState('07:00'); // 서버 크론이 하루 1번 07:00 KST에만 도니 고정값
 
   const toggleAsset = (sym) => {
     setSelectedAssets(prev =>
@@ -746,7 +746,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           { label: "점심 체크인", value: noonTime, set: setNoonTime },
           { label: "저녁 체크인", value: eveningTime, set: setEveningTime },
           { label: "밤 마감 알람", value: nightTime, set: setNightTime },
-          { label: "📱 잠금화면 할일 알림", value: pushMorningTime, set: setPushMorningTime },
         ].map(({ label, value, set }) => (
           <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>{label}</div>
@@ -758,6 +757,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             />
           </div>
         ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+          <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>📱 잠금화면 할일 알림</div>
+          <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>매일 아침 7시 고정</div>
+        </div>
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
 

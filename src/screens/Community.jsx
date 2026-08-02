@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -370,7 +370,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       else { removeCommunityId?.(communityId); }
     });
 
-    loadCommunityMembers(communityId).then(setMembers).catch(() => {});
+    loadCommunityMembers(communityId).then(list => {
+      setMembers(list);
+      syncCommunityMemberCount(communityId, list.length).catch(() => {});
+    }).catch(() => {});
 
     const q = query(collection(db, 'communities', communityId, 'events'), orderBy('date', 'asc'));
     const unsubEv = onSnapshot(q, (snap) => {
@@ -505,7 +508,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     if (!trimmed || trimmed === myNickname) { setEditingNickname(false); return; }
     try {
       await updateMemberNickname(communityId, authUser.uid, trimmed);
-      loadCommunityMembers(communityId).then(setMembers).catch(() => {});
+      loadCommunityMembers(communityId).then(list => {
+        setMembers(list);
+        syncCommunityMemberCount(communityId, list.length).catch(() => {});
+      }).catch(() => {});
       setToast('닉네임 변경 완료 ✅');
     } catch { setToast('변경 실패 ❌'); }
     setEditingNickname(false);
@@ -656,6 +662,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       : '커뮤니티에서 나가시겠어요?';
     if (!window.confirm(msg)) return;
     try {
+      if (isAdmin && !isLast) {
+        const successor = members
+          .filter(m => m.uid !== authUser.uid)
+          .sort((a, b) => (a.joinedAt || '').localeCompare(b.joinedAt || ''))[0];
+        if (successor) await transferCommunityAdmin(communityId, successor.uid);
+      }
       await leaveCommunity(communityId, authUser.uid);
       if (isLast) deleteCommunityFull(communityId).catch(() => {});
     } catch { setToast('오류가 발생했어요'); }

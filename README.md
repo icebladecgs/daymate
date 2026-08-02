@@ -65,7 +65,7 @@ Telegram:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `TELEGRAM_WEBHOOK_SECRET_TOKEN`: optional, recommended for `/api/telegram-webhook`
+- `TELEGRAM_WEBHOOK_SECRET_TOKEN`: **required** — `/api/telegram-webhook` rejects all requests with 401 if unset (prevents spoofed requests bypassing Telegram)
 
 Telegram local dev agent:
 
@@ -97,7 +97,7 @@ Optional app metadata:
 
 ## Notes
 
-- If `TELEGRAM_WEBHOOK_SECRET_TOKEN` is configured, Telegram webhook requests must include `x-telegram-bot-api-secret-token`.
+- `TELEGRAM_WEBHOOK_SECRET_TOKEN` must be set and registered with Telegram's `setWebhook` (`secret_token` param) — every request must include a matching `x-telegram-bot-api-secret-token` header or it's rejected with 401.
 - `telegram_agent.py` no longer embeds Vercel credentials; set `VERCEL_TOKEN` and `VERCEL_PROJECT_ID` in `.env.local` if you want Telegram deployment-complete notifications.
 - If `WIDGET_ACCESS_TOKEN` is configured, existing widget clients or shortcuts must be updated to send that token.
 - Several endpoints are intended for a single-user deployment model driven by `FIREBASE_USER_UID`.

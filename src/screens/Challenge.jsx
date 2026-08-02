@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { calcLevel } from "../data/stats.js";
-import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles, isPrimaryAdmin } from "../firebase.js";
+import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, syncChallengeMemberCount, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles, isPrimaryAdmin } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
@@ -269,6 +269,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       const rankingMap = await loadRankingProfiles(membersData.map(member => member.uid));
       setCerts(certsData);
       setMembers(membersData);
+      syncChallengeMemberCount(c.id, membersData.length).catch(() => {});
       setMemberRankings(rankingMap);
       const me = membersData.find(m => m.uid === authUser.uid);
       if (me) { setIsMember(true); setMyMember(me); setLinkedHabitId(me.linkedHabitId || c.linkedHabitId || ''); }

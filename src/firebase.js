@@ -152,9 +152,7 @@ export async function recordInviteUse(code) {
   const snap = await getDoc(doc(db, 'inviteCodes', code));
   if (!snap.exists()) return;
   const { uid } = snap.data();
-  await setDoc(doc(db, 'rankings', uid), {
-    inviteCount: (((await getDoc(doc(db, 'rankings', uid))).data()?.inviteCount) || 0) + 1,
-  }, { merge: true });
+  await setDoc(doc(db, 'rankings', uid), { inviteCount: increment(1) }, { merge: true });
 }
 
 export async function loadRankings() {
@@ -270,6 +268,12 @@ export async function loadCommunityData(communityId) {
 export async function loadCommunityMembers(communityId) {
   const snap = await getDocs(collection(db, 'communities', communityId, 'members'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+// memberCount는 increment()로 증분 관리라 중간에 쓰기 하나가 실패하면 어긋날 수 있음 —
+// 멤버 목록을 실제로 읽을 때마다 실제 개수로 보정 (commentCount의 self-heal과 동일 패턴)
+export async function syncCommunityMemberCount(communityId, actualCount) {
+  await updateDoc(doc(db, 'communities', communityId), { memberCount: actualCount });
 }
 
 export async function loadTodayCommunityEvents(communityIds, date) {
@@ -615,6 +619,16 @@ export async function cheerCert(challengeId, certId) {
 export async function loadChallengeMembers(challengeId) {
   const snap = await getDocs(collection(db, 'challenges', challengeId, 'members'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() })).sort((a, b) => (b.streak || 0) - (a.streak || 0));
+}
+
+export async function syncChallengeMemberCount(challengeId, actualCount) {
+  await updateDoc(doc(db, 'challenges', challengeId), { memberCount: actualCount });
+}
+
+// 챌린지를 만든 사람이 나가면 관리자 권한이 영영 사라지므로, 남은 멤버 중
+// 가장 먼저 가입한 사람에게 승계 (Community.jsx의 createdBy와 동일 개념)
+export async function transferCommunityAdmin(communityId, newAdminUid) {
+  await updateDoc(doc(db, 'communities', communityId), { createdBy: newAdminUid });
 }
 
 export async function deleteChallengeFull(challengeId, actorUid) {
