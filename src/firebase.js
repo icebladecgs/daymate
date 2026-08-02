@@ -355,6 +355,10 @@ export async function deleteBoardPost(communityId, postId) {
   await deleteDoc(doc(db, 'communities', communityId, 'board', postId));
 }
 
+export async function updateBoardPost(communityId, postId, updates) {
+  await updateDoc(doc(db, 'communities', communityId, 'board', postId), { ...updates, editedAt: new Date().toISOString() });
+}
+
 export async function addBoardComment(communityId, postId, comment) {
   const ref = doc(collection(db, 'communities', communityId, 'board', postId, 'comments'));
   await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });

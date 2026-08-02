@@ -3,7 +3,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -216,6 +216,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [postingBoard, setPostingBoard] = useState(false);
   const [selectedBoardPost, setSelectedBoardPost] = useState(null);
   const [showAllBoard, setShowAllBoard] = useState(false);
+  const [editingBoardPost, setEditingBoardPost] = useState(null);
 
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
@@ -691,6 +692,34 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       setBoardPosts(prev => prev.filter(p => p.id !== optimistic.id));
       setToast('등록 실패 ❌');
     }
+    setPostingBoard(false);
+  };
+
+  const startEditBoard = (post) => {
+    setEditingBoardPost(post);
+    setBoardTitle(post.title || '');
+    setBoardBody(post.body || '');
+    setBoardPhotos(post.photos?.length > 0 ? post.photos : (post.photoUrl ? [{ url: post.photoUrl }] : []));
+    setShowBoardForm(true);
+    setSelectedBoardPost(null);
+  };
+
+  const cancelBoardForm = () => {
+    setShowBoardForm(false);
+    setEditingBoardPost(null);
+    setBoardTitle(''); setBoardBody(''); setBoardPhotos([]);
+  };
+
+  const handleUpdateBoard = async () => {
+    if (!boardTitle.trim() || !editingBoardPost) return;
+    setPostingBoard(true);
+    const updates = { title: boardTitle.trim(), body: boardBody.trim(), photos: boardPhotos };
+    try {
+      await updateBoardPost(communityId, editingBoardPost.id, updates);
+      setBoardPosts(prev => prev.map(p => p.id === editingBoardPost.id ? { ...p, ...updates, editedAt: new Date().toISOString() } : p));
+      setToast('수정 완료 ✅');
+      cancelBoardForm();
+    } catch { setToast('수정 실패 ❌'); }
     setPostingBoard(false);
   };
 
@@ -1381,15 +1410,16 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={S.sectionEmoji}>📝</span>자유게시판
         </span>
-        <button onClick={() => setShowBoardForm(v => !v)}
+        <button onClick={() => { if (showBoardForm) cancelBoardForm(); else setShowBoardForm(true); }}
           style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {showBoardForm ? '취소' : '+ 글쓰기'}
         </button>
       </div>
 
-      {/* 글쓰기 폼 */}
+      {/* 글쓰기/수정 폼 */}
       {showBoardForm && (
         <div style={{ ...S.card, marginBottom: 8 }}>
+          {editingBoardPost && <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 8 }}>✏️ 게시글 수정</div>}
           <input value={boardTitle} onChange={e => setBoardTitle(e.target.value)}
             placeholder="제목 (필수)"
             style={{ ...S.input, marginBottom: 8, fontWeight: 700 }} maxLength={60} />
@@ -1405,9 +1435,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               onError={setToast}
             />
           </div>
-          <button onClick={handlePostBoard} disabled={postingBoard || !boardTitle.trim()}
+          <button onClick={editingBoardPost ? handleUpdateBoard : handlePostBoard} disabled={postingBoard || !boardTitle.trim()}
             style={{ ...S.btn, marginTop: 0 }}>
-            {postingBoard ? '등록 중...' : '📝 글 등록'}
+            {postingBoard ? (editingBoardPost ? '수정 중...' : '등록 중...') : (editingBoardPost ? '✏️ 수정 완료' : '📝 글 등록')}
           </button>
         </div>
       )}
@@ -1630,9 +1660,16 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
                     {new Date(selectedBoardPost.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
+                  {selectedBoardPost.editedAt && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>(수정됨)</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                {selectedBoardPost.uid === authUser?.uid && (
+                  <button onClick={() => startEditBoard(selectedBoardPost)}
+                    style={{ background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    수정
+                  </button>
+                )}
                 {(selectedBoardPost.uid === authUser?.uid || isAdmin) && (
                   <button onClick={() => handleDeleteBoard(selectedBoardPost.id)}
                     style={{ background: 'transparent', border: 'none', color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
