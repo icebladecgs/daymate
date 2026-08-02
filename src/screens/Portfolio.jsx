@@ -30,8 +30,8 @@ function getDailyChange(d, qty) {
   return 0;
 }
 
-// yahoo는 KRW 가능, 나머지(finnhub/coingecko)는 항상 USD
-const getMarketCurrency = (h) => h.src === 'yahoo' ? (h.currency || 'USD') : 'USD';
+// 시세 API가 실제로 반환한 통화(d.currency, yahoo만 KRW/USD 실측치 포함) 기준으로 판정
+const getMarketCurrency = (h, d) => d?.currency || (h.src === 'yahoo' ? 'KRW' : 'USD');
 
 const PF_CACHE_PREFIX = "dm_portfolio_prices_";
 
@@ -148,7 +148,7 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
     const rows = holdings.map(h => {
       const d = marketData[h.sym];
       if (!d) return { ...h, noData: true };
-      const marketCurrency = getMarketCurrency(h);
+      const marketCurrency = getMarketCurrency(h, d);
       if (h.currency && h.currency !== marketCurrency) {
         return { ...h, price: d.price, marketCurrency, currencyMismatch: true };
       }

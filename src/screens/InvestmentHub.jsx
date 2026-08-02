@@ -33,9 +33,9 @@ export default function InvestmentHub({ uid, telegramCfg, setTelegramCfg, authUs
   }, [initialTab]);
 
   useEffect(() => {
-    if (activeTab !== "monthly" || investLogs !== null || !uid) return;
+    if (activeTab !== "monthly" || !uid) return;
     loadInvestLogs(uid).then(setInvestLogs).catch(() => setInvestLogs([]));
-  }, [activeTab, uid, investLogs]);
+  }, [activeTab, uid]);
 
   const openDiary = (draft = null) => {
     setDiaryDraft({ requestedAt: Date.now(), ...(draft || {}) });
