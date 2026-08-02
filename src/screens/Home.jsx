@@ -101,11 +101,17 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     const prefix = toDateStr().slice(0, 7);
     return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
   }, [scores, todayScore]);
+  // 운세 종합 점수 (전체운/금전운/건강운/인간관계 평균) — 길흉 판정과 모달의 "종합 운세 점수"가
+  // 항상 같은 값을 쓰도록 여기서 한 번만 계산
+  const avgFortuneScore = (data) => {
+    if (!data?.overall) return null;
+    const { overall, money, health, relation } = data;
+    return (overall + (money ?? overall) + (health ?? overall) + (relation ?? overall)) / 4;
+  };
   // 오늘 운세 점수 (캐시에서 읽기)
   const todayFortuneScore = (() => {
     try {
-      const cached = store.get(`dm_fortune_${today}`, null);
-      return cached?.overall ?? null;
+      return avgFortuneScore(store.get(`dm_fortune_${today}`, null));
     } catch { return null; }
   })();
   const fortuneXpKey = `dm_fortune_xp_${today}`;
@@ -389,7 +395,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   const fortuneLevel = (score) => {
     if (!score) return { label: '🔮', color: '#A78BFA', desc: '운세보기' };
-    const pts = score * 20;
+    const pts = Math.round(score * 20);
     if (pts >= 80) return { label: '대길 ★', color: '#4ADE80', desc: `${pts}점` };
     if (pts >= 60) return { label: '길 ☆', color: '#FCD34D', desc: `${pts}점` };
     if (pts >= 40) return { label: '평 △', color: '#94A3B8', desc: `${pts}점` };
@@ -403,7 +409,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       const dateStr = toDateStr(d);
       const cached = store.get(`dm_fortune_${dateStr}`, null);
       const dow = '일월화수목금토'[d.getDay()];
-      return { dateStr, overall: cached?.overall ?? null, dow };
+      return { dateStr, overall: avgFortuneScore(cached), dow };
     });
   }, []); // eslint-disable-line
   const linkedChallengesByHabit = useMemo(() => {
@@ -832,8 +838,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   { label: "건강운", val: fortuneData.health || 3 },
                   { label: "인간관계", val: fortuneData.relation || 3 },
                 ];
-                const totalScore = Math.round(cats.reduce((s, c) => s + c.val, 0) / cats.length * 20);
-                const scoreColor = totalScore >= 80 ? "#4ADE80" : totalScore >= 60 ? "#FCD34D" : "#F87171";
+                const avgScore = avgFortuneScore(fortuneData);
+                const totalScore = avgScore ? Math.round(avgScore * 20) : 0;
+                const scoreColor = fortuneLevel(avgScore).color;
                 return (
                   <div style={S.card}>
                     {/* 주간 운세 히스토리 미니 차트 */}
