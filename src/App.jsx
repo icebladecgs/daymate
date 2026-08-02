@@ -315,6 +315,7 @@ export default function App() {
 
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
+  const [businessCard, setBusinessCard] = useState(() => store.get('dm_business_card', null));
   const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
   const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); if (!Array.isArray(v)) return []; return v.map(g => typeof g === 'string' ? g : (g?.title || '')).filter(Boolean); });
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
@@ -980,6 +981,7 @@ export default function App() {
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
+            if (s.businessCard) { setBusinessCard(s.businessCard); store.set("dm_business_card", s.businessCard); }
             if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             const ym = todayStr.slice(0, 7);
@@ -1049,6 +1051,10 @@ export default function App() {
     store.set("dm_goals", goals);
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, goals).catch(() => {});
   }, [goals, authUser]);
+  useEffect(() => {
+    store.set("dm_business_card", businessCard);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { businessCard }).catch(() => {});
+  }, [businessCard, authUser]);
   useEffect(() => {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoals }).catch(() => {});
   }, [lifeGoals, authUser]);
@@ -1553,6 +1559,7 @@ export default function App() {
       return (
         <Home
           user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
+          businessCard={businessCard} setBusinessCard={setBusinessCard} authUser={authUser}
           todayData={todayData} plans={plans}
           onToggleTask={(id) => {
             setTodayData(prev => {

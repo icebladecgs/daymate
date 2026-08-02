@@ -15,6 +15,7 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
+import PhotoAttach from "../components/PhotoAttach.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -78,7 +79,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCard, setBusinessCard, authUser }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -124,6 +125,57 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     setLifeGoals(final);
     setEditingLifeGoals(false);
     setNewLifeInput('');
+  };
+
+  // 명함 관리 (My탭)
+  const [bcEditing, setBcEditing] = useState(false);
+  const [bcDraft, setBcDraft] = useState({ title: '', company: '', phone: '', email: '', photoUrl: '', photoPath: '' });
+  const [bcBusy, setBcBusy] = useState(false);
+  const [bcMsg, setBcMsg] = useState('');
+  const bcCardRef = useRef(null);
+  const startBcEdit = () => { setBcDraft({ title: '', company: '', phone: '', email: '', photoUrl: '', photoPath: '', ...businessCard }); setBcMsg(''); setBcEditing(true); };
+  const saveBcEdit = () => { setBusinessCard({ ...bcDraft }); setBcEditing(false); };
+  const captureBcBlob = async () => {
+    if (!bcCardRef.current) return null;
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(bcCardRef.current, { scale: 2, backgroundColor: null, useCORS: true });
+    return await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  };
+  const downloadBcBlob = (blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${(user?.name || '내') + '_명함'}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+  const handleSaveBcImage = async () => {
+    setBcBusy(true); setBcMsg('');
+    try {
+      const blob = await captureBcBlob();
+      if (!blob) throw new Error('capture failed');
+      downloadBcBlob(blob);
+      setBcMsg('저장 완료 ✅');
+    } catch {
+      setBcMsg('저장 실패 ❌');
+    }
+    setBcBusy(false);
+  };
+  const handleSendBcImage = async () => {
+    setBcBusy(true); setBcMsg('');
+    try {
+      const blob = await captureBcBlob();
+      if (!blob) throw new Error('capture failed');
+      const file = new File([blob], `${(user?.name || '내') + '_명함'}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: '명함', text: [user?.name, businessCard?.title].filter(Boolean).join(' ') });
+      } else {
+        downloadBcBlob(blob);
+        setBcMsg('이 브라우저는 공유를 지원하지 않아요. 저장된 이미지를 카톡으로 직접 보내주세요 📤');
+      }
+    } catch (e) {
+      if (e?.name !== 'AbortError') setBcMsg('전송 실패 ❌');
+    }
+    setBcBusy(false);
   };
   const saveYearGoalsFn = () => {
     const final = [...yearDraft, ...(newYearInput.trim() ? [newYearInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
@@ -1094,6 +1146,76 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn })}
               </div>
             )}
+            {isMyTab && (() => {
+              const bcView = bcEditing ? bcDraft : (businessCard || {});
+              return (
+              <div style={{ margin: '0 16px 10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>💳 내 명함</div>
+                  <button onClick={bcEditing ? saveBcEdit : startBcEdit} style={{ fontSize: 11, fontWeight: 900, color: bcEditing ? '#4ADE80' : 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+                    {bcEditing ? '완료 ✓' : '✏️ 편집'}
+                  </button>
+                </div>
+                <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
+                  <div ref={bcCardRef} style={{
+                    width: '100%', aspectRatio: '1.6 / 1', borderRadius: 16, padding: '20px 22px', boxSizing: 'border-box',
+                    background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(108,142,255,.05))',
+                    border: '1px solid rgba(108,142,255,.28)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {bcView.photoUrl ? (
+                        <img src={bcView.photoUrl} crossOrigin="anonymous" alt="프로필 사진" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(255,255,255,.25)', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(108,142,255,.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>👤</div>
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)' }}>{user?.name || '이름 없음'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 2 }}>{[bcView.title, bcView.company].filter(Boolean).join(' · ') || '직급 · 소속을 입력해보세요'}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {bcView.phone && <div style={{ fontSize: 11, color: 'var(--dm-text)' }}>📞 {bcView.phone}</div>}
+                      {bcView.email && <div style={{ fontSize: 11, color: 'var(--dm-text)' }}>✉️ {bcView.email}</div>}
+                    </div>
+                  </div>
+
+                  {bcEditing ? (
+                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <PhotoAttach
+                          uid={authUser?.uid}
+                          pathPrefix={`users/${authUser?.uid}/businessCard`}
+                          photoUrl={bcDraft.photoUrl}
+                          photoPath={bcDraft.photoPath}
+                          onChange={(result) => setBcDraft(prev => ({ ...prev, photoUrl: result?.url || '', photoPath: result?.path || '' }))}
+                          onError={(msg) => setBcMsg(msg)}
+                          size={44}
+                        />
+                        <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{authUser ? '프로필 사진' : '사진 업로드는 로그인 후 가능해요'}</div>
+                      </div>
+                      <input style={{ ...S.input, marginBottom: 0 }} value={bcDraft.title} onChange={(e) => setBcDraft(prev => ({ ...prev, title: e.target.value }))} placeholder="직급 (예: 지점장)" maxLength={20} />
+                      <input style={{ ...S.input, marginBottom: 0 }} value={bcDraft.company} onChange={(e) => setBcDraft(prev => ({ ...prev, company: e.target.value }))} placeholder="소속 (예: 우리은행 OO지점)" maxLength={30} />
+                      <input style={{ ...S.input, marginBottom: 0 }} value={bcDraft.phone} onChange={(e) => setBcDraft(prev => ({ ...prev, phone: e.target.value }))} placeholder="전화번호" maxLength={20} />
+                      <input style={{ ...S.input, marginBottom: 0 }} value={bcDraft.email} onChange={(e) => setBcDraft(prev => ({ ...prev, email: e.target.value }))} placeholder="이메일" maxLength={40} />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                        <button onClick={saveBcEdit} style={{ ...S.btn, flex: 1, marginTop: 0 }}>저장</button>
+                        <button onClick={() => setBcEditing(false)} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>취소</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {bcMsg && <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, textAlign: 'center' }}>{bcMsg}</div>}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button onClick={handleSaveBcImage} disabled={bcBusy} style={{ ...S.btnGhost, flex: 1, marginTop: 0, opacity: bcBusy ? 0.6 : 1 }}>{bcBusy ? '처리 중...' : '💾 저장하기'}</button>
+                        <button onClick={handleSendBcImage} disabled={bcBusy} style={{ ...S.btn, flex: 1, marginTop: 0, opacity: bcBusy ? 0.6 : 1 }}>{bcBusy ? '처리 중...' : '📤 전송하기'}</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              );
+            })()}
 
             {isSectionVisible('quote') && (
             <div style={{ order: getSectionOrder('quote') }}>

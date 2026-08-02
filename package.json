@@ -1,7 +1,7 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.466.0",
+  "version": "0.467.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
@@ -31,6 +31,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.0.0",
+    "html2canvas": "^1.4.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "web-push": "^3.6.7"
