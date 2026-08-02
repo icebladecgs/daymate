@@ -70,9 +70,10 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           });
         }
 
-        if ((tab === "all" || tab === "journal") && d.journal?.body?.trim()) {
-          if (!q || d.journal.body.toLowerCase().includes(q)) {
-            matches.push({ type: "journal", text: d.journal.body.trim() });
+        if (tab === "all" || tab === "journal") {
+          const journalText = [d.journal?.body, d.journal?.good, d.journal?.regret, d.journal?.tomorrow].filter(Boolean).join(' ').trim();
+          if (journalText && (!q || journalText.toLowerCase().includes(q))) {
+            matches.push({ type: "journal", text: journalText });
           }
         }
 

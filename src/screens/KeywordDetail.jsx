@@ -96,13 +96,7 @@ export default function KeywordDetail({ keyword, plans, onBack, onOpenKeyword, o
         </div>
       ) : (
         records.map((rec, i) => {
-          const day = plans[rec.dateStr];
-          const fullText = rec.type === '일기'
-            ? (day?.journal?.body || '')
-            : rec.type === '메모'
-            ? (day?.memo || '')
-            : (day?.journal?.body || day?.memo || ''); // 태그 타입
-          const preview = fullText.replace(/\[\[([^\]]+)\]\]/g, '$1');
+          const preview = (rec.preview || '').replace(/\[\[([^\]]+)\]\]/g, '$1');
 
           const typeStyle = rec.type === '일기'
             ? { bg: 'rgba(167,139,250,0.15)', color: '#c4b5fd' }
