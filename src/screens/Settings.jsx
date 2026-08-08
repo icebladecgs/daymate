@@ -406,8 +406,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
     const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
     const text = buildBriefingText(marketData, user.name);
-    const res = await sendTelegramMessage(tgToken.trim(), tgChatId.trim(), text);
-    setToast(res.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${res.error} 🚫`);
+    const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: authUser?.uid, text }) });
+    const json = await res.json();
+    setToast(json.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${json.error} 🚫`);
   };
 
   const save = () => {

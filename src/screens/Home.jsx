@@ -1765,13 +1765,13 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     sensors={habitSensors}
                     collisionDetection={closestCenter}
                     onDragStart={() => {
-                      vibrateIfAvailable(12);
+                      triggerVibration();
                       announce('습관 순서 이동을 시작했습니다. 원하는 위치에서 손을 떼면 순서가 바뀝니다.');
                     }}
                     onDragCancel={() => {}}
                     onDragEnd={({ active, over }) => {
                       reorderHabits(active?.id, over?.id);
-                      vibrateIfAvailable(over?.id && active?.id !== over?.id ? [14, 28, 12] : 10);
+                      triggerVibration();
                       if (active?.id && over?.id && active.id !== over.id) {
                         const activeHabit = habits.find(h => h.id === active.id);
                         announce(`${activeHabit?.name || '습관'} 순서를 변경했습니다.`);
