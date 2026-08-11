@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
-import { compressImage } from "../utils/image.js";
+import { compressImage, photoErrorMessage } from "../utils/image.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -49,8 +49,8 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       const path = genPhotoPath(pathPrefix);
       const result = await uploadPhoto(path, blob, uid);
       commitPhotos([...photos, result]);
-    } catch {
-      onPhotoError?.('사진 업로드 실패 ❌');
+    } catch (err) {
+      onPhotoError?.(photoErrorMessage(err));
     }
     setUploading(false);
   };

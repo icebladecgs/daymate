@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
-import { compressImage } from "../utils/image.js";
+import { compressImage, photoErrorMessage } from "../utils/image.js";
 
 export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onChange, onError, disabled = false, size = 40 }) {
   const [uploading, setUploading] = useState(false);
@@ -22,8 +22,8 @@ export default function PhotoAttach({ uid, pathPrefix, photoUrl, photoPath, onCh
       const path = `${pathPrefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
       const result = await uploadPhoto(path, blob, uid);
       onChange(result);
-    } catch {
-      onError?.('사진 업로드 실패 ❌');
+    } catch (err) {
+      onError?.(photoErrorMessage(err));
     }
     setUploading(false);
   };

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
-import { compressImage } from "../utils/image.js";
+import { compressImage, photoErrorMessage } from "../utils/image.js";
 
 const TILE = 72;
 
@@ -24,8 +24,8 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
       const path = `${pathPrefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
       const result = await uploadPhoto(path, blob, uid);
       onChange([...photos, result]);
-    } catch {
-      onError?.('사진 업로드 실패 ❌');
+    } catch (err) {
+      onError?.(photoErrorMessage(err));
     }
     setUploading(false);
   };
