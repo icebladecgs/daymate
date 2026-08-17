@@ -1802,6 +1802,7 @@ export default function App() {
           onUnreadChange={setCommunityUnread}
           initialMainTab={communityInitialTab}
           initialChallengeId={communityInitialChallengeId}
+          onGoogleSignIn={googleSignIn}
         />
       );
     }

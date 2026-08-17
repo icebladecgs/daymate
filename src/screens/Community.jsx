@@ -158,7 +158,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null, onGoogleSignIn }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -781,8 +781,18 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   if (!authUser) return (
     <div style={S.content}>
       <div style={S.topbar}><div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div></div></div>
-      <div style={{ padding: 32, textAlign: 'center', color: 'var(--dm-muted)', fontSize: 14 }}>
-        로그인 후 이용할 수 있어요
+      <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+        <div style={{ color: 'var(--dm-muted)', fontSize: 14, marginBottom: 16 }}>
+          로그인 후 이용할 수 있어요
+        </div>
+        {onGoogleSignIn && (
+          <button
+            style={{ ...S.btn, background: "#fff", color: "#333", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: 'auto', margin: '0 auto', padding: '10px 20px' }}
+            onClick={() => onGoogleSignIn().catch(() => {})}
+          >
+            <span style={{ fontSize: 16 }}>G</span> Google로 로그인
+          </button>
+        )}
       </div>
     </div>
   );
