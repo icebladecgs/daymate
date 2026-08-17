@@ -18,6 +18,16 @@ class NotifScheduler {
     });
   }
 
+  // apply()가 관리하는 타이머(텔레그램 브리핑/시간대별 알림)만 지운다.
+  // task_* 타이머는 scheduleTaskAlarms()가 별도로 관리하므로, apply() 재실행 시
+  // cancelAll()을 쓰면 아직 안 지난 할일 알람까지 조용히 사라진다.
+  cancelManaged() {
+    Object.keys(this.timers).filter(k => !k.startsWith('task_')).forEach((k) => {
+      clearTimeout(this.timers[k]);
+      delete this.timers[k];
+    });
+  }
+
   msUntil(timeStr) {
     const [hh, mm] = timeStr.split(":").map(Number);
     const now = new Date();
@@ -75,7 +85,7 @@ class NotifScheduler {
   }
 
   apply(enabled, userName, telegramCfg = {}, alarmTimes = {}) {
-    this.cancelAll();
+    this.cancelManaged();
     if (!enabled) return;
 
     const { botToken = '', chatId = '', briefingTime = '07:00', todoTime = '07:05', assets, customAssets: rawCustomAssets } = telegramCfg;

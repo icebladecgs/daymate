@@ -35,7 +35,9 @@ function toDateStr() {
 }
 
 // 명령어 파싱: "/today@BotName" → "/today", "/done 1@BotName" → "/done 1"
+// 슬래시 명령어에만 적용 — 일반 대화문(이메일 주소 등에 포함된 @)까지 건드리면 안 됨
 function parseCommand(rawText) {
+  if (!rawText.startsWith('/')) return rawText.trim();
   return rawText.replace(/@\S+/, '').trim();
 }
 
@@ -133,12 +135,16 @@ async function askClaude(userMessage, today, uid) {
     messages: [{ role: 'user', content: userMessage }],
   });
 
-  // tool use 처리
+  // tool use 처리 — 한 메시지에 tool_use가 여러 개면 각 도구가 앞선 도구의 결과를 보고 실행되도록
+  // todayData를 순차적으로 갱신해가며 스레딩한다 (안 그러면 뒤 도구가 stale 데이터로 덮어써서
+  // 앞선 도구의 변경이 사라짐)
   const toolResults = [];
+  let currentDayData = todayData;
   for (const block of response.content) {
     if (block.type === 'tool_use') {
-      const result = await executeTool(block.name, block.input, today, todayData, uid);
-      toolResults.push({ toolName: block.name, result });
+      const { message, nextDayData } = await executeTool(block.name, block.input, today, currentDayData, uid);
+      toolResults.push({ toolName: block.name, result: message });
+      currentDayData = nextDayData;
     }
   }
 
@@ -180,44 +186,49 @@ async function executeTool(name, input, today, todayData, uid) {
     const emptyIdx = tasks.findIndex(t => !t.title?.trim());
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
     else tasks.push(newTask);
-    await db.doc(`users/${uid}/days/${today}`).set({ ...todayData, tasks }, { merge: true });
-    return `"${input.title}" 추가됨`;
+    const nextDayData = { ...todayData, tasks };
+    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    return { message: `"${input.title}" 추가됨`, nextDayData };
   }
 
   if (name === 'complete_task') {
     const target = filledTasks[input.number - 1];
-    if (!target) return `번호 ${input.number}번 할일이 없습니다`;
+    if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
     const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
-    await db.doc(`users/${uid}/days/${today}`).set({ ...todayData, tasks: updated }, { merge: true });
-    return `"${target.title}" 완료 처리됨`;
+    const nextDayData = { ...todayData, tasks: updated };
+    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    return { message: `"${target.title}" 완료 처리됨`, nextDayData };
   }
 
   if (name === 'delete_task') {
     const target = filledTasks[input.number - 1];
-    if (!target) return `번호 ${input.number}번 할일이 없습니다`;
+    if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
     const updated = allTasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
-    await db.doc(`users/${uid}/days/${today}`).set({ ...todayData, tasks: updated }, { merge: true });
-    return `"${target.title}" 삭제됨`;
+    const nextDayData = { ...todayData, tasks: updated };
+    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    return { message: `"${target.title}" 삭제됨`, nextDayData };
   }
 
   if (name === 'add_memo') {
     const prev = todayData.memo || '';
     const newMemo = prev ? `${prev}\n${input.content}` : input.content;
-    await db.doc(`users/${uid}/days/${today}`).set({ ...todayData, memo: newMemo }, { merge: true });
-    return `메모 추가됨`;
+    const nextDayData = { ...todayData, memo: newMemo };
+    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    return { message: `메모 추가됨`, nextDayData };
   }
 
   if (name === 'toggle_habit') {
     const settingsSnap = await db.doc(`users/${uid}/data/settings`).get();
     const habits = settingsSnap.data()?.habits || [];
     const target = habits.find(h => h.name.toLowerCase().includes(input.habit_name.toLowerCase()));
-    if (!target) return `"${input.habit_name}" 습관을 찾을 수 없습니다`;
+    if (!target) return { message: `"${input.habit_name}" 습관을 찾을 수 없습니다`, nextDayData: todayData };
     const cur = todayData.habitChecks || {};
-    await db.doc(`users/${uid}/days/${today}`).set({ ...todayData, habitChecks: { ...cur, [target.id]: input.done } }, { merge: true });
-    return `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`;
+    const nextDayData = { ...todayData, habitChecks: { ...cur, [target.id]: input.done } };
+    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    return { message: `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`, nextDayData };
   }
 
-  return '알 수 없는 도구';
+  return { message: '알 수 없는 도구', nextDayData: todayData };
 }
 
 export default async function handler(req, res) {

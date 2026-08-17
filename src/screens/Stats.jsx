@@ -25,36 +25,41 @@ export default function Stats({ plans, habits, authUser, user, onBack }) {
   );
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  let perfectDays = 0;
-  let filledDays = 0;
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${viewYear}-${pad2(viewMonth + 1)}-${pad2(day)}`;
-    const dayData = plans[dateStr];
-    if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
-      filledDays++;
-      if (isPerfectDay(dayData)) perfectDays++;
-    }
-  }
-
-  const perfectRate = filledDays === 0 ? 0 : Math.round((perfectDays / filledDays) * 100);
-
-  const monthStats = [];
-  for (let m = 0; m < 12; m++) {
-    const mStr = pad2(m + 1);
-    const daysInM = new Date(viewYear, m + 1, 0).getDate();
+  const { perfectDays, filledDays } = useMemo(() => {
     let perfect = 0;
     let filled = 0;
-    for (let day = 1; day <= daysInM; day++) {
-      const dateStr = `${viewYear}-${mStr}-${pad2(day)}`;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${viewYear}-${pad2(viewMonth + 1)}-${pad2(day)}`;
       const dayData = plans[dateStr];
       if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
         filled++;
         if (isPerfectDay(dayData)) perfect++;
       }
     }
-    monthStats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
-  }
+    return { perfectDays: perfect, filledDays: filled };
+  }, [plans, viewYear, viewMonth, daysInMonth]);
+
+  const perfectRate = filledDays === 0 ? 0 : Math.round((perfectDays / filledDays) * 100);
+
+  const monthStats = useMemo(() => {
+    const stats = [];
+    for (let m = 0; m < 12; m++) {
+      const mStr = pad2(m + 1);
+      const daysInM = new Date(viewYear, m + 1, 0).getDate();
+      let perfect = 0;
+      let filled = 0;
+      for (let day = 1; day <= daysInM; day++) {
+        const dateStr = `${viewYear}-${mStr}-${pad2(day)}`;
+        const dayData = plans[dateStr];
+        if (dayData && (dayData.tasks || []).some(t => t.title.trim())) {
+          filled++;
+          if (isPerfectDay(dayData)) perfect++;
+        }
+      }
+      stats.push({ month: m, perfect, filled, rate: filled === 0 ? 0 : Math.round((perfect / filled) * 100) });
+    }
+    return stats;
+  }, [plans, viewYear]);
 
 const last30 = useMemo(() => {
     const days = [];

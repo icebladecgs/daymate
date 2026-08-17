@@ -262,6 +262,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [tgFirstName, setTgFirstName] = useState('');
   const [briefingTime, setBriefingTime] = useState(telegramCfg.briefingTime || '07:00');
   const [todoTime, setTodoTime] = useState(telegramCfg.todoTime || '07:05');
+  const [weatherCity, setWeatherCity] = useState(telegramCfg.weatherCity || '');
   const [selectedAssets, setSelectedAssets] = useState(
     telegramCfg.assets || Object.keys(ASSET_META)
   );
@@ -326,7 +327,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const saveTelegram = () => {
     const cfg = {
       briefingTime, todoTime, assets: selectedAssets, customAssets,
-      weatherCity: telegramCfg.weatherCity || '',
+      weatherCity,
     };
     setTelegramCfg(cfg);
     store.set('dm_telegram', cfg);
@@ -394,19 +395,23 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
   const testTelegramMsg = async () => {
     if (!tgConnected) { setToast('먼저 텔레그램을 연결해주세요'); return; }
+    if (!authUser) { setToast('로그인이 필요해요'); return; }
     try {
-      const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: authUser?.uid }) });
+      const idToken = await authUser.getIdToken();
+      const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }, body: JSON.stringify({ uid: authUser.uid }) });
       const json = await res.json();
       setToast(json.ok ? '텔레그램 전송 성공 ✅' : `전송 실패 🚫`);
     } catch { setToast('전송 실패 🚫'); }
   };
 
   const testBriefing = async () => {
+    if (!authUser) { setToast('로그인이 필요해요'); return; }
     setToast('브리핑 생성 중...');
     const customRegistry = Object.fromEntries(customAssets.map(a => [a.sym, a]));
     const marketData = await fetchMarketDataFromServer(selectedAssets, customRegistry);
     const text = buildBriefingText(marketData, user.name);
-    const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: authUser?.uid, text }) });
+    const idToken = await authUser.getIdToken();
+    const res = await fetch('/api/tg-test', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }, body: JSON.stringify({ uid: authUser.uid, text }) });
     const json = await res.json();
     setToast(json.ok ? '브리핑 전송 성공 ✅' : `전송 실패: ${json.error} 🚫`);
   };
@@ -868,8 +873,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
           <div style={{ height: 10 }} />
           <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
-          <input style={S.input} value={telegramCfg.weatherCity || ''}
-            onChange={(e) => setTelegramCfg(prev => ({...prev, weatherCity: e.target.value}))}
+          <input style={S.input} value={weatherCity}
+            onChange={(e) => setWeatherCity(e.target.value)}
             placeholder="서울 (기본값)" />
 
           <div style={{ height: 14 }} />

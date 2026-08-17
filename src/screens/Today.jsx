@@ -121,25 +121,6 @@ export default function Today({
 
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!bodyText.trim();
 
-  // 기획한일 핸들러
-  const addTask = () => {
-    const title = taskInput.trim();
-    if (!title || !onSetTodayTasks) return;
-    const newTask = { id: `t_${Date.now()}`, title, done: false };
-    const all = [...tasks];
-    const emptyIdx = all.findIndex(t => !t.title.trim());
-    if (emptyIdx >= 0) all[emptyIdx] = newTask;
-    else all.push(newTask);
-    onSetTodayTasks(all);
-    setTaskInput('');
-  };
-  const toggleTask = (id) => onSetTodayTasks?.(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTask = (id) => onSetTodayTasks?.(tasks.filter(t => t.id !== id));
-  const moveTaskToSomeday = (task) => {
-    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false }]);
-    deleteTask(task.id);
-  };
-
   // 오늘의 할일 섹션만 다른 날짜로 미리보기/입력 (나머지 섹션은 항상 오늘 기준 유지)
   const targetDs = taskDayOffset === 0 ? dateStr : addDays(dateStr, taskDayOffset);
   const targetTasks = taskDayOffset === 0 ? tasks : (plans?.[targetDs]?.tasks || []);

@@ -336,8 +336,8 @@ export async function deleteCommunityFull(communityId) {
   for (const sub of subcollections) {
     const snap = await getDocs(collection(db, 'communities', communityId, sub));
     for (const d of snap.docs) {
-      if (sub === 'notices') {
-        const commSnap = await getDocs(collection(db, 'communities', communityId, 'notices', d.id, 'comments'));
+      if (sub === 'notices' || sub === 'board') {
+        const commSnap = await getDocs(collection(db, 'communities', communityId, sub, d.id, 'comments'));
         for (const c of commSnap.docs) await deleteDoc(c.ref);
       }
       await deleteDoc(d.ref);

@@ -25,7 +25,7 @@ async function send(botToken, chatId, text) {
 }
 
 // 개별 습관 스트릭 계산
-async function calcHabitStreak(uid, habitId, today) {
+async function calcHabitStreak(uid, habitId) {
   let streak = 0;
   let current = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   current.setDate(current.getDate() - 1); // 어제부터 역산 (오늘은 아직 체크 안 됐을 수 있음)
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     const uncheckedHabits = habits.filter(h => !habitChecks[h.id]);
     await Promise.all(
       uncheckedHabits.map(async h => {
-        habitStreaks[h.id] = await calcHabitStreak(uid, h.id, today);
+        habitStreaks[h.id] = await calcHabitStreak(uid, h.id);
       })
     );
 

@@ -63,7 +63,6 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
   // 프리셋 선택
   const pickPreset = (p) => {
     setFSym(p.sym); setFLabel(p.label); setFCurrency(p.currency); setFSrc(p.src);
-    if (p.coinId) setFSrc("coingecko");
   };
 
   // 시세 가져오기
@@ -142,9 +141,12 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
   };
 
   // 포트폴리오 요약 계산
+  // 총액은 항상 $ 표기이므로, 환율 변환 없이는 원화(KRW) 등 비-USD 종목을 그대로 더할 수 없다.
+  // 개별 종목 카드는 marketCurrency 기준으로 정확히 표시하되, 합계에는 USD 종목만 반영한다.
   const calcSummary = () => {
     if (!marketData || holdings.length === 0) return null;
     let totalValue = 0, totalCost = 0, totalDailyChange = 0, count = 0;
+    const otherCurrencyTotals = {}; // 예: { KRW: 12345678 }
     const rows = holdings.map(h => {
       const d = marketData[h.sym];
       if (!d) return { ...h, noData: true };
@@ -155,15 +157,21 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
       const value = h.qty * d.price;
       const cost = h.qty * h.avgPrice;
       const dailyChange = getDailyChange(d, h.qty);
+      const pnl = value - cost;
+      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+      if (marketCurrency !== 'USD') {
+        otherCurrencyTotals[marketCurrency] = (otherCurrencyTotals[marketCurrency] || 0) + value;
+        return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, excludedFromTotal: true };
+      }
       totalValue += value; totalCost += cost; totalDailyChange += dailyChange; count++;
-      return { ...h, price: d.price, marketCurrency, value, cost, pnl: value - cost, pnlPct: cost > 0 ? ((value - cost) / cost) * 100 : 0, dailyChange };
+      return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange };
     });
-    if (count === 0) return null;
+    if (count === 0 && Object.keys(otherCurrencyTotals).length === 0) return null;
     const pnl = totalValue - totalCost;
     const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
     const prevValue = totalValue - totalDailyChange;
     const dailyChangePct = prevValue > 0 ? (totalDailyChange / prevValue) * 100 : 0;
-    return { totalValue, totalCost, pnl, pnlPct, totalDailyChange, dailyChangePct, rows };
+    return { totalValue, totalCost, pnl, pnlPct, totalDailyChange, dailyChangePct, rows, otherCurrencyTotals };
   };
 
   const summary = calcSummary();
@@ -246,31 +254,45 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
       {/* 포트폴리오 요약 */}
       {summary && (
         <div style={{ ...S.card, marginBottom: 10, background: "var(--dm-card)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>총 평가금액</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtUSD(summary.totalValue)}</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(summary.totalDailyChange) }}>
-                {summary.totalDailyChange >= 0 ? "+" : ""}{fmtUSD(summary.totalDailyChange)}
+          {summary.totalValue > 0 || summary.totalCost > 0 ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>총 평가금액 (USD)</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtUSD(summary.totalValue)}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(summary.totalDailyChange) }}>
+                    {summary.totalDailyChange >= 0 ? "+" : ""}{fmtUSD(summary.totalDailyChange)}
+                  </div>
+                  <div style={{ fontSize: 12, color: pnlColor(summary.dailyChangePct) }}>{fmtPct(summary.dailyChangePct)}</div>
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: pnlColor(summary.dailyChangePct) }}>{fmtPct(summary.dailyChangePct)}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 12, paddingTop: 10, borderTop: "1px solid var(--dm-row)" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>투자원금</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.totalCost)}</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>평가손익</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(summary.pnl) }}>
-                {summary.pnl >= 0 ? "+" : ""}{fmtUSD(summary.pnl)} ({fmtPct(summary.pnlPct)})
+              <div style={{ display: "flex", gap: 12, paddingTop: 10, borderTop: "1px solid var(--dm-row)" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>투자원금</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.totalCost)}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>평가손익</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(summary.pnl) }}>
+                    {summary.pnl >= 0 ? "+" : ""}{fmtUSD(summary.pnl)} ({fmtPct(summary.pnlPct)})
+                  </div>
+                </div>
               </div>
+            </>
+          ) : null}
+          {Object.keys(summary.otherCurrencyTotals).length > 0 && (
+            <div style={{ paddingTop: summary.totalValue > 0 || summary.totalCost > 0 ? 10 : 0, marginTop: summary.totalValue > 0 || summary.totalCost > 0 ? 10 : 0, borderTop: summary.totalValue > 0 || summary.totalCost > 0 ? "1px solid var(--dm-row)" : "none" }}>
+              {Object.entries(summary.otherCurrencyTotals).map(([cur, val]) => (
+                <div key={cur} style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 2 }}>
+                  총 평가금액 ({cur}): <span style={{ color: "var(--dm-text)", fontWeight: 700 }}>{fmtPrice(val, cur)}</span>
+                </div>
+              ))}
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 2 }}>환율 변환이 없어 USD 합계와 별도로 표시됩니다</div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -298,7 +320,7 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
                   {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
                   {!h.noData && h.price != null && (
-                    <> · 현재 {fmtPrice(h.price, h.marketCurrency || getMarketCurrency(h))}</>
+                    <> · 현재 {fmtPrice(h.price, h.marketCurrency || 'USD')}</>
                   )}
                 </div>
               </div>

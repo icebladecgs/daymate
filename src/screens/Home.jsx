@@ -2,16 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { toDateStr, formatKoreanDate, getWeekDates } from "../utils/date.js";
+import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
-import { getPermission } from "../utils/notification.js";
-import { calcStreak, calcGoalProgress, calcDayScore, calcLevel } from "../data/stats.js";
-import { gcalFetchWeekEvents } from "../api/gcal.js";
+import { triggerVibration } from "../utils/notification.js";
+import { calcStreak, calcDayScore, calcLevel } from "../data/stats.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
-import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
@@ -93,7 +91,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const startFocus = (task) => setFocusTask(task);
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
-  const goalProgress = useMemo(() => calcGoalProgress(plans), [plans]);
   const todayScore = useMemo(() => calcDayScore(todayData, habits), [todayData, habits]);
   const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore + (inviteBonus || 0), [scores, todayScore, inviteBonus]);
   const levelInfo = useMemo(() => calcLevel(totalScore), [totalScore]);
@@ -287,7 +284,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   };
 
   // ── 운세 ────────────────────────────────────────────────────
-  const [fortuneOpen, setFortuneOpen] = useState(false);
   const [fortuneModalOpen, setFortuneModalOpen] = useState(false);
   const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
   const [fortuneData, setFortuneData] = useState(null);
@@ -530,13 +526,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     onSetTodayTasks(tasks);
     deleteSomeday(item.id);
   };
-
-  const [gcalWeekEvents, setGcalWeekEvents] = useState({});
-  useEffect(() => {
-    const token = getValidGcalToken?.();
-    if (!token) return;
-    gcalFetchWeekEvents(token, getWeekDates()).then(setGcalWeekEvents).catch(() => {});
-  }, []); // eslint-disable-line
 
   const [editingHabits, setEditingHabits] = useState(false);
   const [editingRecurring, setEditingRecurring] = useState(false);

@@ -13,7 +13,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'weekly'
   const [goalsOpen, setGoalsOpen] = useState(initialGoalsOpen);
   const [editingYearGoals, setEditingYearGoals] = useState(false);
@@ -697,7 +696,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         });
         const mood = d?.journal?.mood;
         const moodMap = { '행복': '😊', '평온': '😌', '보통': '🤔', '피곤': '😴', '우울': '😔' };
-        const isPast = preview <= today;
 
         const addQuickTask = () => {
           const title = quickTaskInput.trim();
@@ -895,7 +893,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         style={{ fontSize: 11, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>✏️ 편집</button>
                     ) : (
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { onUpdateDayData?.(preview, prev => ({ ...prev, memos: previewMemoDraft.trim() ? [{ id: `m_hist_${Date.now()}`, text: previewMemoDraft, createdAt: '편집됨' }] : [] })); setPreviewMemoEdit(false); }}
+                        <button onClick={() => { onUpdateDayData?.(preview, prev => ({ ...prev, memo: '', memos: previewMemoDraft.trim() ? [{ id: `m_hist_${Date.now()}`, text: previewMemoDraft, createdAt: '편집됨' }] : [] })); setPreviewMemoEdit(false); }}
                           style={{ fontSize: 11, color: '#4ADE80', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 900 }}>저장</button>
                         <button onClick={() => { setPreviewMemoDraft(computeMemoDraft(d)); setPreviewMemoEdit(false); }}
                           style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>취소</button>

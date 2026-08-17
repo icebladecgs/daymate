@@ -3,12 +3,17 @@
 
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
-function getDb() {
+function ensureAdminApp() {
   if (!getApps().length) {
     const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
     initializeApp({ credential: cert(sa) });
   }
+}
+
+function getDb() {
+  ensureAdminApp();
   return getFirestore();
 }
 
@@ -20,6 +25,20 @@ export default async function handler(req, res) {
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return res.status(500).json({ ok: false, error: '봇 토큰 미설정' });
+
+  // 요청자가 실제로 이 uid의 로그인 당사자인지 Firebase ID 토큰으로 검증
+  // (검증 없이 uid만 신뢰하면 남의 uid를 넣어 그 사람 텔레그램으로 메시지를 강제 발송할 수 있음)
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!idToken) return res.status(401).json({ ok: false, error: '인증이 필요해요' });
+
+  try {
+    ensureAdminApp();
+    const decoded = await getAuth().verifyIdToken(idToken);
+    if (decoded.uid !== uid) return res.status(403).json({ ok: false, error: '권한이 없어요' });
+  } catch {
+    return res.status(401).json({ ok: false, error: '인증이 만료됐어요' });
+  }
 
   try {
     const db = getDb();

@@ -108,7 +108,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
       currency: assetItem.currency || "USD",
       ...(assetItem.coinId ? { coinId: assetItem.coinId } : {}),
     }))),
-    ...PRESET_ASSETS.map((assetItem) => ({ ...assetItem, currency: assetItem.sym === "BTC" || assetItem.sym === "ETH" ? "USD" : "USD", src: assetItem.category === "crypto" ? "coingecko" : "finnhub" })),
+    ...PRESET_ASSETS.map((assetItem) => ({ ...assetItem, currency: "USD", src: assetItem.category === "crypto" ? "coingecko" : "finnhub" })),
   ]);
   const assetKey = availableAssets.map((assetItem) => assetItem.sym).join("|");
 
@@ -328,7 +328,7 @@ export default function InvestDiary({ uid, telegramCfg, onBack, embedded = false
           </div>
           {portfolioLoading && <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "8px 0" }}>시세 불러오는 중...</div>}
           {!portfolioLoading && portfolioData && Object.entries(portfolioData).map(([sym, d], i, arr) => {
-            const chg = d.changePercent ?? d.change ?? 0;
+            const chg = d.chgPct ?? 0;
             const isUp = chg > 0;
             const isDown = chg < 0;
             const color = isUp ? "#4ADE80" : isDown ? "#F87171" : "var(--dm-muted)";

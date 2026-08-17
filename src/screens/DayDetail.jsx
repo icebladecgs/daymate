@@ -5,7 +5,7 @@ import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents
 import { deletePhoto } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
-import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
+import MemoTimeline, { genMemoId } from "../components/MemoTimeline.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay }) {
@@ -38,7 +38,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       const next = { ...prev };
       const wasUndone = !prev.tasks.find(t => t.id === id)?.done;
       next.tasks = next.tasks.map((t) =>
-        t.id === id ? { ...t, done: !t.done, checkedAt: new Date().toISOString() } : t
+        t.id === id ? { ...t, done: !t.done, checkedAt: !t.done ? new Date().toISOString() : null } : t
       );
       if (wasUndone) playSuccessSound();
       return next;

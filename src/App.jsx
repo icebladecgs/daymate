@@ -834,7 +834,7 @@ export default function App() {
     const tasks = [...(normalizedDay?.tasks || [])];
     const remaining = [...incomingTasks];
     for (let i = 0; i < tasks.length && remaining.length > 0; i++) {
-      if (!tasks[i].title.trim()) tasks[i] = remaining.shift();
+      if (!tasks[i].title?.trim()) tasks[i] = remaining.shift();
     }
     return dedupeDayTasks({ ...normalizedDay, tasks: [...tasks, ...remaining] });
   };
@@ -870,6 +870,16 @@ export default function App() {
       });
   };
 
+  // id가 `t<생성시각ms>...` 형식(수동 추가 태스크의 통상적인 id 규칙)이고, 아주 최근(5분 이내)에
+  // 생성된 것으로 보이면 "아직 Firestore에 안 올라간 신규 로컬 태스크"로 간주한다.
+  // 오래된 로컬 태스크까지 무조건 되살리면 다른 기기에서 지운 태스크가 부활할 수 있어 시간창을 좁게 둔다.
+  const isRecentLocalOnlyTask = (task) => {
+    const match = String(task?.id || '').match(/^t(\d{10,})/);
+    if (!match) return false;
+    const createdAt = Number(match[1]);
+    return Number.isFinite(createdAt) && (Date.now() - createdAt) < 5 * 60 * 1000;
+  };
+
   const mergeImportedGcalTasks = (baseDay, localDay) => {
     const normalizedBaseDay = dedupeDayTasks(baseDay);
     const normalizedLocalDay = dedupeDayTasks(localDay);
@@ -878,8 +888,14 @@ export default function App() {
     const baseWithLocalOverride = normalizedBaseDay
       ? { ...normalizedBaseDay, tasks: (normalizedBaseDay.tasks || []).map(t => localTaskMap.get(String(t.id)) || t) }
       : normalizedBaseDay;
-    const localImportedTasks = (normalizedLocalDay?.tasks || []).filter(isImportedGcalTask);
-    if (!localImportedTasks.length) return baseWithLocalOverride;
+    // remote(base)에 아직 없는 로컬 전용 태스크: gcal 가져오기 태스크는 항상, 그 외 수동 태스크는
+    // 방금 생성된 것만 병합 대상으로 삼는다 (remote에 없는 이유가 "아직 동기화 안 됨"인지
+    // "다른 기기에서 삭제됨"인지 구분할 수 없어서, 최근 생성분만 안전하게 살린다)
+    const existingIds = new Set((baseWithLocalOverride?.tasks || []).map((task) => String(task.id)));
+    const localCandidateTasks = (normalizedLocalDay?.tasks || []).filter((task) =>
+      !existingIds.has(String(task.id)) && (isImportedGcalTask(task) || isRecentLocalOnlyTask(task))
+    );
+    if (!localCandidateTasks.length) return baseWithLocalOverride;
     const existingGcalIds = new Set((baseWithLocalOverride?.tasks || []).map((task) => task.gcalEventId).filter(Boolean));
     // 수동 태스크(gcalEventId 없음)의 제목만 체크 — gcal 태스크끼리는 gcalEventId로만 비교
     const existingManualTitles = new Set(
@@ -888,12 +904,13 @@ export default function App() {
         .map((task) => task.title?.trim().toLowerCase())
         .filter(Boolean)
     );
-    const missingImportedTasks = localImportedTasks.filter((task) =>
-      !existingGcalIds.has(task.gcalEventId) &&
-      !existingManualTitles.has(task.title?.trim().toLowerCase())
+    const missingTasks = localCandidateTasks.filter((task) =>
+      task.gcalEventId
+        ? !existingGcalIds.has(task.gcalEventId)
+        : !existingManualTitles.has(task.title?.trim().toLowerCase())
     );
-    if (!missingImportedTasks.length) return baseWithLocalOverride;
-    return mergeTasksIntoDay(baseWithLocalOverride, missingImportedTasks);
+    if (!missingTasks.length) return baseWithLocalOverride;
+    return mergeTasksIntoDay(baseWithLocalOverride, missingTasks);
   };
 
   const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
@@ -1100,7 +1117,7 @@ export default function App() {
 
   useEffect(() => {
     scheduler.apply(notifEnabled, user.name || "사용자", telegramCfg, alarmTimes);
-    return () => scheduler.cancelAll();
+    return () => scheduler.cancelManaged();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifEnabled, user.name, telegramCfg, alarmTimes]);
   useEffect(() => {
