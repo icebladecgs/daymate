@@ -1,7 +1,7 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.485.0",
+  "version": "0.486.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",

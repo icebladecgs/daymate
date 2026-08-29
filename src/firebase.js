@@ -423,6 +423,51 @@ export async function toggleCommentLike(communityId, noticeId, commentId, uid) {
   return !isLiked;
 }
 
+// ---------- 자유게시판 (전체 공개, 커뮤니티 소속 무관) ----------
+
+export async function updateFreeboardNickname(uid, nickname) {
+  await setDoc(doc(db, 'users', uid), { freeboardNickname: nickname }, { merge: true });
+}
+
+export async function addFreeBoardPost(post) {
+  const ref = doc(collection(db, 'publicBoard'));
+  await setDoc(ref, { ...post, createdAt: new Date().toISOString() });
+  return ref.id;
+}
+
+export async function deleteFreeBoardPost(postId) {
+  await deleteDoc(doc(db, 'publicBoard', postId));
+}
+
+export async function updateFreeBoardPost(postId, updates) {
+  await updateDoc(doc(db, 'publicBoard', postId), { ...updates, editedAt: new Date().toISOString() });
+}
+
+export async function addFreeBoardComment(postId, comment) {
+  const ref = doc(collection(db, 'publicBoard', postId, 'comments'));
+  await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });
+  await updateDoc(doc(db, 'publicBoard', postId), { commentCount: increment(1) });
+  return ref.id;
+}
+
+export async function deleteFreeBoardComment(postId, commentId) {
+  await deleteDoc(doc(db, 'publicBoard', postId, 'comments', commentId));
+  await updateDoc(doc(db, 'publicBoard', postId), { commentCount: increment(-1) });
+}
+
+export async function syncFreeBoardCommentCount(postId, actualCount) {
+  await updateDoc(doc(db, 'publicBoard', postId), { commentCount: actualCount });
+}
+
+export async function toggleFreeBoardCommentLike(postId, commentId, uid) {
+  const ref = doc(db, 'publicBoard', postId, 'comments', commentId);
+  const snap = await getDoc(ref);
+  const likedBy = snap.data()?.likedBy || [];
+  const isLiked = likedBy.includes(uid);
+  await updateDoc(ref, { likedBy: isLiked ? arrayRemove(uid) : arrayUnion(uid) });
+  return !isLiked;
+}
+
 // ---------- 투자일기 ----------
 
 export async function saveInvestLog(uid, log) {

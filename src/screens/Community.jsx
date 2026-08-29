@@ -8,6 +8,8 @@ import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
+import Linkify from "../utils/linkify.jsx";
+import FreeBoard from "./FreeBoard.jsx";
 import S from "../styles.js";
 
 function vibrateIfAvailable(pattern) {
@@ -159,7 +161,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
 }
 
 export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null, onGoogleSignIn }) {
-  const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge
+  const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge | freeboard
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
@@ -207,7 +209,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     } catch {}
   };
 
-  // 자유게시판
+  // 커뮤니티 게시판
   const [boardPosts, setBoardPosts] = useState([]);
   const [showBoardForm, setShowBoardForm] = useState(false);
   const [boardTitle, setBoardTitle] = useState('');
@@ -848,7 +850,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         </div>
       )}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
@@ -858,6 +860,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         ))}
       </div>
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
+      {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
       {mainTab === 'community' && (
         <div style={{ paddingBottom: 80 }}>
           {/* 상단 */}
@@ -969,7 +972,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   if (communityIds.length === 0 || mode === 'create' || mode === 'join' || mode === 'add') return (
     <div style={S.content}>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
@@ -979,6 +982,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         ))}
       </div>
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
+      {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
       {mainTab === 'community' && <>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={S.sub}>함께하는 일정 공유</div></div>
@@ -1182,7 +1186,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       )}
       {/* 메인 탭: 커뮤니티 / 챌린지 */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }].map(t => (
+        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
@@ -1194,6 +1198,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
       {mainTab === 'challenge' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
+      {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
+      {mainTab === 'freeboard' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
       {mainTab === 'community' && <>
 
       {/* 상단 */}
@@ -1430,7 +1436,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* ── 자유게시판 ── */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>📝</span>자유게시판
+          <span style={S.sectionEmoji}>📝</span>커뮤니티 게시판
         </span>
         <button onClick={() => { if (showBoardForm) cancelBoardForm(); else setShowBoardForm(true); }}
           style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
@@ -1704,7 +1710,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {selectedBoardPost.body ? (
-                <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{selectedBoardPost.body}</div>
+                <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}><Linkify text={selectedBoardPost.body} /></div>
               ) : (
                 <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
               )}
@@ -1742,7 +1748,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                               )}
                             </div>
                           </div>
-                          <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>{c.text}</div>
+                          <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}><Linkify text={c.text} /></div>
                           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
                             <button
                               onClick={() => toggleBoardCommentLike(communityId, selectedBoardPost.id, c.id, authUser?.uid).catch(() => {})}
