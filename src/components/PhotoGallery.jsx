@@ -15,18 +15,19 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
   };
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
     setUploading(true);
-    try {
+    const results = await Promise.allSettled(files.map(async (file) => {
       const blob = await compressImage(file);
       const path = `${pathPrefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-      const result = await uploadPhoto(path, blob, uid);
-      onChange([...photos, result]);
-    } catch (err) {
-      onError?.(photoErrorMessage(err));
-    }
+      return uploadPhoto(path, blob, uid);
+    }));
+    const uploaded = results.filter(r => r.status === "fulfilled").map(r => r.value);
+    const failed = results.find(r => r.status === "rejected");
+    if (uploaded.length > 0) onChange([...photos, ...uploaded]);
+    if (failed) onError?.(photoErrorMessage(failed.reason));
     setUploading(false);
   };
 
@@ -44,7 +45,7 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" multiple onChange={handleFile} style={{ display: 'none' }} />
 
       {photos.map((p, idx) => (
         <div key={p.path || idx} style={{ position: 'relative' }}>
