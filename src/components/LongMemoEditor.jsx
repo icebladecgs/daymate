@@ -8,7 +8,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, topTags = [], initialStarred = false, onUpdateStarred }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], initialStarred = false, onUpdateStarred }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
@@ -160,26 +160,49 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         />
       </div>
       <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {topTags.slice(0, 8).map(name => (
+        {myTags.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>내가 만든 태그</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {myTags.map(name => (
+                <button
+                  key={name}
+                  onClick={() => handleInsertTag(name)}
+                  style={{
+                    background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
+                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >#{name}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ marginBottom: 10 }}>
+          {frequentTags.length > 0 && (
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {frequentTags.map(name => (
+              <button
+                key={name}
+                onClick={() => handleInsertTag(name)}
+                style={{
+                  background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >#{name}</button>
+            ))}
             <button
-              key={name}
-              onClick={() => handleInsertTag(name)}
+              onClick={handleAddTag}
               style={{
-                background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
-                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
+                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
                 fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}
-            >#{name}</button>
-          ))}
-          <button
-            onClick={handleAddTag}
-            style={{
-              background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
-              borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
-              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >+ 새 태그</button>
+            >+ 새 태그</button>
+          </div>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 

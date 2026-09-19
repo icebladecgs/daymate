@@ -41,6 +41,13 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   const [focusedResult, setFocusedResult] = useState(null);
 
   const topKeywords = useMemo(() => getTopKeywords(plans, 20), [plans]);
+  const editorTags = useMemo(() => {
+    const all = getTopKeywords(plans, 40);
+    return {
+      frequentTags: all.filter(k => !k.explicit).slice(0, 8).map(k => k.name),
+      myTags: all.filter(k => k.explicit).slice(0, 8).map(k => k.name),
+    };
+  }, [plans]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,7 +140,8 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         uid={uid}
         pathPrefix={uid ? `users/${uid}/memos` : undefined}
         onPhotoError={setToast}
-        topTags={topKeywords.map(k => k.name)}
+        frequentTags={editorTags.frequentTags}
+        myTags={editorTags.myTags}
       />
     );
   }

@@ -499,7 +499,13 @@ export default function App() {
   // plans → ref 동기화 (setState 외부에서 최신 상태 읽기용)
   useEffect(() => { plansRef.current = plans; }, [plans]);
 
-  const topMemoTags = useMemo(() => getTopKeywords(plans, 8).map(k => k.name), [plans]);
+  const { frequentMemoTags, myMemoTags } = useMemo(() => {
+    const all = getTopKeywords(plans, 40);
+    return {
+      frequentMemoTags: all.filter(k => !k.explicit).slice(0, 8).map(k => k.name),
+      myMemoTags: all.filter(k => k.explicit).slice(0, 8).map(k => k.name),
+    };
+  }, [plans]);
 
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
@@ -1743,7 +1749,8 @@ export default function App() {
           onToggleTask={toggleTaskForDate}
           autoOpenLongMemo={autoOpenLongMemo}
           onRequireLogin={() => googleSignIn().catch(() => {})}
-          topTags={topMemoTags} />
+          frequentTags={frequentMemoTags}
+          myTags={myMemoTags} />
       );
     }
     if (screen === "voice-diary") {
@@ -2041,7 +2048,8 @@ export default function App() {
             pathPrefix={authUser?.uid ? `users/${authUser.uid}/memos` : undefined}
             onPhotoError={setToast}
             onRequireLogin={() => googleSignIn().catch(() => {})}
-            topTags={topMemoTags}
+            frequentTags={frequentMemoTags}
+            myTags={myMemoTags}
           />
         )}
 

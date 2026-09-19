@@ -63,15 +63,15 @@ export function buildKeywordIndex(plans) {
     if (seenSet.has(dedupeKey)) return;
     seenSet.add(dedupeKey);
     if (!index.has(kw)) index.set(kw, []);
-    index.get(kw).push({ dateStr, type, preview: (preview || '').slice(0, 80), photos: opts.photos || [] });
+    index.get(kw).push({ dateStr, type, preview: (preview || '').slice(0, 80), photos: opts.photos || [], explicit: !!opts.explicit });
   };
 
   Object.entries(plans || {}).forEach(([dateStr, day]) => {
     const journalText = [day.journal?.body, day.journal?.good, day.journal?.regret, day.journal?.tomorrow].filter(Boolean).join(' ');
     if (journalText.trim()) {
       const cleanPreview = journalText.replace(/\[\[([^\]]+)\]\]/g, '$1');
-      parseWikiLinks(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview));
-      extractKeywords(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview));
+      parseWikiLinks(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview, { explicit: true }));
+      extractKeywords(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview, { explicit: false }));
     }
 
     const memoItems = day.memos?.length ? day.memos : (day.memo ? [{ id: dateStr, text: day.memo }] : []);
@@ -79,15 +79,15 @@ export function buildKeywordIndex(plans) {
       const text = memo.text || '';
       if (!text.trim()) return;
       const cleanPreview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-      const opts = { dedupeKey: `${dateStr}|메모|${memo.id}`, photos: memo.photos || [] };
-      parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, opts));
-      extractKeywords(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, opts));
+      const baseOpts = { dedupeKey: `${dateStr}|메모|${memo.id}`, photos: memo.photos || [] };
+      parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, { ...baseOpts, explicit: true }));
+      extractKeywords(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, { ...baseOpts, explicit: false }));
     });
 
     (day.tags || []).forEach(tag => {
       const memoText = memoItems.map(m => m.text || '').join(' ');
       const preview = memoText.slice(0, 80).replace(/\[\[([^\]]+)\]\]/g, '$1');
-      addEntry(tag, dateStr, '태그', preview);
+      addEntry(tag, dateStr, '태그', preview, { explicit: true });
     });
   });
 
@@ -100,7 +100,7 @@ export function getTopKeywords(plans, limit = 30) {
   return [...index.entries()]
     .map(([name, entries]) => {
       const sorted = [...entries].sort((a, b) => b.dateStr.localeCompare(a.dateStr));
-      return { name, count: entries.length, lastDate: sorted[0]?.dateStr || '', entries: sorted };
+      return { name, count: entries.length, lastDate: sorted[0]?.dateStr || '', entries: sorted, explicit: entries.some(e => e.explicit) };
     })
     .sort((a, b) => b.count - a.count || b.lastDate.localeCompare(a.lastDate))
     .slice(0, limit);
