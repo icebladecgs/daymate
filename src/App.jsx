@@ -1734,7 +1734,8 @@ export default function App() {
           onSetTodayTasks={onSetTodayTasks}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onToggleTask={toggleTaskForDate}
-          autoOpenLongMemo={autoOpenLongMemo} />
+          autoOpenLongMemo={autoOpenLongMemo}
+          onRequireLogin={() => googleSignIn().catch(() => {})} />
       );
     }
     if (screen === "voice-diary") {
@@ -2030,6 +2031,7 @@ export default function App() {
             uid={authUser?.uid}
             pathPrefix={authUser?.uid ? `users/${authUser.uid}/memos` : undefined}
             onPhotoError={setToast}
+            onRequireLogin={() => googleSignIn().catch(() => {})}
           />
         )}
 

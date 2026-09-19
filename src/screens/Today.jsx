@@ -21,6 +21,7 @@ export default function Today({
   onToggleTask,
   autoOpenLongMemo,
   uid,
+  onRequireLogin,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -215,6 +216,7 @@ export default function Today({
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
       onPhotoError={setToast}
+      onRequireLogin={onRequireLogin}
     />
   );
 

@@ -8,7 +8,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
@@ -35,7 +35,8 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   };
 
   const handleAddPhoto = () => {
-    if (uploading || !uid) return;
+    if (uploading) return;
+    if (!uid) { onRequireLogin?.(); return; }
     fileInputRef.current?.click();
   };
 
@@ -109,8 +110,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           placeholder="자유롭게 작성하세요"
           style={{ minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
         />
-        {uid && (
-          <div style={{ padding: '0 20px 20px' }}>
+        <div style={{ padding: '0 20px 20px' }}>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 
             {photos.map((p, idx) => (
@@ -137,8 +137,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
                 cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
               }}
             >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
-          </div>
-        )}
+        </div>
       </div>
       <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
         {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
