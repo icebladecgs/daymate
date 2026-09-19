@@ -40,10 +40,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     fileInputRef.current?.click();
   };
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const uploadAndAddPhoto = async (file) => {
     setUploading(true);
     try {
       const blob = await compressImage(file);
@@ -54,6 +51,23 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       onPhotoError?.(photoErrorMessage(err));
     }
     setUploading(false);
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadAndAddPhoto(file);
+  };
+
+  const handlePaste = (e) => {
+    const item = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/'));
+    if (!item) return;
+    e.preventDefault();
+    if (uploading) return;
+    if (!uid) { onRequireLogin?.(); return; }
+    const file = item.getAsFile();
+    if (file) uploadAndAddPhoto(file);
   };
 
   const handleRemovePhoto = (idx) => {
@@ -107,6 +121,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose(); }}
+          onPaste={handlePaste}
           placeholder="자유롭게 작성하세요"
           style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
         />
