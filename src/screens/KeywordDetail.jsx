@@ -125,6 +125,18 @@ export default function KeywordDetail({ keyword, plans, onBack, onOpenKeyword, o
                   {rec.type}
                 </span>
               </div>
+              {rec.photos?.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto' }}>
+                  {rec.photos.map((p, pi) => (
+                    <img
+                      key={p.path || pi}
+                      src={p.url}
+                      alt="첨부 사진"
+                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                    />
+                  ))}
+                </div>
+              )}
               <div style={{
                 fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.65,
                 display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',

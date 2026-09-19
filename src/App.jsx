@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
@@ -11,6 +11,7 @@ import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
+import { getTopKeywords } from "./utils/knowledge.js";
 import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
@@ -497,6 +498,8 @@ export default function App() {
 
   // plans → ref 동기화 (setState 외부에서 최신 상태 읽기용)
   useEffect(() => { plansRef.current = plans; }, [plans]);
+
+  const topMemoTags = useMemo(() => getTopKeywords(plans, 8).map(k => k.name), [plans]);
 
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
@@ -1735,7 +1738,8 @@ export default function App() {
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onToggleTask={toggleTaskForDate}
           autoOpenLongMemo={autoOpenLongMemo}
-          onRequireLogin={() => googleSignIn().catch(() => {})} />
+          onRequireLogin={() => googleSignIn().catch(() => {})}
+          topTags={topMemoTags} />
       );
     }
     if (screen === "voice-diary") {
@@ -2032,6 +2036,7 @@ export default function App() {
             pathPrefix={authUser?.uid ? `users/${authUser.uid}/memos` : undefined}
             onPhotoError={setToast}
             onRequireLogin={() => googleSignIn().catch(() => {})}
+            topTags={topMemoTags}
           />
         )}
 

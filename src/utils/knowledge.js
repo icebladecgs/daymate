@@ -11,15 +11,19 @@ const STOP_WORDS = new Set([
   '사실','정도','경우','이후','동안','위해','통해','관해','대해','따라',
 ]);
 
-// [[keyword]] 링크 파싱
+// [[keyword]] 또는 #keyword 형식의 태그 파싱
 export function parseWikiLinks(text) {
   if (!text) return [];
-  const re = /\[\[([^\]]+)\]\]/g;
   const matches = new Set();
+  const bracketRe = /\[\[([^\]]+)\]\]/g;
   let m;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = bracketRe.exec(text)) !== null) {
     const kw = m[1].trim();
     if (kw && kw.length >= 2) matches.add(kw);
+  }
+  const hashRe = /#([\w가-힣]{2,20})/g;
+  while ((m = hashRe.exec(text)) !== null) {
+    matches.add(m[1]);
   }
   return [...matches];
 }
@@ -29,6 +33,7 @@ export function extractKeywords(text, maxCount = 6) {
   if (!text || text.length < 8) return [];
   const clean = text
     .replace(/\[\[[^\]]+\]\]/g, ' ')
+    .replace(/#[\w가-힣]{2,20}/g, ' ')
     .replace(/[^가-힣a-zA-Z0-9\s]/g, ' ');
   const words = clean.match(/[가-힣]{2,6}|[A-Z][a-zA-Z0-9]{2,}|[a-z][a-zA-Z0-9]{3,}/g) || [];
   const freq = {};
@@ -43,36 +48,43 @@ export function extractKeywords(text, maxCount = 6) {
 }
 
 // plans 전체에서 키워드 인덱스 생성
-// 반환: Map<keyword, [{dateStr, type, preview}]>
+// 반환: Map<keyword, [{dateStr, type, preview, photos}]>
 export function buildKeywordIndex(plans) {
   const index = new Map();
+  const seen = new Map(); // kw -> Set(dedupeKey), 중복 항목 방지용 (entry 객체에는 노출 안 함)
 
-  const addEntry = (keyword, dateStr, type, preview) => {
+  const addEntry = (keyword, dateStr, type, preview, opts = {}) => {
     const kw = (keyword || '').trim();
     if (!kw || kw.length < 2) return;
+    const dedupeKey = opts.dedupeKey || `${dateStr}|${type}`;
+    if (!seen.has(kw)) seen.set(kw, new Set());
+    const seenSet = seen.get(kw);
+    if (seenSet.has(dedupeKey)) return;
+    seenSet.add(dedupeKey);
     if (!index.has(kw)) index.set(kw, []);
-    const list = index.get(kw);
-    if (!list.find(e => e.dateStr === dateStr && e.type === type)) {
-      list.push({ dateStr, type, preview: (preview || '').slice(0, 80) });
-    }
+    index.get(kw).push({ dateStr, type, preview: (preview || '').slice(0, 80), photos: opts.photos || [] });
   };
 
   Object.entries(plans || {}).forEach(([dateStr, day]) => {
-    const memoText = (day.memos || []).map(m => m.text || '').join(' ') || day.memo || '';
     const journalText = [day.journal?.body, day.journal?.good, day.journal?.regret, day.journal?.tomorrow].filter(Boolean).join(' ');
-    const sources = [
-      { type: '메모', text: memoText },
-      { type: '일기', text: journalText },
-    ];
-
-    for (const { type, text } of sources) {
-      if (!text.trim()) continue;
-      const cleanPreview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-      parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, type, cleanPreview));
-      extractKeywords(text).forEach(kw => addEntry(kw, dateStr, type, cleanPreview));
+    if (journalText.trim()) {
+      const cleanPreview = journalText.replace(/\[\[([^\]]+)\]\]/g, '$1');
+      parseWikiLinks(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview));
+      extractKeywords(journalText).forEach(kw => addEntry(kw, dateStr, '일기', cleanPreview));
     }
 
+    const memoItems = day.memos?.length ? day.memos : (day.memo ? [{ id: dateStr, text: day.memo }] : []);
+    memoItems.forEach(memo => {
+      const text = memo.text || '';
+      if (!text.trim()) return;
+      const cleanPreview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
+      const opts = { dedupeKey: `${dateStr}|메모|${memo.id}`, photos: memo.photos || [] };
+      parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, opts));
+      extractKeywords(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, opts));
+    });
+
     (day.tags || []).forEach(tag => {
+      const memoText = memoItems.map(m => m.text || '').join(' ');
       const preview = memoText.slice(0, 80).replace(/\[\[([^\]]+)\]\]/g, '$1');
       addEntry(tag, dateStr, '태그', preview);
     });

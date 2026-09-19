@@ -128,6 +128,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         uid={uid}
         pathPrefix={uid ? `users/${uid}/memos` : undefined}
         onPhotoError={setToast}
+        topTags={topKeywords.map(k => k.name)}
       />
     );
   }

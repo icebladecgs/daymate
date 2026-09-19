@@ -8,7 +8,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, topTags = [] }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
@@ -32,6 +32,30 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     const id = ensureId();
     setPhotos(next);
     onUpdatePhotos?.(id, next);
+  };
+
+  const insertAtCursor = (insertText) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+    const needsSpaceBefore = before && !/\s$/.test(before);
+    const insertion = (needsSpaceBefore ? ' ' : '') + insertText + ' ';
+    const newText = before + insertion + after;
+    setText(newText);
+    const pos = (before + insertion).length;
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const handleInsertTag = (name) => insertAtCursor(`#${name}`);
+
+  const handleAddTag = () => {
+    const name = window.prompt('새 태그 이름을 입력하세요')?.trim();
+    if (name) insertAtCursor(`#${name}`);
   };
 
   const handleAddPhoto = () => {
@@ -127,6 +151,27 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         />
       </div>
       <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {topTags.slice(0, 8).map(name => (
+            <button
+              key={name}
+              onClick={() => handleInsertTag(name)}
+              style={{
+                background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
+                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >#{name}</button>
+          ))}
+          <button
+            onClick={handleAddTag}
+            style={{
+              background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
+              borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
+              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >+ 새 태그</button>
+        </div>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 
         {photos.map((p, idx) => (
