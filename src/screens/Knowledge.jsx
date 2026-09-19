@@ -41,12 +41,13 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
       .slice(0, 10);
   }, [plans]);
 
-  const filtered = searchText.trim()
-    ? flatKeywords.filter(k =>
-        k.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        searchText.toLowerCase().includes(k.name.toLowerCase())
-      )
-    : flatKeywords;
+  const searchLower = searchText.trim().toLowerCase();
+  const matchesSearch = (name) => !searchLower || name.toLowerCase().includes(searchLower) || searchLower.includes(name.toLowerCase());
+
+  const allMyTags = flatKeywords.filter(k => k.explicit);
+  const allFrequentTags = flatKeywords.filter(k => !k.explicit);
+  const myFlatTags = allMyTags.filter(k => matchesSearch(k.name));
+  const frequentFlatTags = allFrequentTags.filter(k => matchesSearch(k.name));
 
   const totalMentions = topKeywords.reduce((s, k) => s + k.count, 0);
   const hasAnyContent = topKeywords.length > 0;
@@ -99,19 +100,68 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
         </div>
       )}
 
-      {/* 자주 등장한 키워드 */}
-      {hasAnyContent && (
+      {/* 내가 만든 태그 */}
+      {allMyTags.length > 0 && (
         <>
           <div style={S.sectionTitle}>
-            <span style={S.sectionEmoji}>🏷️</span>자주 등장한 키워드
+            <span style={S.sectionEmoji}>🏷️</span>내가 만든 태그
           </div>
-          {filtered.length === 0 ? (
+          {myFlatTags.length === 0 ? (
             <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '20px' }}>
               검색 결과가 없어요
             </div>
           ) : (
             <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {filtered.map(({ name, count }) => (
+              {myFlatTags.map(({ name, count }) => (
+                <button
+                  key={name}
+                  onClick={() => onOpenKeyword(name)}
+                  style={{
+                    background: 'rgba(167,139,250,0.13)',
+                    border: '1px solid rgba(167,139,250,0.3)',
+                    borderRadius: 999,
+                    padding: '7px 14px',
+                    fontSize: 13,
+                    color: '#c4b5fd',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {name}
+                  <span style={{
+                    background: 'rgba(167,139,250,0.3)',
+                    borderRadius: 999,
+                    padding: '1px 7px',
+                    fontSize: 10,
+                    color: '#c4b5fd',
+                    fontWeight: 900,
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 자주 등장한 키워드 (자동 추출) */}
+      {allFrequentTags.length > 0 && (
+        <>
+          <div style={S.sectionTitle}>
+            <span style={S.sectionEmoji}>🔥</span>자주 등장한 키워드
+          </div>
+          {frequentFlatTags.length === 0 ? (
+            <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '20px' }}>
+              검색 결과가 없어요
+            </div>
+          ) : (
+            <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {frequentFlatTags.map(({ name, count }) => (
                 <button
                   key={name}
                   onClick={() => onOpenKeyword(name)}
