@@ -1524,12 +1524,12 @@ export default function App() {
                   <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 6 }}>꾸준히 하면 레벨이 올라가요!</div>
                 </div>
                 {[
-                  ["🌱", "새싹", "Lv.1"],
-                  ["🌿", "성장", "Lv.2~3"],
-                  ["⚡", "도전자", "Lv.4~5"],
-                  ["🔥", "실행가", "Lv.6~7"],
-                  ["👑", "마스터", "Lv.8~9"],
-                  ["💎", "챔피언", "Lv.10+"],
+                  ["🥉", "브론즈", "Lv.1~4"],
+                  ["🥈", "실버", "Lv.5~8"],
+                  ["🥇", "골드", "Lv.9~12"],
+                  ["💠", "플래티넘", "Lv.13~16"],
+                  ["💎", "다이아몬드", "Lv.17~20"],
+                  ["🏆", "챌린저", "Lv.21+"],
                 ].map(([icon, title, lv]) => (
                   <div key={lv} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--dm-row)" }}>
                     <div style={{ fontSize: 22, width: 32, textAlign: "center" }}>{icon}</div>

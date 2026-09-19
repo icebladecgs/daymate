@@ -6,7 +6,7 @@ import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
 import { triggerVibration } from "../utils/notification.js";
-import { calcStreak, calcDayScore, calcLevel } from "../data/stats.js";
+import { calcStreak, calcDayScore, calcLevel, LEVEL_TITLES, LEVEL_ICONS } from "../data/stats.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
@@ -2060,10 +2060,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       {xpHelpOpen && (() => {
         const LEVELS = Array.from({ length: 21 }, (_, i) => {
           const lv = i + 1;
-          const icons  = ['🌱','🌱','🌱','🌿','🌿','⚡','⚡','🔥','🔥','🔥','👑','👑','👑','👑','👑','🌟','🌟','🌟','🌟','🌟','💎'];
-          const titles = ['새싹','새싹','새싹','성장','성장','도전자','도전자','실행가','실행가','실행가','마스터','마스터','마스터','마스터','마스터','전설','전설','전설','전설','전설','챔피언'];
           const floor = Math.pow(lv - 1, 2) * 100;
-          return { lv, icon: icons[i], title: titles[i], floor };
+          return { lv, icon: LEVEL_ICONS[i], title: LEVEL_TITLES[i], floor };
         });
         const XP_ITEMS = [
           { label: '할일 완료 1개', pt: '+10 XP' },

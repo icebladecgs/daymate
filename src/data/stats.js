@@ -121,29 +121,20 @@ export const calcStreakBonus = (streak) => {
   return 50 * multiplier; // 7일=50, 14일=100, 21일=150...
 };
 
-const LEVEL_TITLES = ['새싹','새싹','새싹','성장','성장','도전자','도전자','실행가','실행가','실행가','마스터','마스터','마스터','마스터','마스터','전설','전설','전설','전설','전설','챔피언'];
-const LEVEL_ICONS  = ['🌱','🌱','🌱','🌿','🌿','⚡','⚡','🔥','🔥','🔥','👑','👑','👑','👑','👑','🌟','🌟','🌟','🌟','🌟','💎'];
+export const LEVEL_TITLES = ['브론즈 1','브론즈 2','브론즈 3','브론즈 4','실버 1','실버 2','실버 3','실버 4','골드 1','골드 2','골드 3','골드 4','플래티넘 1','플래티넘 2','플래티넘 3','플래티넘 4','다이아몬드 1','다이아몬드 2','다이아몬드 3','다이아몬드 4','챌린저'];
+export const LEVEL_ICONS  = ['🥉','🥉','🥉','🥉','🥈','🥈','🥈','🥈','🥇','🥇','🥇','🥇','💠','💠','💠','💠','💎','💎','💎','💎','🏆'];
 
 export const LEVEL_BADGES = [
+  null, null, null, null,
+  { label: '실버 승급', icon: '🥈' },
   null, null, null,
-  { label: '성장하는 씨앗', icon: '🌿' },
-  { label: '성장하는 씨앗', icon: '🌿' },
-  { label: '도전의 불꽃', icon: '⚡' },
-  { label: '도전의 불꽃', icon: '⚡' },
-  { label: '실행력의 화신', icon: '🔥' },
-  { label: '실행력의 화신', icon: '🔥' },
-  { label: '실행력의 화신', icon: '🔥' },
-  { label: '왕관을 쓴 자', icon: '👑' },
-  { label: '왕관을 쓴 자', icon: '👑' },
-  { label: '왕관을 쓴 자', icon: '👑' },
-  { label: '왕관을 쓴 자', icon: '👑' },
-  { label: '왕관을 쓴 자', icon: '👑' },
-  { label: '전설의 시작', icon: '🌟' },
-  { label: '전설의 시작', icon: '🌟' },
-  { label: '전설의 시작', icon: '🌟' },
-  { label: '전설의 시작', icon: '🌟' },
-  { label: '전설의 시작', icon: '🌟' },
-  { label: '다이아몬드 챔피언', icon: '💎' },
+  { label: '골드 승급', icon: '🥇' },
+  null, null, null,
+  { label: '플래티넘 승급', icon: '💠' },
+  null, null, null,
+  { label: '다이아몬드 승급', icon: '💎' },
+  null, null, null,
+  { label: '챌린저 등극', icon: '🏆' },
 ];
 
 export const calcLevel = (totalScore) => {
