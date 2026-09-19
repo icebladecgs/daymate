@@ -1938,6 +1938,7 @@ export default function App() {
       return (
         <Knowledge
           plans={plans}
+          onBack={() => history.back()}
           onOpenKeyword={(kw) => {
             setOpenKeyword(kw);
             setScreen("keyword-detail");

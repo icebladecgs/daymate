@@ -6,7 +6,7 @@ import { formatKoreanDate } from "../utils/date.js";
 const getMemoText = (day) =>
   (day.memos || []).map(m => m.text || '').join('\n').trim() || (day.memo || '').trim();
 
-export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
+export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) {
   const [searchText, setSearchText] = useState('');
 
   const topKeywords = useMemo(() => getTopKeywords(plans, 40), [plans]);
@@ -54,6 +54,14 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
   return (
     <div style={S.content}>
       <div style={S.topbar}>
+        {onBack && (
+          <button
+            onClick={onBack}
+            style={{ ...S.btnGhost, width: 'auto', marginTop: 0, padding: '6px 12px', fontSize: 13 }}
+          >
+            ← 뒤로
+          </button>
+        )}
         <div>
           <div style={S.title}>연결된 생각</div>
           <div style={S.sub}>키워드 {topKeywords.length}개 · 언급 {totalMentions}회</div>
