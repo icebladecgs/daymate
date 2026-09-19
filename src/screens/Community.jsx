@@ -458,6 +458,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   };
 
   const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제할까요?')) return;
     try {
       await deleteNoticeComment(communityId, selectedNotice.id, commentId);
     } catch { setToast('삭제 실패 ❌'); }
@@ -500,6 +501,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   };
 
   const handleDeleteBoardComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제할까요?')) return;
     try {
       await deleteBoardComment(communityId, selectedBoardPost.id, commentId);
     } catch { setToast('삭제 실패 ❌'); }

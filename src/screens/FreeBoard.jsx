@@ -148,6 +148,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
   };
 
   const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제할까요?')) return;
     try { await deleteFreeBoardComment(selectedPost.id, commentId); }
     catch { setToast('삭제 실패 ❌'); }
   };
