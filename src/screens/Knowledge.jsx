@@ -45,7 +45,7 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
   const matchesSearch = (name) => !searchLower || name.toLowerCase().includes(searchLower) || searchLower.includes(name.toLowerCase());
 
   const allMyTags = flatKeywords.filter(k => k.explicit);
-  const allFrequentTags = flatKeywords.filter(k => !k.explicit);
+  const allFrequentTags = flatKeywords.filter(k => !k.explicit).slice(0, 10);
   const myFlatTags = allMyTags.filter(k => matchesSearch(k.name));
   const frequentFlatTags = allFrequentTags.filter(k => matchesSearch(k.name));
 
