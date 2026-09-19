@@ -1602,6 +1602,12 @@ export default function App() {
     history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
   };
 
+  const openKeywordDetail = (kw) => {
+    setOpenKeyword(kw);
+    setScreen("keyword-detail");
+    history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
+  };
+
   const renderScreen = () => {
     if (screen === "my") {
       // My 탭 — 대시보드만 (DailyPage 없음)
@@ -1761,7 +1767,8 @@ export default function App() {
           frequentTags={frequentMemoTags}
           myTags={myMemoTags}
           onHideTag={hideMemoTag}
-          hiddenTags={hiddenTags} />
+          hiddenTags={hiddenTags}
+          onOpenKeyword={openKeywordDetail} />
       );
     }
     if (screen === "voice-diary") {
@@ -1950,11 +1957,7 @@ export default function App() {
         <Knowledge
           plans={plans}
           onBack={() => history.back()}
-          onOpenKeyword={(kw) => {
-            setOpenKeyword(kw);
-            setScreen("keyword-detail");
-            history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
-          }}
+          onOpenKeyword={openKeywordDetail}
           onOpenDate={(ds, viaMemo) => viaMemo ? openDetailMemo(ds) : openDetail(ds)}
         />
       );
@@ -1965,10 +1968,7 @@ export default function App() {
           keyword={openKeyword || ''}
           plans={plans}
           onBack={() => history.back()}
-          onOpenKeyword={(kw) => {
-            setOpenKeyword(kw);
-            history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
-          }}
+          onOpenKeyword={openKeywordDetail}
           onOpenDate={(ds) => openDetail(ds)}
         />
       );
@@ -2076,6 +2076,7 @@ export default function App() {
             setToast={setToast}
             hiddenTags={hiddenTags}
             onHideTag={hideMemoTag}
+            onOpenKeyword={(kw) => { setShowFabMemoSearch(false); setShowFabMemo(false); openKeywordDetail(kw); }}
           />
         )}
       </div>

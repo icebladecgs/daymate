@@ -35,7 +35,7 @@ const TYPE_META = {
   journal: { label: "일기",  color: "#A78BFA", bg: "rgba(167,139,250,.12)" },
 };
 
-export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast, hiddenTags = [], onHideTag }) {
+export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast, hiddenTags = [], onHideTag, onOpenKeyword }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
@@ -196,7 +196,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6 }}>자주 쓰는 키워드</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {topKeywords.slice(0, 12).map(k => (
-              <button key={k.name} onClick={() => setQuery(k.name)}
+              <button key={k.name} onClick={() => onOpenKeyword ? onOpenKeyword(k.name) : setQuery(k.name)}
                 style={{ fontSize: 12, color: "#6C8EFF", background: "rgba(108,142,255,0.12)", border: "1px solid rgba(108,142,255,0.25)", borderRadius: 20, padding: "4px 11px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
                 {k.name} <span style={{ fontSize: 10, opacity: 0.7 }}>{k.count}</span>
               </button>
