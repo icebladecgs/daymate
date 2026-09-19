@@ -101,45 +101,45 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
         >저장</button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         <textarea
           ref={textareaRef}
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose(); }}
           placeholder="자유롭게 작성하세요"
-          style={{ minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word' }}
+          style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
         />
-        <div style={{ padding: '0 20px 20px' }}>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
-
-            {photos.map((p, idx) => (
-              <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
-                <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
-                <button
-                  onClick={() => handleRemovePhoto(idx)}
-                  aria-label="사진 삭제"
-                  style={{
-                    position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
-                    fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                  }}
-                >✕</button>
-              </div>
-            ))}
-
-            <button
-              onClick={handleAddPhoto}
-              disabled={uploading}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
-                border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
-                cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
-              }}
-            >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
-        </div>
       </div>
-      <div style={{ padding: '8px 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
+      <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+
+        {photos.map((p, idx) => (
+          <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
+            <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+            <button
+              onClick={() => handleRemovePhoto(idx)}
+              aria-label="사진 삭제"
+              style={{
+                position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+                fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+              }}
+            >✕</button>
+          </div>
+        ))}
+
+        <button
+          onClick={handleAddPhoto}
+          disabled={uploading}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
+            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
+          }}
+        >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
+      </div>
+      <div style={{ padding: '0 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
         {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
       </div>
     </div>
