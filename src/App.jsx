@@ -1767,8 +1767,7 @@ export default function App() {
           frequentTags={frequentMemoTags}
           myTags={myMemoTags}
           onHideTag={hideMemoTag}
-          hiddenTags={hiddenTags}
-          onOpenKeyword={openKeywordDetail} />
+          hiddenTags={hiddenTags} />
       );
     }
     if (screen === "voice-diary") {
@@ -2076,7 +2075,6 @@ export default function App() {
             setToast={setToast}
             hiddenTags={hiddenTags}
             onHideTag={hideMemoTag}
-            onOpenKeyword={(kw) => { setShowFabMemoSearch(false); setShowFabMemo(false); openKeywordDetail(kw); }}
           />
         )}
       </div>

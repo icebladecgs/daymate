@@ -3,6 +3,7 @@ import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import JournalViewer from "./JournalViewer.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
+import KeywordDetail from "./KeywordDetail.jsx";
 import { getTopKeywords } from "../utils/knowledge.js";
 
 function highlight(text, query) {
@@ -35,7 +36,7 @@ const TYPE_META = {
   journal: { label: "일기",  color: "#A78BFA", bg: "rgba(167,139,250,.12)" },
 };
 
-export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast, hiddenTags = [], onHideTag, onOpenKeyword }) {
+export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast, hiddenTags = [], onHideTag }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
@@ -117,6 +118,18 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
     setActiveMatchIndex(i => (i + delta + flatMatches.length) % flatMatches.length);
   };
 
+  if (focusedResult?.type === 'keyword') {
+    return (
+      <KeywordDetail
+        keyword={focusedResult.keyword}
+        plans={plans}
+        onBack={() => setFocusedResult(null)}
+        onOpenKeyword={(kw) => setFocusedResult({ type: 'keyword', keyword: kw })}
+        onOpenDate={(ds) => onOpenDate?.(ds)}
+      />
+    );
+  }
+
   if (focusedResult?.type === 'memo') {
     return (
       <LongMemoEditor
@@ -196,7 +209,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6 }}>자주 쓰는 키워드</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {topKeywords.slice(0, 12).map(k => (
-              <button key={k.name} onClick={() => onOpenKeyword ? onOpenKeyword(k.name) : setQuery(k.name)}
+              <button key={k.name} onClick={() => setFocusedResult({ type: 'keyword', keyword: k.name })}
                 style={{ fontSize: 12, color: "#6C8EFF", background: "rgba(108,142,255,0.12)", border: "1px solid rgba(108,142,255,0.25)", borderRadius: 20, padding: "4px 11px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
                 {k.name} <span style={{ fontSize: 10, opacity: 0.7 }}>{k.count}</span>
               </button>
