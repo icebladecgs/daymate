@@ -8,6 +8,9 @@ const getMemoText = (day) =>
 
 export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) {
   const [searchText, setSearchText] = useState('');
+  const [expandMy, setExpandMy] = useState(false);
+  const [expandFrequent, setExpandFrequent] = useState(false);
+  const [expandGroups, setExpandGroups] = useState(false);
 
   const topKeywords = useMemo(() => getTopKeywords(plans, 40), [plans]);
 
@@ -45,7 +48,7 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
   const matchesSearch = (name) => !searchLower || name.toLowerCase().includes(searchLower) || searchLower.includes(name.toLowerCase());
 
   const allMyTags = flatKeywords.filter(k => k.explicit);
-  const allFrequentTags = flatKeywords.filter(k => !k.explicit).slice(0, 10);
+  const allFrequentTags = flatKeywords.filter(k => !k.explicit);
   const myFlatTags = allMyTags.filter(k => matchesSearch(k.name));
   const frequentFlatTags = allFrequentTags.filter(k => matchesSearch(k.name));
 
@@ -105,13 +108,19 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
         <>
           <div style={S.sectionTitle}>
             <span style={S.sectionEmoji}>🏷️</span>내가 만든 태그
+            {allMyTags.length > 6 && (
+              <button
+                onClick={() => setExpandMy(v => !v)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >{expandMy ? '접기 ▴' : '펼쳐보기 ▾'}</button>
+            )}
           </div>
           {myFlatTags.length === 0 ? (
             <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '20px' }}>
               검색 결과가 없어요
             </div>
           ) : (
-            <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: expandMy ? 'none' : 76, overflow: 'hidden' }}>
               {myFlatTags.map(({ name, count }) => (
                 <button
                   key={name}
@@ -154,13 +163,19 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
         <>
           <div style={S.sectionTitle}>
             <span style={S.sectionEmoji}>🔥</span>자주 등장한 키워드
+            {allFrequentTags.length > 6 && (
+              <button
+                onClick={() => setExpandFrequent(v => !v)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >{expandFrequent ? '접기 ▴' : '펼쳐보기 ▾'}</button>
+            )}
           </div>
           {frequentFlatTags.length === 0 ? (
             <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '20px' }}>
               검색 결과가 없어요
             </div>
           ) : (
-            <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ padding: '0 16px 4px', display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: expandFrequent ? 'none' : 76, overflow: 'hidden' }}>
               {frequentFlatTags.map(({ name, count }) => (
                 <button
                   key={name}
@@ -203,9 +218,15 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
         <>
           <div style={S.sectionTitle}>
             <span style={S.sectionEmoji}>📂</span>카테고리별 모아보기
+            {groupedTags.size > 2 && (
+              <button
+                onClick={() => setExpandGroups(v => !v)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >{expandGroups ? '접기 ▴' : '펼쳐보기 ▾'}</button>
+            )}
           </div>
           <div style={{ padding: '0 16px 4px' }}>
-            {[...groupedTags.entries()].map(([parent, children]) => (
+            {[...groupedTags.entries()].slice(0, expandGroups ? undefined : 2).map(([parent, children]) => (
               <div key={parent} style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 6 }}>{parent}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
