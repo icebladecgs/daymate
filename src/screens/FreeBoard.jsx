@@ -57,7 +57,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
   useEffect(() => {
     if (!selectedPost) { setComments([]); return; }
     commentInitRef.current = false;
-    const q = query(collection(db, 'publicBoard', selectedPost.id, 'comments'), orderBy('createdAt', 'asc'));
+    const q = query(collection(db, 'publicBoard', selectedPost.id, 'comments'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, snap => {
       if (!commentInitRef.current) {
         commentInitRef.current = true;
@@ -297,7 +297,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
                   </button>
                 )}
                 <button onClick={() => setSelectedPost(null)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+                  style={{ background: 'transparent', border: 'none', borderLeft: '1px solid var(--dm-border)', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '4px 4px 4px 14px', marginLeft: 6, lineHeight: 1 }}>✕</button>
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>

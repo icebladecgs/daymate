@@ -426,7 +426,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     commentInitRef.current = false;
     const q = query(
       collection(db, 'communities', communityId, 'notices', selectedNotice.id, 'comments'),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, snap => {
       if (commentInitRef.current) {
@@ -469,7 +469,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     boardCommentInitRef.current = false;
     const q = query(
       collection(db, 'communities', communityId, 'board', selectedBoardPost.id, 'comments'),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, snap => {
       if (boardCommentInitRef.current) {
@@ -1705,7 +1705,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   </button>
                 )}
                 <button onClick={() => setSelectedBoardPost(null)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</button>
+                  style={{ background: 'transparent', border: 'none', borderLeft: '1px solid var(--dm-border)', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '4px 4px 4px 14px', marginLeft: 6, lineHeight: 1 }}>✕</button>
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
