@@ -14,6 +14,8 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const [photos, setPhotos] = useState(initialPhotos);
   const [starred, setStarred] = useState(initialStarred);
   const [uploading, setUploading] = useState(false);
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTagInput, setNewTagInput] = useState('');
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const idRef = useRef(initialId);
@@ -62,8 +64,15 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const handleInsertTag = (name) => insertAtCursor(`#${name}`);
 
   const handleAddTag = () => {
-    const name = window.prompt('새 태그 이름을 입력하세요')?.trim();
+    setNewTagInput('');
+    setAddingTag(true);
+  };
+
+  const confirmNewTag = () => {
+    const name = newTagInput.trim();
     if (name) insertAtCursor(`#${name}`);
+    setAddingTag(false);
+    setNewTagInput('');
   };
 
   const handleAddPhoto = () => {
@@ -194,14 +203,42 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
                 }}
               >#{name}</button>
             ))}
-            <button
-              onClick={handleAddTag}
-              style={{
-                background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
-                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
-                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >+ 새 태그</button>
+            {addingTag ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  autoFocus
+                  value={newTagInput}
+                  onChange={e => setNewTagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') confirmNewTag();
+                    if (e.key === 'Escape') { setAddingTag(false); setNewTagInput(''); }
+                  }}
+                  placeholder="태그 이름"
+                  style={{
+                    background: 'var(--dm-input)', border: '1px solid var(--dm-border)',
+                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-text)',
+                    fontFamily: 'inherit', width: 100,
+                  }}
+                />
+                <button
+                  onClick={confirmNewTag}
+                  style={{
+                    background: 'rgba(108,142,255,0.2)', border: '1px solid rgba(108,142,255,0.4)',
+                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >추가</button>
+              </div>
+            ) : (
+              <button
+                onClick={handleAddTag}
+                style={{
+                  background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >+ 새 태그</button>
+            )}
           </div>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
