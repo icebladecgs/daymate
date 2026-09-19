@@ -1148,6 +1148,10 @@ export default function App() {
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
+  const updateFabMemoStarred = (id, starred) => setTodayData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
+  }));
 
   const setTodayData = (updater) => {
     setPlans((prev) => {
@@ -2029,6 +2033,7 @@ export default function App() {
             onCreate={(text) => addFabMemo(text, getMemoTimeStr())}
             onUpdate={updateFabMemo}
             onUpdatePhotos={updateFabMemoPhotos}
+            onUpdateStarred={updateFabMemoStarred}
             onClose={() => setShowFabMemo(false)}
             onSearch={() => setShowFabMemoSearch(true)}
             onOpenKnowledge={() => { setShowFabMemo(false); changeScreen("knowledge"); }}

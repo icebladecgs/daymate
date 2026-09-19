@@ -443,10 +443,25 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     { text: "당신이 집중하는 것이 성장한다.", author: "익명" },
     { text: "가족이 있는 한 실패는 없다.", author: "익명" },
   ];
+  const starredMemos = useMemo(() => {
+    const list = [];
+    Object.entries(plans || {}).forEach(([ds, day]) => {
+      (day.memos || []).forEach(m => {
+        if (m.starred && (m.text || '').trim()) list.push({ text: m.text, dateStr: ds, photos: m.photos || [] });
+      });
+    });
+    return list;
+  }, [plans]);
+
   const todayQuote = useMemo(() => {
+    if (starredMemos.length > 0) {
+      const idx = Math.floor(new Date(todayStr).getTime() / 86400000) % starredMemos.length;
+      const m = starredMemos[idx];
+      return { text: m.text, author: formatKoreanDate(m.dateStr), photo: m.photos[0]?.url || null, source: 'memo' };
+    }
     const idx = Math.floor(new Date(todayStr).getTime() / 86400000) % QUOTES.length;
-    return QUOTES[idx];
-  }, [todayStr]); // eslint-disable-line
+    return { ...QUOTES[idx], photo: null, source: 'builtin' };
+  }, [todayStr, starredMemos]); // eslint-disable-line
 
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
@@ -1285,8 +1300,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isSectionVisible('quote') && (
             <div style={{ order: getSectionOrder('quote') }}>
           <div style={{ margin: "0 16px 10px", borderRadius: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))", border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", boxShadow: "none" }}>
-            <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>오늘의 명언</div>
-            <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.55, marginBottom: 5, opacity: 0.9 }}>"{todayQuote.text}"</div>
+            <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>{todayQuote.source === 'memo' ? '오늘의 한마디 ⭐' : '오늘의 명언'}</div>
+            {todayQuote.photo && (
+              <img src={todayQuote.photo} alt="" style={{ width: '100%', borderRadius: 10, display: 'block', marginBottom: 8 }} />
+            )}
+            <div style={{ fontSize: 13, color: "var(--dm-text)", fontWeight: 700, lineHeight: 1.55, marginBottom: 5, opacity: 0.9, whiteSpace: 'pre-wrap' }}>"{todayQuote.text}"</div>
             <div style={{ fontSize: 11, color: "var(--dm-muted)", textAlign: "right" }}>— {todayQuote.author}</div>
           </div>
       </div>

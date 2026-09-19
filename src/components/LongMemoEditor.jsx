@@ -8,10 +8,11 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, topTags = [] }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, topTags = [], initialStarred = false, onUpdateStarred }) {
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
+  const [starred, setStarred] = useState(initialStarred);
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -32,6 +33,13 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     const id = ensureId();
     setPhotos(next);
     onUpdatePhotos?.(id, next);
+  };
+
+  const toggleStar = () => {
+    const id = ensureId();
+    const next = !starred;
+    setStarred(next);
+    onUpdateStarred?.(id, next);
   };
 
   const insertAtCursor = (insertText) => {
@@ -132,6 +140,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
+        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button

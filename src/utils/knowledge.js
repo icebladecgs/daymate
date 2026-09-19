@@ -21,7 +21,8 @@ export function parseWikiLinks(text) {
     const kw = m[1].trim();
     if (kw && kw.length >= 2) matches.add(kw);
   }
-  const hashRe = /#([\w가-힣]{2,20})/g;
+  // #태그 또는 계층형 #상위/하위 태그
+  const hashRe = /#([\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*)/g;
   while ((m = hashRe.exec(text)) !== null) {
     matches.add(m[1]);
   }
@@ -33,7 +34,7 @@ export function extractKeywords(text, maxCount = 6) {
   if (!text || text.length < 8) return [];
   const clean = text
     .replace(/\[\[[^\]]+\]\]/g, ' ')
-    .replace(/#[\w가-힣]{2,20}/g, ' ')
+    .replace(/#[\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*/g, ' ')
     .replace(/[^가-힣a-zA-Z0-9\s]/g, ' ');
   const words = clean.match(/[가-힣]{2,6}|[A-Z][a-zA-Z0-9]{2,}|[a-z][a-zA-Z0-9]{3,}/g) || [];
   const freq = {};

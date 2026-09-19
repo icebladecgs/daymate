@@ -84,6 +84,10 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
+  const updateMemoStarred = (id, starred) => setData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
+  }));
   const deleteMemo = (id) => {
     const target = (data.memos || []).find(m => m.id === id);
     (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
@@ -208,9 +212,11 @@ export default function Today({
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
+      initialStarred={longMemo.starred || false}
       onCreate={(text) => addMemo(text, getMemoTimeStr())}
       onUpdate={updateMemo}
       onUpdatePhotos={updateMemoPhotos}
+      onUpdateStarred={updateMemoStarred}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); setShowSearch(true); }}
       onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
@@ -280,7 +286,8 @@ export default function Today({
           onAdd={addMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
-          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [] })}
+          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [], starred: item.starred || false })}
+          onToggleStar={updateMemoStarred}
           placeholder="메모 입력 후 + 버튼"
           extraAction={
             <button

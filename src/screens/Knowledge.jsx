@@ -11,6 +11,24 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
 
   const topKeywords = useMemo(() => getTopKeywords(plans, 40), [plans]);
 
+  // #상위/하위 형식의 계층형 태그를 분리 — 그룹은 별도 섹션에, 나머지는 기존 키워드 목록에
+  const { flatKeywords, groupedTags } = useMemo(() => {
+    const flatKeywords = [];
+    const groups = new Map();
+    topKeywords.forEach(k => {
+      const slashIdx = k.name.indexOf('/');
+      if (slashIdx > 0 && slashIdx < k.name.length - 1) {
+        const parent = k.name.slice(0, slashIdx);
+        const child = k.name.slice(slashIdx + 1);
+        if (!groups.has(parent)) groups.set(parent, []);
+        groups.get(parent).push({ ...k, child });
+      } else {
+        flatKeywords.push(k);
+      }
+    });
+    return { flatKeywords, groupedTags: groups };
+  }, [topKeywords]);
+
   const recentDays = useMemo(() => {
     return Object.entries(plans)
       .filter(([, day]) => {
@@ -24,11 +42,11 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
   }, [plans]);
 
   const filtered = searchText.trim()
-    ? topKeywords.filter(k =>
+    ? flatKeywords.filter(k =>
         k.name.toLowerCase().includes(searchText.toLowerCase()) ||
         searchText.toLowerCase().includes(k.name.toLowerCase())
       )
-    : topKeywords;
+    : flatKeywords;
 
   const totalMentions = topKeywords.reduce((s, k) => s + k.count, 0);
   const hasAnyContent = topKeywords.length > 0;
@@ -119,6 +137,56 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate }) {
               ))}
             </div>
           )}
+        </>
+      )}
+
+      {/* 계층형 태그 (#상위/하위) 모아보기 */}
+      {groupedTags.size > 0 && (
+        <>
+          <div style={S.sectionTitle}>
+            <span style={S.sectionEmoji}>📂</span>카테고리별 모아보기
+          </div>
+          <div style={{ padding: '0 16px 4px' }}>
+            {[...groupedTags.entries()].map(([parent, children]) => (
+              <div key={parent} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 6 }}>{parent}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {children.map(({ name, child, count }) => (
+                    <button
+                      key={name}
+                      onClick={() => onOpenKeyword(name)}
+                      style={{
+                        background: 'rgba(167,139,250,0.12)',
+                        border: '1px solid rgba(167,139,250,0.25)',
+                        borderRadius: 999,
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        color: '#c4b5fd',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {child}
+                      <span style={{
+                        background: 'rgba(167,139,250,0.3)',
+                        borderRadius: 999,
+                        padding: '1px 6px',
+                        fontSize: 10,
+                        color: '#c4b5fd',
+                        fontWeight: 900,
+                      }}>
+                        {count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       )}
 

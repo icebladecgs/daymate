@@ -17,7 +17,7 @@ const chipBtn = (color) => ({
   fontFamily: 'inherit',
 });
 
-function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
+function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
   const [mode, setMode] = useState('collapsed');
   const [editText, setEditText] = useState(item.text);
 
@@ -58,6 +58,9 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
           <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>
           <button onClick={() => setMode('editing')} style={chipBtn('#6C8EFF')}>수정</button>
           {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={chipBtn('#A78BFA')}>긴메모편집</button>}
+          {onToggleStar && (
+            <button onClick={() => onToggleStar(item.id, !item.starred)} style={chipBtn(item.starred ? '#FBBF24' : '#888')}>{item.starred ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
+          )}
           <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
           <div style={{ flex: 1 }} />
           <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
@@ -72,9 +75,13 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor }) {
         onClick={() => isLong ? setMode('expanded') : setMode('editing')}
         style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
       >
+        {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}
         {item.photos?.length > 0 && <span style={{ marginRight: 4 }}>📷</span>}
         {item.text.trim() ? item.text.replace(/\n/g, ' ') : (item.photos?.length > 0 ? '(사진)' : '')}
       </div>
+      {onToggleStar && (
+        <button onClick={() => onToggleStar(item.id, !item.starred)} style={{ background: 'none', border: 'none', color: item.starred ? '#FBBF24' : '#888', cursor: 'pointer', fontSize: 16, padding: '4px 4px', flexShrink: 0, lineHeight: 1 }}>{item.starred ? '★' : '☆'}</button>
+      )}
       {isLong && (
         <button onClick={() => setMode('expanded')} style={{ background: 'none', border: 'none', color: '#6C8EFF', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0 }}>∨</button>
       )}
@@ -91,7 +98,7 @@ export function getMemoTimeStr() {
   return getMemoTime();
 }
 
-export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor }) {
+export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
   const listRef = useRef(null);
@@ -119,7 +126,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} />
+              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} />
             </div>
           </div>
         ))}
