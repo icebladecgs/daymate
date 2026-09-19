@@ -184,51 +184,32 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         />
       </div>
       <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
-        {myTags.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>내가 만든 태그</div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {myTags.map(name => (
-                <div key={name} style={{ position: 'relative' }}>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
+          <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginBottom: 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {myTags.map(name => (
+              <div key={name} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => handleInsertTag(name)}
+                  style={{
+                    background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
+                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >#{name}</button>
+                {onHideTag && (
                   <button
-                    onClick={() => handleInsertTag(name)}
+                    onClick={() => onHideTag(name)}
+                    aria-label="태그 목록에서 숨기기"
                     style={{
-                      background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
-                      borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+                      fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
                     }}
-                  >#{name}</button>
-                  {onHideTag && (
-                    <button
-                      onClick={() => onHideTag(name)}
-                      aria-label="태그 목록에서 숨기기"
-                      style={{
-                        position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
-                        fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
-                      }}
-                    >✕</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={{ marginBottom: 10 }}>
-          {frequentTags.length > 0 && (
-            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
-          )}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {frequentTags.map(name => (
-              <button
-                key={name}
-                onClick={() => handleInsertTag(name)}
-                style={{
-                  background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
-                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
-                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >#{name}</button>
+                  >✕</button>
+                )}
+              </div>
             ))}
             {addingTag ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -268,6 +249,24 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
             )}
           </div>
         </div>
+        {frequentTags.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {frequentTags.map(name => (
+                <button
+                  key={name}
+                  onClick={() => handleInsertTag(name)}
+                  style={{
+                    background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
+                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >#{name}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
 
         {photos.map((p, idx) => (
