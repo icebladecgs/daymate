@@ -361,6 +361,7 @@ export default function App() {
     store.get('dm_active_community_id', store.get('dm_community_id', null))
   );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
+  const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
 
   const addCommunityId = (id) => {
     setCommunityIdsState(prev => {
@@ -501,11 +502,14 @@ export default function App() {
 
   const { frequentMemoTags, myMemoTags } = useMemo(() => {
     const all = getTopKeywords(plans, 40);
+    const hiddenSet = new Set(hiddenTags);
     return {
       frequentMemoTags: all.filter(k => !k.explicit).slice(0, 8).map(k => k.name),
-      myMemoTags: all.filter(k => k.explicit).slice(0, 8).map(k => k.name),
+      myMemoTags: all.filter(k => k.explicit && !hiddenSet.has(k.name)).slice(0, 8).map(k => k.name),
     };
-  }, [plans]);
+  }, [plans, hiddenTags]);
+
+  const hideMemoTag = (name) => setHiddenTags(prev => prev.includes(name) ? prev : [...prev, name]);
 
   // event 변경 시 localStorage 저장
   useEffect(() => { store.set('dm_event', event); }, [event]);
@@ -1012,6 +1016,7 @@ export default function App() {
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
+            if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
             else if (s.businessCard?.photoUrl) {
@@ -1114,6 +1119,10 @@ export default function App() {
     store.set("dm_someday", someday);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { someday }).catch(() => {});
   }, [someday, authUser]);
+  useEffect(() => {
+    store.set("dm_hidden_tags", hiddenTags);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
+  }, [hiddenTags, authUser]);
   useEffect(() => {
     const ym = todayStr.slice(0, 7);
     store.set(`dm_goal_checks_${ym}`, goalChecks);
@@ -1750,7 +1759,9 @@ export default function App() {
           autoOpenLongMemo={autoOpenLongMemo}
           onRequireLogin={() => googleSignIn().catch(() => {})}
           frequentTags={frequentMemoTags}
-          myTags={myMemoTags} />
+          myTags={myMemoTags}
+          onHideTag={hideMemoTag}
+          hiddenTags={hiddenTags} />
       );
     }
     if (screen === "voice-diary") {
@@ -2051,6 +2062,7 @@ export default function App() {
             onRequireLogin={() => googleSignIn().catch(() => {})}
             frequentTags={frequentMemoTags}
             myTags={myMemoTags}
+            onHideTag={hideMemoTag}
           />
         )}
 
@@ -2062,6 +2074,8 @@ export default function App() {
             onUpdateDayData={setDayData}
             uid={authUser?.uid}
             setToast={setToast}
+            hiddenTags={hiddenTags}
+            onHideTag={hideMemoTag}
           />
         )}
       </div>

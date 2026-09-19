@@ -35,7 +35,7 @@ const TYPE_META = {
   journal: { label: "일기",  color: "#A78BFA", bg: "rgba(167,139,250,.12)" },
 };
 
-export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast }) {
+export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayData = null, uid, setToast, hiddenTags = [], onHideTag }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("memo");
   const [focusedResult, setFocusedResult] = useState(null);
@@ -43,11 +43,12 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   const topKeywords = useMemo(() => getTopKeywords(plans, 20), [plans]);
   const editorTags = useMemo(() => {
     const all = getTopKeywords(plans, 40);
+    const hiddenSet = new Set(hiddenTags);
     return {
       frequentTags: all.filter(k => !k.explicit).slice(0, 8).map(k => k.name),
-      myTags: all.filter(k => k.explicit).slice(0, 8).map(k => k.name),
+      myTags: all.filter(k => k.explicit && !hiddenSet.has(k.name)).slice(0, 8).map(k => k.name),
     };
-  }, [plans]);
+  }, [plans, hiddenTags]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -142,6 +143,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         onPhotoError={setToast}
         frequentTags={editorTags.frequentTags}
         myTags={editorTags.myTags}
+        onHideTag={onHideTag}
       />
     );
   }

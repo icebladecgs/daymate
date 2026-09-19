@@ -8,7 +8,8 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], initialStarred = false, onUpdateStarred }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred }) {
+  const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
@@ -141,6 +142,20 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
 
   const handleClose = () => { flush(text); onClose(); };
 
+  const handleSaveAndContinue = () => {
+    flush(text);
+    setText('');
+    setPhotos([]);
+    setStarred(false);
+    idRef.current = null;
+    savedTextRef.current = '';
+    setSavedAt(null);
+    onPhotoError?.('저장됨 ✅ 이어서 새 메모를 써보세요');
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
+
   return (
     <div style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
@@ -153,7 +168,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button
-          onClick={handleClose}
+          onClick={handleSaveClick}
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
         >저장</button>
       </div>
@@ -172,17 +187,29 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         {myTags.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>내가 만든 태그</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {myTags.map(name => (
-                <button
-                  key={name}
-                  onClick={() => handleInsertTag(name)}
-                  style={{
-                    background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
-                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >#{name}</button>
+                <div key={name} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => handleInsertTag(name)}
+                    style={{
+                      background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
+                      borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
+                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >#{name}</button>
+                  {onHideTag && (
+                    <button
+                      onClick={() => onHideTag(name)}
+                      aria-label="태그 목록에서 숨기기"
+                      style={{
+                        position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+                        fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
+                      }}
+                    >✕</button>
+                  )}
+                </div>
               ))}
             </div>
           </div>

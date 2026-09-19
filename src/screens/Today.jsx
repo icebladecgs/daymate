@@ -24,6 +24,8 @@ export default function Today({
   onRequireLogin,
   frequentTags,
   myTags,
+  hiddenTags,
+  onHideTag,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -206,7 +208,7 @@ export default function Today({
     setRecording('memo');
   };
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} />;
+  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
   if (longMemo) return (
     <LongMemoEditor
@@ -227,6 +229,7 @@ export default function Today({
       onRequireLogin={onRequireLogin}
       frequentTags={frequentTags}
       myTags={myTags}
+      onHideTag={onHideTag}
     />
   );
 
