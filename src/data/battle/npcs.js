@@ -1,6 +1,7 @@
-// 일기토 배틀 NPC — Phase 1: Lv1~3만 구현 (나머지는 v2 설계 메모로 남겨둠)
+// 일기토 배틀 NPC — Lv1~20, 레벨이 오를수록 강해지는 도전 상대 목록
 // stats는 플레이어와 동일하게 0~100 스케일(calcStatScore와 같은 범위)
 // "약점"은 별도 로직 없이 해당 스탯을 낮게 잡는 것으로만 표현 (자연스럽게 방어/회피가 약해짐)
+// energyMax는 calcLevel의 실제 레벨 공식(100×(레벨-1)²)을 기준으로, 그 레벨 구간의 중간값 정도로 앵커링
 export const NPCS = [
   {
     id: 'npc_1',
@@ -10,11 +11,7 @@ export const NPCS = [
     // 신규 유저(전 스탯 0)와 거의 대등하게 붙어볼 수 있도록 이 NPC만 전 스탯 0으로 설계
     // — "아직 아무것도 안 해본 사람"이라는 설정과도 자연스럽게 맞음
     stats: { STR: 0, INT: 0, WEALTH: 0, REL: 0, ACHIEVE: 0, LIFE: 0 },
-    trait: {
-      id: 'sanheunsamil',
-      label: '작심삼일',
-      desc: '4턴째부터 전 능력치 20% 하락',
-    },
+    trait: { id: 'sanheunsamil', label: '작심삼일', desc: '4턴째부터 전 능력치 20% 하락' },
   },
   {
     id: 'npc_2',
@@ -22,12 +19,7 @@ export const NPCS = [
     name: '회식왕 김대리',
     energyMax: 280,
     stats: { STR: 12, INT: 10, WEALTH: 15, REL: 25, ACHIEVE: 15, LIFE: 8 },
-    trait: {
-      id: 'sulja_wang',
-      label: '술자리의 제왕',
-      desc: '기본공격 데미지 +15% (관계력 기반)',
-      basicAttackDamageMult: 1.15,
-    },
+    trait: { id: 'sulja_wang', label: '술자리의 제왕', desc: '기본공격 데미지 +15% (관계력 기반)', basicAttackDamageMult: 1.15 },
   },
   {
     id: 'npc_3',
@@ -35,12 +27,143 @@ export const NPCS = [
     name: '운동광 박대리',
     energyMax: 600,
     stats: { STR: 50, INT: 15, WEALTH: 15, REL: 15, ACHIEVE: 20, LIFE: 20 },
-    trait: {
-      id: 'helchang',
-      label: '헬창',
-      desc: '기본공격 데미지 +15% (체력 기반)',
-      basicAttackDamageMult: 1.15,
-    },
+    trait: { id: 'helchang', label: '헬창', desc: '기본공격 데미지 +15% (체력 기반)', basicAttackDamageMult: 1.15 },
+  },
+  {
+    id: 'npc_4',
+    level: 4,
+    name: '공부벌레 이과장',
+    energyMax: 1250,
+    stats: { STR: 15, INT: 45, WEALTH: 20, REL: 15, ACHIEVE: 20, LIFE: 15 },
+    trait: { id: 'byurak', label: '벼락치기', desc: '기본공격 데미지 +15% (지력 기반)', basicAttackDamageMult: 1.15 },
+  },
+  {
+    id: 'npc_5',
+    level: 5,
+    name: '짠테크 최과장',
+    energyMax: 2050,
+    stats: { STR: 15, INT: 20, WEALTH: 50, REL: 15, ACHIEVE: 20, LIFE: 20 },
+    trait: { id: 'mujichul', label: '무지출챌린지', desc: '받는 피해 6% 고정 경감', defenseFlatBonus: 0.06 },
+  },
+  {
+    id: 'npc_6',
+    level: 6,
+    name: '인맥왕 정차장',
+    energyMax: 3050,
+    stats: { STR: 20, INT: 25, WEALTH: 25, REL: 45, ACHIEVE: 40, LIFE: 20 },
+    trait: { id: 'nunchi', label: '눈치 100단', desc: '크리티컬 확률 +8%p', critFlatBonus: 0.08 },
+  },
+  {
+    id: 'npc_7',
+    level: 7,
+    name: '일잘러 한팀장',
+    energyMax: 4250,
+    stats: { STR: 25, INT: 35, WEALTH: 30, REL: 30, ACHIEVE: 55, LIFE: 25 },
+    trait: { id: 'kaltoe', label: '칼퇴는없다', desc: '크리티컬 확률 +10%p', critFlatBonus: 0.10 },
+  },
+  {
+    id: 'npc_8',
+    level: 8,
+    name: '루틴왕 윤팀장',
+    energyMax: 5650,
+    stats: { STR: 35, INT: 35, WEALTH: 30, REL: 30, ACHIEVE: 35, LIFE: 50 },
+    trait: { id: 'miracle_morning', label: '미라클모닝', desc: '받는 피해 5% 고정 경감', defenseFlatBonus: 0.05 },
+  },
+  {
+    id: 'npc_9',
+    level: 9,
+    name: '에이스 지점장',
+    energyMax: 7250,
+    stats: { STR: 55, INT: 55, WEALTH: 55, REL: 60, ACHIEVE: 60, LIFE: 55 },
+    trait: { id: 'allrounder', label: '올라운더', desc: '뚜렷한 약점 없는 전천후형' },
+  },
+  {
+    id: 'npc_10',
+    level: 10,
+    name: '철인 CEO',
+    energyMax: 10000,
+    stats: { STR: 65, INT: 65, WEALTH: 70, REL: 65, ACHIEVE: 70, LIFE: 65 },
+    trait: { id: 'bulgul', label: '불굴', desc: '받는 피해 7% 고정 경감', defenseFlatBonus: 0.07 },
+  },
+  {
+    id: 'npc_11',
+    level: 11,
+    name: '미니멀리스트 조여사',
+    energyMax: 11050,
+    stats: { STR: 30, INT: 40, WEALTH: 40, REL: 30, ACHIEVE: 40, LIFE: 70 },
+    trait: { id: 'jeongri', label: '정리의 달인', desc: '받는 피해 7% 고정 경감', defenseFlatBonus: 0.07 },
+  },
+  {
+    id: 'npc_12',
+    level: 12,
+    name: '울트라마라토너 강코치',
+    energyMax: 13250,
+    stats: { STR: 75, INT: 30, WEALTH: 30, REL: 35, ACHIEVE: 45, LIFE: 45 },
+    trait: { id: 'marathon', label: '마라토너', desc: '기본공격 데미지 +20% (체력 기반)', basicAttackDamageMult: 1.2 },
+  },
+  {
+    id: 'npc_13',
+    level: 13,
+    name: '다독가 서작가',
+    energyMax: 15650,
+    stats: { STR: 30, INT: 70, WEALTH: 35, REL: 35, ACHIEVE: 45, LIFE: 35 },
+    trait: { id: 'mangwon', label: '만권독서', desc: '크리티컬 확률 +10%p', critFlatBonus: 0.10 },
+  },
+  {
+    id: 'npc_14',
+    level: 14,
+    name: '엔젤투자자 배대표',
+    energyMax: 18250,
+    stats: { STR: 30, INT: 45, WEALTH: 80, REL: 40, ACHIEVE: 45, LIFE: 35 },
+    trait: { id: 'gwiche', label: '투자의 귀재', desc: '받는 피해 7% 고정 경감', defenseFlatBonus: 0.07 },
+  },
+  {
+    id: 'npc_15',
+    level: 15,
+    name: '인플루언서 유크리에이터',
+    energyMax: 21050,
+    stats: { STR: 35, INT: 40, WEALTH: 45, REL: 60, ACHIEVE: 60, LIFE: 35 },
+    trait: { id: 'follower', label: '팔로워 100만', desc: '회피율 +10%p', dodgeFlatBonus: 0.10 },
+  },
+  {
+    id: 'npc_16',
+    level: 16,
+    name: '천재 전략가',
+    energyMax: 24050,
+    stats: { STR: 35, INT: 85, WEALTH: 45, REL: 40, ACHIEVE: 70, LIFE: 35 },
+    trait: { id: 'strategist', label: '판을 읽는 자', desc: '크리티컬 확률 +12%p', critFlatBonus: 0.12 },
+  },
+  {
+    id: 'npc_17',
+    level: 17,
+    name: '슈퍼개미',
+    energyMax: 27250,
+    stats: { STR: 35, INT: 55, WEALTH: 90, REL: 40, ACHIEVE: 50, LIFE: 40 },
+    trait: { id: 'super_ant', label: '시장의 승부사', desc: '받는 피해 8% 고정 경감', defenseFlatBonus: 0.08 },
+  },
+  {
+    id: 'npc_18',
+    level: 18,
+    name: '스타트업 대표',
+    energyMax: 30650,
+    stats: { STR: 40, INT: 60, WEALTH: 60, REL: 55, ACHIEVE: 85, LIFE: 40 },
+    trait: { id: 'unicorn', label: '유니콘을 꿈꾸다', desc: '기본공격 데미지 +20% (성취력 기반)', basicAttackDamageMult: 1.2 },
+  },
+  {
+    id: 'npc_19',
+    level: 19,
+    name: '백만장자',
+    energyMax: 34250,
+    stats: { STR: 40, INT: 60, WEALTH: 95, REL: 50, ACHIEVE: 55, LIFE: 45 },
+    trait: { id: 'millionaire', label: '이미 은퇴 가능', desc: '받는 피해 9% 고정 경감', defenseFlatBonus: 0.09 },
+  },
+  {
+    id: 'npc_20',
+    level: 20,
+    name: '완벽한 엄친아',
+    energyMax: 38050,
+    stats: { STR: 80, INT: 82, WEALTH: 80, REL: 82, ACHIEVE: 85, LIFE: 80 },
+    trait: { id: 'glass_mental', label: '유리멘탈', desc: '한 방에 최대 Energy 15% 이상 맞으면 30% 확률로 전 능력치 25% 하락 (1회성)', glassMental: true },
   },
 ];
 

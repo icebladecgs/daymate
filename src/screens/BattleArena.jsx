@@ -1,12 +1,17 @@
+import { useState } from "react";
 import S from "../styles.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS } from "../data/battle/npcs.js";
 
 export default function BattleArena({ totalScore, statXp, battleRecord, onBack, onStartBattle }) {
+  const [showAll, setShowAll] = useState(false);
   const levelInfo = calcLevel(totalScore || 0);
   const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
   const energyMax = Math.max(150, Math.round(totalScore || 0));
+  // 내 레벨보다 너무 높은 상대는 기본적으로 접어두고, 원하면 "더 보기"로 펼쳐서 도전 가능
+  const visibleNpcs = showAll ? NPCS : NPCS.filter(n => n.level <= levelInfo.level + 2);
+  const hiddenCount = NPCS.length - visibleNpcs.length;
 
   return (
     <div style={S.content}>
@@ -61,7 +66,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, onBack, 
       <div style={S.sectionTitle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🥋</span>도전 상대</span>
       </div>
-      {NPCS.map(npc => {
+      {visibleNpcs.map(npc => {
         const defeated = (record.defeatedNpcIds || []).includes(npc.id);
         return (
           <div key={npc.id} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -80,6 +85,14 @@ export default function BattleArena({ totalScore, statXp, battleRecord, onBack, 
           </div>
         );
       })}
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          style={{ ...S.btnGhost, width: '100%', marginTop: 4 }}
+        >
+          더 강한 상대 보기 (+{hiddenCount}명)
+        </button>
+      )}
       <div style={{ height: 16 }} />
     </div>
   );

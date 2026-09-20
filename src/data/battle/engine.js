@@ -69,14 +69,18 @@ export function getAvailableSpecials(fighter) {
 }
 
 // ── 판정 함수들 ──
+// defenseFlatBonus/critFlatBonus/dodgeFlatBonus: 레벨 높은 NPC 개성을 위한 소폭 고정 보정치 (trait에서 옵션으로 부여)
 function defensePct(defender) {
-  return Math.min(DEFENSE_PCT_CAP, (defender.stats.LIFE || 0) * DEFENSE_PCT_PER_POINT);
+  const base = (defender.stats.LIFE || 0) * DEFENSE_PCT_PER_POINT + (defender.trait?.defenseFlatBonus || 0);
+  return Math.min(0.5, base);
 }
 function dodgeChance(defender) {
-  return Math.min(DODGE_CAP, DODGE_BASE + (defender.stats.REL || 0) * DODGE_PER_REL_POINT);
+  const base = DODGE_BASE + (defender.stats.REL || 0) * DODGE_PER_REL_POINT + (defender.trait?.dodgeFlatBonus || 0);
+  return Math.min(0.3, base);
 }
 function critChance(attacker) {
-  return Math.min(CRIT_CAP, CRIT_BASE + (attacker.stats.ACHIEVE || 0) * CRIT_PER_ACHIEVE_POINT);
+  const base = CRIT_BASE + (attacker.stats.ACHIEVE || 0) * CRIT_PER_ACHIEVE_POINT + (attacker.trait?.critFlatBonus || 0);
+  return Math.min(0.4, base);
 }
 function baseAttackPower(fighter) {
   return fighter.energyMax * BASE_DAMAGE_RATIO;
@@ -125,6 +129,22 @@ function decrementCooldowns(f) {
   Object.keys(f.cooldowns).forEach(k => { if (f.cooldowns[k] > 0) f.cooldowns[k] -= 1; });
 }
 
+// glassMental 트레이트: 한 방에 최대 Energy의 15% 이상 맞으면 30% 확률로 1회성 전 스탯 25% 하락
+function tickDamageTraits(fighter, damageTaken) {
+  if (fighter.trait?.glassMental && !fighter._glassBroken && damageTaken >= fighter.energyMax * 0.15) {
+    if (Math.random() < 0.3) {
+      Object.keys(fighter.stats).forEach(k => { fighter.stats[k] = Math.round(fighter.stats[k] * 0.75); });
+      fighter._glassBroken = true;
+    }
+  }
+}
+
+function applyDamage(target, damage) {
+  target.energy = Math.max(0, target.energy - damage);
+  target.shield = null; // 실드는 1회성 소모
+  tickDamageTraits(target, damage);
+}
+
 function performAction(actor, target, action, log, actorLabel) {
   decrementCooldowns(actor);
   if (actor.shield === undefined) actor.shield = null;
@@ -133,8 +153,7 @@ function performAction(actor, target, action, log, actorLabel) {
     const forceCrit = actor.critGuaranteed;
     actor.critGuaranteed = false;
     const r = resolveAttack(actor, target, { useStat: actor.primaryStat, forceCrit });
-    target.energy = Math.max(0, target.energy - r.damage);
-    target.shield = null; // 실드는 1회성 소모
+    applyDamage(target, r.damage);
     log.push(formatAttackLog(actorLabel, '기본공격', r));
     return;
   }
@@ -151,8 +170,7 @@ function performAction(actor, target, action, log, actorLabel) {
     const forceCrit = actor.critGuaranteed;
     actor.critGuaranteed = false;
     const r = resolveAttack(actor, target, { useStat: special.stat, mult: special.mult || 1, ignoreDefense: !!special.ignoreDefense, forceCrit });
-    target.energy = Math.max(0, target.energy - r.damage);
-    target.shield = null;
+    applyDamage(target, r.damage);
     log.push(formatAttackLog(actorLabel, special.name, r));
   } else if (special.type === 'heal') {
     const amount = Math.round(actor.energyMax * special.healPct);
