@@ -17,6 +17,25 @@ function vibrate(pattern) {
   try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
 }
 
+// 로그 한 줄의 색/굵기 — 내 공격은 파랑, 상대 공격은 빨강 계열로 기본 구분하고
+// 크리티컬·스페셜(회복/보호막/버프)은 그 위에 타입별 색으로 강조해서 한눈에 어떤 공격인지 보이게 한다
+function logLineStyle(entry) {
+  if (entry.kind === 'result') {
+    return { color: entry.text.includes('격파') ? '#4ADE80' : '#F87171', fontWeight: 900 };
+  }
+  if (entry.kind === 'miss' || entry.kind === 'fumble') {
+    return { color: 'var(--dm-muted)', fontStyle: 'italic' };
+  }
+  const sideColor = entry.side === 'player' ? '#6C8EFF' : entry.side === 'npc' ? '#F87171' : 'var(--dm-sub)';
+  if (entry.kind === 'attack' && entry.crit) return { color: '#FCD34D', fontWeight: 900 };
+  if (entry.kind === 'attack' && entry.special) return { color: sideColor, fontWeight: 700 };
+  if (entry.kind === 'heal') return { color: '#4ADE80', fontWeight: 700 };
+  if (entry.kind === 'shield') return { color: '#60A5FA', fontWeight: 700 };
+  if (entry.kind === 'buff') return { color: '#A78BFA', fontWeight: 700 };
+  if (entry.kind === 'regen') return { color: '#4ADE80' };
+  return { color: sideColor };
+}
+
 function EnergyRow({ label, fighter, color }) {
   const pct = fighter.energyMax > 0 ? Math.max(0, Math.round((fighter.energy / fighter.energyMax) * 100)) : 0;
   return (
@@ -128,7 +147,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
       <div style={{ ...S.card, maxHeight: 190, overflowY: 'auto' }}>
         {log.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>전투 기록이 여기 표시됩니다</div>}
         {log.slice(-10).reverse().map((l, i) => (
-          <div key={log.length - i} style={{ fontSize: 12, color: 'var(--dm-sub)', padding: '5px 0', borderBottom: i < log.slice(-10).length - 1 ? '1px solid var(--dm-row)' : 'none' }}>{l.text}</div>
+          <div key={log.length - i} style={{ fontSize: 12, padding: '5px 0', borderBottom: i < log.slice(-10).length - 1 ? '1px solid var(--dm-row)' : 'none', ...logLineStyle(l) }}>{l.text}</div>
         ))}
       </div>
 
