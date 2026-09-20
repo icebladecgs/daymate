@@ -75,6 +75,7 @@ export default function MemoHome({
 
   if (longMemo) return (
     <LongMemoEditor
+      key={`edit-${longMemo.id}`}
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
@@ -126,6 +127,7 @@ export default function MemoHome({
 
   return (
     <LongMemoEditor
+      key="compose-new"
       initialId={null}
       initialText=""
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}

@@ -158,6 +158,33 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
 
   const tagsAndPhotosBlock = (
     <div style={{ padding: '0 20px 12px' }}>
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+
+      {photos.map((p, idx) => (
+        <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
+          <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+          <button
+            onClick={() => handleRemovePhoto(idx)}
+            aria-label="사진 삭제"
+            style={{
+              position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+              fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+            }}
+          >✕</button>
+        </div>
+      ))}
+
+      <button
+        onClick={handleAddPhoto}
+        disabled={uploading}
+        style={{
+          width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
+          border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+          cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit', marginBottom: 14,
+        }}
+      >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
+
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
         <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginBottom: 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
@@ -241,32 +268,6 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           </div>
         </div>
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
-
-      {photos.map((p, idx) => (
-        <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
-          <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
-          <button
-            onClick={() => handleRemovePhoto(idx)}
-            aria-label="사진 삭제"
-            style={{
-              position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
-              fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-            }}
-          >✕</button>
-        </div>
-      ))}
-
-      <button
-        onClick={handleAddPhoto}
-        disabled={uploading}
-        style={{
-          width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
-          border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
-          cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
-        }}
-      >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
     </div>
   );
 
