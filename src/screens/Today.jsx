@@ -412,17 +412,17 @@ export default function Today({
             <span style={{ fontSize: 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
           </div>
           <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8 }}>
             {GROWTH_STATS.map(stat => {
               const score = calcStatScore(statXp[stat.id] || 0);
               return (
-                <div key={stat.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{stat.icon}</span>
-                  <span style={{ fontSize: 12, color: "var(--dm-sub)", width: 46, flexShrink: 0 }}>{stat.name}</span>
-                  <div style={{ flex: 1, height: 6, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden" }}>
+                <div key={stat.id} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, width: 18, textAlign: "center", flexShrink: 0 }}>{stat.icon}</span>
+                  <span style={{ fontSize: 11, color: "var(--dm-sub)", width: 34, flexShrink: 0 }}>{stat.name}</span>
+                  <div style={{ flex: 1, height: 6, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", minWidth: 0 }}>
                     <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${score}%`, transition: "width 0.4s" }} />
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-text)", width: 28, textAlign: "right" }}>{score}</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-text)", width: 22, textAlign: "right", flexShrink: 0 }}>{score}</span>
                 </div>
               );
             })}
@@ -440,38 +440,28 @@ export default function Today({
         const fl = fortuneLevel(todayFortuneScore);
         return (
         <div style={{ margin: '0 16px 10px' }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🔮 운세 · 로또</div>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>
+          <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
-              style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>오늘의 운세</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 3 }}>{fl.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 10 }}>{fl.desc}</div>
+              style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
+              <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 3 }}>오늘의 운세</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 15, fontWeight: 900, color: fl.color }}>{fl.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{fl.desc}</span>
               </div>
-              {todayFortuneScore ? (
-                <div>
-                  <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 999, background: fl.color, width: `${todayFortuneScore * 20}%`, transition: 'width 0.6s ease', boxShadow: `0 0 6px ${fl.color}88` }} />
-                  </div>
-                  <div style={{ fontSize: 10, color: fl.color, fontWeight: 700, marginTop: 4, textAlign: 'right' }}>{todayFortuneScore * 20}점</div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 10, color: 'var(--dm-muted)', opacity: 0.6 }}>탭해서 확인</div>
-              )}
             </button>
-            <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
+            <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '9px 12px' }}>
+              <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>🎱 오늘의 로또</div>
               {lottoNums ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
                   {lottoNums.map((n, i) => {
                     const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                    return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
+                    return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>{n}</div>;
                   })}
                 </div>
               ) : (
                 <button onClick={drawLotto} disabled={lottoAnim}
-                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 10, padding: '10px 0', fontSize: 14, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%', marginTop: 'auto' }}>
+                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 8, padding: '6px 0', fontSize: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
                   {lottoAnim ? '추출 중...' : '번호 뽑기'}
                 </button>
               )}
