@@ -3,7 +3,7 @@ import S from "../styles.js";
 import { getNpcById } from "../data/battle/npcs.js";
 import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrder } from "../data/battle/engine.js";
 
-const ROUND_GAP_MS = 500; // 선공 결과를 보여준 뒤 후공까지의 간격
+const ROUND_GAP_MS = 1000; // 선공 결과를 보여준 뒤 후공까지의 간격
 
 const FLASH_COLOR = {
   crit: 'rgba(252,211,77,0.55)',   // 크리티컬 — 노랑
