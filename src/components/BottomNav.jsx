@@ -39,7 +39,7 @@ const NavIcon = ({ id, active }) => {
   return null;
 };
 
-export default function BottomNav({ screen, setScreen, badge = {}, onMemo, memoActive = false }) {
+export default function BottomNav({ screen, setScreen, badge = {} }) {
   const items = [
     { id: "today", label: "오늘" },
     { id: "my", label: "My" },
@@ -51,9 +51,9 @@ export default function BottomNav({ screen, setScreen, badge = {}, onMemo, memoA
   return (
     <div style={S.bottomNav}>
       {items.map((it) => {
-        const active = it.id === "memo" ? memoActive : (screen === it.id || (it.id === "today" && screen === "home"));
+        const active = screen === it.id || (it.id === "today" && screen === "home");
         return (
-          <button key={it.id} style={S.navItem(active)} onClick={() => it.id === "memo" ? onMemo() : setScreen(it.id)}>
+          <button key={it.id} style={S.navItem(active)} onClick={() => setScreen(it.id)}>
             {active && (
               <span style={{
                 position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",

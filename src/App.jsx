@@ -18,9 +18,7 @@ import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
-import SearchViewer from "./screens/SearchViewer.jsx";
-import LongMemoEditor from "./components/LongMemoEditor.jsx";
-import { genMemoId, getMemoTimeStr } from "./components/MemoTimeline.jsx";
+import { genMemoId } from "./components/MemoTimeline.jsx";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
@@ -37,6 +35,7 @@ const InvestmentHub = lazy(() => import("./screens/InvestmentHub.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
+const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 
 const CHUNK_LOAD_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
@@ -118,8 +117,6 @@ export default function App() {
   const [dismissedInvitePromptCode, setDismissedInvitePromptCode] = useState(() => store.get('dm_invite_prompt_dismissed_code', ''));
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [canApplyUpdate, setCanApplyUpdate] = useState(false);
-  const [showFabMemo, setShowFabMemo] = useState(false);
-  const [showFabMemoSearch, setShowFabMemoSearch] = useState(false);
   const [historyInitialGoalsOpen, setHistoryInitialGoalsOpen] = useState(false);
 
   // PWA 설치 프롬프트
@@ -1857,6 +1854,26 @@ export default function App() {
           inviteBonus={inviteBonus} />
       );
     }
+    if (screen === "memo") {
+      return (
+        <MemoHome
+          todayStr={todayStr} plans={plans} onUpdateDayData={setDayData}
+          onCreateToday={addFabMemo}
+          onUpdateToday={updateFabMemo}
+          onUpdatePhotosToday={updateFabMemoPhotos}
+          onUpdateStarredToday={updateFabMemoStarred}
+          onOpenDate={openDetail}
+          onOpenKnowledge={() => changeScreen("knowledge")}
+          onRequireLogin={() => googleSignIn().catch(() => {})}
+          uid={authUser?.uid}
+          toast={toast} setToast={setToast}
+          frequentTags={frequentMemoTags}
+          myTags={myMemoTags}
+          hiddenTags={hiddenTags}
+          onHideTag={hideMemoTag}
+        />
+      );
+    }
     if (screen === "voice-diary") {
       return (
         <VoiceDiary
@@ -2125,45 +2142,10 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={(s) => { setShowFabMemo(false); setShowFabMemoSearch(false); changeScreen(s); }} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
-        }} onMemo={() => authUser ? setShowFabMemo(true) : googleSignIn().catch(() => {})} memoActive={showFabMemo} />}
-
-        {/* 긴메모 입력 오버레이 */}
-        {showFabMemo && (
-          <LongMemoEditor
-            initialId={null}
-            initialText=""
-            onCreate={(text) => addFabMemo(text, getMemoTimeStr())}
-            onUpdate={updateFabMemo}
-            onUpdatePhotos={updateFabMemoPhotos}
-            onUpdateStarred={updateFabMemoStarred}
-            onClose={() => setShowFabMemo(false)}
-            onSearch={() => setShowFabMemoSearch(true)}
-            onOpenKnowledge={() => { setShowFabMemo(false); changeScreen("knowledge"); }}
-            uid={authUser?.uid}
-            pathPrefix={authUser?.uid ? `users/${authUser.uid}/memos` : undefined}
-            onPhotoError={setToast}
-            onRequireLogin={() => googleSignIn().catch(() => {})}
-            frequentTags={frequentMemoTags}
-            myTags={myMemoTags}
-            onHideTag={hideMemoTag}
-          />
-        )}
-
-        {showFabMemo && showFabMemoSearch && (
-          <SearchViewer
-            plans={plans}
-            onClose={() => setShowFabMemoSearch(false)}
-            onOpenDate={(ds) => { setShowFabMemoSearch(false); setShowFabMemo(false); openDetail(ds); }}
-            onUpdateDayData={setDayData}
-            uid={authUser?.uid}
-            setToast={setToast}
-            hiddenTags={hiddenTags}
-            onHideTag={hideMemoTag}
-          />
-        )}
+        }} />}
       </div>
     </div>
   );

@@ -3,11 +3,10 @@ import { formatKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import SearchViewer from "./SearchViewer.jsx";
-import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
+import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
-import { deletePhoto } from "../firebase.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
@@ -44,8 +43,6 @@ export default function Today({
   useEffect(() => {
     if (autoOpenLongMemo) setLongMemo({ id: null, text: '' });
   }, [autoOpenLongMemo]);
-  const [recording, setRecording] = useState(null);
-  const recognitionRef = useRef(null);
   const [taskInput, setTaskInput] = useState('');
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
@@ -99,14 +96,6 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
   }));
-  const deleteMemo = (id) => {
-    const target = (data.memos || []).find(m => m.id === id);
-    (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
-    setData(prev => ({
-      ...prev,
-      memos: (prev.memos || []).filter(m => m.id !== id),
-    }));
-  };
   const updateJournalPhoto = (photo) => setData(prev => ({
     ...prev,
     journal: { ...prev.journal, photoUrl: photo?.url || null, photoPath: photo?.path || null },
@@ -197,29 +186,6 @@ export default function Today({
     else all.push(newTask);
     onSetTodayTasks(all);
     deleteSomeday(item.id);
-  };
-
-  // 음성 녹음 (메모 전용)
-  const startRecording = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setToast('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
-    if (recording) { recognitionRef.current?.stop(); setRecording(null); return; }
-    const r = new SR();
-    r.lang = 'ko-KR';
-    r.interimResults = false;
-    r.continuous = true;
-    recognitionRef.current = r;
-    r.onresult = (e) => {
-      let text = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) text += e.results[i][0].transcript;
-      }
-      if (text) addMemo(text.trim(), getMemoTimeStr());
-    };
-    r.onerror = () => setRecording(null);
-    r.onend = () => setRecording(null);
-    r.start();
-    setRecording('memo');
   };
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
@@ -332,32 +298,6 @@ export default function Today({
         </div>
       )}
 
-      {/* 📝 메모 */}
-      <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📝</span>메모</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {recording === 'memo' && <span style={{ fontSize: 11, color: "#F87171", fontWeight: 900, animation: "pulse 1s infinite" }}>● 녹음 중</span>}
-          <button onClick={() => setLongMemo({ id: null, text: '' })} style={{ fontSize: 11, color: '#4B6FFF', background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900, padding: '3px 9px' }}>긴 메모</button>
-          {onOpenKnowledge && <button onClick={onOpenKnowledge} style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,0.12)', border: '1px solid rgba(108,142,255,0.3)', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, padding: '3px 8px' }}>지식</button>}
-        </div>
-      </div>
-      <div style={S.card}>
-        <MemoTimeline
-          memos={data.memos || []}
-          onAdd={addMemo}
-          onUpdate={updateMemo}
-          onDelete={deleteMemo}
-          onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [], starred: item.starred || false })}
-          onToggleStar={updateMemoStarred}
-          placeholder="메모 입력 후 + 버튼"
-          extraAction={
-            <button
-              onClick={startRecording}
-              style={{ width: 42, height: 42, borderRadius: 10, border: `1.5px solid ${recording === 'memo' ? '#F87171' : 'var(--dm-border)'}`, background: recording === 'memo' ? 'rgba(248,113,113,.15)' : 'var(--dm-input)', fontSize: 18, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-            >{recording === 'memo' ? '⏹' : <span style={{ display: 'inline-block', transform: 'translateX(-2px)' }}>🎤</span>}</button>
-          }
-        />
-      </div>
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>

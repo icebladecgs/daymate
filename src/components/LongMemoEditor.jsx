@@ -8,7 +8,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
@@ -156,6 +156,138 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
 
   const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
 
+  const tagsAndPhotosBlock = (
+    <div style={{ padding: '0 20px 12px' }}>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
+        <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginBottom: 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {myTags.map(name => (
+            <div key={name} style={{ position: 'relative' }}>
+              <button
+                onClick={() => handleInsertTag(name)}
+                style={{
+                  background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >#{name}</button>
+              {onHideTag && (
+                <button
+                  onClick={() => onHideTag(name)}
+                  aria-label="태그 목록에서 숨기기"
+                  style={{
+                    position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+                    fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
+                  }}
+                >✕</button>
+              )}
+            </div>
+          ))}
+          {addingTag ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                autoFocus
+                value={newTagInput}
+                onChange={e => setNewTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') confirmNewTag();
+                  if (e.key === 'Escape') { setAddingTag(false); setNewTagInput(''); }
+                }}
+                placeholder="태그 이름"
+                style={{
+                  background: 'var(--dm-input)', border: '1px solid var(--dm-border)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-text)',
+                  fontFamily: 'inherit', width: 100,
+                }}
+              />
+              <button
+                onClick={confirmNewTag}
+                style={{
+                  background: 'rgba(108,142,255,0.2)', border: '1px solid rgba(108,142,255,0.4)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >추가</button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAddTag}
+              style={{
+                background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
+                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >+ 새 태그</button>
+          )}
+        </div>
+      </div>
+      {frequentTags.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {frequentTags.map(name => (
+              <button
+                key={name}
+                onClick={() => handleInsertTag(name)}
+                style={{
+                  background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >#{name}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+
+      {photos.map((p, idx) => (
+        <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
+          <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+          <button
+            onClick={() => handleRemovePhoto(idx)}
+            aria-label="사진 삭제"
+            style={{
+              position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
+              fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+            }}
+          >✕</button>
+        </div>
+      ))}
+
+      <button
+        onClick={handleAddPhoto}
+        disabled={uploading}
+        style={{
+          width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
+          border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+          cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
+        }}
+      >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
+    </div>
+  );
+
+  const footerBlock = (
+    <div style={{ padding: '0 20px 20px', fontSize: 11, color: 'var(--dm-muted)' }}>
+      {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
+    </div>
+  );
+
+  const textareaEl = (
+    <textarea
+      ref={textareaRef}
+      value={text}
+      onChange={e => setText(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose(); }}
+      onPaste={handlePaste}
+      placeholder="자유롭게 작성하세요"
+      style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
+    />
+  );
+
   return (
     <div style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
@@ -172,131 +304,26 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
         >저장</button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose(); }}
-          onPaste={handlePaste}
-          placeholder="자유롭게 작성하세요"
-          style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
-        />
-      </div>
-      <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
-          <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginBottom: 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {myTags.map(name => (
-              <div key={name} style={{ position: 'relative' }}>
-                <button
-                  onClick={() => handleInsertTag(name)}
-                  style={{
-                    background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
-                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >#{name}</button>
-                {onHideTag && (
-                  <button
-                    onClick={() => onHideTag(name)}
-                    aria-label="태그 목록에서 숨기기"
-                    style={{
-                      position: 'absolute', top: -6, right: -6, width: 16, height: 16, borderRadius: '50%',
-                      background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
-                      fontSize: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
-                    }}
-                  >✕</button>
-                )}
-              </div>
-            ))}
-            {addingTag ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <input
-                  autoFocus
-                  value={newTagInput}
-                  onChange={e => setNewTagInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') confirmNewTag();
-                    if (e.key === 'Escape') { setAddingTag(false); setNewTagInput(''); }
-                  }}
-                  placeholder="태그 이름"
-                  style={{
-                    background: 'var(--dm-input)', border: '1px solid var(--dm-border)',
-                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-text)',
-                    fontFamily: 'inherit', width: 100,
-                  }}
-                />
-                <button
-                  onClick={confirmNewTag}
-                  style={{
-                    background: 'rgba(108,142,255,0.2)', border: '1px solid rgba(108,142,255,0.4)',
-                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >추가</button>
-              </div>
-            ) : (
-              <button
-                onClick={handleAddTag}
-                style={{
-                  background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
-                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
-                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >+ 새 태그</button>
-            )}
-          </div>
+      {extraContent ? (
+        // extraContent가 있는 경우(메모 탭 전용): textarea/태그/사진/하단정보/추가콘텐츠를
+        // 하나의 스크롤 영역으로 이어붙여서 쭉 내리면 아래 콘텐츠가 보이게 한다.
+        // 기존 사용처(다른 화면들)는 extraContent를 넘기지 않으므로 이 분기를 타지 않고
+        // 기존 레이아웃/스크롤 동작이 그대로 유지된다.
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {textareaEl}
+          {tagsAndPhotosBlock}
+          {footerBlock}
+          {extraContent}
         </div>
-        {frequentTags.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {frequentTags.map(name => (
-                <button
-                  key={name}
-                  onClick={() => handleInsertTag(name)}
-                  style={{
-                    background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
-                    borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
-                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >#{name}</button>
-              ))}
-            </div>
+      ) : (
+        <>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {textareaEl}
           </div>
-        )}
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
-
-        {photos.map((p, idx) => (
-          <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
-            <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
-            <button
-              onClick={() => handleRemovePhoto(idx)}
-              aria-label="사진 삭제"
-              style={{
-                position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%',
-                background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff',
-                fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              }}
-            >✕</button>
-          </div>
-        ))}
-
-        <button
-          onClick={handleAddPhoto}
-          disabled={uploading}
-          style={{
-            width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
-            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
-            cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit',
-          }}
-        >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
-      </div>
-      <div style={{ padding: '0 20px 20px', fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0 }}>
-        {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
-      </div>
+          <div style={{ flexShrink: 0 }}>{tagsAndPhotosBlock}</div>
+          <div style={{ flexShrink: 0 }}>{footerBlock}</div>
+        </>
+      )}
     </div>
   );
 }
