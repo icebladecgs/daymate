@@ -159,6 +159,7 @@ const S = {
     transform: "translateX(-50%)",
     width: "100%",
     maxWidth: 430,
+    boxSizing: "border-box",
     background: "var(--dm-nav)",
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
