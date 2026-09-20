@@ -2007,7 +2007,7 @@ export default function App() {
           battleRecord={battleRecord}
           battleNickname={battleNickname}
           onSetBattleNickname={setBattleNickname}
-          onBack={() => history.back()}
+          onBack={() => changeScreen("today")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
         />
       );
@@ -2019,7 +2019,7 @@ export default function App() {
           statXp={statXp}
           npcId={battleNpcId}
           battleNickname={battleNickname}
-          onExit={() => history.back()}
+          onExit={() => changeScreen("battle-arena")}
           onBattleEnd={onBattleEnd}
         />
       );
