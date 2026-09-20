@@ -403,6 +403,7 @@ export default function App() {
   const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
   const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
   const [battleNpcId, setBattleNpcId] = useState(null);
+  const [battleNickname, setBattleNickname] = useState(() => store.get("dm_battle_nickname", ""));
   const onBattleEnd = (npcDef, won) => {
     setBattleRecord(prev => {
       const next = { ...prev };
@@ -1107,6 +1108,7 @@ export default function App() {
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
             if (s.battleRecord) { setBattleRecord({ ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); store.set("dm_battle_record", { ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); }
+            if (s.battleNickname) { setBattleNickname(s.battleNickname); store.set("dm_battle_nickname", s.battleNickname); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
@@ -1223,6 +1225,10 @@ export default function App() {
     store.set("dm_battle_record", battleRecord);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleRecord }).catch(() => {});
   }, [battleRecord, authUser]);
+  useEffect(() => {
+    store.set("dm_battle_nickname", battleNickname);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleNickname }).catch(() => {});
+  }, [battleNickname, authUser]);
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
@@ -1999,6 +2005,8 @@ export default function App() {
           totalScore={battleTotalScore}
           statXp={statXp}
           battleRecord={battleRecord}
+          battleNickname={battleNickname}
+          onSetBattleNickname={setBattleNickname}
           onBack={() => history.back()}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
         />
@@ -2010,6 +2018,7 @@ export default function App() {
           totalScore={battleTotalScore}
           statXp={statXp}
           npcId={battleNpcId}
+          battleNickname={battleNickname}
           onExit={() => history.back()}
           onBattleEnd={onBattleEnd}
         />

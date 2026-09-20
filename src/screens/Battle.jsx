@@ -32,7 +32,8 @@ function EnergyRow({ label, fighter, color }) {
   );
 }
 
-export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd }) {
+export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd }) {
+  const playerLabel = battleNickname?.trim() || '나';
   const npcDef = getNpcById(npcId);
   const [state, setState] = useState(() => createBattleState(
     createPlayerFighter(totalScore, statXp),
@@ -80,14 +81,14 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
   const act = (action) => {
     if (status !== 'ongoing' || resolving) return;
     const prevLog = state.log;
-    const first = resolveRoundFirstTurn(state, action);
+    const first = resolveRoundFirstTurn(state, action, playerLabel);
     setState(first);
     triggerEffects(prevLog, first.log);
     if (first.status !== 'ongoing') return; // 선공만으로 승부가 났다면 후공 없이 종료
     setResolving(true);
     setTimeout(() => {
       setState(prev => {
-        const second = resolveRoundSecondTurn(prev, action);
+        const second = resolveRoundSecondTurn(prev, action, playerLabel);
         triggerEffects(prev.log, second.log);
         return second;
       });
@@ -115,10 +116,10 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
         {flash && (
           <div key={flash.key} className="dm-battle-flash" style={{ background: flash.color }} onAnimationEnd={() => setFlash(null)} />
         )}
-        <EnergyRow label="나" fighter={player} color="#4B6FFF" />
+        <EnergyRow label={playerLabel} fighter={player} color="#4B6FFF" />
         <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', margin: '6px 0' }}>
           VS {status === 'ongoing' && (
-            <span style={{ color: '#A78BFA' }}>· ⚡ {upcomingOrder === 'npc' ? '상대' : '나'} 선공</span>
+            <span style={{ color: '#A78BFA' }}>· ⚡ {upcomingOrder === 'npc' ? '상대' : playerLabel} 선공</span>
           )}
         </div>
         <EnergyRow label={npc.name} fighter={npc} color="#F87171" />

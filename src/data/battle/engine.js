@@ -226,19 +226,19 @@ function cloneFighter(f) {
 
 // ── 한 라운드를 두 단계로 나눠 진행 (선공 즉시 → 0.5초 뒤 후공, UI가 그 사이 간격을 둔다) ──
 // 1단계: 라운드 시작 효과(특성 tick, 자산력 회복) + 그 라운드의 선공 처리
-export function resolveRoundFirstTurn(state, playerAction) {
+export function resolveRoundFirstTurn(state, playerAction, playerLabel = '나') {
   const next = { ...state, player: cloneFighter(state.player), npc: cloneFighter(state.npc), log: [] };
   const { player, npc } = next;
 
   tickTraits(npc, next.round);
-  applyWealthRegen(player, next.log, '나', 'player');
+  applyWealthRegen(player, next.log, playerLabel, 'player');
   applyWealthRegen(npc, next.log, npc.name, 'npc');
 
   const order = getTurnOrder(player, npc);
   next.turnOrder = order;
 
   if (order === 'player') {
-    performAction(player, npc, playerAction, next.log, '나', 'player');
+    performAction(player, npc, playerAction, next.log, playerLabel, 'player');
     if (npc.energy <= 0) {
       next.status = 'win';
       next.log.push({ text: `${npc.name} 격파! 승리했다 🎉`, kind: 'result' });
@@ -257,7 +257,7 @@ export function resolveRoundFirstTurn(state, playerAction) {
 }
 
 // 2단계: 그 라운드의 후공 처리 (1단계에서 승패가 이미 갈렸으면 호출하지 않는다)
-export function resolveRoundSecondTurn(state, playerAction) {
+export function resolveRoundSecondTurn(state, playerAction, playerLabel = '나') {
   const next = { ...state, player: cloneFighter(state.player), npc: cloneFighter(state.npc), log: [] };
   const { player, npc } = next;
 
@@ -269,7 +269,7 @@ export function resolveRoundSecondTurn(state, playerAction) {
       next.log.push({ text: `패배했다... 다음엔 이길 수 있을 거예요`, kind: 'result' });
     }
   } else {
-    performAction(player, npc, playerAction, next.log, '나', 'player');
+    performAction(player, npc, playerAction, next.log, playerLabel, 'player');
     if (npc.energy <= 0) {
       next.status = 'win';
       next.log.push({ text: `${npc.name} 격파! 승리했다 🎉`, kind: 'result' });

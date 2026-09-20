@@ -4,8 +4,12 @@ import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS } from "../data/battle/npcs.js";
 
-export default function BattleArena({ totalScore, statXp, battleRecord, onBack, onStartBattle }) {
+const NICKNAME_MAX = 10;
+
+export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle }) {
   const [showAll, setShowAll] = useState(false);
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
   const levelInfo = calcLevel(totalScore || 0);
   const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
   const energyMax = Math.max(150, Math.round(totalScore || 0));
@@ -31,6 +35,40 @@ export default function BattleArena({ totalScore, statXp, battleRecord, onBack, 
           <span style={{ fontSize: 12, fontWeight: 700, color: '#6C8EFF' }}>Lv.{levelInfo.level}</span>
           <span style={{ fontSize: 11, color: 'var(--dm-muted)', marginLeft: 'auto' }}>Energy {energyMax.toLocaleString()}</span>
         </div>
+
+        {/* 배틀 닉네임 — 나중에 사람끼리 붙을 때 쓸 이름 */}
+        <div style={{ marginBottom: 12 }}>
+          {editingNickname ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                value={nicknameDraft}
+                onChange={e => setNicknameDraft(e.target.value.slice(0, NICKNAME_MAX))}
+                placeholder={`배틀 닉네임 (최대 ${NICKNAME_MAX}자)`}
+                autoFocus
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 10px' }}
+              />
+              <button
+                onClick={() => { onSetBattleNickname?.(nicknameDraft.trim()); setEditingNickname(false); }}
+                style={{ background: '#6C8EFF', border: 'none', borderRadius: 8, padding: '0 14px', color: '#fff', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}
+              >저장</button>
+              <button
+                onClick={() => setEditingNickname(false)}
+                style={{ background: 'var(--dm-input)', border: 'none', borderRadius: 8, padding: '0 12px', color: 'var(--dm-muted)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+              >취소</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(true); }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}
+            >
+              <span style={{ fontSize: 12, color: battleNickname ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: battleNickname ? 900 : 400 }}>
+                {battleNickname ? `🏷️ ${battleNickname}` : '🏷️ 닉네임을 정해주세요'}
+              </span>
+              <span style={{ fontSize: 10, color: '#6C8EFF', textDecoration: 'underline' }}>수정</span>
+            </button>
+          )}
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
           {GROWTH_STATS.map(stat => {
             const score = calcStatScore(statXp?.[stat.id] || 0);
