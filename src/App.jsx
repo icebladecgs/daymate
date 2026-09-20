@@ -397,6 +397,7 @@ export default function App() {
     store.get('dm_active_community_id', store.get('dm_community_id', null))
   );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
+  const [bucketList, setBucketList] = useState(() => store.get("dm_bucket_list", []));
   const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
 
   const addCommunityId = (id) => {
@@ -1077,6 +1078,7 @@ export default function App() {
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
+            if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
@@ -1185,6 +1187,10 @@ export default function App() {
     store.set("dm_someday", someday);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { someday }).catch(() => {});
   }, [someday, authUser]);
+  useEffect(() => {
+    store.set("dm_bucket_list", bucketList);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { bucketList }).catch(() => {});
+  }, [bucketList, authUser]);
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
@@ -1712,6 +1718,7 @@ export default function App() {
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           someday={someday} setSomeday={setSomeday}
+          bucketList={bucketList} setBucketList={setBucketList}
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
@@ -1785,6 +1792,7 @@ export default function App() {
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           someday={someday} setSomeday={setSomeday}
+          bucketList={bucketList} setBucketList={setBucketList}
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}

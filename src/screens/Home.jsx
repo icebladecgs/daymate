@@ -78,7 +78,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -89,6 +89,25 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   // ── 포커스 모드 (FocusTimerModal로 분리) ────────────────────
   const [focusTask, setFocusTask] = useState(null);
   const startFocus = (task) => setFocusTask(task);
+
+  // ── 버킷리스트 ────────────────────
+  const BUCKET_LIST_MAX = 100;
+  const [bucketOpen, setBucketOpen] = useState(false);
+  const [bucketInput, setBucketInput] = useState('');
+  const [bucketMsg, setBucketMsg] = useState('');
+  const addBucketItem = () => {
+    const text = bucketInput.trim();
+    if (!text || bucketList.length >= BUCKET_LIST_MAX) return;
+    setBucketList([...bucketList, { id: `bk_${Date.now()}`, text, done: false }]);
+    setBucketInput('');
+  };
+  const toggleBucketItem = (id) => setBucketList(bucketList.map(b => b.id === id ? { ...b, done: !b.done } : b));
+  const deleteBucketItem = (id) => setBucketList(bucketList.filter(b => b.id !== id));
+  const copyBucketToSomeday = (item) => {
+    setSomeday([...(someday || []), { id: `sd${Date.now()}`, title: item.text, done: false }]);
+    setBucketMsg('언젠가할일에 추가했어요 ✅');
+    setTimeout(() => setBucketMsg(''), 1800);
+  };
 
   const streak = useMemo(() => calcStreak(plans), [plans]);
   const todayScore = useMemo(() => calcDayScore(todayData, habits), [todayData, habits]);
@@ -1229,6 +1248,42 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn })}
                 {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn })}
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn })}
+              </div>
+            )}
+            {isMyTab && (
+              <div style={{ margin: '0 16px 10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>🪣 버킷리스트 ({bucketList.length}/{BUCKET_LIST_MAX})</span>
+                  <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>
+                </div>
+                {bucketOpen && (
+                  <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
+                    {bucketList.map(item => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <button onClick={() => toggleBucketItem(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
+                        <button onClick={() => copyBucketToSomeday(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+                        <button onClick={() => deleteBucketItem(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+                      </div>
+                    ))}
+                    {bucketList.length === 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>죽기 전에 하고 싶은 일을 적어보세요</div>
+                    )}
+                    {bucketMsg && <div style={{ fontSize: 11, color: '#4ADE80', fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>{bucketMsg}</div>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                        value={bucketInput}
+                        onChange={e => setBucketInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addBucketItem()}
+                        placeholder={bucketList.length >= BUCKET_LIST_MAX ? '최대 100개까지 등록할 수 있어요' : '버킷리스트 추가 후 Enter'}
+                        maxLength={60}
+                        disabled={bucketList.length >= BUCKET_LIST_MAX}
+                      />
+                      <button onClick={addBucketItem} disabled={bucketList.length >= BUCKET_LIST_MAX} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: bucketList.length >= BUCKET_LIST_MAX ? 'default' : 'pointer', color: '#6C8EFF', flexShrink: 0, opacity: bucketList.length >= BUCKET_LIST_MAX ? 0.5 : 1 }}>+</button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {isMyTab && (
