@@ -1,9 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import S from "../styles.js";
 import { getKeywordRecords, getRelatedKeywords } from "../utils/knowledge.js";
 import { formatKoreanDate } from "../utils/date.js";
+import LongMemoEditor from "../components/LongMemoEditor.jsx";
 
-export default function KeywordDetail({ keyword, plans, onBack, onOpenKeyword, onOpenDate }) {
+export default function KeywordDetail({
+  keyword, plans, onBack, onOpenKeyword, onOpenDate,
+  onUpdateDayData, uid, setToast, onRequireLogin,
+  frequentTags = [], myTags = [], onHideTag,
+}) {
   const records = useMemo(
     () => getKeywordRecords(plans, keyword),
     [plans, keyword]
@@ -12,10 +17,45 @@ export default function KeywordDetail({ keyword, plans, onBack, onOpenKeyword, o
     () => getRelatedKeywords(plans, keyword),
     [plans, keyword]
   );
+  const [longMemo, setLongMemo] = useState(null); // { dateStr, id, text, photos, starred } | null
 
   const lastDate = records[0]?.dateStr || '';
   const diaryCount = records.filter(r => r.type === '일기').length;
   const memoCount = records.filter(r => r.type === '메모').length;
+
+  const openRecord = (rec) => {
+    if (rec.type === '메모' && rec.id) {
+      const fullMemo = (plans[rec.dateStr]?.memos || []).find(m => m.id === rec.id);
+      if (fullMemo) {
+        setLongMemo({ dateStr: rec.dateStr, id: fullMemo.id, text: fullMemo.text || '', photos: fullMemo.photos || [], starred: !!fullMemo.starred });
+        return;
+      }
+    }
+    onOpenDate(rec.dateStr);
+  };
+
+  if (longMemo) return (
+    <LongMemoEditor
+      key={`edit-${longMemo.dateStr}-${longMemo.id}`}
+      initialId={longMemo.id}
+      initialText={longMemo.text}
+      initialPhotos={longMemo.photos || []}
+      initialStarred={longMemo.starred || false}
+      subtitle={formatKoreanDate(longMemo.dateStr)}
+      onCreate={() => longMemo.id}
+      onUpdate={(id, text) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }))}
+      onUpdatePhotos={(id, photos) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m) }))}
+      onUpdateStarred={(id, starred) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m) }))}
+      onClose={() => setLongMemo(null)}
+      uid={uid}
+      pathPrefix={uid ? `users/${uid}/memos` : undefined}
+      onPhotoError={setToast}
+      onRequireLogin={onRequireLogin}
+      frequentTags={frequentTags}
+      myTags={myTags}
+      onHideTag={onHideTag}
+    />
+  );
 
   return (
     <div style={S.content}>
@@ -108,7 +148,7 @@ export default function KeywordDetail({ keyword, plans, onBack, onOpenKeyword, o
             <div
               key={i}
               style={{ ...S.card, cursor: 'pointer' }}
-              onClick={() => onOpenDate(rec.dateStr)}
+              onClick={() => openRecord(rec)}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, color: 'var(--dm-muted)' }}>

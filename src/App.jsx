@@ -2088,6 +2088,13 @@ export default function App() {
           onBack={() => history.back()}
           onOpenKeyword={openKeywordDetail}
           onOpenDate={(ds) => openDetail(ds)}
+          onUpdateDayData={setDayData}
+          uid={authUser?.uid}
+          setToast={setToast}
+          onRequireLogin={() => googleSignIn().catch(() => {})}
+          frequentTags={frequentMemoTags}
+          myTags={myMemoTags}
+          onHideTag={hideMemoTag}
         />
       );
     }

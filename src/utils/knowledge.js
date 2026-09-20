@@ -63,7 +63,7 @@ export function buildKeywordIndex(plans) {
     if (seenSet.has(dedupeKey)) return;
     seenSet.add(dedupeKey);
     if (!index.has(kw)) index.set(kw, []);
-    index.get(kw).push({ dateStr, type, preview: (preview || '').slice(0, 80), photos: opts.photos || [], explicit: !!opts.explicit });
+    index.get(kw).push({ dateStr, type, preview: (preview || '').slice(0, 80), photos: opts.photos || [], explicit: !!opts.explicit, id: opts.id });
   };
 
   Object.entries(plans || {}).forEach(([dateStr, day]) => {
@@ -79,7 +79,7 @@ export function buildKeywordIndex(plans) {
       const text = memo.text || '';
       if (!text.trim()) return;
       const cleanPreview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-      const baseOpts = { dedupeKey: `${dateStr}|메모|${memo.id}`, photos: memo.photos || [] };
+      const baseOpts = { dedupeKey: `${dateStr}|메모|${memo.id}`, photos: memo.photos || [], id: memo.id };
       parseWikiLinks(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, { ...baseOpts, explicit: true }));
       extractKeywords(text).forEach(kw => addEntry(kw, dateStr, '메모', cleanPreview, { ...baseOpts, explicit: false }));
     });
