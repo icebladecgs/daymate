@@ -10,7 +10,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import { deletePhoto } from "../firebase.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
-import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
+import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -47,6 +47,7 @@ export default function Today({
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
   const [editingTimeId, setEditingTimeId] = useState(null);
+  const [editingStatTaskId, setEditingStatTaskId] = useState(null);
   const [somedayInput, setSomedayInput] = useState('');
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
@@ -354,12 +355,21 @@ export default function Today({
         {taskDayOffset !== 0 && (
           <div style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, marginBottom: 8 }}>{formatKoreanDate(targetDs)} 할일을 보고 있어요</div>
         )}
-        {targetTasks.filter(t => t.title.trim()).map(task => (
-          <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        {targetTasks.filter(t => t.title.trim()).map(task => {
+          const resolvedStatId = task.statTag || classifyTodoStat(task.title);
+          const statInfo = GROWTH_STAT_MAP[resolvedStatId];
+          return (
+          <div key={task.id} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => toggleTargetTask(task.id)}
               style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
+            <button
+              onClick={() => setEditingStatTaskId(id => id === task.id ? null : task.id)}
+              title="성장 스탯 변경"
+              style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            >{statInfo ? statInfo.icon : '❔'}</button>
             <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
             {!task.done && (
               <>
@@ -388,7 +398,23 @@ export default function Today({
             )}
             <button onClick={() => deleteTargetTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
-        ))}
+          {editingStatTaskId === task.id && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, marginLeft: 30 }}>
+              <button
+                onClick={() => { setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, statTag: undefined } : t)); setEditingStatTaskId(null); }}
+                style={{ fontSize: 11, padding: '4px 8px', borderRadius: 8, border: !task.statTag ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)', background: !task.statTag ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >자동</button>
+              {GROWTH_STATS.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => { setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, statTag: s.id } : t)); setEditingStatTaskId(null); }}
+                  style={{ fontSize: 11, padding: '4px 8px', borderRadius: 8, border: task.statTag === s.id ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)', background: task.statTag === s.id ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                >{s.icon} {s.name}</button>
+              ))}
+            </div>
+          )}
+          </div>
+        );})}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
           <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>{taskDayLabel} 할 일을 추가해보세요</div>
         )}

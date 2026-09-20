@@ -345,23 +345,38 @@ export default function App() {
   const [statXp, setStatXp] = useState(() => store.get("dm_stat_xp", DEFAULT_STAT_XP));
   const [statFeedback, setStatFeedback] = useState(null); // { statId, xp, key } | null — 체크 순간 피드백
   const clearStatFeedback = () => setStatFeedback(null);
-  const grantStatXp = (statId, amount) => {
+  // opts.silent: 체크 해제로 인한 회수 시 플로팅/진동 피드백을 띄우지 않기 위함
+  const grantStatXp = (statId, amount, opts = {}) => {
     if (!statId || statId === 'NONE' || !amount) return;
-    setStatXp(prev => ({ ...prev, [statId]: (prev[statId] || 0) + amount }));
-    setStatFeedback({ statId, xp: amount, key: Date.now() });
-    triggerVibration();
+    setStatXp(prev => ({ ...prev, [statId]: Math.max(0, (prev[statId] || 0) + amount) }));
+    if (!opts.silent) {
+      setStatFeedback({ statId, xp: amount, key: Date.now() });
+      triggerVibration();
+    }
   };
-  // 할일 완료 전환(false→true) 시에만, 아직 지급 안 된 항목만 스탯 XP 지급 (중복지급 방지, 소급/차감 없음)
+  // 할일에 수동으로 지정한 스탯(statTag)이 있으면 그걸 우선, 없으면 자동분류
+  const resolveTaskStat = (task) => task.statTag || classifyTodoStat(task.title);
+  // 체크(false→true) 시 지급, 체크 해제(true→false) 시 지급했던 만큼 정확히 회수 (실수 체크 대비)
+  // 반복 토글해도 항상 "현재 체크 상태"만 반영되므로 중복지급/어뷰징 없음
   const applyTaskXpGrants = (prevTasks, nextTasks) => {
     const prevMap = new Map((prevTasks || []).map(t => [t.id, t]));
     return (nextTasks || []).map(task => {
       const prevTask = prevMap.get(task.id);
-      const justCompleted = task.done && !prevTask?.done;
-      if (!justCompleted || task.statXpGranted) return task;
-      const statId = classifyTodoStat(task.title);
-      if (!statId || statId === 'NONE') return task;
-      grantStatXp(statId, task.priority ? STAT_XP_PRIORITY_TASK : STAT_XP_TASK);
-      return { ...task, statXpGranted: true };
+      const wasDone = !!prevTask?.done;
+      if (task.done === wasDone) return task;
+      if (task.done) {
+        const statId = resolveTaskStat(task);
+        if (!statId || statId === 'NONE') return task;
+        const amount = task.priority ? STAT_XP_PRIORITY_TASK : STAT_XP_TASK;
+        grantStatXp(statId, amount);
+        return { ...task, statXpGrant: { statId, xp: amount } };
+      }
+      if (task.statXpGrant) {
+        grantStatXp(task.statXpGrant.statId, -task.statXpGrant.xp, { silent: true });
+        const { statXpGrant, ...rest } = task;
+        return rest;
+      }
+      return task;
     });
   };
   const [diaryQuestions, setDiaryQuestions] = useState(() => store.get("dm_diary_questions", DEFAULT_DIARY_QUESTIONS));
@@ -702,8 +717,8 @@ export default function App() {
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
   );
-  const [goalXpGranted, setGoalXpGranted] = useState(() =>
-    store.get(`dm_goal_xp_granted_${todayStr.slice(0, 7)}`, {})
+  const [goalXpGrant, setGoalXpGrant] = useState(() =>
+    store.get(`dm_goal_xp_grant_${todayStr.slice(0, 7)}`, {})
   );
 
   const onToggleGoal = (idx) => {
@@ -713,17 +728,25 @@ export default function App() {
       const nowChecked = !prev[idx];
       const next = { ...prev, [idx]: nowChecked };
       store.set(monthKey, next);
-      if (nowChecked && !goalXpGranted[idx]) {
+      if (nowChecked) {
         const title = getMonthGoals(goals, ym)[idx];
         const statId = title ? classifyTodoStat(title) : null;
         if (statId && statId !== 'NONE') {
           grantStatXp(statId, STAT_XP_MONTH_GOAL);
-          setGoalXpGranted(g => {
-            const ng = { ...g, [idx]: true };
-            store.set(`dm_goal_xp_granted_${ym}`, ng);
+          setGoalXpGrant(g => {
+            const ng = { ...g, [idx]: { statId, xp: STAT_XP_MONTH_GOAL } };
+            store.set(`dm_goal_xp_grant_${ym}`, ng);
             return ng;
           });
         }
+      } else if (goalXpGrant[idx]) {
+        const grant = goalXpGrant[idx];
+        grantStatXp(grant.statId, -grant.xp, { silent: true });
+        setGoalXpGrant(g => {
+          const { [idx]: _, ...rest } = g;
+          store.set(`dm_goal_xp_grant_${ym}`, rest);
+          return rest;
+        });
       }
       return next;
     });
@@ -1418,20 +1441,23 @@ export default function App() {
     setTodayData(prev => {
       const cur = prev.habitChecks || {};
       const nowChecked = !cur[habitId];
-      const grantedMap = prev.habitXpGranted || {};
+      const grantMap = prev.habitXpGrant || {}; // { habitId: {statId, xp} } — 회수를 위해 지급 내역 보관
       const next = { ...prev, habitChecks: { ...cur, [habitId]: nowChecked } };
       if (nowChecked) {
         const allHabitsDone = habits.length > 0 && habits.every(h => next.habitChecks[h.id]);
         if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
         else setToast(`✅ 습관 체크 · +5 XP`);
-        if (!grantedMap[habitId]) {
-          const habit = habits.find(h => h.id === habitId);
-          const statId = habit ? classifyTodoStat(habit.name) : null;
-          if (statId && statId !== 'NONE') {
-            grantStatXp(statId, STAT_XP_HABIT);
-            next.habitXpGranted = { ...grantedMap, [habitId]: true };
-          }
+        const habit = habits.find(h => h.id === habitId);
+        const statId = habit ? classifyTodoStat(habit.name) : null;
+        if (statId && statId !== 'NONE') {
+          grantStatXp(statId, STAT_XP_HABIT);
+          next.habitXpGrant = { ...grantMap, [habitId]: { statId, xp: STAT_XP_HABIT } };
         }
+      } else if (grantMap[habitId]) {
+        const grant = grantMap[habitId];
+        grantStatXp(grant.statId, -grant.xp, { silent: true });
+        const { [habitId]: _, ...restGrant } = grantMap;
+        next.habitXpGrant = restGrant;
       }
       return next;
     });
