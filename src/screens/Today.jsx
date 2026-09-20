@@ -37,6 +37,8 @@ export default function Today({
   onOpenBattle,
   user,
   onOpenSettings,
+  battleNickname,
+  onSetBattleNickname,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -150,6 +152,8 @@ export default function Today({
     return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
   }, [scores, todayScore, dateStr]);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
 
   // ── 운세 · 로또 (마이탭에서 이동) ────────────────────────────
   const [fortuneModalOpen, setFortuneModalOpen] = useState(false);
@@ -389,8 +393,36 @@ export default function Today({
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
             <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
+            {onSetBattleNickname && (
+              <button
+                onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(v => !v); }}
+                title="배틀 닉네임 설정"
+                style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 999, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <span style={{ fontSize: 10, color: "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
+              </button>
+            )}
             {streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
           </div>
+          {editingNickname && (
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <input
+                value={nicknameDraft}
+                onChange={e => setNicknameDraft(e.target.value.slice(0, 10))}
+                placeholder="배틀 닉네임 (최대 10자)"
+                autoFocus
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: "8px 10px" }}
+              />
+              <button
+                onClick={() => { onSetBattleNickname(nicknameDraft.trim()); setEditingNickname(false); }}
+                style={{ background: "#6C8EFF", border: "none", borderRadius: 8, padding: "0 14px", color: "#fff", fontWeight: 900, fontSize: 12, cursor: "pointer" }}
+              >저장</button>
+              <button
+                onClick={() => setEditingNickname(false)}
+                style={{ background: "var(--dm-input)", border: "none", borderRadius: 8, padding: "0 12px", color: "var(--dm-muted)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+              >취소</button>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             {myRank ? (
               <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>

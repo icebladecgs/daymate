@@ -1901,7 +1901,9 @@ export default function App() {
           onOpenStats={() => changeScreen("stats")}
           onOpenBattle={() => changeScreen("battle-arena")}
           user={user}
-          onOpenSettings={() => changeScreen("settings")} />
+          onOpenSettings={() => changeScreen("settings")}
+          battleNickname={battleNickname}
+          onSetBattleNickname={setBattleNickname} />
       );
     }
     if (screen === "memo") {
