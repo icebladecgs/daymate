@@ -1893,7 +1893,9 @@ export default function App() {
           inviteBonus={inviteBonus}
           myRank={myRank}
           onOpenStats={() => changeScreen("stats")}
-          onOpenBattle={() => changeScreen("battle-arena")} />
+          onOpenBattle={() => changeScreen("battle-arena")}
+          user={user}
+          onOpenSettings={() => changeScreen("settings")} />
       );
     }
     if (screen === "memo") {

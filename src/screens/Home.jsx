@@ -117,20 +117,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     const prefix = toDateStr().slice(0, 7);
     return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
   }, [scores, todayScore]);
-  // 운세 종합 점수 (전체운/금전운/건강운/인간관계 평균) — 길흉 판정과 모달의 "종합 운세 점수"가
-  // 항상 같은 값을 쓰도록 여기서 한 번만 계산
-  const avgFortuneScore = (data) => {
-    if (!data?.overall) return null;
-    const { overall, money, health, relation } = data;
-    return (overall + (money ?? overall) + (health ?? overall) + (relation ?? overall)) / 4;
-  };
-  // 오늘 운세 점수 (캐시에서 읽기)
-  const todayFortuneScore = (() => {
-    try {
-      return avgFortuneScore(store.get(`dm_fortune_${today}`, null));
-    } catch { return null; }
-  })();
-  const fortuneXpKey = `dm_fortune_xp_${today}`;
 
   // 목표 편집 상태 (My탭)
   const [editingLifeGoals, setEditingLifeGoals] = useState(false);
@@ -302,131 +288,12 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     onLuckyXp?.(xp);
   };
 
-  // ── 운세 ────────────────────────────────────────────────────
-  const [fortuneModalOpen, setFortuneModalOpen] = useState(false);
-  const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
-  const [fortuneData, setFortuneData] = useState(null);
-  const [fortuneLoading, setFortuneLoading] = useState(false);
-  const [fortuneError, setFortuneError] = useState(false);
   const canDirectInstall = !!installPrompt;
   const showInviteBanners = !showInstallBanner;
   const showInvitePrompt = showInviteBanners && !!invitePromptCode;
 
-  // 로또 번호
-  const lottoKey = `dm_lotto_${today}`;
-  const [lottoNums, setLottoNums] = useState(() => store.get(lottoKey, null));
-  const [lottoAnim, setLottoAnim] = useState(false);
-  const drawLotto = () => {
-    if (lottoNums) return;
-    setLottoAnim(true);
-    setTimeout(() => {
-      const pool = Array.from({ length: 45 }, (_, i) => i + 1);
-      const picked = [];
-      while (picked.length < 6) {
-        const idx = Math.floor(Math.random() * pool.length);
-        picked.push(pool.splice(idx, 1)[0]);
-      }
-      picked.sort((a, b) => a - b);
-      store.set(lottoKey, picked);
-      setLottoNums(picked);
-      setLottoAnim(false);
-    }, 900);
-  };
-  const [sajuData, setSajuData] = useState(() => store.get('dm_saju_result', null));
-  const [tojeongData, setTojeongData] = useState(() => store.get('dm_tojeong_result', null));
-
-  const birthDate = store.get('dm_birth_date', '');
-  const birthTime = store.get('dm_birth_time', '');
-
   const todayStr = toDateStr();
-  const fortuneCacheKey = `dm_fortune_${todayStr}`;
 
-  const loadFortune = async () => {
-    if (!birthDate) return;
-    const cached = store.get(fortuneCacheKey, null);
-    if (cached) { setFortuneData(cached); return; }
-    setFortuneLoading(true);
-    setFortuneError(false);
-    try {
-      const res = await fetch('/api/chat?action=fortune', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', today: todayStr }),
-      });
-      if (!res.ok) throw new Error(`fortune ${res.status}`);
-      const data = await res.json();
-      store.set(fortuneCacheKey, data);
-      setFortuneData(data);
-    } catch {
-      setFortuneError(true);
-    }
-    setFortuneLoading(false);
-  };
-
-  useEffect(() => {
-    if (fortuneData?.overall && !store.get(fortuneXpKey, null)) {
-      const xp = Math.round(fortuneData.overall * 2);
-      store.set(fortuneXpKey, xp);
-      triggerXpFloat(xp);
-    }
-  }, [fortuneData]); // eslint-disable-line
-
-  const loadSaju = async () => {
-    if (!birthDate) return;
-    setFortuneLoading(true);
-    try {
-      const res = await fetch('/api/chat?action=saju', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자' }),
-      });
-      if (!res.ok) throw new Error(`saju ${res.status}`);
-      const data = await res.json();
-      store.set('dm_saju_result', data);
-      setSajuData(data);
-    } catch { setFortuneError(true); }
-    setFortuneLoading(false);
-  };
-
-  const loadTojeong = async () => {
-    if (!birthDate) return;
-    setFortuneLoading(true);
-    try {
-      const year = new Date().getFullYear();
-      const res = await fetch('/api/chat?action=tojeong', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', year }),
-      });
-      if (!res.ok) throw new Error(`tojeong ${res.status}`);
-      const data = await res.json();
-      store.set('dm_tojeong_result', data);
-      setTojeongData(data);
-    } catch { setFortuneError(true); }
-    setFortuneLoading(false);
-  };
-
-  const starRating = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
-
-  const fortuneLevel = (score) => {
-    if (!score) return { label: '🔮', color: '#A78BFA', desc: '운세보기' };
-    const pts = Math.round(score * 20);
-    if (pts >= 80) return { label: '대길 ★', color: '#4ADE80', desc: `${pts}점` };
-    if (pts >= 60) return { label: '길 ☆', color: '#FCD34D', desc: `${pts}점` };
-    if (pts >= 40) return { label: '평 △', color: '#94A3B8', desc: `${pts}점` };
-    return { label: '흉 ▽', color: '#F87171', desc: `${pts}점` };
-  };
-
-  const fortuneWeekHistory = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const dateStr = toDateStr(d);
-      const cached = store.get(`dm_fortune_${dateStr}`, null);
-      const dow = '일월화수목금토'[d.getDay()];
-      return { dateStr, overall: avgFortuneScore(cached), dow };
-    });
-  }, []); // eslint-disable-line
   const linkedChallengesByHabit = useMemo(() => {
     return (myChallenges || []).reduce((acc, challenge) => {
       const linkedHabitId = challenge?.myMember?.linkedHabitId || challenge?.linkedHabitId;
@@ -533,13 +400,12 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   // 뒤로가기로 모달 닫기
   useEffect(() => {
     const handler = () => {
-      if (fortuneModalOpen) { setFortuneModalOpen(false); return; }
       if (xpHelpOpen) { setXpHelpOpen(false); return; }
       if (focusTask) { setFocusTask(null); return; }
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
-  }, [fortuneModalOpen, xpHelpOpen, focusTask]); // eslint-disable-line
+  }, [xpHelpOpen, focusTask]); // eslint-disable-line
   const [quickMemoOpen, setQuickMemoOpen] = useState(false);
 
   const saveSomeday = (next) => setSomeday(next);
@@ -798,228 +664,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         </div>
       )}
 
-      {/* ── 오늘의 운 모달 ───────────────────────────────────── */}
-      {/* ── 운세 팝업 모달 ──────────────────────────────────── */}
-      {fortuneModalOpen && (() => {
-        const isFsTab = fortuneTab === 'saju' || fortuneTab === 'tojeong';
-        return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.75)", display: "flex", alignItems: isFsTab ? "stretch" : "flex-end", justifyContent: "center" }}
-          onClick={() => setFortuneModalOpen(false)}>
-          <div style={{ background: "var(--dm-card)", border: "1px solid rgba(255,255,255,.1)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: 0, width: "100%", maxHeight: isFsTab ? "100%" : "calc(90vh - 84px)", marginBottom: isFsTab ? 0 : 84, overflowY: "auto", display: "flex", flexDirection: "column" }}
-            onClick={e => e.stopPropagation()}>
-            {/* 헤더 — sticky */}
-            <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--dm-card)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: "18px 16px 12px", borderBottom: "1px solid var(--dm-border)", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: birthDate ? 12 : 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 900 }}>🔮 오늘의 운세</div>
-                <button onClick={() => setFortuneModalOpen(false)}
-                  style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: "0 4px" }}>✕</button>
-              </div>
-              {/* 탭 */}
-              {birthDate && (
-                <div style={{ display: "flex", gap: 4, background: "var(--dm-input)", borderRadius: 999, padding: 4 }}>
-                {[{ key: 'daily', label: '오늘의 운세' }, { key: 'saju', label: '평생 사주' }, { key: 'tojeong', label: '토정비결' }].map(t => (
-                  <button key={t.key} onClick={() => {
-                    setFortuneTab(t.key);
-                    if (t.key === 'daily' && !fortuneData) loadFortune();
-                    if (t.key === 'saju' && !sajuData) loadSaju();
-                    if (t.key === 'tojeong' && !tojeongData) loadTojeong();
-                  }} style={{
-                    flex: 1, padding: "8px 0", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
-                    border: "none", transition: "all .2s",
-                    background: fortuneTab === t.key ? "#6C8EFF" : "transparent",
-                    color: fortuneTab === t.key ? "#fff" : "var(--dm-muted)",
-                    boxShadow: fortuneTab === t.key ? "0 2px 8px rgba(108,142,255,.4)" : "none",
-                  }}>{t.label}</button>
-                ))}
-              </div>
-              )}
-            </div>
-            {/* 컨텐츠 스크롤 영역 */}
-            <div style={{ padding: "16px 16px 24px", overflowY: "auto" }}>
-            {!birthDate ? (
-              <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 12 }}>생년월일을 입력하면 오늘의 운세를 볼 수 있어요</div>
-                <button onClick={() => { setFortuneModalOpen(false); onOpenSettings?.(); }}
-                  style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>⚙️ 설정에서 입력하기</button>
-              </div>
-            ) : fortuneLoading ? (
-              <div style={{ padding: "4px 0" }}>
-                <div style={{ textAlign: 'center', padding: '18px 0 14px' }}>
-                  <div className="dm-spin" style={{ fontSize: 36 }}>🔮</div>
-                  <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 10, fontWeight: 700 }}>운세를 읽는 중<span style={{ display: 'inline-block', minWidth: 18, textAlign: 'left' }}>...</span></div>
-                </div>
-                <div className="dm-skeleton" style={{ height: 80, borderRadius: 14, marginBottom: 14 }} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-                  {[1,2,3,4].map(i => <div key={i} className="dm-skeleton" style={{ height: 72, borderRadius: 10 }} />)}
-                </div>
-                <div className="dm-skeleton" style={{ height: 68, borderRadius: 10, marginBottom: 10 }} />
-                <div className="dm-skeleton" style={{ height: 44, borderRadius: 10, marginBottom: 10 }} />
-                <div style={{ display: "flex", gap: 10 }}>
-                  <div className="dm-skeleton" style={{ flex: 1, height: 52, borderRadius: 10 }} />
-                  <div className="dm-skeleton" style={{ flex: 1, height: 52, borderRadius: 10 }} />
-                </div>
-              </div>
-            ) : fortuneError ? (
-              <div style={{ textAlign: "center", padding: "24px 16px" }}>
-                <div style={{ fontSize: 28, marginBottom: 10 }}>😶‍🌫️</div>
-                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 14 }}>운세를 불러오지 못했어요.<br/>네트워크를 확인하고 다시 시도해보세요.</div>
-                <button onClick={loadFortune} style={{ ...S.btn, width: "auto", padding: "10px 24px", fontSize: 13 }}>🔄 다시 시도</button>
-              </div>
-            ) : fortuneTab === 'daily' ? (
-              fortuneData ? (() => {
-                const cats = [
-                  { label: "전체운", val: fortuneData.overall || 3 },
-                  { label: "금전운", val: fortuneData.money || 3 },
-                  { label: "건강운", val: fortuneData.health || 3 },
-                  { label: "인간관계", val: fortuneData.relation || 3 },
-                ];
-                const avgScore = avgFortuneScore(fortuneData);
-                const totalScore = avgScore ? Math.round(avgScore * 20) : 0;
-                const scoreColor = fortuneLevel(avgScore).color;
-                return (
-                  <div style={S.card}>
-                    {/* 주간 운세 히스토리 미니 차트 */}
-                    {fortuneWeekHistory.some(d => d.overall !== null) && (
-                      <div style={{ marginBottom: 14 }}>
-                        <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 6, textAlign: "center" }}>7일 운세 흐름</div>
-                        <div style={{ display: "flex", gap: 4, alignItems: "flex-end", justifyContent: "center", height: 36 }}>
-                          {fortuneWeekHistory.map((d, i) => {
-                            const pts = d.overall ? d.overall * 20 : 0;
-                            const isToday = i === 6;
-                            const barColor = pts >= 80 ? "#4ADE80" : pts >= 60 ? "#FCD34D" : pts > 0 ? "#F87171" : "var(--dm-row)";
-                            return (
-                              <div key={d.dateStr} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: 1 }}>
-                                <div style={{ width: "100%", maxWidth: 28, height: d.overall ? `${Math.max(4, pts * 0.32)}px` : 4, background: barColor, borderRadius: 3, opacity: isToday ? 1 : 0.6, border: isToday ? `1.5px solid ${barColor}` : "none" }} />
-                                <div style={{ fontSize: 9, color: isToday ? "var(--dm-text)" : "var(--dm-muted)", fontWeight: isToday ? 900 : 400 }}>{d.dow}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 12 }}>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>종합 운세 점수</div>
-                        <div style={{ fontSize: 36, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>{totalScore}<span style={{ fontSize: 16 }}>점</span></div>
-                      </div>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-                      {cats.map(item => {
-                        const pct = item.val * 20;
-                        const c = pct >= 80 ? "#4ADE80" : pct >= 60 ? "#FCD34D" : "#F87171";
-                        return (
-                          <div key={item.label} style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 12px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                              <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>{item.label}</div>
-                              <div style={{ fontSize: 13, fontWeight: 900, color: c }}>{pct}점</div>
-                            </div>
-                            <div style={{ fontSize: 13, color: "#FCD34D", letterSpacing: 1, marginBottom: 4 }}>{starRating(item.val)}</div>
-                            <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2, transition: "width 0.4s" }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7, marginBottom: 12 }}>{fortuneData.message}</div>
-                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF", marginBottom: 4 }}>💡 오늘의 조언</div>
-                      <div style={{ fontSize: 13, color: "var(--dm-text)" }}>{fortuneData.advice}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <div style={{ flex: 1, background: "var(--dm-input)", borderRadius: 10, padding: "8px 12px", textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>행운의 색</div>
-                        <div style={{ fontSize: 14, fontWeight: 900, marginTop: 2 }}>{fortuneData.luckyColor}</div>
-                      </div>
-                      <div style={{ flex: 1, background: "var(--dm-input)", borderRadius: 10, padding: "8px 12px", textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700 }}>행운의 숫자</div>
-                        <div style={{ fontSize: 14, fontWeight: 900, marginTop: 2 }}>{fortuneData.luckyNumber}</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })() : (
-                <div style={{ textAlign: "center", padding: "20px 16px" }}>
-                  <button onClick={loadFortune} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>🔮 오늘의 운세 보기</button>
-                </div>
-              )
-            ) : fortuneTab === 'saju' ? (
-              sajuData ? (
-                <div style={S.card}>
-                  <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>사주팔자</div>
-                    <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: 2 }}>{sajuData.pillars}</div>
-                    <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 4 }}>일간: {sajuData.dayMaster}</div>
-                  </div>
-                  {[
-                    { label: "🧠 성격 & 기질", content: sajuData.personality },
-                    { label: "💼 적합한 직업", content: sajuData.career },
-                    { label: "💰 재물운", content: sajuData.wealth },
-                    { label: "❤️ 건강", content: sajuData.health },
-                    { label: "🌟 인생 조언", content: sajuData.lifeAdvice },
-                  ].map(sec => (
-                    <div key={sec.label} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 4 }}>{sec.label}</div>
-                      <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7 }}>{sec.content}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: "20px 16px" }}>
-                  <button onClick={loadSaju} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>🌟 평생 사주 보기</button>
-                </div>
-              )
-            ) : (
-              tojeongData ? (
-                <div style={S.card}>
-                  <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>{new Date().getFullYear()}년 토정비결</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: "#FCD34D" }}>{tojeongData.hexagram}</div>
-                    <div style={{ fontSize: 13, color: "var(--dm-text)", marginTop: 6 }}>{tojeongData.summary}</div>
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.8, marginBottom: 12 }}>{tojeongData.overall}</div>
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: "20px 16px" }}>
-                  <button onClick={loadTojeong} style={{ ...S.btn, width: "auto", padding: "10px 24px" }}>📖 토정비결 보기</button>
-                </div>
-              )
-            )}
-            {/* ── 로또 번호 (운세 탭 하단) ── */}
-            {fortuneTab === 'daily' && (
-              <div style={{ marginTop: 12, borderTop: "1px solid var(--dm-border)", paddingTop: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                  🎱 오늘의 로또 번호
-                  {lottoNums && <span style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 400 }}>· 오늘 1회 추출 완료</span>}
-                </div>
-                {lottoNums ? (
-                  <>
-                    {todayFortuneScore >= 80 && (
-                      <div style={{ fontSize: 11, color: "#FBBF24", fontWeight: 700, marginBottom: 8 }}>🍀 오늘 운이 좋으니 한번 사보세요!</div>
-                    )}
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {lottoNums.map((n, i) => {
-                        const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                        return (
-                          <div key={i} style={{ width: 36, height: 36, borderRadius: 999, background: bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, boxShadow: `0 2px 8px ${bg}66` }}>{n}</div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8 }}>내일 새 번호를 뽑을 수 있어요</div>
-                  </>
-                ) : (
-                  <button onClick={drawLotto} disabled={lottoAnim}
-                    style={{ ...S.btn, background: lottoAnim ? "var(--dm-input)" : "linear-gradient(135deg,#7C3AED,#A78BFA)", fontSize: 14, marginTop: 0 }}>
-                    {lottoAnim ? "🎱 추출 중..." : "🎱 번호 뽑기"}
-                  </button>
-                )}
-              </div>
-            )}
-            </div>
-          </div>
-        </div>
-      );})()}
-
       {/* ── 포커스 모드 모달 ─────────────────────────────────── */}
       {focusTask && (
         <FocusTimerModal
@@ -1169,15 +813,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                           <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{myRank.total}명 중</div>
                         </button>
                       )}
-                      {/* 운세 버튼 보관 (숨김)
-                      {(() => {
-                        const fl = fortuneLevel(todayFortuneScore);
-                        return (
-                          <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }} style={{...}}>
-                            오늘의 운세
-                          </button>
-                        );
-                      })()} */}
                     </div>
                     <div style={{ position: "relative" }}>
                       {xpFloat && (
@@ -1210,50 +845,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             </div>
             </div>
             )}
-            {isMyTab && (() => {
-              const fl = fortuneLevel(todayFortuneScore);
-              return (
-              <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🔮 운세 · 로또</div>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                  <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
-                    style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>오늘의 운세</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: fl.color, marginBottom: 3 }}>{fl.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 10 }}>{fl.desc}</div>
-                    </div>
-                    {todayFortuneScore ? (
-                      <div>
-                        <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', borderRadius: 999, background: fl.color, width: `${todayFortuneScore * 20}%`, transition: 'width 0.6s ease', boxShadow: `0 0 6px ${fl.color}88` }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: fl.color, fontWeight: 700, marginTop: 4, textAlign: 'right' }}>{todayFortuneScore * 20}점</div>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 10, color: 'var(--dm-muted)', opacity: 0.6 }}>탭해서 확인</div>
-                    )}
-                  </button>
-                  <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 7 }}>🎱 오늘의 로또</div>
-                    {lottoNums ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                        {lottoNums.map((n, i) => {
-                          const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                          return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, boxShadow: `0 2px 6px ${bg}66` }}>{n}</div>;
-                        })}
-                      </div>
-                    ) : (
-                      <button onClick={drawLotto} disabled={lottoAnim}
-                        style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 10, padding: '10px 0', fontSize: 14, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%', marginTop: 'auto' }}>
-                        {lottoAnim ? '추출 중...' : '번호 뽑기'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              );
-            })()}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
