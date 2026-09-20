@@ -10,6 +10,7 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import { deletePhoto } from "../firebase.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
+import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -26,6 +27,9 @@ export default function Today({
   myTags,
   hiddenTags,
   onHideTag,
+  statXp,
+  statFeedback,
+  onClearStatFeedback,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -240,6 +244,16 @@ export default function Today({
   return (
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {statFeedback && (() => {
+        const stat = GROWTH_STATS.find(s => s.id === statFeedback.statId);
+        if (!stat) return null;
+        return (
+          <div key={statFeedback.key} className="xp-float" style={{ top: '18%', left: '50%' }}
+            onAnimationEnd={onClearStatFeedback}>
+            +{statFeedback.xp} {stat.icon} {stat.name}
+          </div>
+        );
+      })()}
 
       <div style={S.topbar}>
         <div style={{ flex: 1 }}>
@@ -248,6 +262,28 @@ export default function Today({
         </div>
         <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
+
+      {/* 🌱 나의 성장 능력치 */}
+      {statXp && (
+        <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05))", border: "1.5px solid rgba(108,142,255,.3)" }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {GROWTH_STATS.map(stat => {
+              const score = calcStatScore(statXp[stat.id] || 0);
+              return (
+                <div key={stat.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{stat.icon}</span>
+                  <span style={{ fontSize: 12, color: "var(--dm-sub)", width: 46, flexShrink: 0 }}>{stat.name}</span>
+                  <div style={{ flex: 1, height: 6, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${score}%`, transition: "width 0.4s" }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-text)", width: 28, textAlign: "right" }}>{score}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 📅 주간 일정 */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>

@@ -9,6 +9,8 @@ import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
+import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat } from "./data/growthStats.js";
+import { triggerVibration } from "./utils/notification.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
 import { getTopKeywords } from "./utils/knowledge.js";
@@ -340,6 +342,28 @@ export default function App() {
     store.get("dm_alarm_times", { morning: "07:30", noon: "12:00", evening: "18:00", night: "23:00" })
   );
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
+  const [statXp, setStatXp] = useState(() => store.get("dm_stat_xp", DEFAULT_STAT_XP));
+  const [statFeedback, setStatFeedback] = useState(null); // { statId, xp, key } | null — 체크 순간 피드백
+  const clearStatFeedback = () => setStatFeedback(null);
+  const grantStatXp = (statId, amount) => {
+    if (!statId || statId === 'NONE' || !amount) return;
+    setStatXp(prev => ({ ...prev, [statId]: (prev[statId] || 0) + amount }));
+    setStatFeedback({ statId, xp: amount, key: Date.now() });
+    triggerVibration();
+  };
+  // 할일 완료 전환(false→true) 시에만, 아직 지급 안 된 항목만 스탯 XP 지급 (중복지급 방지, 소급/차감 없음)
+  const applyTaskXpGrants = (prevTasks, nextTasks) => {
+    const prevMap = new Map((prevTasks || []).map(t => [t.id, t]));
+    return (nextTasks || []).map(task => {
+      const prevTask = prevMap.get(task.id);
+      const justCompleted = task.done && !prevTask?.done;
+      if (!justCompleted || task.statXpGranted) return task;
+      const statId = classifyTodoStat(task.title);
+      if (!statId || statId === 'NONE') return task;
+      grantStatXp(statId, task.priority ? STAT_XP_PRIORITY_TASK : STAT_XP_TASK);
+      return { ...task, statXpGranted: true };
+    });
+  };
   const [diaryQuestions, setDiaryQuestions] = useState(() => store.get("dm_diary_questions", DEFAULT_DIARY_QUESTIONS));
   const [scores, setScores] = useState(() => store.get("dm_scores", {}));
   const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
@@ -678,12 +702,29 @@ export default function App() {
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
   );
+  const [goalXpGranted, setGoalXpGranted] = useState(() =>
+    store.get(`dm_goal_xp_granted_${todayStr.slice(0, 7)}`, {})
+  );
 
   const onToggleGoal = (idx) => {
-    const monthKey = `dm_goal_checks_${todayStr.slice(0, 7)}`;
+    const ym = todayStr.slice(0, 7);
+    const monthKey = `dm_goal_checks_${ym}`;
     setGoalChecks((prev) => {
-      const next = { ...prev, [idx]: !prev[idx] };
+      const nowChecked = !prev[idx];
+      const next = { ...prev, [idx]: nowChecked };
       store.set(monthKey, next);
+      if (nowChecked && !goalXpGranted[idx]) {
+        const title = getMonthGoals(goals, ym)[idx];
+        const statId = title ? classifyTodoStat(title) : null;
+        if (statId && statId !== 'NONE') {
+          grantStatXp(statId, STAT_XP_MONTH_GOAL);
+          setGoalXpGranted(g => {
+            const ng = { ...g, [idx]: true };
+            store.set(`dm_goal_xp_granted_${ym}`, ng);
+            return ng;
+          });
+        }
+      }
       return next;
     });
   };
@@ -1024,6 +1065,7 @@ export default function App() {
               setBusinessCards(migrated); store.set("dm_business_cards", migrated);
             }
             if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
+            if (s.statXp && typeof s.statXp === 'object') { setStatXp({ ...DEFAULT_STAT_XP, ...s.statXp }); store.set("dm_stat_xp", { ...DEFAULT_STAT_XP, ...s.statXp }); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             const ym = todayStr.slice(0, 7);
             if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
@@ -1102,6 +1144,10 @@ export default function App() {
   useEffect(() => {
     if (authUser && syncReadyRef.current && Object.keys(scores).length > 0) saveSettings(authUser.uid, { scores }).catch(() => {});
   }, [scores, authUser]); // eslint-disable-line
+  useEffect(() => {
+    store.set("dm_stat_xp", statXp);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statXp }).catch(() => {});
+  }, [statXp, authUser]);
   useEffect(() => { store.set("dm_notif_enabled", notifEnabled); }, [notifEnabled]);
   useEffect(() => {
     store.set("dm_habits", habits);
@@ -1181,8 +1227,9 @@ export default function App() {
   const setDayData = (dateStr, updater) => {
     const cur = plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
-    const nextDay = typeof updater === "function" ? updater(cur) : updater;
-    const nextTasks = nextDay.tasks || [];
+    const nextDayRaw = typeof updater === "function" ? updater(cur) : updater;
+    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
+    const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
     setPlans(prev => ({ ...prev, [dateStr]: savedDay }));
     syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
@@ -1335,12 +1382,12 @@ export default function App() {
 
   const onSetTodayTasks = (tasks) => {
     const prevTasks = todayData?.tasks || [];
-    const normalizedTasks = tasks.map((task) => {
+    const normalizedTasks = applyTaskXpGrants(prevTasks, tasks.map((task) => {
       if (task.title?.trim()) return task;
       if (!task.gcalEventId) return task;
       const { gcalEventId, ...rest } = task;
       return rest;
-    });
+    }));
     setTodayData(prev => ({ ...prev, tasks: normalizedTasks }));
     syncTasksToGcal(todayStr, prevTasks, normalizedTasks, (updates) => {
       setTodayData(prev => ({
@@ -1371,11 +1418,20 @@ export default function App() {
     setTodayData(prev => {
       const cur = prev.habitChecks || {};
       const nowChecked = !cur[habitId];
+      const grantedMap = prev.habitXpGranted || {};
       const next = { ...prev, habitChecks: { ...cur, [habitId]: nowChecked } };
       if (nowChecked) {
         const allHabitsDone = habits.length > 0 && habits.every(h => next.habitChecks[h.id]);
         if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
         else setToast(`✅ 습관 체크 · +5 XP`);
+        if (!grantedMap[habitId]) {
+          const habit = habits.find(h => h.id === habitId);
+          const statId = habit ? classifyTodoStat(habit.name) : null;
+          if (statId && statId !== 'NONE') {
+            grantStatXp(statId, STAT_XP_HABIT);
+            next.habitXpGranted = { ...grantedMap, [habitId]: true };
+          }
+        }
       }
       return next;
     });
@@ -1767,7 +1823,10 @@ export default function App() {
           frequentTags={frequentMemoTags}
           myTags={myMemoTags}
           onHideTag={hideMemoTag}
-          hiddenTags={hiddenTags} />
+          hiddenTags={hiddenTags}
+          statXp={statXp}
+          statFeedback={statFeedback}
+          onClearStatFeedback={clearStatFeedback} />
       );
     }
     if (screen === "voice-diary") {
