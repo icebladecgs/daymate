@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import S from "../styles.js";
 import { getNpcById } from "../data/battle/npcs.js";
+import { GROWTH_STATS } from "../data/growthStats.js";
 import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrder } from "../data/battle/engine.js";
 
 const ROUND_GAP_MS = 1000; // 선공 결과를 보여준 뒤 후공까지의 간격
@@ -60,6 +61,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   ));
   const [resolving, setResolving] = useState(false);
   const [flash, setFlash] = useState(null);
+  const [showNpcStats, setShowNpcStats] = useState(true);
 
   useEffect(() => {
     if (!npcDef) return;
@@ -129,6 +131,30 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           <div style={S.title}>⚔️ 일기토</div>
           <div style={S.sub}>Lv.{npc.level} {npc.name} · 「{npc.trait?.label}」</div>
         </div>
+      </div>
+
+      <div style={S.card}>
+        <button onClick={() => setShowNpcStats(v => !v)} style={{ width: '100%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>🥊 상대 능력치</span>
+          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{showNpcStats ? '접기 ▲' : '펼치기 ▼'}</span>
+        </button>
+        {showNpcStats && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14, rowGap: 8, marginTop: 10 }}>
+            {GROWTH_STATS.map(stat => {
+              const score = npc.stats[stat.id] || 0;
+              return (
+                <div key={stat.id} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, width: 18, textAlign: 'center', flexShrink: 0 }}>{stat.icon}</span>
+                  <span style={{ fontSize: 11, color: 'var(--dm-sub)', width: 34, flexShrink: 0 }}>{stat.name}</span>
+                  <div style={{ flex: 1, height: 6, background: 'var(--dm-row)', borderRadius: 4, overflow: 'hidden', minWidth: 0 }}>
+                    <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg,#F87171,#FCA5A5)', width: `${score}%` }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-text)', width: 22, textAlign: 'right', flexShrink: 0 }}>{score}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{ ...S.card, position: 'relative', overflow: 'hidden' }}>
