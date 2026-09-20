@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -11,6 +11,7 @@ import { deletePhoto } from "../firebase.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
+import { calcDayScore, calcLevel, calcStreak } from "../data/stats.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -30,6 +31,8 @@ export default function Today({
   statXp,
   statFeedback,
   onClearStatFeedback,
+  scores,
+  inviteBonus,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -134,6 +137,12 @@ export default function Today({
   }, [bodyText]); // eslint-disable-line
 
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!bodyText.trim();
+
+  // My탭과 동일한 계산(기존 XP/레벨/티어) — 오늘 화면에서도 함께 보여주기 위함, 기존 로직/저장방식은 그대로
+  const todayScore = useMemo(() => calcDayScore(data, habits), [data, habits]);
+  const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore + (inviteBonus || 0), [scores, todayScore, inviteBonus]);
+  const levelInfo = useMemo(() => calcLevel(totalScore), [totalScore]);
+  const streak = useMemo(() => calcStreak(plans), [plans]);
 
   // 오늘의 할일 섹션만 다른 날짜로 미리보기/입력 (나머지 섹션은 항상 오늘 기준 유지)
   const targetDs = taskDayOffset === 0 ? dateStr : addDays(dateStr, taskDayOffset);
@@ -264,9 +273,19 @@ export default function Today({
         <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
-      {/* 🌱 나의 성장 능력치 */}
+      {/* 🌱 나의 성장 능력치 (+ My탭과 동일한 레벨/XP 요약) */}
       {statXp && (
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05))", border: "1.5px solid rgba(108,142,255,.3)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
+            <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>· {totalScore.toLocaleString()} XP</span>
+            {streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
+          </div>
+          <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
+            <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+          </div>
           <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {GROWTH_STATS.map(stat => {

@@ -1852,7 +1852,9 @@ export default function App() {
           hiddenTags={hiddenTags}
           statXp={statXp}
           statFeedback={statFeedback}
-          onClearStatFeedback={clearStatFeedback} />
+          onClearStatFeedback={clearStatFeedback}
+          scores={scores}
+          inviteBonus={inviteBonus} />
       );
     }
     if (screen === "voice-diary") {
