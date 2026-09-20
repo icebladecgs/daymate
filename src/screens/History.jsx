@@ -430,7 +430,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       <div style={S.topbar}>
         <div>
           <div style={S.title}>달력</div>
-          <div style={S.sub}>달력에서 날짜를 눌러 확인</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setShowSearch(true)} title="날짜 검색" aria-label="날짜 검색" style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36 }}>🔍</button>

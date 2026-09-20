@@ -101,7 +101,7 @@ export default function Knowledge({
           </button>
         )}
         <div>
-          <div style={S.title}>연결된 생각</div>
+          <div style={S.title}>지식</div>
           <div style={S.sub}>키워드 {topKeywords.length}개 · 언급 {totalMentions}회</div>
         </div>
       </div>

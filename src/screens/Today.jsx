@@ -10,7 +10,8 @@ import { gcalFetchWeekEvents } from "../api/gcal.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
-import { calcDayScore, calcLevel, calcStreak } from "../data/stats.js";
+import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
+import { store } from "../utils/storage.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -31,6 +32,8 @@ export default function Today({
   onClearStatFeedback,
   scores,
   inviteBonus,
+  myRank,
+  onOpenStats,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -58,7 +61,15 @@ export default function Today({
   }, []);
 
   const [gcalWeekEvents, setGcalWeekEvents] = useState({});
-  const [scheduleOpen, setScheduleOpen] = useState(false);
+  // 섹션 펼침 상태 — 마지막으로 둔 상태를 기억 (기본값: 펼쳐짐)
+  const [scheduleOpen, setScheduleOpen] = useState(() => store.get('dm_section_open_schedule', false));
+  const [tasksOpen, setTasksOpen] = useState(() => store.get('dm_section_open_tasks', true));
+  const [somedayOpen, setSomedayOpen] = useState(() => store.get('dm_section_open_someday', true));
+  const [habitsSectionOpen, setHabitsSectionOpen] = useState(() => store.get('dm_section_open_habits', true));
+  useEffect(() => { store.set('dm_section_open_schedule', scheduleOpen); }, [scheduleOpen]);
+  useEffect(() => { store.set('dm_section_open_tasks', tasksOpen); }, [tasksOpen]);
+  useEffect(() => { store.set('dm_section_open_someday', somedayOpen); }, [somedayOpen]);
+  useEffect(() => { store.set('dm_section_open_habits', habitsSectionOpen); }, [habitsSectionOpen]);
   useEffect(() => {
     const token = getValidGcalToken?.();
     if (!token) return;
@@ -131,6 +142,11 @@ export default function Today({
   const totalScore = useMemo(() => Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore + (inviteBonus || 0), [scores, todayScore, inviteBonus]);
   const levelInfo = useMemo(() => calcLevel(totalScore), [totalScore]);
   const streak = useMemo(() => calcStreak(plans), [plans]);
+  const monthScore = useMemo(() => {
+    const prefix = dateStr.slice(0, 7);
+    return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
+  }, [scores, todayScore, dateStr]);
+  const [xpHelpOpen, setXpHelpOpen] = useState(false);
 
   // 오늘의 할일 섹션만 다른 날짜로 미리보기/입력 (나머지 섹션은 항상 오늘 기준 유지)
   const targetDs = taskDayOffset === 0 ? dateStr : addDays(dateStr, taskDayOffset);
@@ -245,11 +261,27 @@ export default function Today({
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
             <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
-            <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>· {totalScore.toLocaleString()} XP</span>
             {streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
           </div>
-          <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            {myRank ? (
+              <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                <span style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF" }}>🏆 전체 {myRank.rank}위</span>
+                <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
+              </button>
+            ) : <span />}
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
+              <span style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
+              <button onClick={() => setXpHelpOpen(true)} style={{ background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
+            </div>
+          </div>
+          <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
             <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+            <span style={{ fontSize: 10, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
+            <span style={{ fontSize: 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
           </div>
           <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -299,7 +331,12 @@ export default function Today({
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>✅</span>{taskDayLabel}의 할일</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>✅</span>{taskDayLabel}의 할일
+          <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {tasksOpen ? '접기 ▲' : '펼치기 ▼'}
+          </button>
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
             <button onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
@@ -308,6 +345,7 @@ export default function Today({
           <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
+      {tasksOpen && (
       <div style={S.card}>
         {taskDayOffset !== 0 && (
           <div style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, marginBottom: 8 }}>{formatKoreanDate(targetDs)} 할일을 보고 있어요</div>
@@ -387,11 +425,18 @@ export default function Today({
           <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
       </div>
+      )}
 
       {/* 📋 언젠가할일 */}
       <div style={S.sectionTitle}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📋</span>언젠가할일</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>📋</span>언젠가할일
+          <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
+          </button>
+        </span>
       </div>
+      {somedayOpen && (
       <div style={S.card}>
         {somedayList.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -416,15 +461,22 @@ export default function Today({
           <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
       </div>
+      )}
 
       {/* 💪 오늘습관 */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>💪</span>오늘습관</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={S.sectionEmoji}>💪</span>오늘습관
+          <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
+          </button>
+        </span>
         <button
           onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
           style={{ fontSize: 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
         >{editingHabits ? '완료 ✓' : '수정'}</button>
       </div>
+      {habitsSectionOpen && (
       <div style={S.card}>
         {editingHabits ? (
           <>
@@ -488,6 +540,7 @@ export default function Today({
           </div>
         )}
       </div>
+      )}
 
       {/* 📖 일기 */}
       <div style={S.sectionTitle}>
@@ -548,6 +601,92 @@ export default function Today({
       </div>
 
       <div style={{ height: 12 }} />
+
+      {xpHelpOpen && (() => {
+        const LEVELS = Array.from({ length: 21 }, (_, i) => {
+          const lv = i + 1;
+          const floor = Math.pow(lv - 1, 2) * 100;
+          return { lv, icon: LEVEL_ICONS[i], title: LEVEL_TITLES[i], floor };
+        });
+        const XP_ITEMS = [
+          { label: '할일 완료 1개', pt: '+10 XP' },
+          { label: '할일 전체 완료 보너스', pt: '+20 XP' },
+          { label: '습관 체크 1개', pt: '+5 XP' },
+          { label: '습관 전체 완료 보너스', pt: '+15 XP' },
+          { label: '일기/메모 작성', pt: '+15 XP' },
+          { label: '완벽한 하루 달성', pt: '+25 XP' },
+          { label: '7일 연속 보너스', pt: '+50 XP~' },
+          { label: '타이머 챌린지 (5/15/25/50분)', pt: '5·15·30·70 XP' },
+        ];
+        return (
+          <div onClick={() => setXpHelpOpen(false)} style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
+            zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: "var(--dm-bg)", border: "1px solid var(--dm-border2)",
+              borderRadius: 22, width: "100%", maxWidth: 360,
+              maxHeight: "80vh", display: "flex", flexDirection: "column",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+              animation: "modalPop 0.18s ease-out", overflow: "hidden",
+            }}>
+              <div style={{ padding: "20px 22px 14px", borderBottom: "1px solid var(--dm-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>⚡ XP & 레벨 안내</div>
+                <button onClick={() => setXpHelpOpen(false)} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
+                <div style={{ background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 36 }}>{levelInfo.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title} · Lv.{levelInfo.level}</div>
+                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
+                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP 남음</div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>📌 XP 획득 방법</div>
+                <div style={{ borderRadius: 12, border: "1px solid var(--dm-border)", overflow: "hidden", marginBottom: 18 }}>
+                  {XP_ITEMS.map((it, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px",
+                      background: i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                      borderBottom: i < XP_ITEMS.length - 1 ? "1px solid var(--dm-border)" : "none" }}>
+                      <span style={{ fontSize: 13, color: "var(--dm-text)" }}>{it.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>{it.pt}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>🏆 전체 등급표</div>
+                <div style={{ borderRadius: 12, border: "1px solid var(--dm-border)", overflow: "hidden" }}>
+                  {LEVELS.map((lv, i) => {
+                    const isCurrent = lv.lv === levelInfo.level;
+                    return (
+                      <div key={lv.lv} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px",
+                        background: isCurrent ? "rgba(75,111,255,.15)" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                        borderBottom: i < LEVELS.length - 1 ? "1px solid var(--dm-border)" : "none",
+                        border: isCurrent ? "1.5px solid rgba(108,142,255,.5)" : undefined,
+                      }}>
+                        <span style={{ fontSize: 18 }}>{lv.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "#6C8EFF" : "var(--dm-text)" }}>
+                            Lv.{lv.lv} {lv.title}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 11, color: isCurrent ? "#6C8EFF" : "var(--dm-muted)", fontWeight: 700 }}>
+                          {lv.floor.toLocaleString()} XP~
+                        </span>
+                        {isCurrent && <span style={{ fontSize: 10, background: "#4B6FFF", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ height: 8 }} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

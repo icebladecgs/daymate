@@ -707,18 +707,30 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   const currentYearGoals = yearGoals.map(g => g.title);
   const currentMonthGoals = monthGoals;
-  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave }) => (
+  // 목표 섹션 펼침 상태 — 마지막으로 둔 상태를 기억 (기본값: 펼쳐짐)
+  const [lifeGoalsOpen, setLifeGoalsOpen] = useState(() => store.get('dm_section_open_lifegoals', true));
+  const [yearGoalsOpen, setYearGoalsOpen] = useState(() => store.get('dm_section_open_yeargoals', true));
+  const [monthGoalsOpen, setMonthGoalsOpen] = useState(() => store.get('dm_section_open_monthgoals', true));
+  useEffect(() => { store.set('dm_section_open_lifegoals', lifeGoalsOpen); }, [lifeGoalsOpen]);
+  useEffect(() => { store.set('dm_section_open_yeargoals', yearGoalsOpen); }, [yearGoalsOpen]);
+  useEffect(() => { store.set('dm_section_open_monthgoals', monthGoalsOpen); }, [monthGoalsOpen]);
+  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen }) => (
     <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
         </div>
-        <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
-          {editing ? '저장 ✓' : '편집'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onToggleOpen} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {open ? '접기 ▲' : '펼치기 ▼'}
+          </button>
+          <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+            {editing ? '저장 ✓' : '편집'}
+          </button>
+        </div>
       </div>
-      {editing ? (
+      {!open ? null : editing ? (
         <>
           {draft.map((g, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -1123,7 +1135,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {isSectionVisible('level') && (
+            {isSectionVisible('level') && !isMyTab && (
             <div style={{ order: getSectionOrder('level') }}>
             <div style={{ ...S.card, margin: "0 16px 10px", background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)", padding: "12px 14px" }}>
               {/* ── 항상 보이는 한 줄 요약 ── */}
@@ -1245,9 +1257,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
-                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn })}
-                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn })}
-                {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn })}
+                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v) })}
+                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v) })}
+                {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn, open: monthGoalsOpen, onToggleOpen: () => setMonthGoalsOpen(v => !v) })}
               </div>
             )}
             {isMyTab && (

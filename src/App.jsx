@@ -1858,7 +1858,9 @@ export default function App() {
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
           scores={scores}
-          inviteBonus={inviteBonus} />
+          inviteBonus={inviteBonus}
+          myRank={myRank}
+          onOpenStats={() => changeScreen("stats")} />
       );
     }
     if (screen === "memo") {
