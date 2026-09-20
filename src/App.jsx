@@ -2069,6 +2069,14 @@ export default function App() {
           onBack={() => history.back()}
           onOpenKeyword={openKeywordDetail}
           onOpenDate={(ds, viaMemo) => viaMemo ? openDetailMemo(ds) : openDetail(ds)}
+          onUpdateDayData={setDayData}
+          uid={authUser?.uid}
+          toast={toast} setToast={setToast}
+          onRequireLogin={() => googleSignIn().catch(() => {})}
+          frequentTags={frequentMemoTags}
+          myTags={myMemoTags}
+          hiddenTags={hiddenTags}
+          onHideTag={hideMemoTag}
         />
       );
     }

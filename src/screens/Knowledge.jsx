@@ -2,15 +2,18 @@ import { useMemo, useState } from "react";
 import S from "../styles.js";
 import { getTopKeywords, parseWikiLinks } from "../utils/knowledge.js";
 import { formatKoreanDate } from "../utils/date.js";
+import LongMemoEditor from "../components/LongMemoEditor.jsx";
 
-const getMemoText = (day) =>
-  (day.memos || []).map(m => m.text || '').join('\n').trim() || (day.memo || '').trim();
-
-export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) {
+export default function Knowledge({
+  plans, onOpenKeyword, onOpenDate, onBack,
+  onUpdateDayData, uid, toast, setToast, onRequireLogin,
+  frequentTags = [], myTags = [], hiddenTags, onHideTag,
+}) {
   const [searchText, setSearchText] = useState('');
   const [expandMy, setExpandMy] = useState(false);
   const [expandFrequent, setExpandFrequent] = useState(false);
   const [expandGroups, setExpandGroups] = useState(false);
+  const [longMemo, setLongMemo] = useState(null); // { dateStr, id, text, photos, starred } | null
 
   const topKeywords = useMemo(() => getTopKeywords(plans, 40), [plans]);
 
@@ -32,16 +35,23 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
     return { flatKeywords, groupedTags: groups };
   }, [topKeywords]);
 
-  const recentDays = useMemo(() => {
-    return Object.entries(plans)
-      .filter(([, day]) => {
-        const hasMemo = !!getMemoText(day);
-        const hasJournal = !!(day.journal?.body || '').trim();
-        const hasTags = (day.tags || []).length > 0;
-        return hasMemo || hasJournal || hasTags;
-      })
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .slice(0, 10);
+  // 하루 단위로 뭉치지 않고 메모/일기 개별 항목으로 펼쳐서 최신순 정렬
+  // (하루에 메모가 여러 개면 예전엔 통째로 합쳐서 보여줘서 방금 쓴 메모가 미리보기에 묻혔음)
+  const recentItems = useMemo(() => {
+    const items = [];
+    Object.entries(plans).forEach(([dateStr, day]) => {
+      (day.memos || []).forEach((m, idx) => {
+        const text = (m.text || '').trim();
+        if (!text && !(m.photos || []).length) return;
+        items.push({ key: `${dateStr}_m${m.id}`, dateStr, idx, kind: 'memo', id: m.id, text, photos: m.photos || [], starred: !!m.starred });
+      });
+      const journalBody = (day.journal?.body || '').trim();
+      if (journalBody) {
+        items.push({ key: `${dateStr}_j`, dateStr, idx: -1, kind: 'journal', text: journalBody });
+      }
+    });
+    items.sort((a, b) => a.dateStr === b.dateStr ? b.idx - a.idx : b.dateStr.localeCompare(a.dateStr));
+    return items.slice(0, 15);
   }, [plans]);
 
   const searchLower = searchText.trim().toLowerCase();
@@ -54,6 +64,30 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
 
   const totalMentions = topKeywords.reduce((s, k) => s + k.count, 0);
   const hasAnyContent = topKeywords.length > 0;
+
+  if (longMemo) return (
+    <LongMemoEditor
+      key={`edit-${longMemo.dateStr}-${longMemo.id}`}
+      initialId={longMemo.id}
+      initialText={longMemo.text}
+      initialPhotos={longMemo.photos || []}
+      initialStarred={longMemo.starred || false}
+      subtitle={formatKoreanDate(longMemo.dateStr)}
+      onCreate={() => longMemo.id}
+      onUpdate={(id, text) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }))}
+      onUpdatePhotos={(id, photos) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m) }))}
+      onUpdateStarred={(id, starred) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m) }))}
+      onClose={() => setLongMemo(null)}
+      onOpenKnowledge={undefined}
+      uid={uid}
+      pathPrefix={uid ? `users/${uid}/memos` : undefined}
+      onPhotoError={setToast}
+      onRequireLogin={onRequireLogin}
+      frequentTags={frequentTags}
+      myTags={myTags}
+      onHideTag={onHideTag}
+    />
+  );
 
   return (
     <div style={S.content}>
@@ -270,23 +304,23 @@ export default function Knowledge({ plans, onOpenKeyword, onOpenDate, onBack }) 
       )}
 
       {/* 최근 기록 */}
-      {recentDays.length > 0 && (
+      {recentItems.length > 0 && (
         <>
           <div style={S.sectionTitle}>
             <span style={S.sectionEmoji}>📋</span>최근 기록
           </div>
-          {recentDays.map(([dateStr, day]) => {
-            const text = day.journal?.body || getMemoText(day);
-            const links = parseWikiLinks(text);
-            const tags = day.tags || [];
-            const allKeywords = [...new Set([...links, ...tags])];
+          {recentItems.map(item => {
+            const { dateStr, text } = item;
+            const allKeywords = [...new Set(parseWikiLinks(text))];
             const preview = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-            const type = day.journal?.body ? '📖 일기' : '📝 메모';
+            const type = item.kind === 'journal' ? '📖 일기' : '📝 메모';
             return (
               <div
-                key={dateStr}
+                key={item.key}
                 style={{ ...S.card, cursor: 'pointer' }}
-                onClick={() => onOpenDate(dateStr, type === '📝 메모')}
+                onClick={() => item.kind === 'memo'
+                  ? setLongMemo({ dateStr, id: item.id, text: item.text, photos: item.photos, starred: item.starred })
+                  : onOpenDate(dateStr, false)}
               >
                 <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>{formatKoreanDate(dateStr)}</span>
