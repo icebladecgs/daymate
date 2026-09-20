@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import S from "../styles.js";
 import { getNpcById } from "../data/battle/npcs.js";
-import { createPlayerFighter, createNpcFighter, createBattleState, resolvePlayerAction, getAvailableSpecials, calcBattleReward } from "../data/battle/engine.js";
+import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrder } from "../data/battle/engine.js";
+
+const ROUND_GAP_MS = 500; // 선공 결과를 보여준 뒤 후공까지의 간격
+
+const FLASH_COLOR = {
+  crit: 'rgba(252,211,77,0.55)',   // 크리티컬 — 노랑
+  attack: 'rgba(248,113,113,0.45)', // 공격형 스페셜 — 빨강
+  heal: 'rgba(74,222,128,0.4)',     // 회복형 스페셜 — 초록
+  shield: 'rgba(96,165,250,0.4)',   // 보호막형 스페셜 — 파랑
+  buff: 'rgba(167,139,250,0.45)',   // 버프형 스페셜 — 보라
+};
+
+function vibrate(pattern) {
+  try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
+}
 
 function EnergyRow({ label, fighter, color }) {
   const pct = fighter.energyMax > 0 ? Math.max(0, Math.round((fighter.energy / fighter.energyMax) * 100)) : 0;
@@ -24,6 +38,8 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
     createPlayerFighter(totalScore, statXp),
     createNpcFighter(npcDef || { id: 'unknown', level: 1, name: '???', energyMax: 100, stats: {}, trait: null })
   ));
+  const [resolving, setResolving] = useState(false);
+  const [flash, setFlash] = useState(null);
 
   useEffect(() => {
     if (!npcDef) return;
@@ -43,13 +59,45 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
 
   const { player, npc, status, log } = state;
   const availableSpecials = getAvailableSpecials(player);
+  const upcomingOrder = getTurnOrder(player, npc);
+
+  // 방금 새로 추가된 로그 항목들에 대해 진동/색 효과를 판정
+  const triggerEffects = (prevLog, newLog) => {
+    newLog.slice(prevLog.length).forEach(entry => {
+      if (entry.kind === 'attack' && entry.crit) {
+        vibrate([40, 30, 40]);
+        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.crit });
+      } else if (entry.kind === 'attack' && entry.special) {
+        vibrate(25);
+        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.attack });
+      } else if (entry.kind === 'heal' || entry.kind === 'shield' || entry.kind === 'buff') {
+        vibrate(20);
+        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR[entry.kind] });
+      }
+    });
+  };
 
   const act = (action) => {
-    if (status !== 'ongoing') return;
-    setState(prev => resolvePlayerAction(prev, action));
+    if (status !== 'ongoing' || resolving) return;
+    const prevLog = state.log;
+    const first = resolveRoundFirstTurn(state, action);
+    setState(first);
+    triggerEffects(prevLog, first.log);
+    if (first.status !== 'ongoing') return; // 선공만으로 승부가 났다면 후공 없이 종료
+    setResolving(true);
+    setTimeout(() => {
+      setState(prev => {
+        const second = resolveRoundSecondTurn(prev, action);
+        triggerEffects(prev.log, second.log);
+        return second;
+      });
+      setResolving(false);
+    }, ROUND_GAP_MS);
   };
 
   const retryBattle = () => {
+    setResolving(false);
+    setFlash(null);
     setState(createBattleState(createPlayerFighter(totalScore, statXp), createNpcFighter(npcDef)));
   };
 
@@ -63,9 +111,16 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
         </div>
       </div>
 
-      <div style={S.card}>
+      <div style={{ ...S.card, position: 'relative', overflow: 'hidden' }}>
+        {flash && (
+          <div key={flash.key} className="dm-battle-flash" style={{ background: flash.color }} onAnimationEnd={() => setFlash(null)} />
+        )}
         <EnergyRow label="나" fighter={player} color="#4B6FFF" />
-        <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', margin: '6px 0' }}>VS</div>
+        <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', margin: '6px 0' }}>
+          VS {status === 'ongoing' && (
+            <span style={{ color: '#A78BFA' }}>· ⚡ {upcomingOrder === 'npc' ? '상대' : '나'} 선공</span>
+          )}
+        </div>
         <EnergyRow label={npc.name} fighter={npc} color="#F87171" />
       </div>
 
@@ -77,8 +132,8 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
       </div>
 
       {status === 'ongoing' ? (
-        <div style={{ margin: '0 16px' }}>
-          <button onClick={() => act({ type: 'basic' })} style={{ ...S.btn, marginTop: 0, marginBottom: 10 }}>⚔️ 기본공격</button>
+        <div style={{ margin: '0 16px', opacity: resolving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+          <button onClick={() => act({ type: 'basic' })} disabled={resolving} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: resolving ? 'default' : 'pointer' }}>⚔️ 기본공격</button>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.06em' }}>SPECIAL</div>
           {availableSpecials.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아직 사용 가능한 SPECIAL이 없어요 (능력치 10 이상 필요)</div>
@@ -87,7 +142,7 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
               {availableSpecials.map(sp => (
                 <button
                   key={sp.stat}
-                  disabled={sp.onCooldown}
+                  disabled={sp.onCooldown || resolving}
                   onClick={() => act({ type: 'special', stat: sp.stat })}
                   title={sp.desc}
                   style={{
@@ -95,7 +150,7 @@ export default function Battle({ totalScore, statXp, npcId, onExit, onBattleEnd 
                     border: `1px solid ${sp.onCooldown ? 'var(--dm-border)' : 'rgba(167,139,250,0.4)'}`,
                     borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 700,
                     color: sp.onCooldown ? 'var(--dm-muted)' : '#c4b5fd',
-                    cursor: sp.onCooldown ? 'default' : 'pointer', fontFamily: 'inherit',
+                    cursor: (sp.onCooldown || resolving) ? 'default' : 'pointer', fontFamily: 'inherit',
                   }}
                 >{sp.icon} {sp.name}{sp.onCooldown ? ' (쿨다운)' : ''}</button>
               ))}

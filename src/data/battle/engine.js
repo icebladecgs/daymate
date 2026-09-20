@@ -24,6 +24,8 @@ export const FUMBLE_CHANCE = 0.04;           // 치명적 실수
 export const AWAKEN_ENERGY_THRESHOLD = 0.3;  // Energy 30% 이하일 때만
 export const AWAKEN_CHANCE = 0.08;
 export const AWAKEN_MULT = 1.3;
+export const WEALTH_REGEN_PER_POINT = 0.00012; // 자산력 100 → 매 라운드 시작 시 Energy 1.2% 회복 ("복리")
+export const WEALTH_REGEN_CAP = 0.012;
 
 const STAT_PRIORITY = ['STR', 'INT', 'WEALTH', 'REL', 'ACHIEVE', 'LIFE'];
 
@@ -31,6 +33,12 @@ export function getPrimaryStat(stats) {
   let best = STAT_PRIORITY[0];
   STAT_PRIORITY.forEach(id => { if ((stats[id] || 0) > (stats[best] || 0)) best = id; });
   return best;
+}
+
+// 지력이 높은 쪽이 그 라운드에 선공 — 라운드마다 그 시점 지력으로 다시 계산(디버프/각성 등으로 뒤집힐 수 있음)
+// 동점이면 플레이어 선공
+export function getTurnOrder(player, npc) {
+  return (player.stats.INT || 0) >= (npc.stats.INT || 0) ? 'player' : 'npc';
 }
 
 function emptyCooldowns() {
@@ -118,11 +126,21 @@ function resolveAttack(attacker, defender, { useStat, mult = 1, ignoreDefense = 
   return { damage: Math.max(5, Math.round(dmg)), crit: isCrit, awaken: isAwaken };
 }
 
-function formatAttackLog(actorLabel, moveName, r) {
-  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효` };
-  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!` };
+function formatAttackLog(actorLabel, moveName, r, side, isSpecial) {
+  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효`, side, kind: 'fumble' };
+  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!`, side, kind: 'miss' };
   const tags = [r.crit && '크리티컬!', r.awaken && '각성!'].filter(Boolean).join(' ');
-  return { text: `${actorLabel}: ${moveName} → ${tags ? tags + ' ' : ''}${r.damage} 데미지` };
+  return { text: `${actorLabel}: ${moveName} → ${tags ? tags + ' ' : ''}${r.damage} 데미지`, side, kind: 'attack', crit: r.crit, special: !!isSpecial };
+}
+
+// 자산력 패시브 "복리" — 매 라운드 시작 시 자산력에 비례해 Energy 소량 회복(최대치 캡)
+function applyWealthRegen(fighter, log, label, side) {
+  const pct = Math.min(WEALTH_REGEN_CAP, (fighter.stats.WEALTH || 0) * WEALTH_REGEN_PER_POINT);
+  if (pct <= 0 || fighter.energy >= fighter.energyMax) return;
+  const amount = Math.round(fighter.energyMax * pct);
+  if (amount <= 0) return;
+  fighter.energy = Math.min(fighter.energyMax, fighter.energy + amount);
+  log.push({ text: `${label}: 복리 효과로 Energy +${amount}`, side, kind: 'regen' });
 }
 
 function decrementCooldowns(f) {
@@ -145,7 +163,7 @@ function applyDamage(target, damage) {
   tickDamageTraits(target, damage);
 }
 
-function performAction(actor, target, action, log, actorLabel) {
+function performAction(actor, target, action, log, actorLabel, side) {
   decrementCooldowns(actor);
   if (actor.shield === undefined) actor.shield = null;
 
@@ -154,14 +172,14 @@ function performAction(actor, target, action, log, actorLabel) {
     actor.critGuaranteed = false;
     const r = resolveAttack(actor, target, { useStat: actor.primaryStat, forceCrit });
     applyDamage(target, r.damage);
-    log.push(formatAttackLog(actorLabel, '기본공격', r));
+    log.push(formatAttackLog(actorLabel, '기본공격', r, side, false));
     return;
   }
 
   const special = SPECIALS_TIER10[action.stat];
   if (!special || (actor.stats[special.stat] || 0) < special.requireScore || (actor.cooldowns[special.stat] || 0) > 0) {
     // 방어적으로 처리: 조건 안 맞으면 기본공격으로 대체
-    performAction(actor, target, { type: 'basic' }, log, actorLabel);
+    performAction(actor, target, { type: 'basic' }, log, actorLabel, side);
     return;
   }
   actor.cooldowns[special.stat] = SPECIAL_COOLDOWN + 1;
@@ -171,19 +189,19 @@ function performAction(actor, target, action, log, actorLabel) {
     actor.critGuaranteed = false;
     const r = resolveAttack(actor, target, { useStat: special.stat, mult: special.mult || 1, ignoreDefense: !!special.ignoreDefense, forceCrit });
     applyDamage(target, r.damage);
-    log.push(formatAttackLog(actorLabel, special.name, r));
+    log.push(formatAttackLog(actorLabel, special.name, r, side, true));
   } else if (special.type === 'heal') {
     const amount = Math.round(actor.energyMax * special.healPct);
     actor.energy = Math.min(actor.energyMax, actor.energy + amount);
-    log.push({ text: `${actorLabel}: ${special.name}! Energy +${amount}` });
+    log.push({ text: `${actorLabel}: ${special.name}! Energy +${amount}`, side, kind: 'heal' });
   } else if (special.type === 'shield') {
     actor.shield = special.shieldPct
       ? { type: 'pct', value: special.shieldPct }
       : { type: 'flat', value: Math.round(actor.energyMax * special.shieldFlatRatio) };
-    log.push({ text: `${actorLabel}: ${special.name}! 다음 피격에 보호막 준비` });
+    log.push({ text: `${actorLabel}: ${special.name}! 다음 피격에 보호막 준비`, side, kind: 'shield' });
   } else if (special.type === 'buff') {
     actor.critGuaranteed = true;
-    log.push({ text: `${actorLabel}: ${special.name}! 다음 공격 크리티컬 확정` });
+    log.push({ text: `${actorLabel}: ${special.name}! 다음 공격 크리티컬 확정`, side, kind: 'buff' });
   }
 }
 
@@ -206,26 +224,56 @@ function cloneFighter(f) {
   return { ...f, stats: { ...f.stats }, cooldowns: { ...f.cooldowns }, shield: f.shield ? { ...f.shield } : null };
 }
 
-// ── 한 라운드(내 행동 + NPC 자동 행동) 진행 ──
-export function resolvePlayerAction(state, action) {
+// ── 한 라운드를 두 단계로 나눠 진행 (선공 즉시 → 0.5초 뒤 후공, UI가 그 사이 간격을 둔다) ──
+// 1단계: 라운드 시작 효과(특성 tick, 자산력 회복) + 그 라운드의 선공 처리
+export function resolveRoundFirstTurn(state, playerAction) {
   const next = { ...state, player: cloneFighter(state.player), npc: cloneFighter(state.npc), log: [] };
   const { player, npc } = next;
 
   tickTraits(npc, next.round);
+  applyWealthRegen(player, next.log, '나', 'player');
+  applyWealthRegen(npc, next.log, npc.name, 'npc');
 
-  performAction(player, npc, action, next.log, '나');
-  if (npc.energy <= 0) {
-    next.status = 'win';
-    next.log.push({ text: `${npc.name} 격파! 승리했다 🎉` });
-    next.log = [...state.log, ...next.log];
-    return next;
+  const order = getTurnOrder(player, npc);
+  next.turnOrder = order;
+
+  if (order === 'player') {
+    performAction(player, npc, playerAction, next.log, '나', 'player');
+    if (npc.energy <= 0) {
+      next.status = 'win';
+      next.log.push({ text: `${npc.name} 격파! 승리했다 🎉`, kind: 'result' });
+    }
+  } else {
+    const npcAction = pickNpcAction(npc);
+    performAction(npc, player, npcAction, next.log, npc.name, 'npc');
+    if (player.energy <= 0) {
+      next.status = 'lose';
+      next.log.push({ text: `패배했다... 다음엔 이길 수 있을 거예요`, kind: 'result' });
+    }
   }
 
-  const npcAction = pickNpcAction(npc);
-  performAction(npc, player, npcAction, next.log, npc.name);
-  if (player.energy <= 0) {
-    next.status = 'lose';
-    next.log.push({ text: `패배했다... 다음엔 이길 수 있을 거예요` });
+  next.log = [...state.log, ...next.log];
+  return next;
+}
+
+// 2단계: 그 라운드의 후공 처리 (1단계에서 승패가 이미 갈렸으면 호출하지 않는다)
+export function resolveRoundSecondTurn(state, playerAction) {
+  const next = { ...state, player: cloneFighter(state.player), npc: cloneFighter(state.npc), log: [] };
+  const { player, npc } = next;
+
+  if (next.turnOrder === 'player') {
+    const npcAction = pickNpcAction(npc);
+    performAction(npc, player, npcAction, next.log, npc.name, 'npc');
+    if (player.energy <= 0) {
+      next.status = 'lose';
+      next.log.push({ text: `패배했다... 다음엔 이길 수 있을 거예요`, kind: 'result' });
+    }
+  } else {
+    performAction(player, npc, playerAction, next.log, '나', 'player');
+    if (npc.energy <= 0) {
+      next.status = 'win';
+      next.log.push({ text: `${npc.name} 격파! 승리했다 🎉`, kind: 'result' });
+    }
   }
 
   next.round = state.round + 1;

@@ -232,6 +232,20 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+/* ── 일기토 배틀 특수효과 플래시 ── */
+@keyframes dm-battle-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.dm-battle-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: dm-battle-flash 0.45s ease-out forwards;
+  z-index: 5;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
