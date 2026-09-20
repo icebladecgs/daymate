@@ -1840,7 +1840,6 @@ export default function App() {
           someday={someday} setSomeday={setSomeday}
           onSetTodayTasks={onSetTodayTasks}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
-          onToggleTask={toggleTaskForDate}
           autoOpenLongMemo={autoOpenLongMemo}
           onRequireLogin={() => googleSignIn().catch(() => {})}
           frequentTags={frequentMemoTags}

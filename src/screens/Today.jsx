@@ -19,7 +19,6 @@ export default function Today({
   someday, setSomeday,
   onSetTodayTasks,
   getValidGcalToken, onGcalConnect,
-  onToggleTask,
   autoOpenLongMemo,
   uid,
   onRequireLogin,
@@ -284,7 +283,6 @@ export default function Today({
             plans={plans}
             habits={habits || []}
             onOpenDate={onOpenDate}
-            onToggleTask={onToggleTask}
             gcalEvents={gcalWeekEvents}
           />
         </div>

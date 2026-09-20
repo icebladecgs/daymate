@@ -4,7 +4,7 @@ import S from "../styles.js";
 
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
-export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask, gcalEvents = {} }) {
+export default function WeeklySchedule({ plans, habits, onOpenDate, gcalEvents = {} }) {
   const today = toDateStr();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = getWeekDates(weekOffset);
@@ -41,145 +41,51 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, onToggleTask
         const habitDone = (habits || []).filter(h => habitChecks[h.id]).length;
         const hasHabits = (habits || []).length > 0;
         const allDone = tasks.length > 0 && done === tasks.length;
-        const importedGcalIds = new Set((d?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
-        const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
-        const visibleTasks = [...tasks].sort((a,b) => (b.priority?1:0)-(a.priority?1:0)).slice(0, 4);
+        const sortedTasks = [...tasks].sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+        const previewLabel = tasks.length > 0
+          ? `${sortedTasks[0].priority ? '⭐ ' : ''}${sortedTasks[0].title}${tasks.length > 1 ? ` 외 ${tasks.length - 1}건` : ''}`
+          : (isFuture || isToday ? '등록된 할일 없음' : '기록 없음');
 
         return (
-          <div key={ds}
+          <button
+            key={ds}
+            onClick={() => onOpenDate(ds)}
             style={{
-              ...S.card,
-              border: isToday
-                ? '1.5px solid rgba(108,142,255,.55)'
-                : allDone ? '1.5px solid rgba(74,222,128,.32)' : '1px solid var(--dm-border)',
-              background: isToday
-                ? 'linear-gradient(180deg, rgba(108,142,255,.09), rgba(108,142,255,.03))'
-                : 'linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015))',
-              marginBottom: 0,
-              padding: '14px 14px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              borderRadius: 12,
+              padding: '10px 12px',
+              border: isToday ? '1.5px solid rgba(108,142,255,.5)' : '1px solid var(--dm-border)',
+              background: isToday ? 'rgba(108,142,255,.08)' : 'rgba(255,255,255,.02)',
             }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 14,
-                  background: isToday ? 'rgba(108,142,255,.16)' : 'rgba(255,255,255,.05)',
-                  border: isToday ? '1px solid rgba(108,142,255,.35)' : '1px solid var(--dm-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <div style={{ fontSize: 10, color: isToday ? '#AFC0FF' : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
-                  <div style={{ fontSize: 14, color: 'var(--dm-text)', fontWeight: 900, lineHeight: 1 }}>{dateObj.getDate()}</div>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: isFuture ? 'var(--dm-text)' : 'var(--dm-text)' }}>
-                      {dateObj.getMonth() + 1}월 {dateObj.getDate()}일
-                    </span>
-                    {isToday && (
-                      <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900,
-                        background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 7px' }}>오늘</span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
-                    {tasks.length > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 800, color: allDone ? '#4ADE80' : 'var(--dm-muted)' }}>
-                        {allDone ? '전부 완료' : `${done}/${tasks.length} 완료`}
-                      </span>
-                    )}
-                    {hasHabits && d && (
-                      <span style={{ fontSize: 11, color: habitDone === (habits||[]).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>
-                        습관 {habitDone}/{(habits||[]).length}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => onOpenDate(ds)}
-                style={{ ...S.btnGhost, marginTop: 0, width: 'auto', padding: '8px 12px', fontSize: 11, flexShrink: 0 }}
-              >
-                전체 보기
-              </button>
+            <div style={{ width: 30, textAlign: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, color: isToday ? '#AFC0FF' : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
+              <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 900, lineHeight: 1.2 }}>{dateObj.getDate()}</div>
             </div>
-
-            {tasks.length > 0 ? (
-              <div style={{ display: 'grid', gap: 8 }}>
-                {visibleTasks.map(t => (
-                  <div key={t.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '10px 12px',
-                    borderRadius: 14,
-                    background: t.done ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.035)',
-                    border: `1px solid ${t.done ? 'rgba(74,222,128,.18)' : 'rgba(255,255,255,.06)'}`,
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => onToggleTask?.(ds, t.id)}
-                      aria-label={`${t.title} ${t.done ? '미완료로 변경' : '완료로 변경'}`}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 7,
-                        flexShrink: 0,
-                        background: t.done ? '#4B6FFF' : 'transparent',
-                        border: t.done ? 'none' : '1.5px solid #4B567C',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {t.done ? <span style={{ color: '#fff', fontSize: 11, fontWeight: 900 }}>✓</span> : null}
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)',
-                        textDecoration: t.done ? 'line-through' : 'none',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis',
-                      }}>{t.priority ? '⭐ ' : ''}{t.title}</div>
-                    </div>
-                  </div>
-                ))}
-                {tasks.length > 4 && (
-                  <button onClick={() => onOpenDate(ds)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '2px 4px', textAlign: 'left' }}>
-                    +{tasks.length - 4}개 더 보기
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div style={{
-                borderRadius: 14,
-                border: '1px dashed var(--dm-border)',
-                background: 'rgba(255,255,255,.02)',
-                padding: '12px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}>
-                <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>
-                  {isFuture || isToday ? '아직 등록된 할일이 없어요' : '기록 없음'}
-                </div>
-                <button onClick={() => onOpenDate(ds)} style={{ background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: 11, fontWeight: 800, cursor: 'pointer', padding: 0 }}>
-                  날짜 열기 →
-                </button>
-              </div>
-            )}
-
-
-          </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {isToday && (
+                <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
+              )}
+              <span style={{
+                fontSize: 12.5, fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
+                overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+              }}>{previewLabel}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {tasks.length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 800, color: allDone ? '#4ADE80' : 'var(--dm-muted)' }}>{done}/{tasks.length}</span>
+              )}
+              {hasHabits && d && (
+                <span style={{ fontSize: 10, color: habitDone === (habits || []).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>습관{habitDone}/{(habits || []).length}</span>
+              )}
+              <span style={{ color: 'var(--dm-muted)', fontSize: 14 }}>›</span>
+            </div>
+          </button>
         );
       })}
     </div>
