@@ -182,7 +182,7 @@ function closeOverlay() {
   `).catch(() => false);
 }
 
-function waitAndClick(label, maxTries = 10, interval = 200) {
+function waitAndClick(label, maxTries = 10, interval = 200, exact = false) {
   const gen = ++navGen; // 새 탐색 시작 시 이전 건 취소
   let tries = 0;
   const attempt = () => {
@@ -191,7 +191,8 @@ function waitAndClick(label, maxTries = 10, interval = 200) {
       (function() {
         const btns = document.querySelectorAll('button');
         for (const b of btns) {
-          if (b.textContent.includes('${label}')) { b.click(); return true; }
+          const t = b.textContent.trim();
+          if (${exact ? "t === '" + label + "'" : "t.includes('" + label + "')"}) { b.click(); return true; }
         }
         return false;
       })()
@@ -226,11 +227,12 @@ function showMemo() {
   memoWindow.show();
   memoWindow.focus();
   closeOverlay(); // SearchViewer/LongMemoEditor가 열려있으면 닫기
-  setTimeout(() => goToToday(), 100);
+  // "메모"가 하단 탭의 정식 화면으로 바뀌면서(기존엔 오늘 화면 안의 "긴 메모" 버튼이었음)
+  // 하단 네비게이션의 "메모" 탭을 직접 클릭하는 방식으로 변경 — 누르면 새 메모 작성 화면이 바로 뜸
   setTimeout(() => {
-    waitAndClick('긴 메모');
+    waitAndClick('메모', 10, 200, true); // 하단 탭 라벨과 정확히 일치하는 버튼만 클릭("긴메모편집" 등 다른 버튼과 혼동 방지)
     setTimeout(() => memoWindow.webContents.focus(), 300); // textarea 포커스 보장
-  }, 700);
+  }, 200);
 }
 
 function showCalendar() {
