@@ -34,6 +34,7 @@ export default function Today({
   inviteBonus,
   myRank,
   onOpenStats,
+  onOpenBattle,
 }) {
   const tasks = data.tasks || [];
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
@@ -299,6 +300,11 @@ export default function Today({
               );
             })}
           </div>
+          {onOpenBattle && (
+            <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 12, padding: '10px 0', fontSize: 13, fontWeight: 900, color: '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
+              ⚔️ 일기토
+            </button>
+          )}
         </div>
       )}
 

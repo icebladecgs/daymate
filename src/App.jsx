@@ -37,6 +37,8 @@ const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
+const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
+const Battle = lazy(() => import("./screens/Battle.jsx"));
 
 const CHUNK_LOAD_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
 
@@ -398,6 +400,25 @@ export default function App() {
   );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
   const [bucketList, setBucketList] = useState(() => store.get("dm_bucket_list", []));
+  const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
+  const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
+  const [battleNpcId, setBattleNpcId] = useState(null);
+  const onBattleEnd = (npcDef, won) => {
+    setBattleRecord(prev => {
+      const next = { ...prev };
+      if (won) {
+        next.wins = (prev.wins || 0) + 1;
+        next.streak = (prev.streak || 0) + 1;
+        next.bestStreak = Math.max(prev.bestStreak || 0, next.streak);
+        next.fame = (prev.fame || 0) + 10 * npcDef.level;
+        next.defeatedNpcIds = prev.defeatedNpcIds?.includes(npcDef.id) ? prev.defeatedNpcIds : [...(prev.defeatedNpcIds || []), npcDef.id];
+      } else {
+        next.losses = (prev.losses || 0) + 1;
+        next.streak = 0;
+      }
+      return next;
+    });
+  };
   const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
 
   const addCommunityId = (id) => {
@@ -536,6 +557,12 @@ export default function App() {
 
   // plans → ref 동기화 (setState 외부에서 최신 상태 읽기용)
   useEffect(() => { plansRef.current = plans; }, [plans]);
+
+  // 배틀용 총 XP(=Energy 기준값) — My탭/오늘탭과 동일한 계산식, 읽기 전용으로만 사용
+  const battleTotalScore = useMemo(() => {
+    const todayScore = calcDayScore(plans[todayStr], habits);
+    return Object.values(scores || {}).reduce((a, b) => a + b, 0) + todayScore + (inviteBonus || 0);
+  }, [scores, plans, todayStr, habits, inviteBonus]);
 
   const { frequentMemoTags, myMemoTags } = useMemo(() => {
     const all = getTopKeywords(plans, 40);
@@ -1079,6 +1106,7 @@ export default function App() {
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
+            if (s.battleRecord) { setBattleRecord({ ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); store.set("dm_battle_record", { ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
@@ -1191,6 +1219,10 @@ export default function App() {
     store.set("dm_bucket_list", bucketList);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { bucketList }).catch(() => {});
   }, [bucketList, authUser]);
+  useEffect(() => {
+    store.set("dm_battle_record", battleRecord);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleRecord }).catch(() => {});
+  }, [battleRecord, authUser]);
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
@@ -1860,7 +1892,8 @@ export default function App() {
           scores={scores}
           inviteBonus={inviteBonus}
           myRank={myRank}
-          onOpenStats={() => changeScreen("stats")} />
+          onOpenStats={() => changeScreen("stats")}
+          onOpenBattle={() => changeScreen("battle-arena")} />
       );
     }
     if (screen === "memo") {
@@ -1957,6 +1990,28 @@ export default function App() {
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
+    }
+    if (screen === "battle-arena") {
+      return (
+        <BattleArena
+          totalScore={battleTotalScore}
+          statXp={statXp}
+          battleRecord={battleRecord}
+          onBack={() => history.back()}
+          onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
+        />
+      );
+    }
+    if (screen === "battle") {
+      return (
+        <Battle
+          totalScore={battleTotalScore}
+          statXp={statXp}
+          npcId={battleNpcId}
+          onExit={() => history.back()}
+          onBattleEnd={onBattleEnd}
+        />
+      );
     }
     if (screen === "detail") {
       const d = plans[openDate];
@@ -2166,7 +2221,7 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}

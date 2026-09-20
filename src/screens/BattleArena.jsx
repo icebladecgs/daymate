@@ -1,0 +1,86 @@
+import S from "../styles.js";
+import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
+import { calcLevel } from "../data/stats.js";
+import { NPCS } from "../data/battle/npcs.js";
+
+export default function BattleArena({ totalScore, statXp, battleRecord, onBack, onStartBattle }) {
+  const levelInfo = calcLevel(totalScore || 0);
+  const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
+  const energyMax = Math.max(150, Math.round(totalScore || 0));
+
+  return (
+    <div style={S.content}>
+      <div style={S.topbar}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+        <div style={{ flex: 1, paddingLeft: 8 }}>
+          <div style={S.title}>⚔️ 일기토</div>
+          <div style={S.sub}>내 캐릭터로 NPC와 겨뤄보세요</div>
+        </div>
+      </div>
+
+      {/* 내 캐릭터 요약 */}
+      <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.35)" }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
+          <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{levelInfo.title}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#6C8EFF' }}>Lv.{levelInfo.level}</span>
+          <span style={{ fontSize: 11, color: 'var(--dm-muted)', marginLeft: 'auto' }}>Energy {energyMax.toLocaleString()}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {GROWTH_STATS.map(stat => {
+            const score = calcStatScore(statXp?.[stat.id] || 0);
+            return (
+              <div key={stat.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, width: 20, textAlign: 'center' }}>{stat.icon}</span>
+                <span style={{ fontSize: 11, color: 'var(--dm-sub)', width: 42, flexShrink: 0 }}>{stat.name}</span>
+                <div style={{ flex: 1, height: 5, background: 'var(--dm-row)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg,#4B6FFF,#6C8EFF)', width: `${score}%` }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-text)', width: 24, textAlign: 'right' }}>{score}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1, background: 'var(--dm-input)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>전적</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{record.wins}승 {record.losses}패</div>
+          </div>
+          <div style={{ flex: 1, background: 'var(--dm-input)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>연승</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: record.streak > 0 ? '#F97316' : 'var(--dm-text)' }}>{record.streak}연승</div>
+          </div>
+          <div style={{ flex: 1, background: 'var(--dm-input)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>명성</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#A78BFA' }}>{(record.fame || 0).toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* NPC 목록 */}
+      <div style={S.sectionTitle}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🥋</span>도전 상대</span>
+      </div>
+      {NPCS.map(npc => {
+        const defeated = (record.defeatedNpcIds || []).includes(npc.id);
+        return (
+          <div key={npc.id} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+              🥊
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>
+                Lv.{npc.level} {npc.name} {defeated && <span style={{ fontSize: 10, color: '#4ADE80', fontWeight: 700 }}>· 격파완료</span>}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>Energy {npc.energyMax.toLocaleString()} · 「{npc.trait?.label}」</div>
+            </div>
+            <button onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>
+            도전
+            </button>
+          </div>
+        );
+      })}
+      <div style={{ height: 16 }} />
+    </div>
+  );
+}
