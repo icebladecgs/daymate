@@ -17,7 +17,6 @@ import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
-import { getUpcomingContactEvents } from "../data/contacts.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -147,27 +146,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [bcLabelDraft, setBcLabelDraft] = useState('');
   const bcFileInputRef = useRef(null);
   const bcDefault = businessCards.find(c => c.isDefault) || businessCards[businessCards.length - 1] || null;
-
-  // 오늘 챙길 사람 — 생일·기념일(7일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일
-  const contactReminders = useMemo(() => {
-    if (isMyTab) return [];
-    const todayDs = toDateStr();
-    const items = [];
-    getUpcomingContactEvents(contacts, 7, todayDs).forEach(ev => {
-      const when = ev.dday === 0 ? '오늘' : `${ev.dday}일 뒤`;
-      items.push({ key: `${ev.type}_${ev.contactId}`, text: `${when} ${ev.name}님 ${ev.label}` });
-    });
-    (contacts || []).forEach(c => {
-      (c.linkedTasks || []).forEach(lt => {
-        if (lt.date > todayDs) return;
-        const task = (plans[lt.date]?.tasks || []).find(t => t.id === lt.taskId);
-        if (!task || task.done) return;
-        const when = lt.date === todayDs ? '오늘' : '지난';
-        items.push({ key: `task_${lt.taskId}`, text: `${when} ${c.name}님께 ${task.title || lt.title}` });
-      });
-    });
-    return items;
-  }, [contacts, plans, isMyTab]);
   const bcViewerCard = businessCards.find(c => c.id === bcViewerId) || null;
   // navigator.share()는 사용자 클릭 직후 "동기적으로" 호출되지 않으면(중간에 await가 끼면)
   // 일부 브라우저(특히 iOS Safari)가 user-activation 만료로 거부해 전송이 실패함 —
@@ -872,16 +850,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               )}
             </div>
             </div>
-            )}
-            {!isMyTab && contactReminders.length > 0 && (
-              <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>💌 오늘 챙길 사람</div>
-                <div style={{ ...S.card, margin: 0, padding: '10px 14px' }}>
-                  {contactReminders.map((it, i) => (
-                    <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
-                  ))}
-                </div>
-              </div>
             )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>

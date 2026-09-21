@@ -98,6 +98,26 @@ export function getUpcomingContactEvents(contacts, windowDays, todayStr = toDate
   return events.sort((a, b) => a.dday - b.dday);
 }
 
+// 홈 위젯 "오늘 챙길 사람" 조합 — 생일·기념일(window일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일.
+// 완료 여부는 사람 쪽에 복제하지 않고 그 날짜의 실제 task(plans)를 그때그때 조회해서 판단한다.
+export function getContactReminders(contacts, plans, windowDays = 7, todayStr = toDateStr()) {
+  const items = [];
+  getUpcomingContactEvents(contacts, windowDays, todayStr).forEach((ev) => {
+    const when = ev.dday === 0 ? "오늘" : `${ev.dday}일 뒤`;
+    items.push({ key: `${ev.type}_${ev.contactId}`, text: `${when} ${ev.name}님 ${ev.label}` });
+  });
+  (contacts || []).forEach((c) => {
+    (c.linkedTasks || []).forEach((lt) => {
+      if (lt.date > todayStr) return;
+      const task = (plans?.[lt.date]?.tasks || []).find((t) => t.id === lt.taskId);
+      if (!task || task.done) return;
+      const when = lt.date === todayStr ? "오늘" : "지난";
+      items.push({ key: `task_${lt.taskId}`, text: `${when} ${c.name}님께 ${task.title || lt.title}` });
+    });
+  });
+  return items;
+}
+
 export function searchContacts(contacts, query) {
   const q = (query || "").trim().toLowerCase();
   if (!q) return contacts || [];

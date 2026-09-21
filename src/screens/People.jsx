@@ -477,7 +477,7 @@ export default function People({
         )}
       </div>
 
-      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, padding: "0 16px", boxSizing: "border-box", pointerEvents: "none" }}>
+      <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, padding: "0 16px", boxSizing: "border-box", pointerEvents: "none", zIndex: 200 }}>
         <button onClick={startAdd} style={{ ...S.btn, marginTop: 0, pointerEvents: "auto", boxShadow: "0 8px 24px rgba(75,111,255,.4)" }}>＋ 사람 추가</button>
       </div>
       <div style={{ height: 80 }} />

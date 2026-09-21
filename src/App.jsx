@@ -2014,7 +2014,8 @@ export default function App() {
           user={user}
           onOpenSettings={() => changeScreen("settings")}
           battleNickname={battleNickname}
-          onSetBattleNickname={setBattleNickname} />
+          onSetBattleNickname={setBattleNickname}
+          contacts={contacts} />
       );
     }
     if (screen === "memo") {

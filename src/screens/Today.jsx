@@ -12,6 +12,7 @@ import TimeSelect from "../components/TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
 import { store } from "../utils/storage.js";
+import { getContactReminders } from "../data/contacts.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -39,8 +40,10 @@ export default function Today({
   onOpenSettings,
   battleNickname,
   onSetBattleNickname,
+  contacts,
 }) {
   const tasks = data.tasks || [];
+  const contactReminders = useMemo(() => getContactReminders(contacts, plans, 7, dateStr), [contacts, plans, dateStr]);
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = tasks.filter((t) => t.title.trim()).length;
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
@@ -464,6 +467,18 @@ export default function Today({
               ⚔️ 일기토
             </button>
           )}
+        </div>
+      )}
+
+      {/* 💌 오늘 챙길 사람 — 표시할 내용 없으면 영역째로 숨김 */}
+      {contactReminders.length > 0 && (
+        <div style={{ margin: '0 16px 10px' }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>💌 오늘 챙길 사람</div>
+          <div style={{ ...S.card, margin: 0, padding: '10px 14px' }}>
+            {contactReminders.map((it, i) => (
+              <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
+            ))}
+          </div>
         </div>
       )}
 
