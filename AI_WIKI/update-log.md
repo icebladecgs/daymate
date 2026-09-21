@@ -11,6 +11,14 @@
 
 ## Entries
 
+### 2026-09-21 22:37 (v542) — 투자 허브 단순화(보유자산만 남김) + 종목별 메모
+- 사용자 피드백: 투자기록(판단기록·확신도·복기)+월별손익 3탭 구조가 복잡해서 실사용이 안 됨. "보유자산만 남기고 메모 정도만" 요청으로 단순화 진행
+- `InvestmentHub.jsx`/`InvestDiary.jsx`/`InvestDetail.jsx`/`InvestMonthly.jsx` 화면 삭제. App.jsx의 `screen==="invest"|"portfolio"` 모두 `Portfolio.jsx`로 직접 연결
+- `Portfolio.jsx`에 종목별 메모(타임라인) 기능 추가 — `holding.memos: [{id, text, createdAt}]`, 기존 `telegramCfg.holdings` 배열 안에 nested, Firestore 스키마/보안규칙 변경 없음(기존 settings 문서 와일드카드 규칙이 커버)
+- 기존 Firestore `investLogs` 데이터는 삭제하지 않고 그대로 보존, 화면 진입 경로만 제거(사용자 확인 후 결정)
+- 검증: `npm run build`+`lint` 통과(Portfolio.jsx 자체는 lint 클린, 다른 파일의 에러는 기존부터 있던 것), 로컬 dev 서버+Playwright로 실제 클릭 플로우 확인(My탭→자산 브리핑→관리→메모 추가→새로고침 후 메모 유지 확인). 아직 배포는 안 함(사용자 승인 대기)
+- 다음 작업자 메모: 리뷰 중 발견한 구조적 문제(보유자산 수동입력과 투자기록이 분리돼 있어 매매해도 수량이 자동 반영 안 됨) — 투자기록 자체를 없애기로 하면서 이 문제는 자연 해소됨. 월별손익 오해 표시 버그, 원화 종목 합산 안 되는 문제도 화면 자체가 사라지면서 같이 정리됨
+
 ### 2026-09-21 (v532~v540) — 인맥관리("내 사람들") 신규 기능 + PWA 설치 안내 개선 + 버그 수정 4건
 - **v433~v531 사이(2026-07-22~09-21, 약 2개월)는 이 로그와 `HANDOFF.md`가 갱신되지 않았다.** 필요하면 `git log --oneline`으로 직접 확인
 - PWA 설치 안내: 안드로이드 삼성인터넷/Chrome UA 분기, iOS는 Safari 공유 아이콘 강조 시각 가이드로 교체 (`src/components/InstallGuide.jsx`)
