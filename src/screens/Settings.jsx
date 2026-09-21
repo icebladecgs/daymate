@@ -137,6 +137,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   habits, setHabits, recurringTasks, setRecurringTasks,
   diaryQuestions, setDiaryQuestions,
   installPrompt, handleInstall, setShowInstallBanner, isIOS, isSamsung,
+  myCode, usedInviteCodes, setUsedInviteCodes,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
@@ -185,13 +186,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const fileInputRef = useRef(null);
 
   // 초대 코드
-  const [myCode] = useState(() => {
-    const ex = store.get('dm_invite_code');
-    if (ex) return ex;
-    const code = Math.random().toString(36).substr(2, 6).toUpperCase();
-    store.set('dm_invite_code', code);
-    return code;
-  });
   const [codeInput, setCodeInput] = useState('');
   const [codeStatus, setCodeStatus] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
@@ -219,9 +213,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const applyInviteCode = (code) => {
     if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return false; }
     if (code === myCode) { setCodeStatus('내 코드는 사용할 수 없어요'); return false; }
-    const used = store.get('dm_used_invite_codes', []);
-    if (used.includes(code)) { setCodeStatus('이미 사용한 코드예요'); return false; }
-    store.set('dm_used_invite_codes', [...used, code]);
+    if ((usedInviteCodes || []).includes(code)) { setCodeStatus('이미 사용한 코드예요'); return false; }
+    setUsedInviteCodes(prev => [...(prev || []), code]);
     onAddInviteBonus?.(100);
     recordInviteUse(code).catch(() => {});
     onInviteApplied?.(code, true);

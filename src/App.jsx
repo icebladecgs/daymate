@@ -401,6 +401,15 @@ export default function App() {
   );
   const [someday, setSomeday] = useState(() => store.get("dm_someday", []));
   const [bucketList, setBucketList] = useState(() => store.get("dm_bucket_list", []));
+  // 내 초대 코드 — 기기별로 따로 생기지 않도록 로그인 시 서버 값으로 수렴시킨다 (아래 auth 리스너 참고)
+  const [myInviteCode, setMyInviteCode] = useState(() => {
+    const ex = store.get('dm_invite_code');
+    if (ex) return ex;
+    const code = Math.random().toString(36).substr(2, 6).toUpperCase();
+    store.set('dm_invite_code', code);
+    return code;
+  });
+  const [usedInviteCodes, setUsedInviteCodes] = useState(() => store.get('dm_used_invite_codes', []));
   const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
   const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
   const [battleNpcId, setBattleNpcId] = useState(null);
@@ -1090,8 +1099,6 @@ export default function App() {
         lastSeen: new Date().toISOString(),
         createdAt: firebaseUser.metadata.creationTime,
       }).catch(() => {});
-      const myInviteCode = store.get('dm_invite_code');
-      if (myInviteCode) registerInviteCode(firebaseUser.uid, myInviteCode).catch(() => {});
       try {
         const remote = await loadAllFromFirestore(firebaseUser.uid);
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
@@ -1120,6 +1127,8 @@ export default function App() {
             if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
             if (s.statXp && typeof s.statXp === 'object') { setStatXp({ ...DEFAULT_STAT_XP, ...s.statXp }); store.set("dm_stat_xp", { ...DEFAULT_STAT_XP, ...s.statXp }); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
+            if (s.inviteCode) { setMyInviteCode(s.inviteCode); store.set("dm_invite_code", s.inviteCode); }
+            if (s.usedInviteCodes) { setUsedInviteCodes(s.usedInviteCodes); store.set("dm_used_invite_codes", s.usedInviteCodes); }
             const ym = todayStr.slice(0, 7);
             if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
           }
@@ -1157,6 +1166,14 @@ export default function App() {
             goals,
             days: localDays,
           });
+        }
+        // 내 초대 코드 — 서버에 이미 등록된 코드가 있으면 그걸 정본으로 쓰고,
+        // 없으면(첫 로그인) 지금 이 기기의 코드를 서버에 등록해 이후 다른 기기도 같은 코드로 수렴시킨다.
+        const remoteInviteCode = remote.settings?.inviteCode;
+        const canonicalInviteCode = remoteInviteCode || store.get('dm_invite_code');
+        if (canonicalInviteCode) {
+          registerInviteCode(firebaseUser.uid, canonicalInviteCode).catch(() => {});
+          if (!remoteInviteCode) saveSettings(firebaseUser.uid, { inviteCode: canonicalInviteCode }).catch(() => {});
         }
         syncReadyRef.current = true;
         setSyncStatus('synced');
@@ -1234,6 +1251,10 @@ export default function App() {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
   }, [hiddenTags, authUser]);
+  useEffect(() => {
+    store.set("dm_used_invite_codes", usedInviteCodes);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { usedInviteCodes }).catch(() => {});
+  }, [usedInviteCodes, authUser]);
   useEffect(() => {
     const ym = todayStr.slice(0, 7);
     store.set(`dm_goal_checks_${ym}`, goalChecks);
@@ -2070,6 +2091,7 @@ export default function App() {
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           isIOS={isIOS} isSamsung={isSamsung}
+          myCode={myInviteCode} usedInviteCodes={usedInviteCodes} setUsedInviteCodes={setUsedInviteCodes}
           setShowInstallBanner={setShowInstallBanner}
           gcalToken={gcalToken} gcalTokenExp={gcalTokenExp}
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
@@ -2107,6 +2129,7 @@ export default function App() {
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           isIOS={isIOS} isSamsung={isSamsung}
+          myCode={myInviteCode} usedInviteCodes={usedInviteCodes} setUsedInviteCodes={setUsedInviteCodes}
           setShowInstallBanner={setShowInstallBanner}
           gcalToken={gcalToken} gcalTokenExp={gcalTokenExp}
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
