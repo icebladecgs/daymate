@@ -7,8 +7,13 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
 const PRESET_ASSETS = [
-  { sym: "BTC",  label: "비트코인",       src: "coingecko", coinId: "bitcoin",  currency: "USD" },
-  { sym: "ETH",  label: "이더리움",       src: "coingecko", coinId: "ethereum", currency: "USD" },
+  { sym: "BTC",  label: "비트코인",       src: "coingecko", coinId: "bitcoin",     currency: "USD" },
+  { sym: "ETH",  label: "이더리움",       src: "coingecko", coinId: "ethereum",    currency: "USD" },
+  { sym: "SOL",  label: "솔라나",         src: "coingecko", coinId: "solana",      currency: "USD" },
+  { sym: "XRP",  label: "리플",           src: "coingecko", coinId: "ripple",      currency: "USD" },
+  { sym: "DOGE", label: "도지코인",       src: "coingecko", coinId: "dogecoin",    currency: "USD" },
+  { sym: "ADA",  label: "카르다노",       src: "coingecko", coinId: "cardano",     currency: "USD" },
+  { sym: "BNB",  label: "바이낸스코인",   src: "coingecko", coinId: "binancecoin", currency: "USD" },
   { sym: "TSLA", label: "테슬라",         src: "finnhub",                       currency: "USD" },
   { sym: "GOOGL",label: "구글",           src: "finnhub",                       currency: "USD" },
   { sym: "QQQ",  label: "나스닥100(QQQ)", src: "finnhub",                       currency: "USD" },
