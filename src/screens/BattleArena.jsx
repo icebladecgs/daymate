@@ -11,7 +11,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
   const levelInfo = calcLevel(totalScore || 0);
-  const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
+  const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
   const energyMax = Math.max(150, Math.round(totalScore || 0));
   // 내 레벨보다 너무 높은 상대는 기본적으로 접어두고, 원하면 "더 보기"로 펼쳐서 도전 가능
   const visibleNpcs = showAll ? NPCS : NPCS.filter(n => n.level <= levelInfo.level + 2);
@@ -106,6 +106,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       </div>
       {visibleNpcs.map(npc => {
         const defeated = (record.defeatedNpcIds || []).includes(npc.id);
+        const vs = record.vsRecord?.[npc.id];
         return (
           <div key={npc.id} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
@@ -115,7 +116,10 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
               <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>
                 Lv.{npc.level} {npc.name} {defeated && <span style={{ fontSize: 10, color: '#4ADE80', fontWeight: 700 }}>· 격파완료</span>}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>Energy {npc.energyMax.toLocaleString()} · 「{npc.trait?.label}」</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
+                Energy {npc.energyMax.toLocaleString()} · 「{npc.trait?.label}」
+                {vs && <span style={{ color: '#6C8EFF', fontWeight: 700 }}> · 상대전적 {vs.wins || 0}승 {vs.losses || 0}패</span>}
+              </div>
             </div>
             <button onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>
             도전

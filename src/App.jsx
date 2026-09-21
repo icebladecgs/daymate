@@ -418,13 +418,16 @@ export default function App() {
     return code;
   });
   const [usedInviteCodes, setUsedInviteCodes] = useState(() => store.get('dm_used_invite_codes', []));
-  const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [] };
+  const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
   const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
   const [battleNpcId, setBattleNpcId] = useState(null);
   const [battleNickname, setBattleNickname] = useState(() => store.get("dm_battle_nickname", ""));
   const onBattleEnd = (npcDef, won) => {
     setBattleRecord(prev => {
       const next = { ...prev };
+      // 상대별 전적 — 이 필드가 생기기 전 전적은 상대별로 남아있지 않아 지금부터 새로 쌓는다
+      const vsPrev = prev.vsRecord?.[npcDef.id] || { wins: 0, losses: 0 };
+      next.vsRecord = { ...(prev.vsRecord || {}), [npcDef.id]: { ...vsPrev, [won ? 'wins' : 'losses']: (vsPrev[won ? 'wins' : 'losses'] || 0) + 1 } };
       if (won) {
         next.wins = (prev.wins || 0) + 1;
         next.streak = (prev.streak || 0) + 1;
