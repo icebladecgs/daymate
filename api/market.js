@@ -10,6 +10,48 @@ const ASSET_META = {
   QQQ:  { label: '나스닥100(QQQ)', src: 'finnhub' },
 };
 
+// 한글 종목명 검색용 — Yahoo/CoinGecko 검색 API가 한글 쿼리를 지원하지 않아 직접 매핑해둔 목록.
+// 코스피/코스닥 시가총액 상위 중심, 전체 종목을 다루진 않는다.
+const KR_STOCK_LIST = [
+  { name: '삼성전자',       code: '005930', market: 'KS' },
+  { name: 'SK하이닉스',     code: '000660', market: 'KS' },
+  { name: 'LG에너지솔루션', code: '373220', market: 'KS' },
+  { name: '삼성바이오로직스', code: '207940', market: 'KS' },
+  { name: '현대차',         code: '005380', market: 'KS' },
+  { name: '기아',           code: '000270', market: 'KS' },
+  { name: '셀트리온',       code: '068270', market: 'KS' },
+  { name: 'POSCO홀딩스',    code: '005490', market: 'KS' },
+  { name: '네이버',         code: '035420', market: 'KS' },
+  { name: 'NAVER',          code: '035420', market: 'KS' },
+  { name: '삼성SDI',        code: '006400', market: 'KS' },
+  { name: 'LG화학',         code: '051910', market: 'KS' },
+  { name: 'KB금융',         code: '105560', market: 'KS' },
+  { name: '신한지주',       code: '055550', market: 'KS' },
+  { name: '카카오',         code: '035720', market: 'KS' },
+  { name: 'SK이노베이션',   code: '096770', market: 'KS' },
+  { name: '현대모비스',     code: '012330', market: 'KS' },
+  { name: '삼성물산',       code: '028260', market: 'KS' },
+  { name: '하나금융지주',   code: '086790', market: 'KS' },
+  { name: 'LG전자',         code: '066570', market: 'KS' },
+  { name: '삼성생명',       code: '032830', market: 'KS' },
+  { name: 'HD현대중공업',   code: '329180', market: 'KS' },
+  { name: '한화에어로스페이스', code: '012450', market: 'KS' },
+  { name: '두산에너빌리티', code: '034020', market: 'KS' },
+  { name: '우리금융지주',   code: '316140', market: 'KS' },
+  { name: 'SK텔레콤',       code: '017670', market: 'KS' },
+  { name: 'KT&G',           code: '033780', market: 'KS' },
+  { name: '삼성화재',       code: '000810', market: 'KS' },
+  { name: '한국전력',       code: '015760', market: 'KS' },
+  { name: 'SK',             code: '034730', market: 'KS' },
+  { name: '에코프로비엠',   code: '247540', market: 'KQ' },
+  { name: '에코프로',       code: '086520', market: 'KQ' },
+  { name: '알테오젠',       code: '196170', market: 'KQ' },
+  { name: 'HLB',            code: '028300', market: 'KQ' },
+  { name: '클래시스',       code: '214150', market: 'KQ' },
+  { name: '카카오게임즈',   code: '293490', market: 'KQ' },
+  { name: '펄어비스',       code: '263750', market: 'KQ' },
+];
+
 const WX_DESC = {
   0:'맑음',1:'주로 맑음',2:'구름 조금',3:'흐림',
   45:'안개',48:'서리 안개',51:'가랑비',53:'보통 비',55:'강한 비',
@@ -28,6 +70,76 @@ const WX_ICON = {
 };
 
 export default async function handler(req, res) {
+  // ?type=search&q=삼성전자 → 종목 이름 검색 (한국 주식은 로컬 목록, 나머지는 Yahoo/CoinGecko 실시간 검색)
+  if (req.query.type === 'search') {
+    const q = (req.query.q || '').trim();
+    if (q.length < 2) return res.status(200).json({ results: [] });
+
+    const results = [];
+    const seenSyms = new Set();
+    const pushResult = (r) => {
+      if (seenSyms.has(r.sym)) return;
+      seenSyms.add(r.sym);
+      results.push(r);
+    };
+
+    // 1) 한국 주식 로컬 목록 (한글 검색은 Yahoo/CoinGecko가 지원하지 않아 직접 매핑)
+    KR_STOCK_LIST
+      .filter(item => item.name.includes(q) || item.code.startsWith(q))
+      .slice(0, 5)
+      .forEach(item => pushResult({
+        sym: `${item.code}.${item.market}`,
+        label: item.name,
+        exchange: item.market === 'KS' ? '코스피' : '코스닥',
+        src: 'yahoo',
+        currency: 'KRW',
+      }));
+
+    // 2) 미국/한국 주식 (Yahoo Finance 검색, 영문 쿼리만 지원 — 한글 쿼리는 에러 응답이라 실패해도 무시)
+    // CoinGecko보다 먼저 처리해서, 실제 주식 심볼을 흉내 낸 "토큰화 주식" 코인(예: TSLA란 심볼의 가짜 코인)이
+    // 진짜 주식보다 먼저 seenSyms를 선점해 진짜 종목이 가려지는 걸 막는다.
+    try {
+      const yr = await fetch(
+        `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=6&newsCount=0`,
+        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+      );
+      const yj = await yr.json();
+      (yj?.quotes || [])
+        .filter(quote => quote.quoteType === 'EQUITY' && quote.symbol)
+        .slice(0, 6)
+        .forEach(quote => {
+          const isKr = quote.exchDisp === 'Korea' || /^(KS|KQ)/.test(quote.exchange || '');
+          pushResult({
+            sym: quote.symbol,
+            label: quote.shortname || quote.longname || quote.symbol,
+            exchange: quote.exchDisp || quote.exchange || '',
+            src: isKr ? 'yahoo' : 'finnhub',
+            currency: isKr ? 'KRW' : 'USD',
+          });
+        });
+    } catch (error) {
+      console.error('[market] search(yahoo) failed:', error);
+    }
+
+    // 3) 코인 (CoinGecko, 영문 검색만 지원)
+    try {
+      const cr = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
+      const cj = await cr.json();
+      (cj?.coins || []).slice(0, 4).forEach(coin => pushResult({
+        sym: (coin.symbol || '').toUpperCase(),
+        label: coin.name,
+        exchange: '코인',
+        src: 'coingecko',
+        currency: 'USD',
+        coinId: coin.id,
+      }));
+    } catch (error) {
+      console.error('[market] search(coingecko) failed:', error);
+    }
+
+    return res.status(200).json({ results: results.slice(0, 10) });
+  }
+
   // ?type=fx&from=USD&to=KRW → 환율 조회 (frankfurter.app에 CORS 헤더가 없어 서버 프록시 필요)
   if (req.query.type === 'fx') {
     const from = (req.query.from || 'USD').trim().toUpperCase();

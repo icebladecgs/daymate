@@ -72,11 +72,48 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const [fAvgPrice, setFAvgPrice] = useState("");
   const [fCurrency, setFCurrency] = useState("USD");
   const [fSrc, setFSrc] = useState("finnhub");
+  const [fCoinId, setFCoinId] = useState("");
+
+  // 이름 검색(종목 이름 → 티커 자동완성)
+  const [nameResults, setNameResults] = useState([]);
+  const [nameSearching, setNameSearching] = useState(false);
+  const [showNameResults, setShowNameResults] = useState(false);
 
   // 폼 초기화
   const resetForm = () => {
-    setFSym(""); setFLabel(""); setFQty(""); setFAvgPrice(""); setFCurrency("USD"); setFSrc("finnhub");
+    setFSym(""); setFLabel(""); setFQty(""); setFAvgPrice(""); setFCurrency("USD"); setFSrc("finnhub"); setFCoinId("");
+    setNameResults([]); setShowNameResults(false);
     setEditingId(null); setShowForm(false);
+  };
+
+  // 종목 이름으로 검색해 티커 자동완성 (신규 등록 시에만 동작, 수정 중엔 비활성)
+  useEffect(() => {
+    if (editingId) return;
+    const q = fLabel.trim();
+    if (q.length < 2) { setNameResults([]); setShowNameResults(false); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setNameSearching(true);
+      try {
+        const res = await fetch(`/api/market?type=search&q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (!cancelled) { setNameResults(data.results || []); setShowNameResults(true); }
+      } catch {
+        if (!cancelled) setNameResults([]);
+      } finally {
+        if (!cancelled) setNameSearching(false);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [fLabel, editingId]);
+
+  const pickSearchResult = (r) => {
+    setFSym(r.sym);
+    setFLabel(r.label);
+    setFSrc(r.src);
+    setFCurrency(r.currency);
+    setFCoinId(r.coinId || "");
+    setShowNameResults(false);
   };
 
   // 종목 코드가 한국 주식 형태(숫자 6자리 또는 .KS/.KQ)면 소스/통화를 자동으로 맞춰줌
@@ -91,7 +128,8 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
   // 프리셋 선택
   const pickPreset = (p) => {
-    setFSym(p.sym); setFLabel(p.label); setFCurrency(p.currency); setFSrc(p.src);
+    setFSym(p.sym); setFLabel(p.label); setFCurrency(p.currency); setFSrc(p.src); setFCoinId("");
+    setShowNameResults(false);
   };
 
   // 시세 가져오기
@@ -157,7 +195,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     const holding = {
       id: editingId || `h_${sym}_${Date.now()}`,
       sym, label, src,
-      ...(preset?.coinId ? { coinId: preset.coinId } : {}),
+      ...(preset?.coinId || fCoinId ? { coinId: preset?.coinId || fCoinId } : {}),
       qty, avgPrice,
       currency: src === 'yahoo' ? fCurrency : 'USD',
       ...(existing?.memos ? { memos: existing.memos } : {}),
@@ -178,6 +216,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const handleEdit = (h) => {
     setEditingId(h.id); setFSym(h.sym); setFLabel(h.label || ""); setFQty(String(h.qty));
     setFAvgPrice(String(h.avgPrice)); setFCurrency(h.currency || "USD"); setFSrc(h.src || "finnhub");
+    setFCoinId(h.coinId || ""); setShowNameResults(false);
     setShowForm(true);
   };
 
@@ -498,20 +537,50 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ position: "relative" }}>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 이름</div>
+                <input
+                  style={inputStyle}
+                  value={fLabel}
+                  onChange={e => setFLabel(e.target.value)}
+                  onFocus={() => { if (nameResults.length > 0) setShowNameResults(true); }}
+                  onBlur={() => setTimeout(() => setShowNameResults(false), 150)}
+                  placeholder="예: 삼성전자, 테슬라, 솔라나"
+                  maxLength={30}
+                />
+                {!editingId && showNameResults && (nameSearching || nameResults.length > 0) && (
+                  <div style={{
+                    position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, marginTop: 4,
+                    background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 12,
+                    boxShadow: "0 10px 28px rgba(0,0,0,.18)", maxHeight: 240, overflowY: "auto",
+                  }}>
+                    {nameSearching && (
+                      <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--dm-muted)" }}>검색 중...</div>
+                    )}
+                    {!nameSearching && nameResults.map(r => (
+                      <div
+                        key={`${r.src}_${r.sym}`}
+                        onMouseDown={() => pickSearchResult(r)}
+                        style={{ padding: "10px 12px", cursor: "pointer", borderBottom: "1px solid var(--dm-row)", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</div>
+                          <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{r.sym} · {r.exchange}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 코드 *</div>
                 <input style={inputStyle} value={fSym} onChange={e => setFSym(e.target.value.toUpperCase())}
-                  placeholder="예: TSLA, BTC, 005930(삼성전자)" maxLength={20} />
+                  placeholder="검색해서 선택하거나 직접 입력" maxLength={20} />
                 {/^\d{6}$/.test(fSym.trim()) && (
                   <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>
                     한국 주식으로 인식했어요 (코스피 기준 .KS 자동 적용, 코스닥은 코드 뒤에 직접 .KQ를 붙여주세요)
                   </div>
                 )}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 이름</div>
-                <input style={inputStyle} value={fLabel} onChange={e => setFLabel(e.target.value)}
-                  placeholder="예: 테슬라" maxLength={30} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
