@@ -10,6 +10,8 @@ import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../ut
 import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
+import { IOSInstallGuide } from "../components/InstallGuide.jsx";
+import { androidInstallText } from "../utils/installGuideText.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
@@ -134,7 +136,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
   habits, setHabits, recurringTasks, setRecurringTasks,
   diaryQuestions, setDiaryQuestions,
-  installPrompt, handleInstall, setShowInstallBanner,
+  installPrompt, handleInstall, setShowInstallBanner, isIOS, isSamsung,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
@@ -1233,10 +1235,15 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
         </button>
         {!installPrompt && showInstallGuide && (
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
-            📱 <b>iOS Safari:</b> 하단 공유(□↑) 버튼 → <b>홈 화면에 추가</b><br />
-            🤖 <b>Android Chrome:</b> 주소창 오른쪽 ⋮ 메뉴 → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>
-          </div>
+          isIOS ? (
+            <div style={{ marginTop: 12 }}>
+              <IOSInstallGuide />
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
+              🤖 {androidInstallText(isSamsung)}
+            </div>
+          )
         )}
       </div>
 

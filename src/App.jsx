@@ -124,6 +124,7 @@ export default function App() {
   // PWA 설치 프롬프트
   const [installPrompt, setInstallPrompt] = useState(null);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
   const isKakao = /KAKAOTALK/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
   const fromKakao = new URLSearchParams(window.location.search).get('from_kakao') === '1';
@@ -1760,7 +1761,7 @@ export default function App() {
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
-          isIOS={isIOS} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
+          isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
@@ -1834,7 +1835,7 @@ export default function App() {
           scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
-          isIOS={isIOS} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
+          isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
@@ -2068,6 +2069,7 @@ export default function App() {
           diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
+          isIOS={isIOS} isSamsung={isSamsung}
           setShowInstallBanner={setShowInstallBanner}
           gcalToken={gcalToken} gcalTokenExp={gcalTokenExp}
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}
@@ -2104,6 +2106,7 @@ export default function App() {
           diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
+          isIOS={isIOS} isSamsung={isSamsung}
           setShowInstallBanner={setShowInstallBanner}
           gcalToken={gcalToken} gcalTokenExp={gcalTokenExp}
           onGcalConnect={connectGcal} onGcalDisconnect={disconnectGcal}

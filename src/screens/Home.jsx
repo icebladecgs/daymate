@@ -15,6 +15,8 @@ import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as se
 import MemoTimeline from "../components/MemoTimeline.jsx";
 import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
+import { IOSInstallGuide } from "../components/InstallGuide.jsx";
+import { androidInstallText } from "../utils/installGuideText.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -78,7 +80,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -724,9 +726,13 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           </div>
           {installPrompt ? (
             <button onClick={(e) => { e.stopPropagation(); handleInstall(); }} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
+          ) : isIOS ? (
+            <div style={{ padding: "10px 10px 4px", borderRadius: 8, background: "var(--dm-bg)" }}>
+              <IOSInstallGuide />
+            </div>
           ) : (
             <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--dm-bg)", fontSize: 12, color: "var(--dm-sub)", lineHeight: 2 }}>
-              {isIOS ? <>1️⃣ 하단 <b style={{color:"var(--dm-text)"}}>공유(□↑)</b> 버튼 → 2️⃣ <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b> → 3️⃣ <b style={{color:"var(--dm-text)"}}>추가</b></> : <>Chrome <b style={{color:"var(--dm-text)"}}>⋮ 메뉴</b> → <b style={{color:"var(--dm-text)"}}>앱 설치</b> 또는 <b style={{color:"var(--dm-text)"}}>홈 화면에 추가</b></>}
+              {androidInstallText(isSamsung)}
             </div>
           )}
         </div>
