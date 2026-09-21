@@ -488,7 +488,7 @@ export default function Today({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
                   {lottoNums.map((n, i) => {
                     const bg = n <= 10 ? "#F87171" : n <= 20 ? "#FBBF24" : n <= 30 ? "#4ADE80" : n <= 40 ? "#60A5FA" : "#A78BFA";
-                    return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>{n}</div>;
+                    return <div key={i} style={{ aspectRatio: '1', borderRadius: 999, background: bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>{n}</div>;
                   })}
                 </div>
               ) : (
