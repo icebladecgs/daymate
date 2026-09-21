@@ -32,7 +32,7 @@ const Settings = lazy(() => import("./screens/Settings.jsx"));
 const Admin = lazy(() => import("./screens/Admin.jsx"));
 const Chat = lazy(() => import("./screens/Chat.jsx"));
 const Community = lazy(() => import("./screens/Community.jsx"));
-const InvestmentHub = lazy(() => import("./screens/InvestmentHub.jsx"));
+const Portfolio = lazy(() => import("./screens/Portfolio.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
@@ -2067,26 +2067,12 @@ export default function App() {
         />
       );
     }
-    if (screen === "invest") {
+    if (screen === "invest" || screen === "portfolio") {
       return (
-        <InvestmentHub
-          uid={authUser?.uid}
+        <Portfolio
           telegramCfg={telegramCfg}
           setTelegramCfg={setTelegramCfg}
           authUser={authUser}
-          initialTab="diary"
-          onBack={() => history.back()}
-        />
-      );
-    }
-    if (screen === "portfolio") {
-      return (
-        <InvestmentHub
-          uid={authUser?.uid}
-          telegramCfg={telegramCfg}
-          setTelegramCfg={setTelegramCfg}
-          authUser={authUser}
-          initialTab="briefing"
           onBack={() => history.back()}
         />
       );

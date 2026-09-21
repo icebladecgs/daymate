@@ -33,9 +33,15 @@ function getDailyChange(d, qty) {
 // 시세 API가 실제로 반환한 통화(d.currency, yahoo만 KRW/USD 실측치 포함) 기준으로 판정
 const getMarketCurrency = (h, d) => d?.currency || (h.src === 'yahoo' ? 'KRW' : 'USD');
 
+function pad2(n) { return String(n).padStart(2, "0"); }
+function formatMemoDate(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 const PF_CACHE_PREFIX = "dm_portfolio_prices_";
 
-export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, onBack, embedded = false, onOpenDiary }) {
+export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBack }) {
   const cacheKey = PF_CACHE_PREFIX + toDateStr();
   const [holdings, setHoldings] = useState(() => telegramCfg?.holdings || []);
   const [marketData, setMarketData] = useState(() => {
@@ -45,6 +51,8 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
   const [toast, setToast] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [memoOpenId, setMemoOpenId] = useState(null);
+  const [memoDraft, setMemoDraft] = useState("");
 
   // 입력 폼 상태
   const [fSym, setFSym] = useState("");
@@ -107,12 +115,14 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
 
     const preset = PRESET_ASSETS.find(p => p.sym === sym);
     const src = preset?.src || fSrc;
+    const existing = editingId ? holdings.find(h => h.id === editingId) : null;
     const holding = {
       id: editingId || `h_${sym}_${Date.now()}`,
       sym, label, src,
       ...(preset?.coinId ? { coinId: preset.coinId } : {}),
       qty, avgPrice,
       currency: src === 'yahoo' ? fCurrency : 'USD',
+      ...(existing?.memos ? { memos: existing.memos } : {}),
     };
 
     const next = editingId
@@ -138,6 +148,26 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
     setHoldings(next);
     saveHoldings(next);
     setToast("삭제됨");
+  };
+
+  // 메모
+  const handleAddMemo = (holdingId) => {
+    const text = memoDraft.trim();
+    if (!text) return;
+    const next = holdings.map(h => h.id === holdingId
+      ? { ...h, memos: [...(h.memos || []), { id: `m_${Date.now()}`, text, createdAt: new Date().toISOString() }] }
+      : h);
+    setHoldings(next);
+    saveHoldings(next);
+    setMemoDraft("");
+  };
+
+  const handleDeleteMemo = (holdingId, memoId) => {
+    const next = holdings.map(h => h.id === holdingId
+      ? { ...h, memos: (h.memos || []).filter(m => m.id !== memoId) }
+      : h);
+    setHoldings(next);
+    saveHoldings(next);
   };
 
   // 포트폴리오 요약 계산
@@ -176,80 +206,26 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
 
   const summary = calcSummary();
 
-  const openDiaryWithHolding = (holding, rowData) => {
-    if (!onOpenDiary) return;
-    onOpenDiary({
-      asset: holding.sym,
-      currency: holding.currency || "USD",
-      quoteSnapshot: rowData?.price != null
-        ? {
-            ...rowData,
-            currency: holding.currency || "USD",
-            capturedAt: new Date().toISOString(),
-          }
-        : null,
-      holdingSnapshot: {
-        qty: holding.qty,
-        avgPrice: holding.avgPrice,
-        currency: holding.currency || "USD",
-      },
-    });
-  };
-
   const inputStyle = { ...S.input, marginBottom: 0 };
-  const rootStyle = embedded
-    ? { width: "100%", minWidth: 0, boxSizing: "border-box", paddingBottom: 12 }
-    : S.content;
 
   return (
-    <div style={rootStyle}>
+    <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       {/* 상단바 */}
-      {!embedded && (
-        <div style={S.topbar}>
-          <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
-          <div style={{ flex: 1, marginLeft: 10 }}>
-            <div style={S.title}>💼 보유자산</div>
-            <div style={S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
-          </div>
-          <button
-            onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
-            style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
-          >
-            {loading ? "로딩 중..." : "🔄"}
-          </button>
+      <div style={S.topbar}>
+        <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
+        <div style={{ flex: 1, marginLeft: 10 }}>
+          <div style={S.title}>💼 보유자산</div>
+          <div style={S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
         </div>
-      )}
-
-      {embedded && (
-        <div style={{ ...S.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>브리핑을 보고 바로 기록하세요</div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", lineHeight: 1.5 }}>오늘 손익을 확인한 직후에 판단을 남겨야 복기 품질이 좋아집니다.</div>
-          </div>
-          {onOpenDiary && (
-            <button onClick={onOpenDiary} style={{ ...S.btnGhost, width: "auto", marginTop: 0, padding: "10px 12px", flexShrink: 0 }}>
-              기록하기
-            </button>
-          )}
-        </div>
-      )}
-
-      {embedded && (
-        <div style={{ ...S.card, marginTop: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 3 }}>보유 종목</div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)" }}>{holdings.length}개</div>
-          </div>
-          <button
-            onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
-            style={{ background: "transparent", border: "1px solid var(--dm-border)", color: "var(--dm-muted)", fontSize: 12, cursor: "pointer", borderRadius: 10, padding: "8px 10px" }}
-          >
-            {loading ? "불러오는 중..." : "시세 새로고침"}
-          </button>
-        </div>
-      )}
+        <button
+          onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
+          style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
+        >
+          {loading ? "로딩 중..." : "🔄"}
+        </button>
+      </div>
 
       {/* 포트폴리오 요약 */}
       {summary && (
@@ -306,50 +282,87 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
       {/* 보유 종목 리스트 */}
       {holdings.length > 0 && (
         <div style={{ ...S.card, marginBottom: 10 }}>
-          {(summary ? summary.rows : holdings).map((h, i, arr) => (
-            <div key={h.id} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 0",
-              borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none",
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{h.label || h.sym}</span>
-                  <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{h.sym}</span>
-                </div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
-                  {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
-                  {!h.noData && h.price != null && (
-                    <> · 현재 {fmtPrice(h.price, h.marketCurrency || 'USD')}</>
-                  )}
-                </div>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                {!h.noData && h.value != null ? (
-                  <>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(h.value, h.marketCurrency || 'USD')}</div>
-                    <div style={{ fontSize: 11, color: pnlColor(h.pnl) }}>
-                      {h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} ({fmtPct(h.pnlPct)})
+          {(summary ? summary.rows : holdings).map((h, i, arr) => {
+            const memos = h.memos || [];
+            const memoOpen = memoOpenId === h.id;
+            return (
+              <div key={h.id} style={{
+                padding: "10px 0",
+                borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{h.label || h.sym}</span>
+                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{h.sym}</span>
                     </div>
-                  </>
-                ) : h.currencyMismatch ? (
-                  <div style={{ fontSize: 11, color: "#F87171", lineHeight: 1.5 }}>통화 불일치<br/>USD로 재입력</div>
-                ) : (
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>시세 없음</div>
+                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
+                      {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
+                      {!h.noData && h.price != null && (
+                        <> · 현재 {fmtPrice(h.price, h.marketCurrency || 'USD')}</>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    {!h.noData && h.value != null ? (
+                      <>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(h.value, h.marketCurrency || 'USD')}</div>
+                        <div style={{ fontSize: 11, color: pnlColor(h.pnl) }}>
+                          {h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} ({fmtPct(h.pnlPct)})
+                        </div>
+                      </>
+                    ) : h.currencyMismatch ? (
+                      <div style={{ fontSize: 11, color: "#F87171", lineHeight: 1.5 }}>통화 불일치<br/>USD로 재입력</div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>시세 없음</div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                    <button
+                      onClick={() => { setMemoOpenId(memoOpen ? null : h.id); setMemoDraft(""); }}
+                      style={{ background: "transparent", border: "none", color: memos.length > 0 ? "#6C8EFF" : "var(--dm-muted)", cursor: "pointer", fontSize: 12, fontWeight: 800, padding: "2px 4px" }}
+                    >
+                      📝{memos.length > 0 ? ` ${memos.length}` : ""}
+                    </button>
+                    <button onClick={() => handleEdit(h)}
+                      style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>✏️</button>
+                    <button onClick={() => handleDelete(h.id)}
+                      style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>🗑</button>
+                  </div>
+                </div>
+
+                {memoOpen && (
+                  <div style={{ marginTop: 10 }}>
+                    {memos.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+                        {[...memos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(m => (
+                          <div key={m.id} style={{ background: "var(--dm-input)", borderRadius: 10, padding: "8px 10px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                              <div style={{ fontSize: 12, color: "var(--dm-text)", lineHeight: 1.5, flex: 1 }}>{m.text}</div>
+                              <button onClick={() => handleDeleteMemo(h.id, m.id)}
+                                style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 11, flexShrink: 0 }}>✕</button>
+                            </div>
+                            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>{formatMemoDate(m.createdAt)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input
+                        value={memoDraft}
+                        onChange={(e) => setMemoDraft(e.target.value)}
+                        placeholder="메모 남기기..."
+                        maxLength={200}
+                        style={{ ...S.input, marginBottom: 0, flex: 1 }}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddMemo(h.id); }}
+                      />
+                      <button onClick={() => handleAddMemo(h.id)} style={{ ...S.btnGhost, width: "auto", marginTop: 0, padding: "0 14px", flexShrink: 0 }}>추가</button>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                {embedded && onOpenDiary && (
-                  <button onClick={() => openDiaryWithHolding(h, h)}
-                    style={{ background: "transparent", border: "none", color: "#6C8EFF", cursor: "pointer", fontSize: 12, fontWeight: 800, padding: "2px 4px" }}>기록</button>
-                )}
-                <button onClick={() => handleEdit(h)}
-                  style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>✏️</button>
-                <button onClick={() => handleDelete(h.id)}
-                  style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>🗑</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -455,7 +468,7 @@ export default function Portfolio({ uid, telegramCfg, setTelegramCfg, authUser, 
         </div>
       )}
 
-      <div style={{ height: embedded ? 12 : 40 }} />
+      <div style={{ height: 40 }} />
     </div>
   );
 }

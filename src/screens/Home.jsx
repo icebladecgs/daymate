@@ -1672,7 +1672,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             </span>
             <button onClick={onOpenPortfolio}
               style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-              허브 →
+              관리 →
             </button>
           </div>
           <div style={{ ...S.card, marginBottom: 10 }}>
