@@ -40,12 +40,17 @@ function formatMemoDate(iso) {
 }
 
 const PF_CACHE_PREFIX = "dm_portfolio_prices_";
+const FX_CACHE_PREFIX = "dm_fx_usd_krw_";
 
 export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBack }) {
   const cacheKey = PF_CACHE_PREFIX + toDateStr();
+  const fxCacheKey = FX_CACHE_PREFIX + toDateStr();
   const [holdings, setHoldings] = useState(() => telegramCfg?.holdings || []);
   const [marketData, setMarketData] = useState(() => {
     try { return JSON.parse(localStorage.getItem(PF_CACHE_PREFIX + toDateStr()) || "null"); } catch { return null; }
+  });
+  const [usdKrwRate, setUsdKrwRate] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(FX_CACHE_PREFIX + toDateStr()) || "null"); } catch { return null; }
   });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
@@ -93,6 +98,22 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
   useEffect(() => {
     if (!marketData && holdings.length > 0) fetchPrices();
+  }, []); // eslint-disable-line
+
+  // 환율 (KRW 종목을 USD 총액에 합산하기 위함)
+  const fetchFxRate = async () => {
+    try {
+      const res = await fetch("/api/market?type=fx&from=USD&to=KRW");
+      const data = await res.json();
+      if (data?.ok && data.rate) {
+        localStorage.setItem(fxCacheKey, JSON.stringify(data.rate));
+        setUsdKrwRate(data.rate);
+      }
+    } catch { /* 환율 조회 실패 시 원화 종목은 총액과 별도로 표시됨 */ }
+  };
+
+  useEffect(() => {
+    if (usdKrwRate == null && holdings.some(h => (h.currency || "USD") === "KRW")) fetchFxRate();
   }, []); // eslint-disable-line
 
   // 저장
@@ -176,7 +197,10 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const calcSummary = () => {
     if (!marketData || holdings.length === 0) return null;
     let totalValue = 0, totalCost = 0, totalDailyChange = 0, count = 0;
-    const otherCurrencyTotals = {}; // 예: { KRW: 12345678 }
+    const otherCurrencyTotals = {}; // 예: { KRW: 12345678 } — 환율 조회 실패 시 참고용
+    let fxApplied = false;
+    // 환율 소스: KRW만 실측 환율 지원(usdKrwRate). 다른 비-USD 통화가 생기면 여기에 매핑 추가 필요.
+    const fxRateFor = (currency) => (currency === "KRW" ? usdKrwRate : null);
     const rows = holdings.map(h => {
       const d = marketData[h.sym];
       if (!d) return { ...h, noData: true };
@@ -191,6 +215,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
       if (marketCurrency !== 'USD') {
         otherCurrencyTotals[marketCurrency] = (otherCurrencyTotals[marketCurrency] || 0) + value;
+        const rate = fxRateFor(marketCurrency);
+        if (rate) {
+          fxApplied = true;
+          totalValue += value / rate; totalCost += cost / rate; totalDailyChange += dailyChange / rate; count++;
+          return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, fxConverted: true };
+        }
         return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, excludedFromTotal: true };
       }
       totalValue += value; totalCost += cost; totalDailyChange += dailyChange; count++;
@@ -201,7 +231,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
     const prevValue = totalValue - totalDailyChange;
     const dailyChangePct = prevValue > 0 ? (totalDailyChange / prevValue) * 100 : 0;
-    return { totalValue, totalCost, pnl, pnlPct, totalDailyChange, dailyChangePct, rows, otherCurrencyTotals };
+    return { totalValue, totalCost, pnl, pnlPct, totalDailyChange, dailyChangePct, rows, otherCurrencyTotals, fxApplied };
   };
 
   const summary = calcSummary();
@@ -234,7 +264,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>총 평가금액 (USD)</div>
+                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>총 평가금액 (USD{summary.fxApplied ? " · 원화 환산 포함" : ""})</div>
                   <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtUSD(summary.totalValue)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -266,7 +296,11 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                   총 평가금액 ({cur}): <span style={{ color: "var(--dm-text)", fontWeight: 700 }}>{fmtPrice(val, cur)}</span>
                 </div>
               ))}
-              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 2 }}>환율 변환이 없어 USD 합계와 별도로 표시됩니다</div>
+              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 2 }}>
+                {summary.fxApplied
+                  ? `현재 환율(1 USD ≈ ${fmtNum(usdKrwRate, 0)}원) 기준으로 환산되어 위 총액에 포함됐습니다`
+                  : "환율 조회 실패로 USD 합계와 별도로 표시됩니다"}
+              </div>
             </div>
           )}
         </div>

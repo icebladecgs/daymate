@@ -28,6 +28,22 @@ const WX_ICON = {
 };
 
 export default async function handler(req, res) {
+  // ?type=fx&from=USD&to=KRW → 환율 조회 (frankfurter.app에 CORS 헤더가 없어 서버 프록시 필요)
+  if (req.query.type === 'fx') {
+    const from = (req.query.from || 'USD').trim().toUpperCase();
+    const to = (req.query.to || 'KRW').trim().toUpperCase();
+    try {
+      const r = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+      const j = await r.json();
+      const rate = j?.rates?.[to];
+      if (!rate) return res.status(200).json({ ok: false });
+      return res.status(200).json({ ok: true, from, to, rate });
+    } catch (error) {
+      console.error('[market] fx lookup failed:', error);
+      return res.status(200).json({ ok: false });
+    }
+  }
+
   // ?type=weather&city=Seoul → 날씨 조회
   if (req.query.type === 'weather') {
     const city = (req.query.city || '').trim() || 'Seoul';
