@@ -51,6 +51,16 @@
 - Vercel 배포 모니터링은 환경변수 `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`를 사용한다.
 
 ## Recent Changes
+### 2026-09-21 (v532~v540)
+- **`AI_WIKI`/`HANDOFF.md`가 v433 이후 갱신되지 않고 약 2개월(v433→v540) 방치됐던 것을 확인, 이번에 최신화함.** 그 사이 상세 변경 이력이 필요하면 `git log --oneline`으로 직접 확인
+- **PWA 설치 안내 개선(v532~v533)**: 안드로이드는 삼성인터넷/Chrome 메뉴가 달라 UA 분기 처리, iOS는 텍스트 안내 대신 Safari 공유 아이콘을 강조하는 시각 가이드(`src/components/InstallGuide.jsx`, `src/utils/installGuideText.jsx`)로 교체
+- **내 초대 코드 기기 간 불일치 버그 수정(v534)**: 초대 코드가 기기마다 로컬 랜덤 생성이라 같은 계정인데 기기별로 다른 코드가 보이던 문제 — 로그인 시 서버(Firestore) 코드를 정본으로 수렴시키도록 수정 (`src/App.jsx`)
+- **"내 사람들"(인맥 관리) 기능 신규 추가(v536~v538)**: 기존 "내 명함" 옆에 사람 중심 관계 관리 기능 추가. 사람 등록(이름만 필수, 나머지 선택)/생일(양력·음력, `korean-lunar-calendar` 신규 의존성)/기념일/만남기록/후속 Todo 연결/홈 "오늘 챙길 사람" 위젯. 데이터는 `users/{uid}/contacts/{contactId}` 개별 문서로 저장(설정 문서 비대화 방지, `days`와 동일 패턴) — 신규 파일 `src/data/contacts.js`, `src/screens/People.jsx`. 실제 앱을 풀로 띄워서 테스트하다 실사용 버그 2건 발견/수정: (1) 홈 위젯을 처음엔 하단 네비에 연결 안 된 화면에 넣어서 사실상 안 보였음 → `Today.jsx`(실제 "오늘" 탭)로 이동, (2) "+ 사람 추가" 플로팅 버튼이 하단 네비바에 가려 클릭 안 되던 문제 → `bottom: 96, zIndex: 200`으로 기존 FAB 패턴에 맞춤. Firestore 보안 규칙은 기존 `users/{uid}/{document=**}` 와일드카드 규칙이 이미 커버해서 추가 불필요
+- **능력치 상승 피드백 오해 수정(v539)**: 플로팅 뱃지가 누적 XP 증가량만 보여줘서(예: +3) 실제 게이지(√누적XP 곡선) 상승분(대개 +1)과 다르게 느껴지던 문제 — XP와 게이지 상승분을 함께 표시하도록 수정
+- **일기토 상대별 통산 전적 추가(v540)**: `battleRecord.vsRecord: {npcId: {wins, losses}}` 필드 신규 추가, 상대 목록에 "상대전적 N승 M패" 표시. 이 필드 생기기 전 전적은 상대별로 복원 불가(전체 wins/losses/격파목록은 유지)
+- 버전/빌드 영향: v531→v540 (여러 커밋, `git log --oneline v531..v540` 참고), 검증: 매 변경마다 `npm run build`/`npm run lint` + `.env.local`에 더미 Firebase 키를 임시로 넣고 `npm run dev` + Playwright로 실제 앱 전체 흐름(온보딩→기능→화면 전환)을 직접 클릭해서 확인 후 `.env.local` 삭제, 배포 후 `curl`로 프로덕션 JS 번들 안에 버전 문자열이 실제로 박혔는지 직접 확인(로컬 dist 해시는 빌드 시각 차이로 안 맞을 수 있어 신뢰 안 함)
+- 다음 작업자 메모: (1) 로컬에 `.env.local`이 없어 실제 로그인 상태 테스트(Firestore 저장, 기기 간 동기화)는 못 했음 — 사용자가 실제 계정으로 확인 예정. (2) 인맥 기능에 이어서 요청 가능성 있는 것: 리멤버 엑셀 내보내기 업로드(컬럼 헤더 포맷 확인 대기 중), Google 주소록(People API) 연동, 명함 사진 자동 인식(이미 붙어있는 Anthropic API로 새 인프라 없이 가능할 것으로 판단, 아직 미구현). (3) 실제 알림(푸시/텔레그램)이 필요한 기능을 또 만들 경우 주의: 지금 있는 cron들은 전부 `FIREBASE_USER_UID` 환경변수에 고정된 개발자 개인 계정 전용이라 여러 사용자에게 확장이 안 됨 — 이 점 모르고 "알림 됩니다"라고 하면 안 됨
+
 ### 2026-07-22 (v429~v433)
 - 화면마다 겹쳐서 불편하다는 피드백으로 드래그형 플로팅 메모 버튼을 제거하고, 하단 네비를 오늘/My/**메모**/달력/소셜/설정 6개 균등 아이콘으로 재구성 (`src/components/BottomNav.jsx`, `src/App.jsx`)
 - 통합검색 메모 탭이 하루치 메모를 전부 합쳐서 보여주던 것을 메모별 개별 결과로 분리 (`src/screens/SearchViewer.jsx`)
@@ -205,7 +215,7 @@
 
 ## Claude Handoff Focus
 - 먼저 `AI_WIKI/README.md`, `AI_WIKI/ops.md`, `AI_WIKI/known-issues.md`, `AI_WIKI/update-log.md` 순서로 읽는다.
-- 최신 배포 기준선은 `v433` / alias `https://daymate-beta.vercel.app` 이다. 버전 숫자만 보지 말고 `curl -s https://daymate-beta.vercel.app/assets/index-*.js`로 실제 반영 커밋을 확인하는 습관을 들일 것 — 배포가 조용히 실패했던 전례가 있다(`AI_WIKI/known-issues.md`).
+- 최신 배포 기준선은 `v540` / alias `https://daymate-beta.vercel.app` 이다. 버전 숫자만 보지 말고, 로컬 dist 해시는 빌드 시각 차이로 안 맞을 수 있으니 `curl -s https://daymate-beta.vercel.app/assets/index-*.js | grep '"v540"'` 처럼 번들 안 버전 문자열로 직접 확인하는 습관을 들일 것 — 배포가 조용히 실패했던 전례가 있다(`AI_WIKI/known-issues.md`).
 - 코드 변경 후에는 `git commit` → `git push` → **`vercel deploy --prod --yes`까지 실행**해야 실제로 반영된다. push만으로 끝내지 말 것.
 - 로컬 전용 `.claude/settings.local.json`은 작업 참고만 하고 커밋 대상에서는 계속 제외한다.
 - 현재 실무적으로 중요한 미해결 이슈는 PWA 프리징(`AI_WIKI/known-issues.md`, `vite-plugin-pwa` 도입 미완료)와 push-morning 알림이 07:00 KST 고정으로 바뀐 것에 대한 사용자 확인이다.

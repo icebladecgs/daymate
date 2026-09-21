@@ -16,6 +16,13 @@
 - 대응: push-morning cron을 하루 1회(07:00 KST 고정)로 축소, `.vercelignore` 추가, 새 토큰 발급. [[ops]]의 Deploy 섹션에 수동 배포 절차 + 검증 명령 정리함
 - 후유증: push-morning(잠금화면 아침 할일 알림)이 이제 사용자 지정 알람 시간과 무관하게 07:00 KST에만 발송됨(이전엔 06:00~08:30 사이 사용자 설정 시간에 맞춰 발송). 사용자가 07:00 외 시간을 쓰고 있다면 알림이 안 갈 수 있음 — 확인 필요. 유연한 시간을 되살리려면 Vercel Pro 업그레이드 필요
 
+## Cron/Push Infra Is Single-User Only (2026-09-21 발견)
+- 증상 아님, **설계 제약**: "실제 알림(앱을 닫아도 오는 알림)이 필요한 기능"을 새로 만들 때 착각하기 쉬운 함정
+- 현재 `api/push-morning.js`, `api/push-cron.js`, `api/smart-notify.js` 등 Vercel Cron으로 도는 함수들은 전부 `process.env.FIREBASE_USER_UID`(개발자 본인 uid)와 `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`에 고정돼 있다 — **여러 사용자를 대상으로 한 스케줄 알림이 아니라 개발자 개인 계정 전용**이다
+- Web Push 자체(구독→저장→`api/push.js`로 1회성 발송)는 사용자별로 이미 되지만, "누구든 특정 시각에 자동으로 발송"해주는 사용자별 스케줄/큐는 없다
+- 반대로 텔레그램 봇 대화(`api/telegram-webhook.js`)는 `tg_users` 컬렉션으로 사용자별 매핑이 돼 있어 진짜 멀티유저다 — 다만 사용자가 먼저 말을 걸어야 반응하는 방식이라 "능동적으로 먼저 알려주는" 용도로는 못 쓴다
+- 새 기능에서 "생일 되면 알림 보내줘" 같은 요청을 받으면, 이 제약 때문에 지금 인프라로는 개발자 계정 하나만 가능하다는 걸 먼저 설명하고, 필요하면 사용자별 스케줄 인프라를 새로 만들지 말지부터 확인할 것
+
 ## Vercel Version Fallback
 - 증상: 버전이 `v0`처럼 보일 수 있음
 - 원인: 배포 환경에서 git metadata 부족
