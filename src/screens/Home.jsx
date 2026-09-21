@@ -17,6 +17,7 @@ import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
+import { getUpcomingContactEvents } from "../data/contacts.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -80,7 +81,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {} }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -146,6 +147,27 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [bcLabelDraft, setBcLabelDraft] = useState('');
   const bcFileInputRef = useRef(null);
   const bcDefault = businessCards.find(c => c.isDefault) || businessCards[businessCards.length - 1] || null;
+
+  // 오늘 챙길 사람 — 생일·기념일(7일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일
+  const contactReminders = useMemo(() => {
+    if (isMyTab) return [];
+    const todayDs = toDateStr();
+    const items = [];
+    getUpcomingContactEvents(contacts, 7, todayDs).forEach(ev => {
+      const when = ev.dday === 0 ? '오늘' : `${ev.dday}일 뒤`;
+      items.push({ key: `${ev.type}_${ev.contactId}`, text: `${when} ${ev.name}님 ${ev.label}` });
+    });
+    (contacts || []).forEach(c => {
+      (c.linkedTasks || []).forEach(lt => {
+        if (lt.date > todayDs) return;
+        const task = (plans[lt.date]?.tasks || []).find(t => t.id === lt.taskId);
+        if (!task || task.done) return;
+        const when = lt.date === todayDs ? '오늘' : '지난';
+        items.push({ key: `task_${lt.taskId}`, text: `${when} ${c.name}님께 ${task.title || lt.title}` });
+      });
+    });
+    return items;
+  }, [contacts, plans, isMyTab]);
   const bcViewerCard = businessCards.find(c => c.id === bcViewerId) || null;
   // navigator.share()는 사용자 클릭 직후 "동기적으로" 호출되지 않으면(중간에 await가 끼면)
   // 일부 브라우저(특히 iOS Safari)가 user-activation 만료로 거부해 전송이 실패함 —
@@ -851,6 +873,16 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             </div>
             </div>
             )}
+            {!isMyTab && contactReminders.length > 0 && (
+              <div style={{ margin: '0 16px 10px' }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>💌 오늘 챙길 사람</div>
+                <div style={{ ...S.card, margin: 0, padding: '10px 14px' }}>
+                  {contactReminders.map((it, i) => (
+                    <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
+                  ))}
+                </div>
+              </div>
+            )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
@@ -939,6 +971,19 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+            {isMyTab && (
+              <div style={{ margin: '0 16px 10px' }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>👥 내 사람들</div>
+                <button onClick={onOpenPeople} style={{ width: '100%', borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ fontSize: 22 }}>🗂️</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{contacts.length > 0 ? `${contacts.length}명 등록됨` : '사람을 등록해보세요'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 1 }}>생일·기념일·만남 기록을 관리해요</div>
+                  </div>
+                  <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
+                </button>
               </div>
             )}
 

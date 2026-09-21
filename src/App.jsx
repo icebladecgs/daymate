@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
+import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
 import { driveBackup, findOrCreateFolder, uploadMarkdownFile } from "./api/drive.js";
@@ -39,6 +40,7 @@ const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
+const People = lazy(() => import("./screens/People.jsx"));
 
 const CHUNK_LOAD_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
 
@@ -432,6 +434,65 @@ export default function App() {
   };
   const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
 
+  // ── 내 사람들(인맥) ── 사람이 늘어도 로그인 시 읽는 단일 settings 문서가 커지지 않도록
+  // 사람마다 개별 Firestore 문서로 저장한다(days와 동일한 패턴). 아래 auth 리스너에서 병합 로드.
+  const [contacts, setContacts] = useState(() => store.get("dm_contacts", []));
+  const [contactTags, setContactTags] = useState(() => store.get("dm_contact_tags", DEFAULT_RELATION_TAGS));
+  const [contactAlarmCfg, setContactAlarmCfg] = useState(() => store.get("dm_contact_alarm_cfg", { enabled: false, offsets: [0] }));
+
+  const upsertContact = (contact) => {
+    const next = { ...contact, updatedAt: new Date().toISOString() };
+    setContacts(prev => {
+      const exists = prev.some(c => c.id === next.id);
+      const list = exists ? prev.map(c => c.id === next.id ? next : c) : [...prev, next];
+      store.set("dm_contacts", list);
+      return list;
+    });
+    if (authUser) saveContact(authUser.uid, next).catch(() => {});
+    return next;
+  };
+  const removeContact = (contactId) => {
+    const target = contacts.find(c => c.id === contactId);
+    setContacts(prev => {
+      const list = prev.filter(c => c.id !== contactId);
+      store.set("dm_contacts", list);
+      return list;
+    });
+    if (authUser) deleteContactDoc(authUser.uid, contactId).catch(() => {});
+    // 첨부된 명함 사진은 사람 삭제 시 함께 정리 — 소유자 외에는 접근 불가한 개인 데이터라 orphan으로 남기지 않는다
+    (target?.cards || []).forEach(card => {
+      if (card.frontPath) deletePhoto(card.frontPath);
+      if (card.backPath) deletePhoto(card.backPath);
+    });
+    // Todo 자체는 지우지 않고 "이 사람과 연결됨" 표시만 해제한다 — 완료 여부·제목 등은 그대로 둔다
+    (target?.linkedTasks || []).forEach(({ date, taskId }) => {
+      setDayData(date, prev => ({
+        ...prev,
+        tasks: (prev.tasks || []).map(t => t.id === taskId ? { ...t, contactId: null } : t),
+      }));
+    });
+  };
+  // 사람 상세 화면의 만남 기록에서 "할 일 추가"를 누르면 기존 Todo 저장소(날짜별 문서)에
+  // 실제 task를 하나 만들고, 그 task의 (date, id)만 사람 쪽에 포인터로 남긴다.
+  // 완료 상태를 사람 쪽에 복제하지 않기 때문에 Todo에서 완료해도 항상 한 곳(그 날짜의 실제 task)만 갱신되면 된다.
+  const addContactFollowupTask = (contactId, dateStr, title) => {
+    const taskId = genSubId("t");
+    setDayData(dateStr, prev => ({
+      ...prev,
+      tasks: [...(prev.tasks || []), { id: taskId, title, done: false, checkedAt: null, priority: false, contactId }],
+    }));
+    setContacts(prev => {
+      const list = prev.map(c => c.id === contactId
+        ? { ...c, updatedAt: new Date().toISOString(), linkedTasks: [...(c.linkedTasks || []), { date: dateStr, taskId, title }] }
+        : c);
+      store.set("dm_contacts", list);
+      const updated = list.find(c => c.id === contactId);
+      if (authUser && updated) saveContact(authUser.uid, updated).catch(() => {});
+      return list;
+    });
+    return taskId;
+  };
+
   const addCommunityId = (id) => {
     setCommunityIdsState(prev => {
       const next = prev.includes(id) ? prev : [...prev, id];
@@ -522,6 +583,22 @@ export default function App() {
   useEffect(() => {
     if (!authUser) return;
     loadMyChallenges(authUser.uid).then(setMyChallenges).catch(() => {});
+  }, [authUser]);
+
+  // 내 사람들 — 로그인 시 서버(문서별 저장)와 병합. 겹치는 사람은 서버가 정본이고,
+  // 로그인 전 이 기기에서만 만든 사람은 아직 서버에 없는 것이므로 이번에 올려준다.
+  useEffect(() => {
+    if (!authUser) return;
+    loadContacts(authUser.uid).then(serverContacts => {
+      setContacts(prev => {
+        const serverIds = new Set(serverContacts.map(c => c.id));
+        const localOnly = prev.filter(c => !serverIds.has(c.id));
+        localOnly.forEach(c => saveContact(authUser.uid, c).catch(() => {}));
+        const merged = [...serverContacts, ...localOnly];
+        store.set("dm_contacts", merged);
+        return merged;
+      });
+    }).catch(() => {});
   }, [authUser]);
 
   // Firestore에서 내가 가입한 커뮤니티 목록 복구 (localStorage 유실 대비)
@@ -1129,6 +1206,8 @@ export default function App() {
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             if (s.inviteCode) { setMyInviteCode(s.inviteCode); store.set("dm_invite_code", s.inviteCode); }
             if (s.usedInviteCodes) { setUsedInviteCodes(s.usedInviteCodes); store.set("dm_used_invite_codes", s.usedInviteCodes); }
+            if (s.contactTags) { setContactTags(s.contactTags); store.set("dm_contact_tags", s.contactTags); }
+            if (s.contactAlarmCfg) { setContactAlarmCfg(s.contactAlarmCfg); store.set("dm_contact_alarm_cfg", s.contactAlarmCfg); }
             const ym = todayStr.slice(0, 7);
             if (s[`goalChecks_${ym}`]) { setGoalChecks(s[`goalChecks_${ym}`]); store.set(`dm_goal_checks_${ym}`, s[`goalChecks_${ym}`]); }
           }
@@ -1255,6 +1334,14 @@ export default function App() {
     store.set("dm_used_invite_codes", usedInviteCodes);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { usedInviteCodes }).catch(() => {});
   }, [usedInviteCodes, authUser]);
+  useEffect(() => {
+    store.set("dm_contact_tags", contactTags);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { contactTags }).catch(() => {});
+  }, [contactTags, authUser]);
+  useEffect(() => {
+    store.set("dm_contact_alarm_cfg", contactAlarmCfg);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { contactAlarmCfg }).catch(() => {});
+  }, [contactAlarmCfg, authUser]);
   useEffect(() => {
     const ym = todayStr.slice(0, 7);
     store.set(`dm_goal_checks_${ym}`, goalChecks);
@@ -1783,6 +1870,7 @@ export default function App() {
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
+          contacts={contacts} onOpenPeople={() => changeScreen('people')}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
@@ -1857,6 +1945,7 @@ export default function App() {
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
+          contacts={contacts} onOpenPeople={() => changeScreen('people')}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
@@ -2157,6 +2246,24 @@ export default function App() {
         onToggleHabit={onToggleHabit}
         someday={someday} setSomeday={setSomeday}
       />;
+    }
+    if (screen === "people") {
+      return (
+        <People
+          contacts={contacts}
+          onUpsertContact={upsertContact}
+          onDeleteContact={removeContact}
+          contactTags={contactTags} setContactTags={setContactTags}
+          contactAlarmCfg={contactAlarmCfg} setContactAlarmCfg={setContactAlarmCfg}
+          plans={plans}
+          onAddFollowupTask={addContactFollowupTask}
+          onToggleTaskForDate={toggleTaskForDate}
+          onOpenDate={openDetail}
+          authUser={authUser}
+          toast={toast} setToast={setToast}
+          onBack={() => history.back()}
+        />
+      );
     }
     if (screen === "knowledge") {
       return (

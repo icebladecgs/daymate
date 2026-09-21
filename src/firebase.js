@@ -100,6 +100,22 @@ export async function loadAllFromFirestore(uid) {
   return result;
 }
 
+// ---------- 내 사람들(인맥) ----------
+// settings 문서 하나에 몰아넣지 않고 day처럼 사람별 개별 문서로 저장 — 기록이 쌓여도
+// 로그인 시 읽는 단일 settings 문서가 커지지 않고, 문서당 1MiB 한도 위험도 없다.
+export async function saveContact(uid, contact) {
+  await setDoc(doc(db, "users", uid, "contacts", contact.id), contact);
+}
+
+export async function deleteContactDoc(uid, contactId) {
+  await deleteDoc(doc(db, "users", uid, "contacts", contactId));
+}
+
+export async function loadContacts(uid) {
+  const snap = await getDocs(collection(db, "users", uid, "contacts"));
+  return snap.docs.map((d) => d.data());
+}
+
 // Google Calendar OAuth (Calendar scope)
 export function googleSignInWithCalendarScope() {
   return new Promise((resolve, reject) => {
