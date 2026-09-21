@@ -243,7 +243,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
       {(contact.company || contact.title || contact.phone || contact.email || (contact.tags || []).length > 0) && (
         <div style={S.card}>
           {(contact.company || contact.title) && <div style={{ fontSize: 13, color: "var(--dm-sub)", marginBottom: 4 }}>{[contact.company, contact.title].filter(Boolean).join(" · ")}</div>}
-          {contact.phone && <div style={{ fontSize: 13, color: "var(--dm-text)" }}>📞 {contact.phone}</div>}
+          {contact.phone && <a href={`tel:${contact.phone}`} style={{ display: "block", fontSize: 13, color: "#6C8EFF", textDecoration: "none" }}>📞 {contact.phone}</a>}
           {contact.email && <div style={{ fontSize: 13, color: "var(--dm-text)" }}>✉️ {contact.email}</div>}
           {(contact.tags || []).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -331,7 +331,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
           <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} style={{ ...S.input, flex: 1, marginBottom: 0 }} />
         </div>
-        <textarea value={meetingNote} onChange={e => setMeetingNote(e.target.value)} placeholder="만남 내용을 적어보세요 (예: 점심 식사, 등산을 좋아한다고 함)" rows={2}
+        <textarea value={meetingNote} onChange={e => setMeetingNote(e.target.value)} placeholder="만남 내용을 적어보세요 (예: 점심 식사, 등산을 좋아한다고 함)" rows={10}
           style={{ ...S.input, marginTop: 6, marginBottom: 0, resize: "vertical", fontFamily: "inherit" }} />
         <button onClick={submitMeeting} disabled={!meetingNote.trim()} style={{ ...S.btn, marginTop: 8, opacity: meetingNote.trim() ? 1 : 0.5 }}>기록 저장</button>
       </div>
@@ -351,11 +351,12 @@ export default function People({
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [query, setQuery] = useState("");
+  const [tagFilters, setTagFilters] = useState([]);
   const [showAlarmSettings, setShowAlarmSettings] = useState(false);
 
   const uid = authUser?.uid;
   const selected = contacts.find(c => c.id === selectedId) || null;
-  const filtered = searchContacts(contacts, query);
+  const filtered = searchContacts(contacts, query).filter(c => tagFilters.length === 0 || tagFilters.some(t => (c.tags || []).includes(t)));
 
   const startAdd = () => { setDraft(newContact("")); setView("form"); };
   const startEdit = (c) => { setDraft({ ...c, birthday: c.birthday || { calendar: "solar", month: "", day: "", year: "" } }); setView("form"); };
@@ -423,7 +424,14 @@ export default function People({
       <Header title="내 사람들" onBack={onBack} />
 
       <div style={{ padding: "12px 16px 0" }}>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="이름·회사·태그 검색" style={S.input} />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="이름·회사·태그 검색" style={{ ...S.input, marginBottom: 8 }} />
+        {contactTags.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+            {contactTags.map(t => (
+              <button key={t} onClick={() => setTagFilters(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} style={S.pill(tagFilters.includes(t))}>{t}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "0 16px 8px" }}>

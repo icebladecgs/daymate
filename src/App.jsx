@@ -2262,7 +2262,7 @@ export default function App() {
           onOpenDate={openDetail}
           authUser={authUser}
           toast={toast} setToast={setToast}
-          onBack={() => history.back()}
+          onBack={() => changeScreen('my')}
         />
       );
     }
