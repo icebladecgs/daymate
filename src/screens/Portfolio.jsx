@@ -57,6 +57,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const [usdKrwRate, setUsdKrwRate] = useState(() => {
     try { return JSON.parse(localStorage.getItem(FX_CACHE_PREFIX + toDateStr()) || "null"); } catch { return null; }
   });
+  const [displayCurrency, setDisplayCurrency] = useState(() => store.get("dm_pf_display_currency", "USD"));
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -128,7 +129,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   };
 
   useEffect(() => {
-    if (usdKrwRate == null && holdings.some(h => (h.currency || "USD") === "KRW")) fetchFxRate();
+    if (usdKrwRate == null && holdings.length > 0) fetchFxRate();
   }, []); // eslint-disable-line
 
   // 저장
@@ -207,16 +208,22 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     saveHoldings(next);
   };
 
+  // 통화별 합계에서 손익/변동률 파생값 계산
+  const deriveStats = (value, cost, dailyChange) => {
+    const pnl = value - cost;
+    const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+    const prevValue = value - dailyChange;
+    const dailyChangePct = prevValue > 0 ? (dailyChange / prevValue) * 100 : 0;
+    return { value, cost, pnl, pnlPct, dailyChange, dailyChangePct };
+  };
+
   // 포트폴리오 요약 계산
-  // 총액은 항상 $ 표기이므로, 환율 변환 없이는 원화(KRW) 등 비-USD 종목을 그대로 더할 수 없다.
-  // 개별 종목 카드는 marketCurrency 기준으로 정확히 표시하되, 합계에는 USD 종목만 반영한다.
+  // 현재는 USD/KRW 두 통화만 지원한다. 각 통화의 원래(native) 합계를 따로 모아두고,
+  // 환율이 있으면 그걸로 상대 통화 쪽 합계에도 환산해 더해서 두 가지 기준(USD/KRW) 총액을 모두 제공한다.
   const calcSummary = () => {
     if (!marketData || holdings.length === 0) return null;
-    let totalValue = 0, totalCost = 0, totalDailyChange = 0, count = 0;
-    const otherCurrencyTotals = {}; // 예: { KRW: 12345678 } — 환율 조회 실패 시 참고용
-    let fxApplied = false;
-    // 환율 소스: KRW만 실측 환율 지원(usdKrwRate). 다른 비-USD 통화가 생기면 여기에 매핑 추가 필요.
-    const fxRateFor = (currency) => (currency === "KRW" ? usdKrwRate : null);
+    let usdValue = 0, usdCost = 0, usdDailyChange = 0, usdCount = 0;
+    let krwValue = 0, krwCost = 0, krwDailyChange = 0, krwCount = 0;
     const rows = holdings.map(h => {
       const d = marketData[h.sym];
       if (!d) return { ...h, noData: true };
@@ -229,28 +236,40 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       const dailyChange = getDailyChange(d, h.qty);
       const pnl = value - cost;
       const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-      if (marketCurrency !== 'USD') {
-        otherCurrencyTotals[marketCurrency] = (otherCurrencyTotals[marketCurrency] || 0) + value;
-        const rate = fxRateFor(marketCurrency);
-        if (rate) {
-          fxApplied = true;
-          totalValue += value / rate; totalCost += cost / rate; totalDailyChange += dailyChange / rate; count++;
-          return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, fxConverted: true };
-        }
-        return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, excludedFromTotal: true };
+      if (marketCurrency === 'KRW') {
+        krwValue += value; krwCost += cost; krwDailyChange += dailyChange; krwCount++;
+      } else {
+        usdValue += value; usdCost += cost; usdDailyChange += dailyChange; usdCount++;
       }
-      totalValue += value; totalCost += cost; totalDailyChange += dailyChange; count++;
       return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange };
     });
-    if (count === 0 && Object.keys(otherCurrencyTotals).length === 0) return null;
-    const pnl = totalValue - totalCost;
-    const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
-    const prevValue = totalValue - totalDailyChange;
-    const dailyChangePct = prevValue > 0 ? (totalDailyChange / prevValue) * 100 : 0;
-    return { totalValue, totalCost, pnl, pnlPct, totalDailyChange, dailyChangePct, rows, otherCurrencyTotals, fxApplied };
+    if (usdCount === 0 && krwCount === 0) return null;
+
+    const rate = usdKrwRate; // 1 USD ≈ rate KRW
+    const fxOk = !!rate;
+    const statsUSD = deriveStats(
+      usdValue + (fxOk ? krwValue / rate : 0),
+      usdCost + (fxOk ? krwCost / rate : 0),
+      usdDailyChange + (fxOk ? krwDailyChange / rate : 0)
+    );
+    const statsKRW = deriveStats(
+      krwValue + (fxOk ? usdValue * rate : 0),
+      krwCost + (fxOk ? usdCost * rate : 0),
+      krwDailyChange + (fxOk ? usdDailyChange * rate : 0)
+    );
+
+    return {
+      rows,
+      usdNative: { value: usdValue, count: usdCount },
+      krwNative: { value: krwValue, count: krwCount },
+      statsUSD, statsKRW, fxOk,
+      mixed: usdCount > 0 && krwCount > 0,
+    };
   };
 
   const summary = calcSummary();
+  const stats = displayCurrency === "KRW" ? summary?.statsKRW : summary?.statsUSD;
+  const setDisplayCurrencyPersist = (cur) => { setDisplayCurrency(cur); store.set("dm_pf_display_currency", cur); };
 
   const inputStyle = { ...S.input, marginBottom: 0 };
 
@@ -274,49 +293,69 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       </div>
 
       {/* 포트폴리오 요약 */}
-      {summary && (
+      {summary && stats && (
         <div style={{ ...S.card, marginBottom: 10, background: "var(--dm-card)" }}>
-          {summary.totalValue > 0 || summary.totalCost > 0 ? (
+          {stats.value > 0 || stats.cost > 0 ? (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>총 평가금액 (USD{summary.fxApplied ? " · 원화 환산 포함" : ""})</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtUSD(summary.totalValue)}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>총 평가금액</span>
+                    {summary.fxOk && (
+                      <div style={{ display: "flex", gap: 2 }}>
+                        {["USD", "KRW"].map(cur => (
+                          <button key={cur} onClick={() => setDisplayCurrencyPersist(cur)}
+                            style={{
+                              fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6, cursor: "pointer",
+                              border: `1px solid ${displayCurrency === cur ? "#6C8EFF" : "var(--dm-border)"}`,
+                              background: displayCurrency === cur ? "rgba(108,142,255,.14)" : "transparent",
+                              color: displayCurrency === cur ? "#6C8EFF" : "var(--dm-muted)",
+                            }}>{cur}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(stats.value, displayCurrency)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(summary.totalDailyChange) }}>
-                    {summary.totalDailyChange >= 0 ? "+" : ""}{fmtUSD(summary.totalDailyChange)}
+                  <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(stats.dailyChange) }}>
+                    {stats.dailyChange >= 0 ? "+" : ""}{fmtPrice(stats.dailyChange, displayCurrency)}
                   </div>
-                  <div style={{ fontSize: 12, color: pnlColor(summary.dailyChangePct) }}>{fmtPct(summary.dailyChangePct)}</div>
+                  <div style={{ fontSize: 12, color: pnlColor(stats.dailyChangePct) }}>{fmtPct(stats.dailyChangePct)}</div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12, paddingTop: 10, borderTop: "1px solid var(--dm-row)" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>투자원금</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.totalCost)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtPrice(stats.cost, displayCurrency)}</div>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>평가손익</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(summary.pnl) }}>
-                    {summary.pnl >= 0 ? "+" : ""}{fmtUSD(summary.pnl)} ({fmtPct(summary.pnlPct)})
+                  <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(stats.pnl) }}>
+                    {stats.pnl >= 0 ? "+" : ""}{fmtPrice(stats.pnl, displayCurrency)} ({fmtPct(stats.pnlPct)})
                   </div>
                 </div>
               </div>
             </>
           ) : null}
-          {Object.keys(summary.otherCurrencyTotals).length > 0 && (
-            <div style={{ paddingTop: summary.totalValue > 0 || summary.totalCost > 0 ? 10 : 0, marginTop: summary.totalValue > 0 || summary.totalCost > 0 ? 10 : 0, borderTop: summary.totalValue > 0 || summary.totalCost > 0 ? "1px solid var(--dm-row)" : "none" }}>
-              {Object.entries(summary.otherCurrencyTotals).map(([cur, val]) => (
-                <div key={cur} style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 2 }}>
-                  총 평가금액 ({cur}): <span style={{ color: "var(--dm-text)", fontWeight: 700 }}>{fmtPrice(val, cur)}</span>
-                </div>
-              ))}
-              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 2 }}>
-                {summary.fxApplied
-                  ? `현재 환율(1 USD ≈ ${fmtNum(usdKrwRate, 0)}원) 기준으로 환산되어 위 총액에 포함됐습니다`
-                  : "환율 조회 실패로 USD 합계와 별도로 표시됩니다"}
+          {summary.mixed && (
+            <div style={{ display: "flex", gap: 12, paddingTop: 10, marginTop: 10, borderTop: "1px solid var(--dm-row)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>달러자산</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.usdNative.value)}</div>
               </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>원화자산</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtKRW(summary.krwNative.value)}</div>
+              </div>
+            </div>
+          )}
+          {summary.mixed && (
+            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 6 }}>
+              {summary.fxOk
+                ? `현재 환율(1 USD ≈ ${fmtNum(usdKrwRate, 0)}원) 기준으로 환산해 총 평가금액에 반영했습니다`
+                : "환율 조회 실패로 두 자산이 총 평가금액에 정확히 합산되지 않았습니다"}
             </div>
           )}
         </div>
