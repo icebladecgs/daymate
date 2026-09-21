@@ -73,6 +73,16 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     setEditingId(null); setShowForm(false);
   };
 
+  // 종목 코드가 한국 주식 형태(숫자 6자리 또는 .KS/.KQ)면 소스/통화를 자동으로 맞춰줌
+  useEffect(() => {
+    const sym = fSym.trim().toUpperCase();
+    const isKr = /^\d{6}$/.test(sym) || /\.(KS|KQ)$/i.test(sym);
+    if (isKr && fSrc !== "yahoo") {
+      setFSrc("yahoo");
+      setFCurrency("KRW");
+    }
+  }, [fSym]); // eslint-disable-line
+
   // 프리셋 선택
   const pickPreset = (p) => {
     setFSym(p.sym); setFLabel(p.label); setFCurrency(p.currency); setFSrc(p.src);
@@ -126,13 +136,14 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
   // 추가 / 수정
   const handleSave = () => {
-    const sym = fSym.trim().toUpperCase();
+    let sym = fSym.trim().toUpperCase();
     const label = fLabel.trim() || sym;
     const qty = parseFloat(fQty.replace(/,/g, ""));
     const avgPrice = parseFloat(fAvgPrice.replace(/,/g, ""));
     if (!sym) { setToast("종목 코드를 입력해주세요"); return; }
     if (isNaN(qty) || qty <= 0) { setToast("수량을 올바르게 입력해주세요"); return; }
     if (isNaN(avgPrice) || avgPrice <= 0) { setToast("평균단가를 올바르게 입력해주세요"); return; }
+    if (/^\d{6}$/.test(sym)) sym = `${sym}.KS`; // 한국 주식 숫자 코드 → 코스피 심볼로 자동 보정
 
     const preset = PRESET_ASSETS.find(p => p.sym === sym);
     const src = preset?.src || fSrc;
@@ -446,7 +457,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <div>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 코드 *</div>
                 <input style={inputStyle} value={fSym} onChange={e => setFSym(e.target.value.toUpperCase())}
-                  placeholder="예: TSLA, BTC" maxLength={20} />
+                  placeholder="예: TSLA, BTC, 005930(삼성전자)" maxLength={20} />
+                {/^\d{6}$/.test(fSym.trim()) && (
+                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>
+                    한국 주식으로 인식했어요 (코스피 기준 .KS 자동 적용, 코스닥은 코드 뒤에 직접 .KQ를 붙여주세요)
+                  </div>
+                )}
               </div>
               <div>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 이름</div>
