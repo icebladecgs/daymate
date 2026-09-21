@@ -35,10 +35,24 @@ export function getPrimaryStat(stats) {
   return best;
 }
 
-// 지력이 높은 쪽이 그 라운드에 선공 — 라운드마다 그 시점 지력으로 다시 계산(디버프/각성 등으로 뒤집힐 수 있음)
-// 동점이면 플레이어 선공
+// 지력 차이가 클수록 선공 확률이 높아지지만 100% 확정은 아님(15~85%로 클램프) — 의외의 역전 여지를 남긴다.
+// 라운드마다 그 시점 지력으로 다시 계산(디버프/각성 등으로 뒤집힐 수 있음)
+export const TURN_ORDER_BASE_CHANCE = 0.5;
+export const TURN_ORDER_PER_INT_POINT = 0.0035; // 지력 100 격차 → 최대 ±35%p
+export const TURN_ORDER_MIN_CHANCE = 0.15;
+export const TURN_ORDER_MAX_CHANCE = 0.85;
+
+// 순수 함수 — 난수 없이 "플레이어가 선공할 확률"만 계산 (UI 미리보기용)
+export function getTurnOrderChance(player, npc) {
+  const diff = (player.stats.INT || 0) - (npc.stats.INT || 0);
+  return Math.min(
+    TURN_ORDER_MAX_CHANCE,
+    Math.max(TURN_ORDER_MIN_CHANCE, TURN_ORDER_BASE_CHANCE + diff * TURN_ORDER_PER_INT_POINT)
+  );
+}
+
 export function getTurnOrder(player, npc) {
-  return (player.stats.INT || 0) >= (npc.stats.INT || 0) ? 'player' : 'npc';
+  return Math.random() < getTurnOrderChance(player, npc) ? 'player' : 'npc';
 }
 
 function emptyCooldowns() {

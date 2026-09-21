@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import S from "../styles.js";
 import { getNpcById } from "../data/battle/npcs.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
-import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrder } from "../data/battle/engine.js";
+import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance } from "../data/battle/engine.js";
 
 const ROUND_GAP_MS = 1000; // 선공 결과를 보여준 뒤 후공까지의 간격
 
@@ -81,7 +81,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
   const { player, npc, status, log } = state;
   const availableSpecials = getAvailableSpecials(player);
-  const upcomingOrder = getTurnOrder(player, npc);
+  const playerFirstChance = Math.round(getTurnOrderChance(player, npc) * 100);
 
   // 방금 새로 추가된 로그 항목들에 대해 진동/색 효과를 판정
   const triggerEffects = (prevLog, newLog) => {
@@ -164,7 +164,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         <EnergyRow label={playerLabel} fighter={player} color="#4B6FFF" />
         <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', margin: '6px 0' }}>
           VS {status === 'ongoing' && (
-            <span style={{ color: '#A78BFA' }}>· ⚡ {upcomingOrder === 'npc' ? '상대' : playerLabel} 선공</span>
+            <span style={{ color: '#A78BFA' }}>· ⚡ {playerLabel} 선공 확률 {playerFirstChance}%</span>
           )}
         </div>
         <EnergyRow label={npc.name} fighter={npc} color="#F87171" />
