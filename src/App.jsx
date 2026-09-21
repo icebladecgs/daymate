@@ -10,7 +10,7 @@ import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
-import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat } from "./data/growthStats.js";
+import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore } from "./data/growthStats.js";
 import { triggerVibration } from "./utils/notification.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
@@ -350,9 +350,15 @@ export default function App() {
   // opts.silent: 체크 해제로 인한 회수 시 플로팅/진동 피드백을 띄우지 않기 위함
   const grantStatXp = (statId, amount, opts = {}) => {
     if (!statId || statId === 'NONE' || !amount) return;
+    // 능력치 게이지(0~100)는 누적 XP에 √를 씌운 값이라 XP 증가분과 게이지 증가분이 다르다 —
+    // 피드백엔 둘 다 보여줘야 해서 지금 렌더의 statXp를 기준으로 전/후 게이지를 직접 계산한다.
+    // (한 클릭당 한 번만 호출되는 걸 전제로 함 — 같은 틱에 같은 스탯이 두 번 이상 지급되면 이 델타 계산만 부정확해질 수 있음)
+    const prevXp = statXp[statId] || 0;
+    const nextXp = Math.max(0, prevXp + amount);
     setStatXp(prev => ({ ...prev, [statId]: Math.max(0, (prev[statId] || 0) + amount) }));
     if (!opts.silent) {
-      setStatFeedback({ statId, xp: amount, key: Date.now() });
+      const scoreDelta = calcStatScore(nextXp) - calcStatScore(prevXp);
+      setStatFeedback({ statId, xp: amount, scoreDelta, key: Date.now() });
       triggerVibration();
     }
   };

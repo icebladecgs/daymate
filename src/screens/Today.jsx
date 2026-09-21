@@ -376,7 +376,8 @@ export default function Today({
         return (
           <div key={statFeedback.key} className="xp-float" style={{ top: '18%', left: '50%' }}
             onAnimationEnd={onClearStatFeedback}>
-            +{statFeedback.xp} {stat.icon} {stat.name}
+            +{statFeedback.xp}XP {stat.icon} {stat.name}
+            {statFeedback.scoreDelta > 0 && <> · 능력치 +{statFeedback.scoreDelta}</>}
           </div>
         );
       })()}
