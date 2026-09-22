@@ -55,6 +55,7 @@ export default function Today({
   }, [autoOpenLongMemo]);
   const [taskInput, setTaskInput] = useState('');
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
+  const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
   const [editingTimeId, setEditingTimeId] = useState(null);
   const [editingStatTaskId, setEditingStatTaskId] = useState(null);
@@ -144,6 +145,38 @@ export default function Today({
   }, [bodyText]); // eslint-disable-line
 
   const isPerfect = filledCount >= 3 && doneCount === filledCount && !!bodyText.trim();
+
+  // 일기 섹션 날짜 이동 — 오늘(offset 0)은 위 bodyText 로직 그대로 쓰고, 다른 날짜만 별도 상태로 처리
+  const journalTargetDs = journalDayOffset === 0 ? dateStr : addDays(dateStr, journalDayOffset);
+  const journalTargetDay = journalDayOffset === 0 ? data : (plans?.[journalTargetDs] || {});
+  const journalDayDateLabel = formatKoreanDate(journalTargetDs);
+  const journalDayLabel = journalDayOffset === 0 ? '오늘' : journalDayOffset === 1 ? '내일' : journalDayOffset === -1 ? '어제' : journalDayDateLabel;
+  const journalDoneTasks = journalDayOffset === 0 ? doneTasks : (journalTargetDay.tasks || []).filter(t => t.done && t.title.trim());
+
+  const [otherJournalBody, setOtherJournalBody] = useState('');
+  const otherJournalSavedRef = useRef('');
+  useEffect(() => {
+    if (journalDayOffset === 0) return;
+    const b = journalTargetDay.journal?.body ?? '';
+    setOtherJournalBody(b);
+    otherJournalSavedRef.current = b;
+  }, [journalDayOffset, journalTargetDs]); // eslint-disable-line
+  useEffect(() => {
+    if (journalDayOffset === 0 || otherJournalBody === otherJournalSavedRef.current) return;
+    const timer = setTimeout(() => {
+      onUpdateDayData?.(journalTargetDs, prev => ({ ...prev, journal: { ...prev.journal, body: otherJournalBody } }));
+      otherJournalSavedRef.current = otherJournalBody;
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [otherJournalBody]); // eslint-disable-line
+
+  const displayedJournalBody = journalDayOffset === 0 ? bodyText : otherJournalBody;
+  const setDisplayedJournalBody = journalDayOffset === 0 ? setBodyText : setOtherJournalBody;
+  const displayedJournalSaved = journalDayOffset === 0 ? journalSaved : otherJournalBody === otherJournalSavedRef.current;
+  const updateJournalPhotoForTarget = (photo) => {
+    if (journalDayOffset === 0) { updateJournalPhoto(photo); return; }
+    onUpdateDayData?.(journalTargetDs, prev => ({ ...prev, journal: { ...prev.journal, photoUrl: photo?.url || null, photoPath: photo?.path || null } }));
+  };
 
   // My탭과 동일한 계산(기존 XP/레벨/티어) — 오늘 화면에서도 함께 보여주기 위함, 기존 로직/저장방식은 그대로
   const todayScore = useMemo(() => calcDayScore(data, habits), [data, habits]);
@@ -307,7 +340,8 @@ export default function Today({
     saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false }]);
     deleteTargetTask(task.id);
   };
-  const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : formatKoreanDate(targetDs);
+  const taskDayDateLabel = formatKoreanDate(targetDs);
+  const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : taskDayDateLabel;
   const connectGcalFromTask = async () => {
     if (!onGcalConnect || gcalConnecting) return;
     setGcalConnecting(true);
@@ -772,6 +806,9 @@ export default function Today({
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={S.sectionEmoji}>✅</span>{taskDayLabel}의 할일
+          {[0, 1, -1].includes(taskDayOffset) && (
+            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)' }}>{taskDayDateLabel}</span>
+          )}
           <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {tasksOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>
@@ -786,9 +823,6 @@ export default function Today({
       </div>
       {tasksOpen && (
       <div style={S.card}>
-        {taskDayOffset !== 0 && (
-          <div style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, marginBottom: 8 }}>{formatKoreanDate(targetDs)} 할일을 보고 있어요</div>
-        )}
         {targetTasks.filter(t => t.title.trim()).map(task => {
           const resolvedStatId = task.statTag || classifyTodoStat(task.title);
           const statInfo = GROWTH_STAT_MAP[resolvedStatId];
@@ -985,19 +1019,28 @@ export default function Today({
       </div>
       )}
 
-      {/* 📖 일기 */}
-      <div style={S.sectionTitle}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>📖</span>일기
-          <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)' }}>(22:00 이후 추천)</span>
+      {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={S.sectionEmoji}>📖</span>{journalDayLabel}의 일기
+          {[0, 1, -1].includes(journalDayOffset) && (
+            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)' }}>{journalDayDateLabel}</span>
+          )}
+          {journalDayOffset === 0 && (
+            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)' }}>(22:00 이후 추천)</span>
+          )}
         </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button onClick={() => setJournalDayOffset(o => o - 1)} aria-label="전날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button onClick={() => setJournalDayOffset(o => o + 1)} aria-label="다음날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        </div>
       </div>
       <div style={S.card}>
-        {/* 오늘 한 일 — done tasks 자동 표시 */}
-        {doneTasks.length > 0 && (
+        {/* {label} 한 일 — done tasks 자동 표시 */}
+        {journalDoneTasks.length > 0 && (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>오늘 한 일</div>
-            {doneTasks.map(t => (
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{journalDayLabel} 한 일</div>
+            {journalDoneTasks.map(t => (
               <div key={t.id} style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: '#4ADE80', fontWeight: 700 }}>✓</span>{t.title}
               </div>
@@ -1005,7 +1048,7 @@ export default function Today({
           </div>
         )}
 
-        {onOpenVoiceDiary && (
+        {journalDayOffset === 0 && onOpenVoiceDiary && (
           <button
             onClick={onOpenVoiceDiary}
             style={{
@@ -1020,22 +1063,22 @@ export default function Today({
         <textarea
           rows={5}
           style={{ ...S.input, resize: 'none', lineHeight: 1.8 }}
-          value={bodyText}
-          onChange={e => setBodyText(e.target.value)}
-          placeholder="오늘 하루를 자유롭게 기록해보세요"
+          value={displayedJournalBody}
+          onChange={e => setDisplayedJournalBody(e.target.value)}
+          placeholder="하루를 자유롭게 기록해보세요"
           maxLength={2000}
         />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: journalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: journalSaved ? 400 : 700, transition: 'color 0.3s' }}>
-            {journalSaved ? '✓ 자동저장' : '저장 중...'}
+          <div style={{ fontSize: 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
+            {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
           </div>
           {uid && (
             <PhotoAttach
               uid={uid}
               pathPrefix={`users/${uid}/journal`}
-              photoUrl={data.journal?.photoUrl}
-              photoPath={data.journal?.photoPath}
-              onChange={updateJournalPhoto}
+              photoUrl={journalTargetDay.journal?.photoUrl}
+              photoPath={journalTargetDay.journal?.photoPath}
+              onChange={updateJournalPhotoForTarget}
               onError={setToast}
               size={34}
             />
