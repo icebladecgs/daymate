@@ -803,7 +803,7 @@ export default function Today({
               onClick={() => setEditingStatTaskId(id => id === task.id ? null : task.id)}
               title="성장 스탯 변경"
               style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-            >{statInfo ? statInfo.icon : '❔'}</button>
+            >{resolvedStatId === 'NONE' ? '🚫' : (statInfo ? statInfo.icon : '❔')}</button>
             <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
             {!task.done && (
               <>
@@ -838,6 +838,10 @@ export default function Today({
                 onClick={() => { setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, statTag: undefined } : t)); setEditingStatTaskId(null); }}
                 style={{ fontSize: 11, padding: '4px 8px', borderRadius: 8, border: !task.statTag ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)', background: !task.statTag ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >자동</button>
+              <button
+                onClick={() => { setTargetTasks(targetTasks.map(t => t.id === task.id ? { ...t, statTag: 'NONE' } : t)); setEditingStatTaskId(null); }}
+                style={{ fontSize: 11, padding: '4px 8px', borderRadius: 8, border: task.statTag === 'NONE' ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)', background: task.statTag === 'NONE' ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >🚫 없음</button>
               {GROWTH_STATS.map(s => (
                 <button
                   key={s.id}
