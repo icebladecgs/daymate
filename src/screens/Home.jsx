@@ -8,6 +8,7 @@ import { store } from "../utils/storage.js";
 import { triggerVibration } from "../utils/notification.js";
 import { calcStreak, calcDayScore, calcLevel, LEVEL_TITLES, LEVEL_ICONS } from "../data/stats.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
+import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
@@ -368,6 +369,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [pfMarket, setPfMarket] = useState(() => { try { return JSON.parse(localStorage.getItem(pfCacheKey) || "null"); } catch { return null; } });
   const [pfLoading, setPfLoading] = useState(false);
 
+  const fxCacheKey = `dm_fx_usd_krw_${toDateStr()}`;
+  const [pfFxRate, setPfFxRate] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(fxCacheKey) || "null"); } catch { return null; }
+  });
+
   useEffect(() => {
     const holdings = telegramCfg?.holdings || [];
     if (!pfMarket && holdings.length > 0) {
@@ -377,26 +383,22 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         .then(data => { localStorage.setItem(pfCacheKey, JSON.stringify(data)); setPfMarket(data); })
         .finally(() => setPfLoading(false));
     }
+    // 원화 종목을 USD 총액에 환산해 합산하기 위한 환율 — Portfolio.jsx와 동일 캐시키 공유
+    if (pfFxRate == null && holdings.length > 0) {
+      fetch("/api/market?type=fx&from=USD&to=KRW")
+        .then(res => res.json())
+        .then(data => { if (data?.ok && data.rate) { localStorage.setItem(fxCacheKey, JSON.stringify(data.rate)); setPfFxRate(data.rate); } })
+        .catch(() => {});
+    }
   }, []); // eslint-disable-line
 
   const pfSummary = useMemo(() => {
     const holdings = telegramCfg?.holdings || [];
-    if (!pfMarket || holdings.length === 0) return null;
-    let totalValue = 0, totalCost = 0, totalDailyChange = 0, count = 0;
-    holdings.forEach(h => {
-      const d = pfMarket[h.sym]; if (!d) return;
-      const value = h.qty * d.price;
-      const cost = h.qty * h.avgPrice;
-      const chg = d.change != null ? d.change * h.qty : d.chgPct != null ? value * (d.chgPct / 100) / (1 + d.chgPct / 100) : 0;
-      totalValue += value; totalCost += cost; totalDailyChange += chg; count++;
-    });
-    if (count === 0) return null;
-    const pnl = totalValue - totalCost;
-    const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
-    const prevValue = totalValue - totalDailyChange;
-    const dailyChangePct = prevValue > 0 ? (totalDailyChange / prevValue) * 100 : 0;
+    const summary = calcPortfolioSummary(holdings, pfMarket, pfFxRate);
+    if (!summary) return null;
+    const { value: totalValue, pnl, pnlPct, dailyChange: totalDailyChange, dailyChangePct } = summary.statsUSD;
     return { totalValue, pnl, pnlPct, totalDailyChange, dailyChangePct };
-  }, [pfMarket, telegramCfg?.holdings]); // eslint-disable-line
+  }, [pfMarket, pfFxRate, telegramCfg?.holdings]); // eslint-disable-line
 
 
   // 뒤로가기로 모달 닫기

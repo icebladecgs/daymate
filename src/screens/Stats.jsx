@@ -105,11 +105,15 @@ const last30 = useMemo(() => {
         doneTasks += done;
         if (isPerfectDay(d)) { perfectDaysCount++; curStreak++; bestStreak = Math.max(bestStreak, curStreak); }
         else curStreak = 0;
+      } else curStreak = 0;
+      // 습관 체크는 할일과 무관하게 별도로 기록될 수 있으므로, 할일 존재 여부와 상관없이
+      // "그날 기록이 있었는지"만으로 집계한다 (아래 "습관 달성률" 섹션과 동일한 분모를 쓰기 위함)
+      if (d) {
         (habits || []).forEach(h => {
           habitTotals[h.id] = (habitTotals[h.id] || 0) + 1;
           if (d.habitChecks?.[h.id]) habitDones[h.id] = (habitDones[h.id] || 0) + 1;
         });
-      } else curStreak = 0;
+      }
     }
     const completionRate = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
     const habitStats = (habits || []).map(h => ({

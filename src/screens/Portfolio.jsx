@@ -3,6 +3,7 @@ import { saveSettings } from "../firebase.js";
 import { store } from "../utils/storage.js";
 import { toDateStr } from "../utils/date.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
+import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 
@@ -28,15 +29,6 @@ const fmtKRW = (n) => Number(n).toLocaleString("ko-KR") + "원";
 const fmtPrice = (n, currency) => currency === "KRW" ? fmtKRW(n) : fmtUSD(n);
 const fmtPct = (n) => (n >= 0 ? "+" : "") + fmtNum(n) + "%";
 const pnlColor = (n) => n > 0 ? "#4ADE80" : n < 0 ? "#F87171" : "var(--dm-muted)";
-
-function getDailyChange(d, qty) {
-  if (d.change != null) return d.change * qty;
-  if (d.chgPct != null) return (d.price * d.chgPct / 100) * qty;
-  return 0;
-}
-
-// 시세 API가 실제로 반환한 통화(d.currency, yahoo만 KRW/USD 실측치 포함) 기준으로 판정
-const getMarketCurrency = (h, d) => d?.currency || (h.src === 'yahoo' ? 'KRW' : 'USD');
 
 function pad2(n) { return String(n).padStart(2, "0"); }
 function formatMemoDate(iso) {
@@ -247,66 +239,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     saveHoldings(next);
   };
 
-  // 통화별 합계에서 손익/변동률 파생값 계산
-  const deriveStats = (value, cost, dailyChange) => {
-    const pnl = value - cost;
-    const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-    const prevValue = value - dailyChange;
-    const dailyChangePct = prevValue > 0 ? (dailyChange / prevValue) * 100 : 0;
-    return { value, cost, pnl, pnlPct, dailyChange, dailyChangePct };
-  };
-
-  // 포트폴리오 요약 계산
-  // 현재는 USD/KRW 두 통화만 지원한다. 각 통화의 원래(native) 합계를 따로 모아두고,
-  // 환율이 있으면 그걸로 상대 통화 쪽 합계에도 환산해 더해서 두 가지 기준(USD/KRW) 총액을 모두 제공한다.
-  const calcSummary = () => {
-    if (!marketData || holdings.length === 0) return null;
-    let usdValue = 0, usdCost = 0, usdDailyChange = 0, usdCount = 0;
-    let krwValue = 0, krwCost = 0, krwDailyChange = 0, krwCount = 0;
-    const rows = holdings.map(h => {
-      const d = marketData[h.sym];
-      if (!d) return { ...h, noData: true };
-      const marketCurrency = getMarketCurrency(h, d);
-      if (h.currency && h.currency !== marketCurrency) {
-        return { ...h, price: d.price, marketCurrency, currencyMismatch: true };
-      }
-      const value = h.qty * d.price;
-      const cost = h.qty * h.avgPrice;
-      const dailyChange = getDailyChange(d, h.qty);
-      const pnl = value - cost;
-      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-      if (marketCurrency === 'KRW') {
-        krwValue += value; krwCost += cost; krwDailyChange += dailyChange; krwCount++;
-      } else {
-        usdValue += value; usdCost += cost; usdDailyChange += dailyChange; usdCount++;
-      }
-      return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange };
-    });
-    if (usdCount === 0 && krwCount === 0) return null;
-
-    const rate = usdKrwRate; // 1 USD ≈ rate KRW
-    const fxOk = !!rate;
-    const statsUSD = deriveStats(
-      usdValue + (fxOk ? krwValue / rate : 0),
-      usdCost + (fxOk ? krwCost / rate : 0),
-      usdDailyChange + (fxOk ? krwDailyChange / rate : 0)
-    );
-    const statsKRW = deriveStats(
-      krwValue + (fxOk ? usdValue * rate : 0),
-      krwCost + (fxOk ? usdCost * rate : 0),
-      krwDailyChange + (fxOk ? usdDailyChange * rate : 0)
-    );
-
-    return {
-      rows,
-      usdNative: { value: usdValue, count: usdCount },
-      krwNative: { value: krwValue, count: krwCount },
-      statsUSD, statsKRW, fxOk,
-      mixed: usdCount > 0 && krwCount > 0,
-    };
-  };
-
-  const summary = calcSummary();
+  const summary = calcPortfolioSummary(holdings, marketData, usdKrwRate);
   const stats = displayCurrency === "KRW" ? summary?.statsKRW : summary?.statsUSD;
   const setDisplayCurrencyPersist = (cur) => { setDisplayCurrency(cur); store.set("dm_pf_display_currency", cur); };
 

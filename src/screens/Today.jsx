@@ -173,6 +173,12 @@ export default function Today({
   const displayedJournalBody = journalDayOffset === 0 ? bodyText : otherJournalBody;
   const setDisplayedJournalBody = journalDayOffset === 0 ? setBodyText : setOtherJournalBody;
   const displayedJournalSaved = journalDayOffset === 0 ? journalSaved : otherJournalBody === otherJournalSavedRef.current;
+  // 날짜 이동 시 디바운스 타이머가 취소되기 전에 대기 중인 변경을 먼저 저장
+  const flushJournalSave = () => {
+    if (journalDayOffset === 0 || otherJournalBody === otherJournalSavedRef.current) return;
+    onUpdateDayData?.(journalTargetDs, prev => ({ ...prev, journal: { ...prev.journal, body: otherJournalBody } }));
+    otherJournalSavedRef.current = otherJournalBody;
+  };
   const updateJournalPhotoForTarget = (photo) => {
     if (journalDayOffset === 0) { updateJournalPhoto(photo); return; }
     onUpdateDayData?.(journalTargetDs, prev => ({ ...prev, journal: { ...prev.journal, photoUrl: photo?.url || null, photoPath: photo?.path || null } }));
@@ -1031,8 +1037,8 @@ export default function Today({
           )}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button onClick={() => setJournalDayOffset(o => o - 1)} aria-label="전날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={() => setJournalDayOffset(o => o + 1)} aria-label="다음날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o - 1); }} aria-label="전날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
       <div style={S.card}>

@@ -681,9 +681,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             if (!authUser) { setToast('로그인이 필요해요'); return; }
             try {
               setToast('📱 잠금화면 알림 전송 중...');
+              const idToken = await authUser.getIdToken();
               const res = await fetch('/api/push', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
                 body: JSON.stringify({ uid: authUser.uid, title: '☀️ 아침 할일 알림 테스트', body: '⬜ 이렇게 잠금화면에 표시돼요!\n⬜ 탭하면 앱이 열립니다' }),
               });
               const json = await res.json();

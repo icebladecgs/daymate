@@ -108,6 +108,9 @@ export default function App() {
         if (e.state.screen === 'keyword-detail' && e.state.keyword) {
           setOpenKeyword(e.state.keyword);
         }
+        if (e.state.screen === 'detail' && e.state.date) {
+          setOpenDate(e.state.date);
+        }
       }
     };
     window.addEventListener('popstate', handler);
@@ -832,9 +835,14 @@ export default function App() {
     });
   };
 
-  const [openDate, setOpenDate] = useState(null);
+  // 새로고침/딥링크로 바로 진입할 때도 URL의 date/kw를 읽어 복원 (screen 초기값 파싱과 동일한 패턴)
+  const [openDate, setOpenDate] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('date') || null; } catch { return null; }
+  });
   const [scrollToMemo, setScrollToMemo] = useState(false);
-  const [openKeyword, setOpenKeyword] = useState(null);
+  const [openKeyword, setOpenKeyword] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get('kw') || null; } catch { return null; }
+  });
 
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
@@ -1454,7 +1462,7 @@ export default function App() {
     setOpenDate(ds);
     setScrollToMemo(false);
     setScreen("detail");
-    history.pushState({ screen: 'detail', isRoot: false }, '', `?screen=detail&date=${ds}`);
+    history.pushState({ screen: 'detail', date: ds, isRoot: false }, '', `?screen=detail&date=${ds}`);
   };
 
   const openDetailMemo = (ds) => {
