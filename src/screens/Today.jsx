@@ -183,6 +183,18 @@ export default function Today({
     if (journalDayOffset === 0) { updateJournalPhoto(photo); return; }
     onUpdateDayData?.(journalTargetDs, prev => ({ ...prev, journal: { ...prev.journal, photoUrl: photo?.url || null, photoPath: photo?.path || null } }));
   };
+  // 자동저장 debounce(1.5초)를 기다리지 않고 즉시 저장하는 버튼용 핸들러
+  const handleManualJournalSave = () => {
+    if (journalDayOffset === 0) {
+      if (!journalSaved) {
+        setData(prev => ({ ...prev, journal: { ...prev.journal, body: bodyText } }));
+        journalSavedRef.current = bodyText;
+      }
+    } else {
+      flushJournalSave();
+    }
+    setToast?.('저장됨 ✅');
+  };
 
   // My탭과 동일한 계산(기존 XP/레벨/티어) — 오늘 화면에서도 함께 보여주기 위함, 기존 로직/저장방식은 그대로
   const todayScore = useMemo(() => calcDayScore(data, habits), [data, habits]);
@@ -1078,17 +1090,26 @@ export default function Today({
           <div style={{ fontSize: 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
             {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
           </div>
-          {uid && (
-            <PhotoAttach
-              uid={uid}
-              pathPrefix={`users/${uid}/journal`}
-              photoUrl={journalTargetDay.journal?.photoUrl}
-              photoPath={journalTargetDay.journal?.photoPath}
-              onChange={updateJournalPhotoForTarget}
-              onError={setToast}
-              size={34}
-            />
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={handleManualJournalSave}
+              style={{
+                background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10,
+                padding: '7px 16px', fontSize: 12, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >저장</button>
+            {uid && (
+              <PhotoAttach
+                uid={uid}
+                pathPrefix={`users/${uid}/journal`}
+                photoUrl={journalTargetDay.journal?.photoUrl}
+                photoPath={journalTargetDay.journal?.photoPath}
+                onChange={updateJournalPhotoForTarget}
+                onError={setToast}
+                size={34}
+              />
+            )}
+          </div>
         </div>
       </div>
 
