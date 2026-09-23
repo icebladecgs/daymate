@@ -1269,6 +1269,13 @@ export default function App() {
         }
         // 내 초대 코드 — 서버에 이미 등록된 코드가 있으면 그걸 정본으로 쓰고,
         // 없으면(첫 로그인) 지금 이 기기의 코드를 서버에 등록해 이후 다른 기기도 같은 코드로 수렴시킨다.
+        // 생년월일시 — v559 이전에 이 기기에만 입력해 둔 값은 수정 전까지 업로드되지 않으므로,
+        // 서버에 값이 없고 로컬에만 있으면 지금 올려서 다른 기기(휴대폰 등)도 받을 수 있게 한다.
+        if (remote.settings?.birthDate === undefined) {
+          const localBirthDate = store.get('dm_birth_date', '');
+          const localBirthTime = store.get('dm_birth_time', '');
+          if (localBirthDate) saveSettings(firebaseUser.uid, { birthDate: localBirthDate, birthTime: localBirthTime }).catch(() => {});
+        }
         const remoteInviteCode = remote.settings?.inviteCode;
         const canonicalInviteCode = remoteInviteCode || store.get('dm_invite_code');
         if (canonicalInviteCode) {
