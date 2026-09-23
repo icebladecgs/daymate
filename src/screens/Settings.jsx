@@ -136,6 +136,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
   habits, setHabits, recurringTasks, setRecurringTasks,
   diaryQuestions, setDiaryQuestions,
+  birthDate, setBirthDate, birthTime, setBirthTime,
   installPrompt, handleInstall, setShowInstallBanner, isIOS, isSamsung,
   myCode, usedInviteCodes, setUsedInviteCodes,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
@@ -176,8 +177,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [name, setName] = useState(user.name || "");
   const [yearText, setYearText] = useState(getYearGoalTitles(goals).join("\n"));
   const [diaryQText, setDiaryQText] = useState((diaryQuestions || []).join("\n"));
-  const [birthDate, setBirthDate] = useState(() => store.get('dm_birth_date', ''));
-  const [birthTime, setBirthTime] = useState(() => store.get('dm_birth_time', ''));
   const [permission, setPermission] = useState(getPermission());
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -418,8 +417,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     setGoals(nextGoals);
     store.set("dm_user", nextUser);
     store.set("dm_goals", nextGoals);
-    store.set("dm_birth_date", birthDate);
-    store.set("dm_birth_time", birthTime);
     if (authUser) saveSettings(authUser.uid, { name: nextUser.name }).catch(() => {});
     setToast("저장 완료 ✅");
   };

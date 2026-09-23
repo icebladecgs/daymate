@@ -41,6 +41,8 @@ export default function Today({
   battleNickname,
   onSetBattleNickname,
   contacts,
+  birthDate: birthDateProp,
+  birthTime: birthTimeProp,
 }) {
   const tasks = data.tasks || [];
   const contactReminders = useMemo(() => getContactReminders(contacts, plans, 7, dateStr), [contacts, plans, dateStr]);
@@ -236,8 +238,8 @@ export default function Today({
       setLottoAnim(false);
     }, 900);
   };
-  const birthDate = store.get('dm_birth_date', '');
-  const birthTime = store.get('dm_birth_time', '');
+  const birthDate = birthDateProp || '';
+  const birthTime = birthTimeProp || '';
   const fortuneCacheKey = `dm_fortune_${dateStr}`;
   const fortuneXpKey = `dm_fortune_xp_${dateStr}`;
   const avgFortuneScore = (fd) => {

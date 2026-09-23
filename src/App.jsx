@@ -391,6 +391,8 @@ export default function App() {
     });
   };
   const [diaryQuestions, setDiaryQuestions] = useState(() => store.get("dm_diary_questions", DEFAULT_DIARY_QUESTIONS));
+  const [birthDate, setBirthDate] = useState(() => store.get("dm_birth_date", ""));
+  const [birthTime, setBirthTime] = useState(() => store.get("dm_birth_time", ""));
   const [scores, setScores] = useState(() => store.get("dm_scores", {}));
   const [recurringTasks, setRecurringTasks] = useState(() => store.get("dm_recurring", []));
   const [event, setEvent] = useState(() => store.get("dm_event", { name: "", startDate: "", endDate: "", active: false }));
@@ -1206,6 +1208,8 @@ export default function App() {
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
+            if (s.birthDate !== undefined) { setBirthDate(s.birthDate); store.set("dm_birth_date", s.birthDate); }
+            if (s.birthTime !== undefined) { setBirthTime(s.birthTime); store.set("dm_birth_time", s.birthTime); }
             if (s.recurringTasks) { setRecurringTasks(s.recurringTasks); store.set("dm_recurring", s.recurringTasks); }
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
@@ -1323,6 +1327,11 @@ export default function App() {
     store.set("dm_diary_questions", diaryQuestions);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { diaryQuestions }).catch(() => {});
   }, [diaryQuestions, authUser]);
+  useEffect(() => {
+    store.set("dm_birth_date", birthDate);
+    store.set("dm_birth_time", birthTime);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { birthDate, birthTime }).catch(() => {});
+  }, [birthDate, birthTime, authUser]);
   useEffect(() => {
     store.set("dm_recurring", recurringTasks);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { recurringTasks }).catch(() => {});
@@ -2032,7 +2041,9 @@ export default function App() {
           onOpenSettings={() => changeScreen("settings")}
           battleNickname={battleNickname}
           onSetBattleNickname={setBattleNickname}
-          contacts={contacts} />
+          contacts={contacts}
+          birthDate={birthDate}
+          birthTime={birthTime} />
       );
     }
     if (screen === "memo") {
@@ -2181,6 +2192,8 @@ export default function App() {
           onGoogleSignIn={googleSignIn} onGoogleSignOut={googleSignOut}
           habits={habits} setHabits={setHabits}
           diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
+          birthDate={birthDate} setBirthDate={setBirthDate}
+          birthTime={birthTime} setBirthTime={setBirthTime}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           isIOS={isIOS} isSamsung={isSamsung}
@@ -2219,6 +2232,8 @@ export default function App() {
           onGoogleSignIn={googleSignIn} onGoogleSignOut={googleSignOut}
           habits={habits} setHabits={setHabits}
           diaryQuestions={diaryQuestions} setDiaryQuestions={setDiaryQuestions}
+          birthDate={birthDate} setBirthDate={setBirthDate}
+          birthTime={birthTime} setBirthTime={setBirthTime}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           installPrompt={installPrompt} handleInstall={handleInstall}
           isIOS={isIOS} isSamsung={isSamsung}
