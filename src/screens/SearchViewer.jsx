@@ -171,7 +171,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   }
 
   return (
-    <div style={S.fullScreenPanel()}>
+    <div style={S.fullScreenPanel(90)}>
       <div style={{ ...S.topbar, flexShrink: 0 }}>
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
