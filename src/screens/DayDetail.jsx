@@ -70,7 +70,9 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     const token = getValidGcalToken?.();
     const task = data.tasks.find(t => t.id === id);
     const isImported = task?.gcalEventId && String(task.id || '').startsWith('gcal_');
-    if (token && task?.gcalEventId && !isImported) gcalDeleteEvent(token, task.gcalEventId).catch(() => setToast('캘린더 삭제 실패'));
+    const willDeleteFromGcal = !!(token && task?.gcalEventId && !isImported);
+    if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return;
+    if (willDeleteFromGcal) gcalDeleteEvent(token, task.gcalEventId).catch(() => setToast('캘린더 삭제 실패'));
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   };
 

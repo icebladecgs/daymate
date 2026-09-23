@@ -835,8 +835,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                           )}
                           <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
                             style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
-                          <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }))}
-                            style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
+                          <button onClick={() => {
+                            const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
+                            const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
+                            if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return;
+                            onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }));
+                          }} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
                         </div>
                       )}
                     </div>
