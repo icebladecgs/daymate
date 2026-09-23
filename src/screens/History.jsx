@@ -9,7 +9,7 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -31,6 +31,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [legendOpen, setLegendOpen] = useState(false);
   const [gcalRefreshing, setGcalRefreshing] = useState(false);
   const [gcalToast, setGcalToast] = useState(null);
+  const [gcalImporting, setGcalImporting] = useState(false);
 
   const showToast = (msg) => {
     setGcalToast(msg);
@@ -695,6 +696,19 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         });
         const mood = d?.journal?.mood;
         const moodMap = { '행복': '😊', '평온': '😌', '보통': '🤔', '피곤': '😴', '우울': '😔' };
+        const importedGcalIds = new Set((d?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
+        const previewGcalEvents = (gcalEvents[preview] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
+
+        const importPreviewGcalEvents = async () => {
+          if (!onImportGcalEvents || gcalImporting) return;
+          setGcalImporting(true);
+          try {
+            const added = onImportGcalEvents(preview, previewGcalEvents);
+            showToast(added > 0 ? `${added}개 가져왔어요 ✅` : '이미 모두 추가됨');
+          } finally {
+            setGcalImporting(false);
+          }
+        };
 
         const addQuickTask = () => {
           const title = quickTaskInput.trim();
@@ -847,6 +861,30 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     </>
                   );
                 })()}
+
+                {/* 아직 가져오지 않은 구글 캘린더 일정 — 캘린더 셀 칩으로는 보이지만 수정은 안 되므로, 가져오기 눌러야 편집 가능해진다 */}
+                {previewGcalEvents.length > 0 && (
+                  <div style={{ marginTop: tasks.length > 0 ? 10 : 0, marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>📅 구글 캘린더 일정 (가져오지 않음)</div>
+                    {previewGcalEvents.map(e => {
+                      const timeStr = e.start?.dateTime
+                        ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+                        : null;
+                      return (
+                        <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                          <span style={{ fontSize: 14, color: 'var(--dm-text)', flex: 1, lineHeight: 1.4, opacity: 0.85 }}>{e.summary || '(제목없음)'}</span>
+                          {timeStr && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{timeStr}</span>}
+                        </div>
+                      );
+                    })}
+                    {onImportGcalEvents && (
+                      <button onClick={importPreviewGcalEvents} disabled={gcalImporting}
+                        style={{ marginTop: 4, fontSize: 12, padding: '6px 12px', background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', borderRadius: 8, cursor: gcalImporting ? 'default' : 'pointer', color: '#6C8EFF', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
+                        {gcalImporting ? '⏳ 가져오는 중...' : '📥 가져와서 수정 가능하게 하기'}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* GCal 미연동 배너 */}
                 {onGcalConnect && !getValidGcalToken?.() && (
