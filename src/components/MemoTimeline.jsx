@@ -98,6 +98,18 @@ export function getMemoTimeStr() {
   return getMemoTime();
 }
 
+// 레거시 단일 memo 필드는 화면에서 id 'legacy' 항목으로 보여준다
+export function displayMemos(day) {
+  if (day?.memos?.length) return day.memos;
+  return day?.memo?.trim() ? [{ id: 'legacy', text: day.memo.trim(), createdAt: '' }] : [];
+}
+
+// 레거시 단일 memo 필드만 있는 날은 memos 배열로 옮겨서 다룬다 (편집 시 레거시 내용 유실 방지)
+export function withMemoList(day) {
+  if (day?.memos?.length || !day?.memo?.trim()) return day?.memos || [];
+  return [{ id: genMemoId(), text: day.memo.trim(), createdAt: '' }];
+}
+
 export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);

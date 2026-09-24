@@ -5,7 +5,7 @@ import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents
 import { deletePhoto } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
-import MemoTimeline, { genMemoId } from "../components/MemoTimeline.jsx";
+import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay }) {
@@ -368,17 +368,19 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           : S.card.boxShadow,
       }}>
         <MemoTimeline
-          memos={data.memos || (data.memo?.trim() ? [{ id: 'legacy', text: data.memo.trim(), createdAt: '' }] : [])}
+          memos={displayMemos(data)}
           onAdd={(text, time) => setData(prev => ({
             ...prev,
-            memos: [...(prev.memos || []), { id: genMemoId(), text, createdAt: time }],
+            memos: [...withMemoList(prev), { id: genMemoId(), text, createdAt: time }],
             memo: '',
           }))}
-          onUpdate={(id, text) => setData(prev => ({
-            ...prev,
-            memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
-          }))}
+          onUpdate={(id, text) => setData(prev => (
+            id === 'legacy'
+              ? { ...prev, memo: text }
+              : { ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }
+          ))}
           onDelete={(id) => {
+            if (id === 'legacy') { setData(prev => ({ ...prev, memo: '' })); return; }
             const target = (data.memos || []).find(m => m.id === id);
             (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
             setData(prev => ({

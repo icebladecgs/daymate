@@ -8,14 +8,8 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
-import MemoTimeline, { genMemoId } from "../components/MemoTimeline.jsx";
+import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import { deletePhoto } from "../firebase.js";
-
-// 레거시 단일 memo 필드만 있는 날은 memos 배열로 옮겨서 다룬다 (편집 시 레거시 내용 유실 방지)
-function withMemoList(day) {
-  if (day?.memos?.length || !day?.memo?.trim()) return day?.memos || [];
-  return [{ id: genMemoId(), text: day.memo.trim(), createdAt: '' }];
-}
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -921,7 +915,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
                   <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>📝 메모</div>
                   <MemoTimeline
-                    memos={d?.memos?.length ? d.memos : (d?.memo?.trim() ? [{ id: 'legacy', text: d.memo.trim(), createdAt: '' }] : [])}
+                    memos={displayMemos(d)}
                     onAdd={(text, time) => onUpdateDayData?.(preview, prev => ({
                       ...prev,
                       memos: [...withMemoList(prev), { id: genMemoId(), text, createdAt: time }],
