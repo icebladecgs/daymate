@@ -2,7 +2,7 @@ import { useState } from "react";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import PhotoAttach from "../components/PhotoAttach.jsx";
-import ContactImportSheet from "../components/ContactImportSheet.jsx";
+import ContactImportSheet, { ContactPermissionGuide } from "../components/ContactImportSheet.jsx";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import {
   newContact, genSubId, searchContacts, buildImportCandidates,
@@ -364,24 +364,33 @@ export default function People({
   // 휴대폰 연락처에서 가져오기 (Contact Picker API — 안드로이드 크롬·설치형 앱 지원, 아이폰 미지원)
   // 운영체제의 연락처 선택 창에서 사용자가 직접 고른 사람만 앱에 전달됨 (주소록 전체를 읽지 않음)
   const [importCandidates, setImportCandidates] = useState(null);
+  // 연락처 권한 안내: 'before' = 선택 창 열기 전 안내(첫 성공 전까지), 'empty' = 아무것도 안 넘어왔을 때 설정 안내
+  // (크롬의 "연락처 접근 허용" 창은 크롬이 처음 한 번만 띄우고, 거부했으면 웹에서 다시 띄우거나 설정 화면을 열 수 없음)
+  const [importGuide, setImportGuide] = useState(null);
   const pickerSupported = typeof navigator !== "undefined" && "contacts" in navigator && typeof navigator.contacts?.select === "function";
-  const startImport = async () => {
+  const startImport = () => {
     if (!pickerSupported) {
-      setToast?.("휴대폰 연락처 가져오기는 안드로이드에서 돼요. 아이폰은 곧 파일로 가져오기를 지원할 예정이에요");
+      setToast?.("휴대폰 연락처 가져오기는 안드로이드 크롬에서 돼요. 삼성 인터넷·아이폰은 곧 파일로 가져오기를 지원할 예정이에요");
       return;
     }
+    let everSucceeded = false;
+    try { everSucceeded = localStorage.getItem("dm_contact_import_ok") === "1"; } catch { /* 저장소 접근 불가 시 안내 표시 */ }
+    if (everSucceeded) openPicker();
+    else setImportGuide("before");
+  };
+  // 버튼 누름(사용자 동작) 안에서 바로 호출해야 선택 창이 열림
+  const openPicker = async () => {
+    setImportGuide(null);
     try {
       const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
-      // 안드로이드 선택 창에서 검색 후 키보드 검색(엔터)을 누르면 아무도 선택 안 된 채 창이 닫히는 경우가 있어 안내
-      if (!picked?.length) {
-        setToast?.("선택된 연락처가 없어요. 선택 창에서는 검색하지 말고 맨 위 '모두 선택' → 확인을 누른 뒤, 여기서 검색해 골라주세요");
-        return;
-      }
+      // 권한이 없거나, 선택 창에서 검색 후 엔터를 눌러 아무 선택 없이 닫힌 경우
+      if (!picked?.length) { setImportGuide("empty"); return; }
       const candidates = buildImportCandidates(picked, contacts);
       if (!candidates.length) { setToast?.("가져올 수 있는 연락처가 없어요"); return; }
+      try { localStorage.setItem("dm_contact_import_ok", "1"); } catch { /* 무시 */ }
       setImportCandidates(candidates);
     } catch {
-      setToast?.("연락처를 불러오지 못했어요");
+      setImportGuide("empty");
     }
   };
   const finishImport = (chosen, tags) => {
@@ -527,6 +536,7 @@ export default function People({
       {importCandidates && (
         <ContactImportSheet candidates={importCandidates} allTags={contactTags} onImport={finishImport} onClose={() => setImportCandidates(null)} />
       )}
+      {importGuide && <ContactPermissionGuide mode={importGuide} onContinue={openPicker} onClose={() => setImportGuide(null)} />}
       <div style={{ height: 80 }} />
     </div>
   );

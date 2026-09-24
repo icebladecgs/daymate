@@ -3,6 +3,57 @@ import { createPortal } from "react-dom";
 import S from "../styles.js";
 import { searchContacts } from "../data/contacts.js";
 
+// 연락처 가져오기 전·실패 시 안내 창
+// mode 'before': 선택 창을 열기 전에 "허용 → 모두 선택" 순서를 알려줌 (첫 성공 전까지)
+// mode 'empty' : 아무 연락처도 안 넘어왔을 때 크롬 연락처 권한 켜는 방법 + 다시 시도
+export function ContactPermissionGuide({ mode, onContinue, onClose }) {
+  const step = (n, text) => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
+      <span style={{ width: 22, height: 22, borderRadius: 999, background: '#6C8EFF', color: '#fff', fontSize: 12, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
+      <span style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.55 }}>{text}</span>
+    </div>
+  );
+  const portalTarget = document.querySelector('.dm-phone') || document.body;
+  return createPortal(
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 310, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 380, background: 'var(--dm-bg)', borderRadius: 18, border: '1px solid var(--dm-border)', padding: '20px 20px 16px', boxShadow: '0 12px 40px rgba(0,0,0,.4)' }}>
+        {mode === 'before' ? (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>📱 휴대폰 연락처 가져오기</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 16, lineHeight: 1.5 }}>휴대폰 연락처 창이 열려요. 아래 순서대로 해주세요.</div>
+            {step(1, <>연락처 접근을 묻는 창이 뜨면 <b>허용</b></>)}
+            {step(2, <>연락처 창에서는 검색하지 말고 맨 위 <b>모두 선택</b> → <b>확인</b></>)}
+            {step(3, <>DayMate 목록에서 <b>검색하며 등록할 사람 체크</b></>)}
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.5, margin: '4px 0 14px' }}>
+              고른 연락처만 내 계정에 저장되고, 다른 곳으로 보내지 않아요.
+            </div>
+            <button onClick={onContinue} style={{ ...S.btn, marginBottom: 8 }}>연락처 열기</button>
+            <button onClick={onClose} style={{ ...S.btnGhost, marginTop: 0 }}>취소</button>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>연락처를 받지 못했어요</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+              목록이 비어 있었다면 <b>크롬에 연락처 권한이 꺼져 있을 가능성</b>이 커요. (예전에 거부하면 다시 묻지 않아요)
+            </div>
+            {step(1, <>휴대폰 <b>설정 → 애플리케이션 → Chrome</b></>)}
+            {step(2, <><b>권한 → 연락처 → 허용</b></>)}
+            {step(3, <>DayMate로 돌아와 <b>다시 시도</b></>)}
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.5, margin: '4px 0 14px' }}>
+              연락처 창에서 검색 후 키보드 검색(엔터)을 누르면 창이 그냥 닫혀요. 검색하지 말고 <b>모두 선택 → 확인</b>을 눌러주세요.
+            </div>
+            <button onClick={onContinue} style={{ ...S.btn, marginBottom: 8 }}>다시 시도</button>
+            <button onClick={onClose} style={{ ...S.btnGhost, marginTop: 0 }}>닫기</button>
+          </>
+        )}
+      </div>
+    </div>,
+    portalTarget
+  );
+}
+
 // 휴대폰 연락처 가져오기 — 안드로이드 선택 창에서 "모두 선택"으로 넘겨받은 연락처 전체를 보여주고,
 // 여기서 검색(이름·초성·전화번호)하며 등록할 사람만 체크한다. 기본은 모두 해제.
 // 이미 등록된 사람은 "이미 등록됨" 표시(체크하면 새로 하나 더 만들어지므로 체크 불가).
