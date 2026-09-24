@@ -140,6 +140,21 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     return () => clearTimeout(timer);
   }, [text]); // eslint-disable-line
 
+  // 뒤로가기(화면 전환으로 언마운트)나 앱 종료 시 1초 debounce 대기 중인 내용이 취소되지 않도록 즉시 저장
+  const latestRef = useRef({ text, flush });
+  useEffect(() => { latestRef.current = { text, flush }; });
+  useEffect(() => {
+    const flushLatest = () => latestRef.current.flush(latestRef.current.text);
+    const onHide = () => { if (document.visibilityState === 'hidden') flushLatest(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', flushLatest);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', flushLatest);
+      flushLatest();
+    };
+  }, []);
+
   const handleClose = () => { flush(text); onClose(); };
 
   const handleSaveAndContinue = () => {
