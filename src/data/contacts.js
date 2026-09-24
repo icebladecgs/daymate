@@ -43,7 +43,7 @@ export function normalizePhone(phone) {
 // 선택 목록 안에서 같은 사람이 두 번 나오면 한 번만 남긴다.
 export function buildImportCandidates(picked, existingContacts) {
   const existingPhones = new Set((existingContacts || []).map(c => normalizePhone(c.phone)).filter(Boolean));
-  const existingNames = new Set((existingContacts || []).map(c => (c.name || "").trim()).filter(Boolean));
+  const existingNames = new Set((existingContacts || []).map(c => String(c.name || "").normalize("NFC").trim()).filter(Boolean));
   const seen = new Set();
   const out = [];
   (picked || []).forEach((p, i) => {
@@ -57,7 +57,9 @@ export function buildImportCandidates(picked, existingContacts) {
     if (seen.has(key)) return;
     seen.add(key);
     const dup = norm ? existingPhones.has(norm) : existingNames.has(name);
-    out.push({ key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: false });
+    const item = { key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: false };
+    item.search = buildSearchIndex(item); // 가져오기 창 검색용으로 한 번만 계산
+    out.push(item);
   });
   return out;
 }
@@ -163,17 +165,29 @@ export function getChoseong(text) {
   }).join("");
 }
 
+// 검색용 정보를 미리 계산 — 연락처가 수천 명이어도 글자 칠 때마다 초성·번호를 다시 계산하지 않도록
+export function buildSearchIndex(c) {
+  return {
+    text: [c.name, c.company, c.title, c.email, c.memo, ...(c.tags || [])].map(normText).join("\u0001"),
+    digits: normalizePhone(c.phone),
+    cho: [c.name, c.company].map(getChoseong).join("\u0001"),
+  };
+}
+export function prepareSearchQuery(query) {
+  const q = normText(query);
+  return { q, digits: normalizePhone(query), isCho: /^[ㄱ-ㅎ]+$/.test(q) };
+}
+export function matchSearchIndex(idx, pq) {
+  if (!pq.q) return true;
+  if (idx.text.includes(pq.q)) return true;
+  if (pq.digits.length >= 3 && idx.digits.includes(pq.digits)) return true;
+  if (pq.isCho && idx.cho.includes(pq.q)) return true;
+  return false;
+}
+
 // 이름·회사·직함·이메일·메모·태그 + 전화번호(숫자 3자리 이상) + 초성(ㄱㅊㅅ) 검색
 export function searchContacts(contacts, query) {
-  const q = normText(query);
-  if (!q) return contacts || [];
-  const qDigits = normalizePhone(query);
-  const isChoseongQuery = /^[ㄱ-ㅎ]+$/.test(q);
-  return (contacts || []).filter((c) => {
-    const texts = [c.name, c.company, c.title, c.email, c.memo, ...(c.tags || [])];
-    if (texts.some((t) => normText(t).includes(q))) return true;
-    if (qDigits.length >= 3 && normalizePhone(c.phone).includes(qDigits)) return true;
-    if (isChoseongQuery && [c.name, c.company].some((t) => getChoseong(t).includes(q))) return true;
-    return false;
-  });
+  const pq = prepareSearchQuery(query);
+  if (!pq.q) return contacts || [];
+  return (contacts || []).filter((c) => matchSearchIndex(buildSearchIndex(c), pq));
 }

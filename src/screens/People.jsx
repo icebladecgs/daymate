@@ -382,7 +382,8 @@ export default function People({
   const openPicker = async () => {
     setImportGuide(null);
     try {
-      const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+      // 이름·전화만 요청 — 이메일까지 요청하면 연락처가 많을 때 선택 창이 더 늦게 뜸 (이메일은 필요 시 직접 입력)
+      const picked = await navigator.contacts.select(["name", "tel"], { multiple: true });
       // 권한이 없거나, 선택 창에서 검색 후 엔터를 눌러 아무 선택 없이 닫힌 경우
       if (!picked?.length) { setImportGuide("empty"); return; }
       const candidates = buildImportCandidates(picked, contacts);
