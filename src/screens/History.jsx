@@ -8,7 +8,6 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
-import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 
@@ -932,30 +931,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </button>
                 </div>
 
-                {/* 메모 — 항목별 편집 (사진·즐겨찾기·작성시간 보존) */}
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-                  <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>📝 메모</div>
-                  <MemoTimeline
-                    memos={displayMemos(d)}
-                    onAdd={(text, time) => onUpdateDayData?.(preview, prev => ({
-                      ...prev,
-                      memos: [...withMemoList(prev), { id: genMemoId(), text, createdAt: time }],
-                      memo: '',
-                    }))}
-                    onUpdate={(id, text) => onUpdateDayData?.(preview, prev => (
-                      id === 'legacy'
-                        ? { ...prev, memo: text }
-                        : { ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }
-                    ))}
-                    onDelete={(id) => {
-                      if (id === 'legacy') { onUpdateDayData?.(preview, prev => ({ ...prev, memo: '' })); return; }
-                      const target = (d?.memos || []).find(m => m.id === id);
-                      (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
-                      onUpdateDayData?.(preview, prev => ({ ...prev, memos: (prev.memos || []).filter(m => m.id !== id) }));
-                    }}
-                    placeholder="메모를 남겨보세요"
-                  />
-                </div>
+                {/* 하루 메모 칸은 미리보기에서 뺌 — 일정별 메모는 할일 상세(제목 클릭)로, 하루 메모는 자세히보기(날짜 상세)에서 */}
 
                 {/* 일기 — 전문 + 자세히 버튼 */}
                 {d?.journal?.body?.trim() && (
