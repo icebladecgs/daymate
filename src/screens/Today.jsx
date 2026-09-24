@@ -905,10 +905,12 @@ export default function Today({
                 style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
+            {/* 언젠가할일 목록의 ✕와 같은 모양 */}
             <button
               onClick={() => confirmDeleteTargetTask(task)}
-              style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#F87171', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
-            >삭제</button>
+              aria-label="삭제"
+              style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}
+            >✕</button>
           </div>
         ))}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
