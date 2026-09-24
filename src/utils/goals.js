@@ -75,6 +75,24 @@ export function normalizeGoals(rawGoals, currentMonthKey = getCurrentGoalMonthKe
   };
 }
 
+// 목표 목록을 편집·저장할 때 기존 항목(실천 항목 등)을 이어받기 위한 매칭.
+// 같은 제목이면 그대로, 제목이 바뀐 경우는 같은 자리(순서)에 있던 항목을 이어받음 (이름 수정).
+// 삭제로 순서가 밀린 경우 제목이 같은 쪽이 먼저 짝지어지므로 엉뚱한 목표로 넘어가지 않음.
+// 반환: newTitles와 같은 길이의 배열, 각 원소는 짝지어진 oldTitles의 인덱스(없으면 -1)
+export function matchGoalsByTitle(oldTitles = [], newTitles = []) {
+  const used = new Set();
+  const result = newTitles.map((t) => {
+    const i = oldTitles.findIndex((o, idx) => !used.has(idx) && o === t);
+    if (i >= 0) used.add(i);
+    return i;
+  });
+  return result.map((i, pos) => {
+    if (i >= 0) return i;
+    if (pos < oldTitles.length && !used.has(pos)) { used.add(pos); return pos; }
+    return -1;
+  });
+}
+
 export function getYearGoals(goals) {
   return normalizeGoals(goals).year;
 }

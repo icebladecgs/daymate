@@ -6,4 +6,5 @@ export const pickTaskDetail = (x = {}) => ({
   ...(x.files?.length ? { files: x.files } : {}),
   ...(x.time ? { time: x.time } : {}),
   ...(x.statTag ? { statTag: x.statTag } : {}),
+  ...(x.goalRef ? { goalRef: x.goalRef } : {}), // 🎯 어느 목표에서 파생됐는지
 });

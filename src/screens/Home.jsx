@@ -12,7 +12,8 @@ import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
-import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
+import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil, updateYearGoal, matchGoalsByTitle } from "../utils/goals.js";
+import GoalDetailSheet from "../components/GoalDetailSheet.jsx";
 import MemoTimeline from "../components/MemoTimeline.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import Toast from "../components/Toast.jsx";
@@ -84,7 +85,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {} }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, lifeGoalActions = [], setLifeGoalActions, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {} }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -137,6 +138,15 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   const saveLifeGoalsFn = () => {
     const final = [...lifeDraft, ...(newLifeInput.trim() ? [newLifeInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
+    // 이름을 고친 인생목표도 "이루기 위해 할 것들"을 이어받게, 지운 목표의 항목은 정리
+    const oldTitles = lifeGoals || [];
+    const matched = matchGoalsByTitle(oldTitles, final);
+    setLifeGoalActions?.(prev => final
+      .map((t, i) => {
+        const from = matched[i] >= 0 ? (prev || []).find(x => x.title === oldTitles[matched[i]]) : null;
+        return from?.actions?.length ? { title: t, actions: from.actions } : null;
+      })
+      .filter(Boolean));
     setLifeGoals(final);
     setEditingLifeGoals(false);
     setNewLifeInput('');
@@ -267,7 +277,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   };
   const saveYearGoalsFn = () => {
     const final = [...yearDraft, ...(newYearInput.trim() ? [newYearInput.trim()] : [])].filter(g => g.trim()).slice(0, 5);
-    const next = setYearGoalsUtil(goals, final);
+    // 제목 문자열만 넘기면 실천 항목(actions)이 지워지므로, 기존 목표 객체를 이어받아 제목만 바꿈
+    const existing = getYearGoals(goals);
+    const matched = matchGoalsByTitle(existing.map(g => g.title), final);
+    const next = setYearGoalsUtil(goals, final.map((t, i) => (matched[i] >= 0 ? { ...existing[matched[i]], title: t } : t)));
     setGoals(next);
     store.set('dm_goals', next);
     setEditingYearGoalsState(false);
@@ -368,6 +381,35 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [sheetToast, setSheetToast] = useState('');
   const detailSomeday = detailSomedayId ? (someday || []).find(x => x.id === detailSomedayId) : null;
   const saveSomedayDetail = (id, patch) => setSomeday(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
+
+  // 목표 상세 (인생목표·올해 목표) — 실천 항목을 적고 "언젠가로" 파생
+  const [openGoal, setOpenGoal] = useState(null); // { kind: 'life', title } | { kind: 'year', id }
+  const openGoalInfo = (() => {
+    if (!openGoal) return null;
+    if (openGoal.kind === 'life') {
+      if (!lifeGoals.includes(openGoal.title)) return null;
+      return { title: openGoal.title, actions: (lifeGoalActions || []).find(x => x.title === openGoal.title)?.actions || [] };
+    }
+    const g = getYearGoals(goals).find(x => x.id === openGoal.id);
+    return g ? { title: g.title, actions: g.actions || [] } : null;
+  })();
+  const saveGoalActions = (nextActions) => {
+    if (!openGoal) return;
+    if (openGoal.kind === 'life') {
+      const t = openGoal.title;
+      setLifeGoalActions?.(prev => [...(prev || []).filter(x => x.title !== t), { title: t, actions: nextActions }]);
+    } else {
+      const next = updateYearGoal(goals, openGoal.id, g => ({ ...g, actions: nextActions }));
+      setGoals(next);
+      store.set('dm_goals', next);
+    }
+  };
+  const sendGoalActionToSomeday = (action) => {
+    if (!openGoalInfo) return;
+    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: action.title, done: false, goalRef: { kind: openGoal.kind, title: openGoalInfo.title } }]);
+    setSheetToast('언젠가할일에 추가했어요 ✅ 오늘 탭에서 확인하세요');
+  };
+  const lifeActionCount = (title) => (lifeGoalActions || []).find(x => x.title === title)?.actions?.length || 0;
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
   const [levelExpanded, setLevelExpanded] = useState(true);
@@ -596,7 +638,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   useEffect(() => { store.set('dm_section_open_lifegoals', lifeGoalsOpen); }, [lifeGoalsOpen]);
   useEffect(() => { store.set('dm_section_open_yeargoals', yearGoalsOpen); }, [yearGoalsOpen]);
   useEffect(() => { store.set('dm_section_open_monthgoals', monthGoalsOpen); }, [monthGoalsOpen]);
-  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen }) => (
+  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen, onItemClick, itemCount }) => (
     <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
         <div>
@@ -635,9 +677,16 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       ) : items.length > 0 ? (
         <div style={{ display: 'grid', gap: 6 }}>
           {items.map((g, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>
+            <div key={i} onClick={onItemClick ? () => onItemClick(i) : undefined}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onItemClick ? 'pointer' : 'default' }}>
               <div style={{ width: 18, height: 18, borderRadius: 999, background: accent, color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+              {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}
+              {onItemClick && (
+                <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  {itemCount?.(i) > 0 ? `📌 ${itemCount(i)}` : ''} <span style={{ fontSize: 15, opacity: 0.6 }}>›</span>
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -650,6 +699,18 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   return (
     <div style={S.content}>
       <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}>{srAnnouncement}</div>
+      {sheetToast && <Toast msg={sheetToast} onDone={() => setSheetToast('')} />}
+      {openGoalInfo && (
+        <GoalDetailSheet
+          key={openGoal.kind === 'life' ? `life_${openGoal.title}` : `year_${openGoal.id}`}
+          kind={openGoal.kind}
+          title={openGoalInfo.title}
+          actions={openGoalInfo.actions}
+          onChangeActions={saveGoalActions}
+          onSendToSomeday={sendGoalActionToSomeday}
+          onClose={() => setOpenGoal(null)}
+        />
+      )}
       {/* ── 레벨업 모달 ─────────────────────────────────────── */}
       {levelUpInfo && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.8)", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -868,8 +929,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
-                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v) })}
-                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v) })}
+                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]) })}
+                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0 })}
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn, open: monthGoalsOpen, onToggleOpen: () => setMonthGoalsOpen(v => !v) })}
               </div>
             )}
@@ -1365,7 +1426,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           {somedayCollapsed ? "펼치기 ▼" : "접기 ▲"}
         </button>
       </div>
-      {sheetToast && <Toast msg={sheetToast} onDone={() => setSheetToast('')} />}
       {detailSomeday && (
         <TaskDetailSheet
           key={`sd_${detailSomeday.id}`}

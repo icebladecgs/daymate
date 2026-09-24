@@ -333,6 +333,9 @@ export default function App() {
   const [goals, setGoals] = useState(() => normalizeGoals(store.get("dm_goals", { year: [], month: [] }), currentGoalMonthKey));
   const [lifeGoals, setLifeGoalsState] = useState(() => { const v = store.get("dm_life_goals", []); if (!Array.isArray(v)) return []; return v.map(g => typeof g === 'string' ? g : (g?.title || '')).filter(Boolean); });
   const setLifeGoals = (v) => { const next = typeof v === 'function' ? v(lifeGoals) : v; setLifeGoalsState(next); store.set("dm_life_goals", next); };
+  // 인생목표별 "이루기 위해 할 것들" — [{ title: 인생목표 제목, actions: [{id,title}] }]
+  // (lifeGoals는 문자열 목록으로 여러 화면이 쓰고 있어 모양을 바꾸지 않고 별도 저장. 배열이라 merge 저장 시 옛 키가 남지 않음)
+  const [lifeGoalActions, setLifeGoalActions] = useState(() => { const v = store.get("dm_life_goal_actions", []); return Array.isArray(v) ? v : []; });
   const [notifEnabled, setNotifEnabled] = useState(() => store.get("dm_notif_enabled", false));
   const [telegramCfg, setTelegramCfg] = useState(() => {
     const saved = store.get("dm_telegram", {});
@@ -1223,6 +1226,7 @@ export default function App() {
             if (s.battleNickname) { setBattleNickname(s.battleNickname); store.set("dm_battle_nickname", s.battleNickname); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
+            if (Array.isArray(s.lifeGoalActions)) { setLifeGoalActions(s.lifeGoalActions); store.set("dm_life_goal_actions", s.lifeGoalActions); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
             else if (s.businessCard?.photoUrl) {
               const migrated = [{ id: 'legacy', photoUrl: s.businessCard.photoUrl, photoPath: s.businessCard.photoPath, label: '', addedAt: new Date().toISOString(), isDefault: true }];
@@ -1324,6 +1328,10 @@ export default function App() {
   useEffect(() => {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoals }).catch(() => {});
   }, [lifeGoals, authUser]);
+  useEffect(() => {
+    store.set("dm_life_goal_actions", lifeGoalActions);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoalActions }).catch(() => {});
+  }, [lifeGoalActions, authUser]);
   useEffect(() => {
     if (authUser && syncReadyRef.current && Object.keys(scores).length > 0) saveSettings(authUser.uid, { scores }).catch(() => {});
   }, [scores, authUser]); // eslint-disable-line
@@ -1895,6 +1903,7 @@ export default function App() {
       return (
         <Home
           user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
+          lifeGoalActions={lifeGoalActions} setLifeGoalActions={setLifeGoalActions}
           businessCards={businessCards} setBusinessCards={setBusinessCards} authUser={authUser}
           todayData={todayData} plans={plans}
           onToggleTask={(id) => {

@@ -81,6 +81,11 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 20px 12px' }}>
+          {task.goalRef?.title && (
+            <div style={{ fontSize: 12, color: '#A78BFA', fontWeight: 700, background: 'rgba(167,139,250,.1)', border: '1px solid rgba(167,139,250,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14, lineHeight: 1.5 }}>
+              🎯 {task.goalRef.kind === 'life' ? '인생목표' : '올해 목표'} "{task.goalRef.title}"에서 나온 할일
+            </div>
+          )}
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 4 }}>제목</div>
           <input
             value={title}
@@ -170,10 +175,21 @@ export function TaskDetailBadge({ task }) {
   const hasNote = !!task?.note?.trim();
   const photoCount = task?.photos?.length || 0;
   const fileCount = task?.files?.length || 0;
-  if (!hasNote && !photoCount && !fileCount) return null;
+  const goalTitle = task?.goalRef?.title || '';
+  if (!hasNote && !photoCount && !fileCount && !goalTitle) return null;
   return (
-    <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-      {hasNote && '📝'}{photoCount > 0 && `📷${photoCount > 1 ? photoCount : ''}`}{fileCount > 0 && `📎${fileCount > 1 ? fileCount : ''}`}
-    </span>
+    <>
+      {(hasNote || photoCount > 0 || fileCount > 0) && (
+        <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {hasNote && '📝'}{photoCount > 0 && `📷${photoCount > 1 ? photoCount : ''}`}{fileCount > 0 && `📎${fileCount > 1 ? fileCount : ''}`}
+        </span>
+      )}
+      {/* 목표에서 파생된 할일 표시 — 긴 목표 이름은 말줄임 */}
+      {goalTitle && (
+        <span title={goalTitle} style={{ fontSize: 10, color: '#A78BFA', background: 'rgba(167,139,250,.12)', borderRadius: 6, padding: '1px 6px', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}>
+          🎯{goalTitle}
+        </span>
+      )}
+    </>
   );
 }
