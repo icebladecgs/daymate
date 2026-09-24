@@ -43,7 +43,7 @@ export default function Knowledge({
       (day.memos || []).forEach((m, idx) => {
         const text = (m.text || '').trim();
         if (!text && !(m.photos || []).length) return;
-        items.push({ key: `${dateStr}_m${m.id}`, dateStr, idx, kind: 'memo', id: m.id, text, photos: m.photos || [], starred: !!m.starred });
+        items.push({ key: `${dateStr}_m${m.id}`, dateStr, idx, kind: 'memo', id: m.id, text, photos: m.photos || [], files: m.files || [], starred: !!m.starred });
       });
       const journalBody = (day.journal?.body || '').trim();
       if (journalBody) {
@@ -71,11 +71,13 @@ export default function Knowledge({
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
+      initialFiles={longMemo.files || []}
       initialStarred={longMemo.starred || false}
       subtitle={formatKoreanDate(longMemo.dateStr)}
       onCreate={() => longMemo.id}
       onUpdate={(id, text) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }))}
       onUpdatePhotos={(id, photos) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m) }))}
+      onUpdateFiles={(id, files) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, files } : m) }))}
       onUpdateStarred={(id, starred) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m) }))}
       onClose={() => setLongMemo(null)}
       onOpenKnowledge={undefined}
@@ -319,7 +321,7 @@ export default function Knowledge({
                 key={item.key}
                 style={{ ...S.card, cursor: 'pointer' }}
                 onClick={() => item.kind === 'memo'
-                  ? setLongMemo({ dateStr, id: item.id, text: item.text, photos: item.photos, starred: item.starred })
+                  ? setLongMemo({ dateStr, id: item.id, text: item.text, photos: item.photos, files: item.files, starred: item.starred })
                   : onOpenDate(dateStr, false)}
               >
                 <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>

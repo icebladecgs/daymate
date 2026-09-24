@@ -77,6 +77,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
       >
         {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}
         {item.photos?.length > 0 && <span style={{ marginRight: 4 }}>📷</span>}
+        {item.files?.length > 0 && <span style={{ marginRight: 4 }}>📎</span>}
         {item.text.trim() ? item.text.replace(/\n/g, ' ') : (item.photos?.length > 0 ? '(사진)' : '')}
       </div>
       {onToggleStar && (

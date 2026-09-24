@@ -8,7 +8,7 @@ import SearchViewer from "./SearchViewer.jsx";
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
 export default function MemoHome({
   todayStr, plans, onUpdateDayData,
-  onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday,
+  onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday, onUpdateFilesToday,
   onOpenDate, onOpenKnowledge, onRequireLogin,
   uid, toast, setToast,
   frequentTags, myTags, hiddenTags, onHideTag,
@@ -37,6 +37,10 @@ export default function MemoHome({
   const updateMemoPhotosAt = (id, photos) => onUpdateDayData(targetDs, prev => ({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
+  }));
+  const updateMemoFilesAt = (id, files) => onUpdateDayData(targetDs, prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, files } : m),
   }));
   const updateMemoStarredAt = (id, starred) => onUpdateDayData(targetDs, prev => ({
     ...prev,
@@ -79,11 +83,13 @@ export default function MemoHome({
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
+      initialFiles={longMemo.files || []}
       initialStarred={longMemo.starred || false}
       subtitle={dayLabel !== '오늘' ? dayLabel : ''}
       onCreate={(text) => addMemoAt(text, getMemoTimeStr())}
       onUpdate={updateMemoAt}
       onUpdatePhotos={updateMemoPhotosAt}
+      onUpdateFiles={updateMemoFilesAt}
       onUpdateStarred={updateMemoStarredAt}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); setShowSearch(true); }}
@@ -112,7 +118,7 @@ export default function MemoHome({
         onAdd={addMemoAt}
         onUpdate={updateMemoAt}
         onDelete={deleteMemoAt}
-        onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [], starred: item.starred || false })}
+        onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [], files: item.files || [], starred: item.starred || false })}
         onToggleStar={updateMemoStarredAt}
         placeholder="메모 입력 후 + 버튼"
         extraAction={
@@ -133,6 +139,7 @@ export default function MemoHome({
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}
       onUpdate={onUpdateToday}
       onUpdatePhotos={onUpdatePhotosToday}
+      onUpdateFiles={onUpdateFilesToday}
       onUpdateStarred={onUpdateStarredToday}
       onClose={() => window.history.back()}
       onSearch={() => setShowSearch(true)}

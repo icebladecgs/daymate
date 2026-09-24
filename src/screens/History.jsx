@@ -428,7 +428,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const ds = preview;
             onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
               if (tk.id !== t.id) return tk;
-              const { note, photos, ...rest } = tk; // eslint-disable-line no-unused-vars
+              const { note, photos, files, ...rest } = tk; // eslint-disable-line no-unused-vars
               return { ...rest, title: '' };
             }) }));
           }}

@@ -3,12 +3,13 @@ import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
+import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, extraContent }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [savedAt, setSavedAt] = useState(null);
@@ -22,10 +23,10 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
 
-  // 아직 저장 전(id 없음)인데 사진을 먼저 추가하면, 지금까지 쓴 텍스트(없으면 플레이스홀더)로 즉시 메모를 생성
-  const ensureId = () => {
+  // 아직 저장 전(id 없음)인데 사진·파일을 먼저 추가하면, 지금까지 쓴 텍스트(없으면 플레이스홀더)로 즉시 메모를 생성
+  const ensureId = (emptyLabel = '📷 사진') => {
     if (idRef.current) return idRef.current;
-    const placeholder = text.trim() || '📷 사진';
+    const placeholder = text.trim() || emptyLabel;
     idRef.current = onCreate(placeholder);
     savedTextRef.current = placeholder;
     setSavedAt(getMemoTimeStr());
@@ -37,6 +38,15 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     setPhotos(next);
     onUpdatePhotos?.(id, next);
   };
+
+  // 구글 드라이브 첨부 (파일은 사용자 드라이브에, 메모에는 이름·링크만)
+  const [files, setFiles] = useState(initialFiles);
+  const commitFiles = (next) => {
+    const id = ensureId('📎 파일');
+    setFiles(next);
+    onUpdateFiles?.(id, next);
+  };
+  const drive = useDriveUpload({ files, onChange: commitFiles, onError: onPhotoError });
 
   const toggleStar = () => {
     const id = ensureId();
@@ -161,6 +171,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     flush(text);
     setText('');
     setPhotos([]);
+    setFiles([]);
     setStarred(false);
     idRef.current = null;
     savedTextRef.current = '';
@@ -174,6 +185,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const tagsAndPhotosBlock = (
     <div style={{ padding: '0 20px 12px' }}>
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      <div style={{ paddingTop: 10 }}><MemoLinks text={text} /></div>
 
       {photos.map((p, idx) => (
         <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
@@ -190,15 +202,32 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         </div>
       ))}
 
-      <button
-        onClick={handleAddPhoto}
-        disabled={uploading}
-        style={{
-          width: '100%', padding: '12px', borderRadius: 12, background: 'var(--dm-input)',
-          border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
-          cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit', marginBottom: 14,
-        }}
-      >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
+      <DriveFileList files={files} onChange={commitFiles} />
+      {drive.input}
+
+      {/* 사진 추가 옆에 구글 드라이브 첨부 버튼 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button
+          onClick={handleAddPhoto}
+          disabled={uploading}
+          style={{
+            flex: 1, minWidth: 0, padding: '12px 6px', borderRadius: 12, background: 'var(--dm-input)',
+            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
+        {onUpdateFiles && (
+          <button
+            onClick={drive.pick}
+            disabled={drive.busy}
+            style={{
+              flex: 1, minWidth: 0, padding: '12px 6px', borderRadius: 12, background: 'var(--dm-input)',
+              border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+              cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}
+          >{drive.busy ? drive.label : '📁 구글 드라이브'}</button>
+        )}
+      </div>
 
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>

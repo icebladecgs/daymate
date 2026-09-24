@@ -4,6 +4,7 @@ import S from "../styles.js";
 import PhotoGallery from "./PhotoGallery.jsx";
 import TimeSelect from "./TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, classifyTodoStat } from "../data/growthStats.js";
+import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 
 const chip = (active) => ({
   fontSize: 12, padding: '5px 10px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -48,7 +49,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   };
 
   // 지금 입력 중인 제목·메모까지 반영된 할일 (언젠가로 옮길 때 함께 가져가도록)
-  const currentTask = () => ({ ...task, title: title.trim() || savedRef.current.title, note, photos });
+  const currentTask = () => ({ ...task, title: title.trim() || savedRef.current.title, note, photos, files: task.files || [] });
   const handleMove = () => {
     doneRef.current = true;
     onMoveToSomeday(currentTask());
@@ -61,6 +62,10 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   };
 
   const autoStat = GROWTH_STAT_MAP[classifyTodoStat(title || task.title || '')];
+
+  // 구글 드라이브 첨부 — 올리거나 목록에서 뺄 때 즉시 저장
+  const files = task.files || [];
+  const drive = useDriveUpload({ files, onChange: (next) => onSave({ files: next }), onError });
 
   // 화면 본문(S.content)은 zIndex:1 쌓임 맥락이라 그 안에 그리면 하단 네비(zIndex:100)에 가려짐 →
   // 앱 루트(.dm-phone, 큰글씨 zoom 적용 범위)에 포털로 렌더링
@@ -120,9 +125,10 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             onChange={e => setNote(e.target.value)}
             rows={5}
             maxLength={2000}
-            placeholder="장소, 시간, 준비물 등을 적어두세요"
+            placeholder="장소, 시간, 준비물, 모바일 청첩장 링크 등을 적어두세요"
             style={{ ...S.input, marginBottom: 14, resize: 'vertical', lineHeight: 1.6, fontSize: 14, fontFamily: 'inherit' }}
           />
+          <MemoLinks text={note} />
 
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>사진 (청첩장·초대장 등)</div>
           {uid ? (
@@ -139,6 +145,14 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>사진은 로그인 후 추가할 수 있어요 (설정 → Google 로그인)</div>
             </>
           )}
+
+          <div style={{ ...sectionLabel, marginTop: 16 }}>파일 (구글 드라이브)</div>
+          <DriveFileList files={files} onChange={(next) => onSave({ files: next })} />
+          {drive.input}
+          <button onClick={drive.pick} disabled={drive.busy}
+            style={{ width: '100%', padding: '11px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+            {drive.label}
+          </button>
 
           {(onMoveToSomeday || onDelete) && (
             <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
@@ -165,14 +179,15 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   );
 }
 
-// 목록에서 메모·사진이 있는 할일 옆에 붙이는 작은 표시
+// 목록에서 메모·사진·드라이브 파일이 있는 할일 옆에 붙이는 작은 표시
 export function TaskDetailBadge({ task }) {
   const hasNote = !!task?.note?.trim();
   const photoCount = task?.photos?.length || 0;
-  if (!hasNote && !photoCount) return null;
+  const fileCount = task?.files?.length || 0;
+  if (!hasNote && !photoCount && !fileCount) return null;
   return (
     <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-      {hasNote && '📝'}{photoCount > 0 && `📷${photoCount > 1 ? photoCount : ''}`}
+      {hasNote && '📝'}{photoCount > 0 && `📷${photoCount > 1 ? photoCount : ''}`}{fileCount > 0 && `📎${fileCount > 1 ? fileCount : ''}`}
     </span>
   );
 }

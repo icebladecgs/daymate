@@ -112,6 +112,10 @@ export default function Today({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
+  const updateMemoFiles = (id, files) => setData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, files } : m),
+  }));
   const updateMemoStarred = (id, starred) => setData(prev => ({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
@@ -362,7 +366,7 @@ export default function Today({
     setTargetTasks(targetTasks.filter(t => t.id !== id));
   };
   const moveTargetTaskToSomeday = (task) => {
-    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}) }]);
+    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}), ...(task.files?.length ? { files: task.files } : {}) }]);
     deleteTargetTask(task.id, { keepPhotos: true });
   };
   // 할일 상세(메모·사진) — 최신 데이터 기준으로 병합 저장 (사진 업로드가 끝나는 시점에도 안전하게)
@@ -405,7 +409,7 @@ export default function Today({
   };
   const moveSomedayToTask = (item) => {
     if (!onSetTodayTasks) return;
-    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) };
+    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) };
     const all = [...tasks];
     const emptyIdx = all.findIndex(t => !t.title.trim());
     if (emptyIdx >= 0) all[emptyIdx] = newTask;
@@ -421,10 +425,12 @@ export default function Today({
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
+      initialFiles={longMemo.files || []}
       initialStarred={longMemo.starred || false}
       onCreate={(text) => addMemo(text, getMemoTimeStr())}
       onUpdate={updateMemo}
       onUpdatePhotos={updateMemoPhotos}
+      onUpdateFiles={updateMemoFiles}
       onUpdateStarred={updateMemoStarred}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); setShowSearch(true); }}

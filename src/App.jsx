@@ -398,6 +398,12 @@ export default function App() {
   const [event, setEvent] = useState(() => store.get("dm_event", { name: "", startDate: "", endDate: "", active: false }));
   const [driveToken, setDriveToken] = useState(() => store.get("dm_drive_token", null));
   const [driveTokenExp, setDriveTokenExp] = useState(() => store.get("dm_drive_token_exp", 0));
+  // 할일·긴 메모의 "구글 드라이브에 올리기"(DriveFiles.jsx)에서 연결하면 설정 화면 상태도 맞춰줌
+  useEffect(() => {
+    const onToken = (e) => { setDriveToken(e.detail.accessToken); setDriveTokenExp(e.detail.expiresAt); };
+    window.addEventListener('dm-drive-token', onToken);
+    return () => window.removeEventListener('dm-drive-token', onToken);
+  }, []);
   const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
   const [levelUpInfo, setLevelUpInfo] = useState(null); // { level, title, icon, badge }
@@ -1415,6 +1421,10 @@ export default function App() {
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m),
   }));
+  const updateFabMemoFiles = (id, files) => setTodayData(prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => m.id === id ? { ...m, files } : m),
+  }));
   const updateFabMemoStarred = (id, starred) => setTodayData(prev => ({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
@@ -2066,6 +2076,7 @@ export default function App() {
           onCreateToday={addFabMemo}
           onUpdateToday={updateFabMemo}
           onUpdatePhotosToday={updateFabMemoPhotos}
+          onUpdateFilesToday={updateFabMemoFiles}
           onUpdateStarredToday={updateFabMemoStarred}
           onOpenDate={openDetail}
           onOpenKnowledge={() => changeScreen("knowledge")}

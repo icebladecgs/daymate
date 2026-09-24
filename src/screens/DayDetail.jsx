@@ -83,7 +83,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     const task = data.tasks.find(t => t.id === id);
     if (!task?.title?.trim()) return;
     removeTask(id, { keepPhotos: true });
-    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}) }]);
+    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}), ...(task.files?.length ? { files: task.files } : {}) }]);
     setToast('언젠가 할일로 이동 ✅');
   };
 
@@ -93,7 +93,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     setSomeday(prev => prev.filter(s => s.id !== sdId));
     setData(prev => ({
       ...prev,
-      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) }],
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) }],
     }));
     setToast('할일로 이동 ✅');
   };

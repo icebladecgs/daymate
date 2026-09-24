@@ -27,7 +27,7 @@ export default function KeywordDetail({
     if (rec.type === '메모' && rec.id) {
       const fullMemo = (plans[rec.dateStr]?.memos || []).find(m => m.id === rec.id);
       if (fullMemo) {
-        setLongMemo({ dateStr: rec.dateStr, id: fullMemo.id, text: fullMemo.text || '', photos: fullMemo.photos || [], starred: !!fullMemo.starred });
+        setLongMemo({ dateStr: rec.dateStr, id: fullMemo.id, text: fullMemo.text || '', photos: fullMemo.photos || [], files: fullMemo.files || [], starred: !!fullMemo.starred });
         return;
       }
     }
@@ -40,11 +40,13 @@ export default function KeywordDetail({
       initialId={longMemo.id}
       initialText={longMemo.text}
       initialPhotos={longMemo.photos || []}
+      initialFiles={longMemo.files || []}
       initialStarred={longMemo.starred || false}
       subtitle={formatKoreanDate(longMemo.dateStr)}
       onCreate={() => longMemo.id}
       onUpdate={(id, text) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }))}
       onUpdatePhotos={(id, photos) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, photos } : m) }))}
+      onUpdateFiles={(id, files) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, files } : m) }))}
       onUpdateStarred={(id, starred) => onUpdateDayData(longMemo.dateStr, prev => ({ ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m) }))}
       onClose={() => setLongMemo(null)}
       uid={uid}

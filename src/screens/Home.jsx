@@ -429,7 +429,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const moveToToday = (item) => {
     const tasks = [...(todayData?.tasks || [])];
     const emptyIdx = tasks.findIndex(t => !t.title.trim());
-    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) };
+    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) };
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
     else tasks.push(newTask);
     onSetTodayTasks(tasks);
