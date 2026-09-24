@@ -6,9 +6,10 @@ import { deletePhoto } from "../firebase.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
+import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 
-export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay }) {
+export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay, uid }) {
   const isToday = dateStr === toDateStr();
   const isPast = dateStr < toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
@@ -66,21 +67,23 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     }, 50);
   };
 
-  const removeTask = (id) => {
+  const removeTask = (id, { keepPhotos = false } = {}) => {
     const token = getValidGcalToken?.();
     const task = data.tasks.find(t => t.id === id);
     const isImported = task?.gcalEventId && String(task.id || '').startsWith('gcal_');
     const willDeleteFromGcal = !!(token && task?.gcalEventId && !isImported);
     if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return;
     if (willDeleteFromGcal) gcalDeleteEvent(token, task.gcalEventId).catch(() => setToast('캘린더 삭제 실패'));
+    // 할일을 지우면 첨부 사진도 저장소에서 정리 (언젠가로 옮길 때는 사진을 그대로 가져가므로 유지)
+    if (!keepPhotos) (task?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   };
 
   const moveToSomeday = (id) => {
     const task = data.tasks.find(t => t.id === id);
     if (!task?.title?.trim()) return;
-    removeTask(id);
-    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false }]);
+    removeTask(id, { keepPhotos: true });
+    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}) }]);
     setToast('언젠가 할일로 이동 ✅');
   };
 
@@ -90,10 +93,15 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     setSomeday(prev => prev.filter(s => s.id !== sdId));
     setData(prev => ({
       ...prev,
-      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false }],
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) }],
     }));
     setToast('할일로 이동 ✅');
   };
+
+  // 할일 상세(메모·사진) — 구글 캘린더에는 반영하지 않음
+  const [detailTaskId, setDetailTaskId] = useState(null);
+  const detailTask = detailTaskId ? data.tasks.find(t => t.id === detailTaskId) : null;
+  const saveTaskDetail = (id, patch) => setData(prev => ({ ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, ...patch } : t) }));
 
   const saveJournal = () => {
     setData((prev) => ({
@@ -131,6 +139,16 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   return (
     <div ref={contentRef} style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {detailTask && (
+        <TaskDetailSheet
+          key={detailTask.id}
+          task={detailTask}
+          uid={uid}
+          onSave={(patch) => saveTaskDetail(detailTask.id, patch)}
+          onClose={() => setDetailTaskId(null)}
+          onError={setToast}
+        />
+      )}
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>
           ←
@@ -287,6 +305,10 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                       <button onMouseDown={e => e.preventDefault()} onClick={() => setData(prev => ({ ...prev, tasks: prev.tasks.map(x => x.id === t.id ? { ...x, time: undefined } : x) }))}
                         style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
                     )}
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => setDetailTaskId(t.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 3, background: (t.note?.trim() || t.photos?.length) ? 'rgba(167,139,250,.15)' : 'var(--dm-input)', border: `1px solid ${(t.note?.trim() || t.photos?.length) ? 'rgba(167,139,250,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: (t.note?.trim() || t.photos?.length) ? '#A78BFA' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {(t.note?.trim() || t.photos?.length) ? <TaskDetailBadge task={t} /> : '📝'} 상세
+                    </button>
                   </div>
                 )}
               </div>
@@ -308,7 +330,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             {someday.map((item) => (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--dm-row)' }}
                 className="someday-row">
-                <div style={{ flex: 1, fontSize: 14, color: 'var(--dm-sub)' }}>{item.title}</div>
+                <div style={{ flex: 1, fontSize: 14, color: 'var(--dm-sub)' }}>{item.title} <TaskDetailBadge task={item} /></div>
                 <button onClick={() => moveToTask(item.id)}
                   style={{ background: 'rgba(75,111,255,.12)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '4px 10px', color: '#6C8EFF', fontSize: 12, fontWeight: 900, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   ↑ 할일로

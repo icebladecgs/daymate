@@ -14,6 +14,7 @@ import S from "../styles.js";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
+import { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
@@ -420,15 +421,19 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     setSomedayInput("");
   };
   const toggleSomeday = (id) => saveSomeday(someday.map(x => x.id === id ? { ...x, done: !x.done } : x));
-  const deleteSomeday = (id) => saveSomeday(someday.filter(x => x.id !== id));
+  const deleteSomeday = (id, { keepPhotos = false } = {}) => {
+    // 할일에서 옮겨온 첨부 사진은 항목을 지울 때 저장소에서도 정리 (할일로 되돌릴 때는 유지)
+    if (!keepPhotos) (someday.find(x => x.id === id)?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+    saveSomeday(someday.filter(x => x.id !== id));
+  };
   const moveToToday = (item) => {
     const tasks = [...(todayData?.tasks || [])];
     const emptyIdx = tasks.findIndex(t => !t.title.trim());
-    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false };
+    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) };
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
     else tasks.push(newTask);
     onSetTodayTasks(tasks);
-    deleteSomeday(item.id);
+    deleteSomeday(item.id, { keepPhotos: true });
   };
 
   const [editingHabits, setEditingHabits] = useState(false);
@@ -1368,7 +1373,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
             }}>{item.done ? "✓" : ""}</button>
             <div style={{ flex: 1, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none" }}>
-              {item.title}
+              {item.title} <TaskDetailBadge task={item} />
             </div>
             <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
               background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6,

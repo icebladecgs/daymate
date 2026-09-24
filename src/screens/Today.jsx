@@ -9,6 +9,8 @@ import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
+import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import { deletePhoto } from "../firebase.js";
 import { GROWTH_STATS, GROWTH_STAT_MAP, calcStatScore, classifyTodoStat } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
 import { store } from "../utils/storage.js";
@@ -357,11 +359,19 @@ export default function Today({
     setTaskInput('');
   };
   const toggleTargetTask = (id) => setTargetTasks(targetTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTargetTask = (id) => setTargetTasks(targetTasks.filter(t => t.id !== id));
-  const moveTargetTaskToSomeday = (task) => {
-    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false }]);
-    deleteTargetTask(task.id);
+  const deleteTargetTask = (id, { keepPhotos = false } = {}) => {
+    // 할일을 지우면 첨부 사진도 저장소에서 정리 (언젠가로 옮길 때는 사진을 그대로 가져가므로 유지)
+    if (!keepPhotos) (targetTasks.find(t => t.id === id)?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+    setTargetTasks(targetTasks.filter(t => t.id !== id));
   };
+  const moveTargetTaskToSomeday = (task) => {
+    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}) }]);
+    deleteTargetTask(task.id, { keepPhotos: true });
+  };
+  // 할일 상세(메모·사진) — 최신 데이터 기준으로 병합 저장 (사진 업로드가 끝나는 시점에도 안전하게)
+  const [detailTaskId, setDetailTaskId] = useState(null);
+  const detailTask = detailTaskId ? targetTasks.find(t => t.id === detailTaskId) : null;
+  const saveTaskDetail = (ds, id, patch) => onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, ...patch } : t) }));
   const taskDayDateLabel = formatShortKoreanDate(targetDs);
   const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : taskDayDateLabel;
   // 헤더 제목: "오늘의 할일" / 그 외 날짜는 "9월 26일 (토) 할일"
@@ -384,16 +394,19 @@ export default function Today({
     setSomedayInput('');
   };
   const toggleSomeday = (id) => saveSomeday((someday || []).map(x => x.id === id ? { ...x, done: !x.done } : x));
-  const deleteSomeday = (id) => saveSomeday((someday || []).filter(x => x.id !== id));
+  const deleteSomeday = (id, { keepPhotos = false } = {}) => {
+    if (!keepPhotos) ((someday || []).find(x => x.id === id)?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+    saveSomeday((someday || []).filter(x => x.id !== id));
+  };
   const moveSomedayToTask = (item) => {
     if (!onSetTodayTasks) return;
-    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false };
+    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}) };
     const all = [...tasks];
     const emptyIdx = all.findIndex(t => !t.title.trim());
     if (emptyIdx >= 0) all[emptyIdx] = newTask;
     else all.push(newTask);
     onSetTodayTasks(all);
-    deleteSomeday(item.id);
+    deleteSomeday(item.id, { keepPhotos: true });
   };
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
@@ -428,6 +441,16 @@ export default function Today({
   return (
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {detailTask && (
+        <TaskDetailSheet
+          key={detailTask.id}
+          task={detailTask}
+          uid={uid}
+          onSave={(patch) => saveTaskDetail(targetDs, detailTask.id, patch)}
+          onClose={() => setDetailTaskId(null)}
+          onError={setToast}
+        />
+      )}
       {statFeedback && (() => {
         const stat = GROWTH_STATS.find(s => s.id === statFeedback.statId);
         if (!stat) return null;
@@ -870,7 +893,10 @@ export default function Today({
               title="성장 스탯 변경"
               style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >{resolvedStatId === 'NONE' ? '🚫' : (statInfo ? statInfo.icon : '❔')}</button>
-            <span style={{ flex: 1, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
+            <span onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ minWidth: 0 }}>{task.title}</span>
+              <TaskDetailBadge task={task} />
+            </span>
             {!task.done && (
               <>
                 {editingTimeId === task.id ? (
@@ -950,7 +976,7 @@ export default function Today({
         {somedayList.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <button onClick={() => toggleSomeday(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-            <span style={{ flex: 1, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.title}</span>
+            <span style={{ flex: 1, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.title} <TaskDetailBadge task={item} /></span>
             <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
             <button onClick={() => deleteSomeday(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>

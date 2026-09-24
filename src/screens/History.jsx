@@ -10,8 +10,9 @@ import SearchViewer from "./SearchViewer.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
 import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import { deletePhoto } from "../firebase.js";
+import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -92,6 +93,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
   const [editingTimeId, setEditingTimeId] = useState(null);
+  // 할일 상세(메모·사진) — 미리보기 중인 날짜의 할일. 구글 캘린더에는 반영하지 않음
+  const [detailTaskId, setDetailTaskId] = useState(null);
+  const detailTask = preview && detailTaskId ? (plans[preview]?.tasks || []).find(t => t.id === detailTaskId) : null;
 
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -409,6 +413,16 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
+      {detailTask && (
+        <TaskDetailSheet
+          key={`${preview}_${detailTask.id}`}
+          task={detailTask}
+          uid={uid}
+          onSave={(patch) => { const ds = preview; onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === detailTask.id ? { ...tk, ...patch } : tk) })); }}
+          onClose={() => setDetailTaskId(null)}
+          onError={showToast}
+        />
+      )}
       {gcalToast && (
         <div style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '10px 18px', fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', boxShadow: '0 4px 20px rgba(0,0,0,.3)', whiteSpace: 'nowrap' }}>
           {gcalToast}
@@ -794,11 +808,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                           style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '4px 8px' }}
                         />
                       ) : (
-                        <div style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                          textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1 }}>
+                        <div onClick={() => setDetailTaskId(t.id)} style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                          textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
                           {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
                           {t.title}
                           {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
+                          <TaskDetailBadge task={t} />
                         </div>
                       )}
                       {/* 시간/수정/삭제 버튼 */}
@@ -825,7 +840,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                             const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
                             const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
                             if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return;
-                            onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title: '' } : tk) }));
+                            // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움
+                            (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+                            onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
+                              if (tk.id !== t.id) return tk;
+                              const { note, photos, ...rest } = tk; // eslint-disable-line no-unused-vars
+                              return { ...rest, title: '' };
+                            }) }));
                           }} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
                         </div>
                       )}

@@ -1553,11 +1553,13 @@ export default function App() {
   const setDetailData = (updater) => {
     if (!openDate) return;
     const dateStr = openDate;
-    const cur = plans[dateStr] || newDay(dateStr);
+    // setDayData와 동일하게 plansRef 기준 — 사진 업로드 완료처럼 늦게 도착하는 저장도 최신 상태 위에 병합
+    const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
     const nextDay = typeof updater === "function" ? updater(cur) : updater;
     const nextTasks = nextDay.tasks || [];
     const savedDay = persistDayData(dateStr, nextDay);
+    plansRef.current = { ...plansRef.current, [dateStr]: savedDay };
 
     setPlans(prev => ({ ...prev, [dateStr]: savedDay }));
 
@@ -2133,7 +2135,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} />;
+      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
@@ -2187,6 +2189,7 @@ export default function App() {
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           onImportGcalEvents={importGcalEventsForDate}
           someday={someday} setSomeday={setSomeday}
+          uid={authUser?.uid}
           onNavigateDay={(delta) => navigateDay(openDate, delta)}
         />
       );
