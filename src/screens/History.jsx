@@ -8,6 +8,14 @@ import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import TimeSelect from "../components/TimeSelect.jsx";
+import MemoTimeline, { genMemoId } from "../components/MemoTimeline.jsx";
+import { deletePhoto } from "../firebase.js";
+
+// 레거시 단일 memo 필드만 있는 날은 memos 배열로 옮겨서 다룬다 (편집 시 레거시 내용 유실 방지)
+function withMemoList(day) {
+  if (day?.memos?.length || !day?.memo?.trim()) return day?.memos || [];
+  return [{ id: genMemoId(), text: day.memo.trim(), createdAt: '' }];
+}
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -90,22 +98,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskTitle, setEditingTaskTitle] = useState('');
   const [editingTimeId, setEditingTimeId] = useState(null);
-  const [previewMemoEdit, setPreviewMemoEdit] = useState(false);
-  const [previewMemoDraft, setPreviewMemoDraft] = useState('');
-
-  const computeMemoDraft = (d) => {
-    const legacyMemo = d?.memo?.trim() || '';
-    return d?.memos?.length
-      ? d.memos.map(m => m.createdAt ? `[${m.createdAt}] ${m.text}` : m.text).join('\n')
-      : legacyMemo;
-  };
-
-  useEffect(() => {
-    if (preview) {
-      setPreviewMemoEdit(false);
-      setPreviewMemoDraft(computeMemoDraft(plans[preview]));
-    }
-  }, [preview]); // eslint-disable-line
 
   const firstDay = new Date(year, month0, 1).getDay();
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
@@ -925,37 +917,29 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </button>
                 </div>
 
-                {/* 메모 — 인라인 편집 */}
+                {/* 메모 — 항목별 편집 (사진·즐겨찾기·작성시간 보존) */}
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900 }}>📝 메모</div>
-                    {!previewMemoEdit ? (
-                      <button onClick={() => setPreviewMemoEdit(true)}
-                        style={{ fontSize: 11, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>✏️ 편집</button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { onUpdateDayData?.(preview, prev => ({ ...prev, memo: '', memos: previewMemoDraft.trim() ? [{ id: `m_hist_${Date.now()}`, text: previewMemoDraft, createdAt: '편집됨' }] : [] })); setPreviewMemoEdit(false); }}
-                          style={{ fontSize: 11, color: '#4ADE80', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 900 }}>저장</button>
-                        <button onClick={() => { setPreviewMemoDraft(computeMemoDraft(d)); setPreviewMemoEdit(false); }}
-                          style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px 6px', fontWeight: 700 }}>취소</button>
-                      </div>
-                    )}
-                  </div>
-                  {previewMemoEdit ? (
-                    <textarea
-                      autoFocus
-                      value={previewMemoDraft}
-                      onChange={e => setPreviewMemoDraft(e.target.value)}
-                      rows={4}
-                      maxLength={1200}
-                      style={{ ...S.input, width: '100%', resize: 'none', lineHeight: 1.6, fontSize: 13, boxSizing: 'border-box' }}
-                    />
-                  ) : (
-                    <div style={{ fontSize: 13, color: previewMemoDraft.trim() ? "var(--dm-sub)" : 'var(--dm-muted)', lineHeight: 1.65,
-                      background: "var(--dm-row)", borderRadius: 10, padding: "10px 12px", whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                      {previewMemoDraft.trim() || '메모 없음'}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, marginBottom: 6 }}>📝 메모</div>
+                  <MemoTimeline
+                    memos={d?.memos?.length ? d.memos : (d?.memo?.trim() ? [{ id: 'legacy', text: d.memo.trim(), createdAt: '' }] : [])}
+                    onAdd={(text, time) => onUpdateDayData?.(preview, prev => ({
+                      ...prev,
+                      memos: [...withMemoList(prev), { id: genMemoId(), text, createdAt: time }],
+                      memo: '',
+                    }))}
+                    onUpdate={(id, text) => onUpdateDayData?.(preview, prev => (
+                      id === 'legacy'
+                        ? { ...prev, memo: text }
+                        : { ...prev, memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m) }
+                    ))}
+                    onDelete={(id) => {
+                      if (id === 'legacy') { onUpdateDayData?.(preview, prev => ({ ...prev, memo: '' })); return; }
+                      const target = (d?.memos || []).find(m => m.id === id);
+                      (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+                      onUpdateDayData?.(preview, prev => ({ ...prev, memos: (prev.memos || []).filter(m => m.id !== id) }));
+                    }}
+                    placeholder="메모를 남겨보세요"
+                  />
                 </div>
 
                 {/* 일기 — 전문 + 자세히 버튼 */}
