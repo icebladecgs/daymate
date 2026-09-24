@@ -450,7 +450,12 @@ export default function People({
       <Header title="내 사람들" onBack={onBack} />
 
       <div style={{ padding: "12px 16px 0" }}>
-        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="이름·회사·태그 검색" style={{ ...S.input, marginBottom: 8 }} />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="이름·초성·전화번호·회사·태그 검색" style={{ ...S.input, marginBottom: 8 }} />
+        {pickerSupported && (
+          <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.5, marginBottom: 8 }}>
+            💡 아래 "📱 연락처에서"를 누른 뒤 선택 창 맨 위 <b>모두 선택</b>을 누르면, 전체 연락처를 여기서 검색하며 골라 등록할 수 있어요
+          </div>
+        )}
         {contactTags.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
             {contactTags.map(t => (

@@ -38,7 +38,8 @@ export function normalizePhone(phone) {
 }
 
 // 휴대폰 연락처 선택 결과([{ name:[], tel:[], email:[] }])를 가져오기 후보로 변환.
-// 이미 등록된 사람(같은 전화번호, 전화번호가 없으면 같은 이름)은 dup=true로 표시하고 기본 체크 해제.
+// 이미 등록된 사람(같은 전화번호, 전화번호가 없으면 같은 이름)은 dup=true로 표시.
+// 안드로이드 선택 창에서 "모두 선택"으로 전체를 넘겨받은 뒤 앱에서 골라 등록하는 흐름이라 기본은 모두 체크 해제.
 // 선택 목록 안에서 같은 사람이 두 번 나오면 한 번만 남긴다.
 export function buildImportCandidates(picked, existingContacts) {
   const existingPhones = new Set((existingContacts || []).map(c => normalizePhone(c.phone)).filter(Boolean));
@@ -46,16 +47,17 @@ export function buildImportCandidates(picked, existingContacts) {
   const seen = new Set();
   const out = [];
   (picked || []).forEach((p, i) => {
-    const phone = String(p?.tel?.[0] || "").trim();
-    const email = String(p?.email?.[0] || "").trim();
-    const name = String(p?.name?.[0] || "").trim() || phone;
+    // 기기에 따라 한글이 자모 분리(NFD)로 올 수 있어 표준(NFC)으로 맞춰 저장
+    const phone = String(p?.tel?.[0] || "").normalize("NFC").trim();
+    const email = String(p?.email?.[0] || "").normalize("NFC").trim();
+    const name = String(p?.name?.[0] || "").normalize("NFC").trim() || phone;
     if (!name) return;
     const norm = normalizePhone(phone);
     const key = norm || `name:${name}`;
     if (seen.has(key)) return;
     seen.add(key);
     const dup = norm ? existingPhones.has(norm) : existingNames.has(name);
-    out.push({ key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: !dup });
+    out.push({ key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: false });
   });
   return out;
 }
@@ -148,13 +150,30 @@ export function getContactReminders(contacts, plans, windowDays = 7, todayStr = 
   return items;
 }
 
+// 검색 비교용: 한글 자모 분리 저장(NFD)을 합치고(NFC), 대소문자·띄어쓰기 무시
+// (휴대폰에서 가져온 연락처는 기기에 따라 NFD로 들어올 수 있어 겉보기엔 같아도 검색이 안 되던 문제 방지)
+const normText = (s) => String(s || "").normalize("NFC").toLowerCase().replace(/\s+/g, "");
+
+// 초성 추출: "김철수" → "ㄱㅊㅅ" (한글 음절이 아닌 글자는 그대로)
+const CHOSEONG = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+export function getChoseong(text) {
+  return Array.from(normText(text)).map((ch) => {
+    const code = ch.charCodeAt(0) - 0xac00;
+    return code >= 0 && code <= 11171 ? CHOSEONG[Math.floor(code / 588)] : ch;
+  }).join("");
+}
+
+// 이름·회사·직함·이메일·메모·태그 + 전화번호(숫자 3자리 이상) + 초성(ㄱㅊㅅ) 검색
 export function searchContacts(contacts, query) {
-  const q = (query || "").trim().toLowerCase();
+  const q = normText(query);
   if (!q) return contacts || [];
-  return (contacts || []).filter((c) =>
-    (c.name || "").toLowerCase().includes(q) ||
-    (c.company || "").toLowerCase().includes(q) ||
-    (c.title || "").toLowerCase().includes(q) ||
-    (c.tags || []).some((t) => t.toLowerCase().includes(q))
-  );
+  const qDigits = normalizePhone(query);
+  const isChoseongQuery = /^[ㄱ-ㅎ]+$/.test(q);
+  return (contacts || []).filter((c) => {
+    const texts = [c.name, c.company, c.title, c.email, c.memo, ...(c.tags || [])];
+    if (texts.some((t) => normText(t).includes(q))) return true;
+    if (qDigits.length >= 3 && normalizePhone(c.phone).includes(qDigits)) return true;
+    if (isChoseongQuery && [c.name, c.company].some((t) => getChoseong(t).includes(q))) return true;
+    return false;
+  });
 }
