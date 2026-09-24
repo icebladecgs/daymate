@@ -9,6 +9,7 @@ import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import { pickTaskDetail } from "../utils/taskDetail.js";
 import { deletePhoto } from "../firebase.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
@@ -366,11 +367,12 @@ export default function Today({
     setTargetTasks(targetTasks.filter(t => t.id !== id));
   };
   const moveTargetTaskToSomeday = (task) => {
-    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}), ...(task.files?.length ? { files: task.files } : {}) }]);
+    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...pickTaskDetail(task) }]);
     deleteTargetTask(task.id, { keepPhotos: true });
   };
   // 할일 상세(메모·사진) — 최신 데이터 기준으로 병합 저장 (사진 업로드가 끝나는 시점에도 안전하게)
   const [detailTaskId, setDetailTaskId] = useState(null);
+  const [detailSomedayId, setDetailSomedayId] = useState(null); // 언젠가할일 상세
   const detailTask = detailTaskId ? targetTasks.find(t => t.id === detailTaskId) : null;
   const saveTaskDetail = (ds, id, patch) => onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, ...patch } : t) }));
   // 목록의 삭제 버튼과 할일 상세의 삭제가 함께 쓰는 확인 후 삭제 (취소하면 false)
@@ -409,7 +411,7 @@ export default function Today({
   };
   const moveSomedayToTask = (item) => {
     if (!onSetTodayTasks) return;
-    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) };
+    const newTask = { id: `t_${Date.now()}`, title: item.title, done: false, ...pickTaskDetail(item) };
     const all = [...tasks];
     const emptyIdx = all.findIndex(t => !t.title.trim());
     if (emptyIdx >= 0) all[emptyIdx] = newTask;
@@ -448,6 +450,13 @@ export default function Today({
   const habitChecks = data.habitChecks || {};
   const visibleHabits = habits || [];
   const somedayList = someday || [];
+  // 언젠가할일도 할일과 같은 상세 창 사용 (최신 목록 기준으로 병합 저장)
+  const detailSomeday = detailSomedayId ? somedayList.find(x => x.id === detailSomedayId) : null;
+  const saveSomedayDetail = (id, patch) => setSomeday?.(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
+  const confirmDeleteSomeday = (item) => {
+    if (!window.confirm(`"${item.title}" 언젠가할일을 삭제할까요?`)) return false;
+    deleteSomeday(item.id);
+  };
 
   return (
     <div style={S.content}>
@@ -460,8 +469,18 @@ export default function Today({
           onSave={(patch) => saveTaskDetail(targetDs, detailTask.id, patch)}
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
-          onMoveToSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
           onDelete={confirmDeleteTargetTask}
+        />
+      )}
+      {detailSomeday && (
+        <TaskDetailSheet
+          key={`sd_${detailSomeday.id}`}
+          task={detailSomeday}
+          uid={uid}
+          onSave={(patch) => saveSomedayDetail(detailSomeday.id, patch)}
+          onClose={() => setDetailSomedayId(null)}
+          onError={setToast}
+          onDelete={confirmDeleteSomeday}
         />
       )}
       {statFeedback && (() => {
@@ -950,7 +969,11 @@ export default function Today({
         {somedayList.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <button onClick={() => toggleSomeday(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-            <span style={{ flex: 1, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.title} <TaskDetailBadge task={item} /></span>
+            <span onClick={() => setDetailSomedayId(item.id)} style={{ flex: 1, minWidth: 0, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
+              {item.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
+              <TaskDetailBadge task={item} />
+            </span>
             <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
             <button onClick={() => deleteSomeday(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>

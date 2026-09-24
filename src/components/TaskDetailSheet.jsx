@@ -16,8 +16,9 @@ const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, 
 // 할일 상세 — 목록은 보기 전용, 편집(제목·시간·성장 스탯·메모·사진·언젠가·삭제)은 모두 여기서.
 // - 시간·스탯·사진은 바꾸는 즉시 저장 / 제목·메모는 닫을 때 저장 (뒤로가기로 언마운트될 때 포함)
 // - 구글 캘린더에는 메모·사진을 반영하지 않음 (제목·시간은 기존 동기화 그대로)
-// - onMoveToSomeday / onDelete를 넘긴 화면에서만 해당 버튼 표시
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onMoveToSomeday, onDelete }) {
+// - 할일·언젠가할일 모두 같은 화면 사용 (언젠가로 옮기기는 목록의 버튼으로)
+// - onDelete를 넘긴 화면에서만 삭제 버튼 표시
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -49,12 +50,6 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   };
 
   // 지금 입력 중인 제목·메모까지 반영된 할일 (언젠가로 옮길 때 함께 가져가도록)
-  const currentTask = () => ({ ...task, title: title.trim() || savedRef.current.title, note, photos, files: task.files || [] });
-  const handleMove = () => {
-    doneRef.current = true;
-    onMoveToSomeday(currentTask());
-    onClose();
-  };
   const handleDelete = () => {
     if (onDelete(task) === false) return; // 확인창에서 취소
     doneRef.current = true;
@@ -154,19 +149,10 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             {drive.label}
           </button>
 
-          {(onMoveToSomeday || onDelete) && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-              {onMoveToSomeday && (
-                <button onClick={handleMove} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  ↓ 언젠가로 보내기
-                </button>
-              )}
-              {onDelete && (
-                <button onClick={handleDelete} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  🗑 삭제
-                </button>
-              )}
-            </div>
+          {onDelete && (
+            <button onClick={handleDelete} style={{ width: '100%', marginTop: 18, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              🗑 삭제
+            </button>
           )}
         </div>
 

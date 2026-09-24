@@ -14,7 +14,9 @@ import S from "../styles.js";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil } from "../utils/goals.js";
 import MemoTimeline from "../components/MemoTimeline.jsx";
-import { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import Toast from "../components/Toast.jsx";
+import { pickTaskDetail } from "../utils/taskDetail.js";
 import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
@@ -361,6 +363,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   const [somedayInput, setSomedayInput] = useState("");
   const [somedayCollapsed, setSomedayCollapsed] = useState(false);
+  // 언젠가할일도 할일과 같은 상세 창 사용 (최신 목록 기준으로 병합 저장)
+  const [detailSomedayId, setDetailSomedayId] = useState(null);
+  const [sheetToast, setSheetToast] = useState('');
+  const detailSomeday = detailSomedayId ? (someday || []).find(x => x.id === detailSomedayId) : null;
+  const saveSomedayDetail = (id, patch) => setSomeday(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
   const [levelExpanded, setLevelExpanded] = useState(true);
@@ -429,7 +436,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const moveToToday = (item) => {
     const tasks = [...(todayData?.tasks || [])];
     const emptyIdx = tasks.findIndex(t => !t.title.trim());
-    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) };
+    const newTask = { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...pickTaskDetail(item) };
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
     else tasks.push(newTask);
     onSetTodayTasks(tasks);
@@ -1257,7 +1264,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   <button onClick={() => {
                     const item = (todayData?.tasks || []).find(t => t.id === task.id);
                     if (item?.title?.trim()) {
-                      setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: item.title.trim(), done: false }]);
+                      setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: item.title.trim(), done: false, ...pickTaskDetail(item) }]);
                       onSetTodayTasks((todayData.tasks || []).filter(t => t.id !== task.id));
                     }
                   }} style={{ background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6, color: "#6C8EFF", fontSize: 14, fontWeight: 900, cursor: "pointer", padding: "3px 7px", flexShrink: 0 }}>↓</button>
@@ -1358,6 +1365,21 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           {somedayCollapsed ? "펼치기 ▼" : "접기 ▲"}
         </button>
       </div>
+      {sheetToast && <Toast msg={sheetToast} onDone={() => setSheetToast('')} />}
+      {detailSomeday && (
+        <TaskDetailSheet
+          key={`sd_${detailSomeday.id}`}
+          task={detailSomeday}
+          uid={authUser?.uid}
+          onSave={(patch) => saveSomedayDetail(detailSomeday.id, patch)}
+          onClose={() => setDetailSomedayId(null)}
+          onError={setSheetToast}
+          onDelete={(item) => {
+            if (!window.confirm(`"${item.title}" 언젠가할일을 삭제할까요?`)) return false;
+            deleteSomeday(item.id);
+          }}
+        />
+      )}
       {!somedayCollapsed && <div style={S.card}>
         {someday.length === 0 && (
           <div style={{ textAlign: "center", padding: "10px 0 6px" }}>
@@ -1372,8 +1394,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               background: item.done ? "#4ADE80" : "transparent", flexShrink: 0, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
             }}>{item.done ? "✓" : ""}</button>
-            <div style={{ flex: 1, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none" }}>
-              {item.title} <TaskDetailBadge task={item} />
+            <div onClick={() => setDetailSomedayId(item.id)} style={{ flex: 1, minWidth: 0, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ minWidth: 0, wordBreak: "keep-all", overflowWrap: "anywhere" }}>{item.title}</span>
+              {item.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
+              <TaskDetailBadge task={item} />
             </div>
             <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
               background: "transparent", border: "1px solid #4B6FFF", borderRadius: 6,

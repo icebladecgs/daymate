@@ -7,6 +7,7 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import { pickTaskDetail } from "../utils/taskDetail.js";
 import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay, uid }) {
@@ -83,7 +84,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     const task = data.tasks.find(t => t.id === id);
     if (!task?.title?.trim()) return;
     removeTask(id, { keepPhotos: true });
-    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...(task.note ? { note: task.note } : {}), ...(task.photos?.length ? { photos: task.photos } : {}), ...(task.files?.length ? { files: task.files } : {}) }]);
+    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...pickTaskDetail(task) }]);
     setToast('언젠가 할일로 이동 ✅');
   };
 
@@ -93,7 +94,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     setSomeday(prev => prev.filter(s => s.id !== sdId));
     setData(prev => ({
       ...prev,
-      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...(item.note ? { note: item.note } : {}), ...(item.photos?.length ? { photos: item.photos } : {}), ...(item.files?.length ? { files: item.files } : {}) }],
+      tasks: [...prev.tasks, { id: `t${Date.now()}`, title: item.title, done: false, checkedAt: null, priority: false, ...pickTaskDetail(item) }],
     }));
     setToast('할일로 이동 ✅');
   };
