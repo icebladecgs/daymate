@@ -369,6 +369,14 @@ export default function Today({
   const [detailTaskId, setDetailTaskId] = useState(null);
   const detailTask = detailTaskId ? targetTasks.find(t => t.id === detailTaskId) : null;
   const saveTaskDetail = (ds, id, patch) => onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, ...patch } : t) }));
+  // 목록의 삭제 버튼과 할일 상세의 삭제가 함께 쓰는 확인 후 삭제 (취소하면 false)
+  const confirmDeleteTargetTask = (t) => {
+    const msg = t.gcalEventId && !String(t.id || '').startsWith('gcal_') && getValidGcalToken?.()
+      ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
+      : `"${t.title}" 할일을 삭제할까요?`;
+    if (!window.confirm(msg)) return false;
+    deleteTargetTask(t.id);
+  };
   const taskDayDateLabel = formatShortKoreanDate(targetDs);
   const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : taskDayDateLabel;
   // 헤더 제목: "오늘의 할일" / 그 외 날짜는 "9월 26일 (토) 할일"
@@ -447,13 +455,7 @@ export default function Today({
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
           onMoveToSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
-          onDelete={(t) => {
-            const msg = t.gcalEventId && !String(t.id || '').startsWith('gcal_') && getValidGcalToken?.()
-              ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
-              : `"${t.title}" 할일을 삭제할까요?`;
-            if (!window.confirm(msg)) return false;
-            deleteTargetTask(t.id);
-          }}
+          onDelete={confirmDeleteTargetTask}
         />
       )}
       {statFeedback && (() => {
@@ -883,7 +885,7 @@ export default function Today({
       </div>
       {tasksOpen && (
       <div style={S.card}>
-        {/* 목록은 보기 전용 — 체크·언젠가만 바로 하고, 시간·스탯·메모·사진·삭제 등 편집은 할일 상세(줄 누르기)에서 */}
+        {/* 목록은 보기 전용 — 체크·언젠가·삭제만 바로 하고, 시간·스탯·메모·사진 등 편집은 할일 상세(줄 누르기)에서 */}
         {targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <button
@@ -892,18 +894,21 @@ export default function Today({
               style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
             <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '2px 0' }}>
-              <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
+              <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
               {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}</span>}
               <TaskDetailBadge task={task} />
-              {task.done && <span style={{ marginLeft: 'auto', color: 'var(--dm-muted)', fontSize: 16, flexShrink: 0, opacity: 0.6 }}>›</span>}
             </div>
-            {/* 자주 쓰는 "언젠가로 미루기"만 목록에 바로 노출 (미완료 할일만). 나머지 편집은 상세에서 */}
+            {/* 자주 쓰는 "언젠가로 미루기"(미완료만)와 삭제(확인창)만 목록에 바로 노출. 나머지 편집은 상세에서 */}
             {!task.done && (
               <button
                 onClick={() => { moveTargetTaskToSomeday(task); setToast('언젠가 할일로 이동 ✅'); }}
                 style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
+            <button
+              onClick={() => confirmDeleteTargetTask(task)}
+              style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#F87171', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >삭제</button>
           </div>
         ))}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
