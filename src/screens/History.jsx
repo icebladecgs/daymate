@@ -7,7 +7,6 @@ import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
-import TimeSelect from "../components/TimeSelect.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 
@@ -89,9 +88,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const [quickTaskInput, setQuickTaskInput] = useState('');
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editingTaskTitle, setEditingTaskTitle] = useState('');
-  const [editingTimeId, setEditingTimeId] = useState(null);
   // 할일 상세(메모·사진) — 미리보기 중인 날짜의 할일. 구글 캘린더에는 반영하지 않음
   const [detailTaskId, setDetailTaskId] = useState(null);
   const detailTask = preview && detailTaskId ? (plans[preview]?.tasks || []).find(t => t.id === detailTaskId) : null;
@@ -420,6 +416,22 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onSave={(patch) => { const ds = preview; onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === detailTask.id ? { ...tk, ...patch } : tk) })); }}
           onClose={() => setDetailTaskId(null)}
           onError={showToast}
+          onDelete={(t) => {
+            const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
+            const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
+            const msg = willDeleteFromGcal
+              ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
+              : `"${t.title}" 할일을 삭제할까요?`;
+            if (!window.confirm(msg)) return false;
+            // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움 (기존과 같이 제목을 비워 삭제 처리)
+            (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+            const ds = preview;
+            onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
+              if (tk.id !== t.id) return tk;
+              const { note, photos, ...rest } = tk; // eslint-disable-line no-unused-vars
+              return { ...rest, title: '' };
+            }) }));
+          }}
         />
       )}
       {gcalToast && (
@@ -587,7 +599,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             return (
               <div
                 key={ds}
-                onClick={() => { setPreview(ds); setQuickTaskInput(''); setEditingTaskId(null); }}
+                onClick={() => { setPreview(ds); setQuickTaskInput(''); }}
                 style={{
                   minHeight: 80,
                   borderRadius: 10,
@@ -784,71 +796,15 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                           transition: "all 0.15s", cursor: 'pointer' }}>
                         {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                       </div>
-                      {/* 제목 or 인라인 편집 */}
-                      {editingTaskId === t.id ? (
-                        <input
-                          autoFocus
-                          value={editingTaskTitle}
-                          onChange={e => setEditingTaskTitle(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              const title = editingTaskTitle.trim();
-                              if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
-                              setEditingTaskId(null);
-                            }
-                            if (e.key === 'Escape') setEditingTaskId(null);
-                          }}
-                          onBlur={() => {
-                            const title = editingTaskTitle.trim();
-                            if (title) onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, title } : tk) }));
-                            setEditingTaskId(null);
-                          }}
-                          maxLength={60}
-                          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '4px 8px' }}
-                        />
-                      ) : (
-                        <div onClick={() => setDetailTaskId(t.id)} style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
-                          textDecoration: t.done ? "line-through" : "none", flex: 1, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
-                          {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
-                          {t.title}
-                          {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
-                          <TaskDetailBadge task={t} />
-                        </div>
-                      )}
-                      {/* 시간/수정/삭제 버튼 */}
-                      {editingTaskId !== t.id && (
-                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                          {editingTimeId === t.id ? (
-                            <TimeSelect
-                              autoFocus
-                              value={t.time}
-                              onChange={v => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: v || undefined } : tk) }))}
-                              onClose={() => setEditingTimeId(null)}
-                            />
-                          ) : (
-                            <button onClick={() => setEditingTimeId(t.id)}
-                              style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>⏰</button>
-                          )}
-                          {t.time && editingTimeId !== t.id && (
-                            <button onClick={() => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === t.id ? { ...tk, time: undefined } : tk) }))}
-                              style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 12, padding: '0 2px' }}>✕</button>
-                          )}
-                          <button onClick={() => { setEditingTaskId(t.id); setEditingTaskTitle(t.title); }}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✏️</button>
-                          <button onClick={() => {
-                            const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
-                            const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
-                            if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return;
-                            // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움
-                            (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
-                            onUpdateDayData?.(preview, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
-                              if (tk.id !== t.id) return tk;
-                              const { note, photos, ...rest } = tk; // eslint-disable-line no-unused-vars
-                              return { ...rest, title: '' };
-                            }) }));
-                          }} style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>🗑</button>
-                        </div>
-                      )}
+                      {/* 제목 — 보기 전용, 누르면 할일 상세(제목·시간·메모·사진·삭제 편집) */}
+                      <div onClick={() => setDetailTaskId(t.id)} style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
+                        textDecoration: t.done ? "line-through" : "none", flex: 1, minWidth: 0, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
+                        {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
+                        <span style={{ minWidth: 0 }}>{t.title}</span>
+                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
+                        <TaskDetailBadge task={t} />
+                        <span style={{ marginLeft: 'auto', color: 'var(--dm-muted)', fontSize: 16, flexShrink: 0, opacity: 0.6 }}>›</span>
+                      </div>
                     </div>
                   );
                   return (

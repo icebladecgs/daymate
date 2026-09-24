@@ -2,19 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import S from "../styles.js";
 import PhotoGallery from "./PhotoGallery.jsx";
+import TimeSelect from "./TimeSelect.jsx";
+import { GROWTH_STATS, GROWTH_STAT_MAP, classifyTodoStat } from "../data/growthStats.js";
 
-// 할일 상세 (제목·메모·사진). 청첩장·초대장처럼 일정에 딸린 자료를 붙여두는 용도.
-// - 사진은 올리거나 지우는 즉시 저장 (저장소 파일과 데이터가 어긋나지 않게)
-// - 제목·메모는 닫을 때 저장 (완료 버튼, ✕, 바깥 영역, 뒤로가기로 화면이 바뀌어 언마운트될 때 모두)
-// - 구글 캘린더에는 반영하지 않음 (앱 안에서만 보임)
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError }) {
+const chip = (active) => ({
+  fontSize: 12, padding: '5px 10px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+  border: active ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)',
+  background: active ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)',
+});
+const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 };
+
+// 할일 상세 — 목록은 보기 전용, 편집(제목·시간·성장 스탯·메모·사진·언젠가·삭제)은 모두 여기서.
+// - 시간·스탯·사진은 바꾸는 즉시 저장 / 제목·메모는 닫을 때 저장 (뒤로가기로 언마운트될 때 포함)
+// - 구글 캘린더에는 메모·사진을 반영하지 않음 (제목·시간은 기존 동기화 그대로)
+// - onMoveToSomeday / onDelete를 넘긴 화면에서만 해당 버튼 표시
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onMoveToSomeday, onDelete }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
+  const [editingTime, setEditingTime] = useState(false);
 
   const savedRef = useRef({ title: task.title || '', note: task.note || '' });
+  const doneRef = useRef(false); // 삭제·이동 후에는 언마운트 저장을 건너뜀
   const flush = (t, n) => {
-    const nextTitle = t.trim() || savedRef.current.title; // 제목을 비우면 기존 제목 유지 (삭제는 목록의 ✕로)
+    if (doneRef.current) return;
+    const nextTitle = t.trim() || savedRef.current.title; // 제목을 비우면 기존 제목 유지 (삭제는 아래 삭제 버튼으로)
     if (nextTitle === savedRef.current.title && n === savedRef.current.note) return;
     savedRef.current = { title: nextTitle, note: n };
     onSave({ title: nextTitle, note: n });
@@ -34,6 +46,21 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError })
     setPhotos(next);
     onSave({ photos: next });
   };
+
+  // 지금 입력 중인 제목·메모까지 반영된 할일 (언젠가로 옮길 때 함께 가져가도록)
+  const currentTask = () => ({ ...task, title: title.trim() || savedRef.current.title, note, photos });
+  const handleMove = () => {
+    doneRef.current = true;
+    onMoveToSomeday(currentTask());
+    onClose();
+  };
+  const handleDelete = () => {
+    if (onDelete(task) === false) return; // 확인창에서 취소
+    doneRef.current = true;
+    onClose();
+  };
+
+  const autoStat = GROWTH_STAT_MAP[classifyTodoStat(title || task.title || '')];
 
   // 화면 본문(S.content)은 zIndex:1 쌓임 맥락이라 그 안에 그리면 하단 네비(zIndex:100)에 가려짐 →
   // 앱 루트(.dm-phone, 큰글씨 zoom 적용 범위)에 포털로 렌더링
@@ -62,6 +89,31 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError })
             style={{ ...S.input, marginBottom: 14 }}
           />
 
+          <div style={sectionLabel}>시간</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, minHeight: 32 }}>
+            {editingTime ? (
+              <TimeSelect autoFocus value={task.time} onChange={v => onSave({ time: v || undefined })} onClose={() => setEditingTime(false)} />
+            ) : (
+              <button onClick={() => setEditingTime(true)} style={{ ...chip(!!task.time), color: task.time ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
+                ⏰ {task.time || '시간 설정'}
+              </button>
+            )}
+            {task.time && (
+              <button onClick={() => { setEditingTime(false); onSave({ time: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
+            )}
+          </div>
+
+          <div style={sectionLabel}>성장 스탯</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+            <button onClick={() => onSave({ statTag: undefined })} style={chip(!task.statTag)}>
+              자동{autoStat ? ` (${autoStat.icon} ${autoStat.name})` : ''}
+            </button>
+            <button onClick={() => onSave({ statTag: 'NONE' })} style={chip(task.statTag === 'NONE')}>🚫 없음</button>
+            {GROWTH_STATS.map(s => (
+              <button key={s.id} onClick={() => onSave({ statTag: s.id })} style={chip(task.statTag === s.id)}>{s.icon} {s.name}</button>
+            ))}
+          </div>
+
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 4 }}>메모</div>
           <textarea
             value={note}
@@ -86,6 +138,21 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError })
               )}
               <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>사진은 로그인 후 추가할 수 있어요 (설정 → Google 로그인)</div>
             </>
+          )}
+
+          {(onMoveToSomeday || onDelete) && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              {onMoveToSomeday && (
+                <button onClick={handleMove} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  ↓ 언젠가로 보내기
+                </button>
+              )}
+              {onDelete && (
+                <button onClick={handleDelete} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  🗑 삭제
+                </button>
+              )}
+            </div>
           )}
         </div>
 
