@@ -2,9 +2,10 @@ import { useState } from "react";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import PhotoAttach from "../components/PhotoAttach.jsx";
+import ContactImportSheet from "../components/ContactImportSheet.jsx";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import {
-  newContact, genSubId, searchContacts,
+  newContact, genSubId, searchContacts, buildImportCandidates,
   getNextSolarOccurrence, daysUntil,
 } from "../data/contacts.js";
 
@@ -359,6 +360,31 @@ export default function People({
   const filtered = searchContacts(contacts, query).filter(c => tagFilters.length === 0 || tagFilters.some(t => (c.tags || []).includes(t)));
 
   const startAdd = () => { setDraft(newContact("")); setView("form"); };
+
+  // 휴대폰 연락처에서 가져오기 (Contact Picker API — 안드로이드 크롬·설치형 앱 지원, 아이폰 미지원)
+  // 운영체제의 연락처 선택 창에서 사용자가 직접 고른 사람만 앱에 전달됨 (주소록 전체를 읽지 않음)
+  const [importCandidates, setImportCandidates] = useState(null);
+  const pickerSupported = typeof navigator !== "undefined" && "contacts" in navigator && typeof navigator.contacts?.select === "function";
+  const startImport = async () => {
+    if (!pickerSupported) {
+      setToast?.("휴대폰 연락처 가져오기는 안드로이드에서 돼요. 아이폰은 곧 파일로 가져오기를 지원할 예정이에요");
+      return;
+    }
+    try {
+      const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+      if (!picked?.length) return;
+      const candidates = buildImportCandidates(picked, contacts);
+      if (!candidates.length) { setToast?.("가져올 수 있는 연락처가 없어요"); return; }
+      setImportCandidates(candidates);
+    } catch {
+      setToast?.("연락처를 불러오지 못했어요");
+    }
+  };
+  const finishImport = (chosen, tags) => {
+    chosen.forEach(x => onUpsertContact({ ...newContact(x.name), phone: x.phone, email: x.email, tags: [...tags] }));
+    setImportCandidates(null);
+    setToast?.(`${chosen.length}명을 내 사람들에 추가했어요 ✅`);
+  };
   const startEdit = (c) => { setDraft({ ...c, birthday: c.birthday || { calendar: "solar", month: "", day: "", year: "" } }); setView("form"); };
 
   const saveDraft = () => {
@@ -485,9 +511,13 @@ export default function People({
         )}
       </div>
 
-      <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, padding: "0 16px", boxSizing: "border-box", pointerEvents: "none", zIndex: 200 }}>
-        <button onClick={startAdd} style={{ ...S.btn, marginTop: 0, pointerEvents: "auto", boxShadow: "0 8px 24px rgba(75,111,255,.4)" }}>＋ 사람 추가</button>
+      <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, padding: "0 16px", boxSizing: "border-box", pointerEvents: "none", zIndex: 200, display: "flex", gap: 8 }}>
+        <button onClick={startAdd} style={{ ...S.btn, flex: 1, marginTop: 0, pointerEvents: "auto", boxShadow: "0 8px 24px rgba(75,111,255,.4)" }}>＋ 사람 추가</button>
+        <button onClick={startImport} style={{ ...S.btnGhost, flex: 1, marginTop: 0, pointerEvents: "auto", background: "var(--dm-card)", boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}>📱 연락처에서</button>
       </div>
+      {importCandidates && (
+        <ContactImportSheet candidates={importCandidates} allTags={contactTags} onImport={finishImport} onClose={() => setImportCandidates(null)} />
+      )}
       <div style={{ height: 80 }} />
     </div>
   );

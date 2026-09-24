@@ -30,6 +30,36 @@ export function newContact(name) {
   };
 }
 
+// 전화번호 비교용 정규화: 숫자만 남기고 +82(국가번호)는 0으로 — "+82 10-1234-5678" == "010-1234-5678"
+export function normalizePhone(phone) {
+  let d = String(phone || "").replace(/\D/g, "");
+  if (d.startsWith("82") && d.length >= 11) d = "0" + d.slice(2);
+  return d;
+}
+
+// 휴대폰 연락처 선택 결과([{ name:[], tel:[], email:[] }])를 가져오기 후보로 변환.
+// 이미 등록된 사람(같은 전화번호, 전화번호가 없으면 같은 이름)은 dup=true로 표시하고 기본 체크 해제.
+// 선택 목록 안에서 같은 사람이 두 번 나오면 한 번만 남긴다.
+export function buildImportCandidates(picked, existingContacts) {
+  const existingPhones = new Set((existingContacts || []).map(c => normalizePhone(c.phone)).filter(Boolean));
+  const existingNames = new Set((existingContacts || []).map(c => (c.name || "").trim()).filter(Boolean));
+  const seen = new Set();
+  const out = [];
+  (picked || []).forEach((p, i) => {
+    const phone = String(p?.tel?.[0] || "").trim();
+    const email = String(p?.email?.[0] || "").trim();
+    const name = String(p?.name?.[0] || "").trim() || phone;
+    if (!name) return;
+    const norm = normalizePhone(phone);
+    const key = norm || `name:${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const dup = norm ? existingPhones.has(norm) : existingNames.has(name);
+    out.push({ key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: !dup });
+  });
+  return out;
+}
+
 function parseYmd(dateStr) {
   return new Date(`${dateStr}T00:00:00`);
 }
