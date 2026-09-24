@@ -188,6 +188,22 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 
 보안 규칙 반영이 필요한 상태에서 코드만 배포하고 작업이 완전히 끝났다고 보고하지 않는다.
 
+### 커뮤니티·게시판 권한 원칙 (2026-09-24 사용자 확정)
+
+- **수정·삭제 권한은 같다:** 글쓴이 본인 + 관리자만 가능하다. 커뮤니티 안의 글은 커뮤니티 관리자(`communities/{id}.createdBy`)와 앱 관리자(`admin/config.uids`)가 관리자이다. 자유게시판(`publicBoard`)은 앱 관리자만 관리자이다.
+- 다른 사람은 **앱 기능상 꼭 필요한 필드만** 바꿀 수 있다: 게시글·공지의 `commentCount`(댓글 달기·지우기), 댓글의 `likedBy`(좋아요), 커뮤니티 문서의 `memberCount`·`lastActivityAt`.
+- 작성은 **본인 명의로만** 가능하다(`uid`/`createdBy`가 내 uid, 멤버·출석 문서 id가 내 uid). 커뮤니티 관리자(`createdBy`) 변경은 현재 관리자나 앱 관리자만 할 수 있다.
+- 커뮤니티 자체 삭제는 앱 관리자만 가능하다(관리자 화면). 사용자가 이 상태를 유지하기로 했다.
+- 새 기능이 남의 문서를 수정해야 하면(예: 조회수, 반응) 규칙의 허용 필드 목록(`onlyChanges([...])`)에 추가해야 한다. 안 하면 조용히 permission-denied가 난다.
+- 챌린지(`challenges`)에는 이 원칙이 아직 적용되지 않았다.
+
+### 보안 규칙 변경 시 검증 방법
+
+- 규칙은 Firestore 에뮬레이터로 먼저 검증한다. 스크래치패드 같은 프로젝트 밖 임시 폴더에 `firebase-tools@13` + `@firebase/rules-unit-testing` + `firebase`를 설치하고, `npx firebase emulators:exec --only firestore --project demo-daymate "node test.mjs"`로 실행한다. `demo-` 프로젝트라 실제 Firebase에는 접속하지 않는다.
+- Java는 `C:\baduk\LizzieYZY\jre\java11\bin`의 Java 11을 PATH에 넣어서 쓴다. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
+- "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.
+- 게시 후 실제 확인은 **운영자 계정이 아닌 일반 계정**으로 한다. 운영자는 앱 관리자 조건으로 모든 규칙을 통과하므로 확인이 되지 않는다.
+
 ### 로컬 전용 값을 계정 동기화로 옮길 때
 
 localStorage에만 있던 설정값을 `users/{uid}/data/settings` 동기화 대상으로 옮길 때는, "값이 바뀌면 저장"하는 useEffect만으로는 부족하다. 기존 사용자가 이미 입력해 둔 값은 다시 수정하지 않는 한 영원히 서버에 올라가지 않는다.
