@@ -372,7 +372,11 @@ export default function People({
     }
     try {
       const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
-      if (!picked?.length) return;
+      // 안드로이드 선택 창에서 검색 후 키보드 검색(엔터)을 누르면 아무도 선택 안 된 채 창이 닫히는 경우가 있어 안내
+      if (!picked?.length) {
+        setToast?.("선택된 연락처가 없어요. 선택 창에서는 검색하지 말고 맨 위 '모두 선택' → 확인을 누른 뒤, 여기서 검색해 골라주세요");
+        return;
+      }
       const candidates = buildImportCandidates(picked, contacts);
       if (!candidates.length) { setToast?.("가져올 수 있는 연락처가 없어요"); return; }
       setImportCandidates(candidates);
