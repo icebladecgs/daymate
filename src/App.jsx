@@ -1431,12 +1431,16 @@ export default function App() {
   };
 
   const setDayData = (dateStr, updater) => {
-    const cur = plans[dateStr] || newDay(dateStr);
+    // 렌더 시점 plans가 아니라 plansRef(호출마다 즉시 갱신)를 기준으로 계산 —
+    // 같은 틱에 같은 날짜로 연속 호출돼도(예: 연락처 삭제 시 연결된 할일 여러 개) 앞선 변경이 덮어써지지 않게 한다.
+    // XP 지급·GCal 동기화 같은 부수효과가 있어 setPlans updater 안에서 계산하지 않는다(StrictMode 이중 실행 방지).
+    const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
     const nextDayRaw = typeof updater === "function" ? updater(cur) : updater;
     const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
     const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
+    plansRef.current = { ...plansRef.current, [dateStr]: savedDay };
     setPlans(prev => ({ ...prev, [dateStr]: savedDay }));
     syncTasksToGcal(dateStr, prevTasks, nextTasks, (updates) => {
       setPlans(p => {
