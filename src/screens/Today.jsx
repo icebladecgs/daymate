@@ -883,7 +883,7 @@ export default function Today({
       </div>
       {tasksOpen && (
       <div style={S.card}>
-        {/* 목록은 보기 전용 — 체크만 바로 하고, 시간·스탯·언젠가·삭제 등 편집은 할일 상세(줄 누르기)에서 */}
+        {/* 목록은 보기 전용 — 체크·언젠가만 바로 하고, 시간·스탯·메모·사진·삭제 등 편집은 할일 상세(줄 누르기)에서 */}
         {targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <button
@@ -895,8 +895,15 @@ export default function Today({
               <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{task.title}</span>
               {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}</span>}
               <TaskDetailBadge task={task} />
-              <span style={{ marginLeft: 'auto', color: 'var(--dm-muted)', fontSize: 16, flexShrink: 0, opacity: 0.6 }}>›</span>
+              {task.done && <span style={{ marginLeft: 'auto', color: 'var(--dm-muted)', fontSize: 16, flexShrink: 0, opacity: 0.6 }}>›</span>}
             </div>
+            {/* 자주 쓰는 "언젠가로 미루기"만 목록에 바로 노출 (미완료 할일만). 나머지 편집은 상세에서 */}
+            {!task.done && (
+              <button
+                onClick={() => { moveTargetTaskToSomeday(task); setToast('언젠가 할일로 이동 ✅'); }}
+                style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+              >언젠가</button>
+            )}
           </div>
         ))}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
