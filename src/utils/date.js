@@ -9,6 +9,13 @@ export const formatKoreanDate = (dateStr) => {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
 };
 
+// 좁은 헤더용 짧은 형식: "9월 26일 (토)"
+export const formatShortKoreanDate = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = "일월화수목금토"[d.getDay()];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dow})`;
+};
+
 export const addDays = (dateStr, delta) => {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + delta);
