@@ -7,6 +7,7 @@ import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, topTags, filterItems, sortItems } from "../utils/memoManager.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
+import { requestMemoLock } from "../utils/memoLock.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -278,6 +279,15 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
   }, [text, title]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { const l = latest.current; l.save(l.text, l.title); }, []);
 
+  if (item?.locked) {
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--dm-muted)", fontSize: 13, padding: 20, textAlign: "center" }}>
+        <div style={{ fontSize: 30 }}>🔒</div>
+        잠긴 메모예요. 비밀번호를 넣어야 볼 수 있어요.
+        <button onClick={() => requestMemoLock(item.id, "open")} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid rgba(108,142,255,.4)", background: "rgba(108,142,255,.15)", color: "#6C8EFF", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🔓 열기</button>
+      </div>
+    );
+  }
   if (item?.kind === "trash") {
     const btn = { padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
     return (
@@ -324,6 +334,7 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
           <button onClick={() => window.daymateDesktop.openSticky(item.ds, item.id)} style={small}>📌 포스트잇으로</button>
         )}
         {onOpenDate && <button onClick={() => onOpenDate(item.ds)} style={small}>날짜 열기 →</button>}
+        {item.kind === "memo" && item.id !== "legacy" && <button onClick={() => requestMemoLock(item.id, "lock")} style={small}>🔒 잠그기</button>}
         {item.kind === "memo" && <button onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
       </div>
       {item.kind === "task" && (

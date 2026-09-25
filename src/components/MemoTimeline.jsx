@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import S from "../styles.js";
+import { requestMemoLock } from "../utils/memoLock.js";
 
 function getMemoTime() {
   const now = new Date();
@@ -29,6 +30,19 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
   const handleCopy = () => navigator.clipboard.writeText(item.text);
   const handleSave = () => { onSave(item.id, editText); setMode('collapsed'); };
   const handleCancel = () => { setEditText(item.text); setMode('collapsed'); };
+
+  // 잠긴 메모: 내용 대신 🔒 표시만, 누르면 비밀번호 창 (utils/memoLock.js)
+  if (item.locked) {
+    return (
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div onClick={() => requestMemoLock(item.id, 'open')}
+          style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-muted)', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}>
+          {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}🔒 잠긴 메모 <span style={{ fontSize: 11 }}>(눌러서 열기)</span>
+        </div>
+        <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+      </div>
+    );
+  }
 
   if (mode === 'editing') {
     return (
@@ -61,6 +75,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
           {onToggleStar && (
             <button onClick={() => onToggleStar(item.id, !item.starred)} style={chipBtn(item.starred ? '#FBBF24' : '#888')}>{item.starred ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
           )}
+          {item.id !== 'legacy' && <button onClick={() => requestMemoLock(item.id, 'lock')} style={chipBtn('#94A3B8')}>🔒 잠그기</button>}
           <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
           <div style={{ flex: 1 }} />
           <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>

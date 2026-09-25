@@ -42,6 +42,7 @@ const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 const MemoManager = lazy(() => import("./components/MemoManager.jsx"));
+const MemoLockSheet = lazy(() => import("./components/MemoLockSheet.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
 const People = lazy(() => import("./screens/People.jsx"));
@@ -61,13 +62,13 @@ function stampMemoUpdates(prevDay, nextDay) {
   let changed = false;
   const memos = nextMemos.map(m => {
     const p = prevMap.get(m.id);
-    if (p && p.text === m.text && p.photos === m.photos && p.files === m.files) return m;
+    if (p && p.text === m.text && p.photos === m.photos && p.files === m.files && p.locked === m.locked) return m;
     if (!p && m.updatedAt) return m; // 새로 넣는 메모에 이미 시각이 있으면 그대로 (휴지통에서 되살리기 등)
     changed = true;
     return { ...m, updatedAt: now };
   });
   const nextIds = new Set(nextMemos.map(m => m.id));
-  const removed = (prevDay?.memos || []).filter(m => !nextIds.has(m.id) && (m.text?.trim() || m.photos?.length || m.files?.length));
+  const removed = (prevDay?.memos || []).filter(m => !nextIds.has(m.id) && (m.text?.trim() || m.photos?.length || m.files?.length || m.locked));
   const cutoff = Date.now() - MEMO_TRASH_DAYS * 86400000;
   const oldTrash = nextDay.memoTrash || [];
   const trash = [...oldTrash, ...removed.map(m => ({ ...m, deletedAt: now }))].filter(t => Date.parse(t.deletedAt) > cutoff);
@@ -1269,6 +1270,21 @@ export default function App() {
   };
 
   // 다른 기기에서 바꾼 언젠가할일·목표(인생목표·실천항목·올해/월간 목표)를 반영 — 내용이 다를 때만 바꾼다
+  // 메모 잠금(암호화) — 비밀번호 확인용 설정(salt·check)만 계정에 저장해 기기끼리 같은 비밀번호로 풀리게 한다.
+  // 잠금 창은 메모 번호만으로 어디서든 연다 (utils/memoLock.js의 requestMemoLock → dm:memo-lock)
+  const [memoLockCfg, setMemoLockCfg] = useState(() => store.get("dm_memo_lock", null));
+  const [lockRequest, setLockRequest] = useState(null);
+  useEffect(() => {
+    const onLock = (e) => setLockRequest(e.detail || null);
+    window.addEventListener('dm:memo-lock', onLock);
+    return () => window.removeEventListener('dm:memo-lock', onLock);
+  }, []);
+  const saveMemoLockCfg = (cfg) => {
+    setMemoLockCfg(cfg);
+    store.set("dm_memo_lock", cfg);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { memoLock: cfg }).catch(() => {});
+  };
+
   const applyRemotePrefs = ({ settings: s, goals: remoteGoals }) => {
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     if (Array.isArray(s?.someday) && !same(s.someday, someday)) setSomeday(s.someday);
@@ -1277,6 +1293,7 @@ export default function App() {
       if (!same(nextLifeGoals, lifeGoals)) setLifeGoals(nextLifeGoals);
     }
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
+    if (s?.memoLock && !same(s.memoLock, memoLockCfg)) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
     if (remoteGoals) {
       const nextGoals = normalizeGoals(remoteGoals, currentGoalMonthKey);
       if (!same(nextGoals, goals)) setGoals(nextGoals);
@@ -1444,6 +1461,7 @@ export default function App() {
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (Array.isArray(s.lifeGoalActions)) { setLifeGoalActions(s.lifeGoalActions); store.set("dm_life_goal_actions", s.lifeGoalActions); }
+            if (s.memoLock) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
             if (s.businessCards && Array.isArray(s.businessCards)) { setBusinessCards(s.businessCards); store.set("dm_business_cards", s.businessCards); }
             else if (s.businessCard?.photoUrl) {
               const migrated = [{ id: 'legacy', photoUrl: s.businessCard.photoUrl, photoPath: s.businessCard.photoPath, label: '', addedAt: new Date().toISOString(), isDefault: true }];
@@ -2651,6 +2669,12 @@ export default function App() {
       <div ref={phoneRef} style={S.phone} className="dm-phone">
         <div className="dm-blob dm-blob-1" />
         <div className="dm-blob dm-blob-2" />
+        {lockRequest && (
+          <Suspense fallback={null}>
+            <MemoLockSheet request={lockRequest} plans={plans} cfg={memoLockCfg} onSaveCfg={saveMemoLockCfg}
+              onUpdateDayData={setDayData} onClose={() => setLockRequest(null)} setToast={setToast} />
+          </Suspense>
+        )}
         {showUpdateBanner && (
           <UpdateBanner
             mode={canApplyUpdate ? 'ready' : 'updated'}

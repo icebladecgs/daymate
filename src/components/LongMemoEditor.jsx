@@ -6,6 +6,7 @@ import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
+import { requestMemoLock } from "../utils/memoLock.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -361,6 +362,13 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
         <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
+        {/* 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다 */}
+        <button onClick={() => {
+          const id = idRef.current;
+          if (!id || id === 'legacy') { onPhotoError?.('내용을 먼저 쓰고 저장한 뒤 잠가 주세요'); return; }
+          handleClose();
+          setTimeout(() => requestMemoLock(id, 'lock'), 50);
+        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔒</button>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button

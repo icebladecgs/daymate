@@ -199,6 +199,15 @@ export default function StickyMemo() {
     );
   }
 
+  if (memo.locked) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#FFF7A8", color: "#5b4a00", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 13, fontFamily: "inherit", padding: 12, textAlign: "center" }}>
+        🔒 잠긴 메모는 포스트잇으로 열 수 없어요.
+        <button onClick={() => closeWindow({})} style={{ ...iconBtn, width: "auto", padding: "4px 12px", background: "#F5E97A" }}>닫기</button>
+      </div>
+    );
+  }
+
   const firstLine = text.split("\n").map(l => l.trim()).find(Boolean) || "";
   return (
     <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: c.bg, color: "#000", fontFamily: "inherit", border: `1px solid ${c.line}` }}>

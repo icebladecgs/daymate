@@ -13,6 +13,11 @@ export function buildManagerItems(plans) {
   Object.entries(plans || {}).forEach(([ds, d]) => {
     if (!d) return;
     displayMemos(d).forEach(m => {
+      if (m.locked) { // 잠긴 메모는 제목·내용 없이 표시만 (검색되지 않음)
+        items.push({ key: `memo|${ds}|${m.id}`, kind: "memo", ds, id: m.id, title: "🔒 잠긴 메모", text: "", time: validTime(m.createdAt),
+          updatedAt: m.updatedAt || "", starred: !!m.starred, photos: [], tags: [], locked: true });
+        return;
+      }
       const text = m.text || "";
       items.push({
         key: `memo|${ds}|${m.id}`, kind: "memo", ds, id: m.id,
@@ -33,7 +38,7 @@ export function buildManagerItems(plans) {
       const text = m.text || "";
       items.push({
         key: `trash|${ds}|${m.id}`, kind: "trash", ds, id: m.id,
-        title: firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
+        title: m.locked ? "🔒 잠긴 메모" : (firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)")),
         text, time: validTime(m.createdAt), updatedAt: m.deletedAt || "",
         starred: false, photos: m.photos || [], tags: [],
       });
