@@ -1,12 +1,25 @@
 import { useRef, useState } from "react";
 import { formatKoreanDate, addDays } from "../utils/date.js";
 import S from "../styles.js";
+import Toast from "../components/Toast.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
-export default function MemoHome({
+// 메모 화면은 검색·메모 열기·새 메모 쓰기로 모습이 바뀌므로, 알림(toast)은 바깥에서 한 번 그린다.
+// (예전엔 이 화면에 알림 표시가 없어서 공유 저장 알림 등이 오늘 화면으로 돌아가야 떴다, 2026-09-25)
+export default function MemoHome(props) {
+  const { toast, setToast } = props;
+  return (
+    <>
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      <MemoHomeInner {...props} />
+    </>
+  );
+}
+
+function MemoHomeInner({
   todayStr, plans, onUpdateDayData,
   onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday, onUpdateFilesToday,
   onOpenDate, onOpenKnowledge, onRequireLogin,

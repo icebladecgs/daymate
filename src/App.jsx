@@ -1380,6 +1380,7 @@ export default function App() {
       const photos = [];
       let note = '';
       if (share.files > 0) {
+        if (uid) setToast('📥 공유받은 사진을 올리는 중이에요…');
         const cache = await caches.open('dm-share').catch(() => null);
         if (cache && uid) {
           for (let i = 0; i < share.files; i++) {
@@ -1400,6 +1401,8 @@ export default function App() {
       navigateRef.current?.('memo');
     };
     if (authUser?.uid || !share.files) { run(authUser?.uid || null); return; }
+    // 사진은 로그인 확인 뒤 올리므로 기다리는 동안 먼저 알림
+    if (!share.waitingShown) { share.waitingShown = true; setToast('📥 공유받은 사진을 올리는 중이에요…'); navigateRef.current?.('memo'); }
     const timer = setTimeout(() => run(null), 8000);
     return () => clearTimeout(timer);
   }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
