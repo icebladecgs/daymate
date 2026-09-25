@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import PhotoViewer from "../components/PhotoViewer.jsx";
 import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -217,6 +218,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [boardPhotos, setBoardPhotos] = useState([]);
   const [postingBoard, setPostingBoard] = useState(false);
   const [selectedBoardPost, setSelectedBoardPost] = useState(null);
+  const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [showAllBoard, setShowAllBoard] = useState(false);
   const [editingBoardPost, setEditingBoardPost] = useState(null);
 
@@ -1716,9 +1718,13 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               ) : (
                 <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
               )}
-              {(selectedBoardPost.photos?.length > 0 ? selectedBoardPost.photos : (selectedBoardPost.photoUrl ? [{ url: selectedBoardPost.photoUrl }] : [])).map((p, i) => (
-                <img key={p.path || i} src={p.url} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
-              ))}
+              {(() => {
+                const postPhotos = selectedBoardPost.photos?.length > 0 ? selectedBoardPost.photos : (selectedBoardPost.photoUrl ? [{ url: selectedBoardPost.photoUrl }] : []);
+                return postPhotos.map((p, i) => (
+                  <img key={p.path || i} src={p.url} alt="" onClick={() => setViewer({ photos: postPhotos, index: i })} style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block', cursor: 'zoom-in' }} />
+                ));
+              })()}
+              {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
 
               {/* 댓글 목록 */}
               <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--dm-border)' }}>

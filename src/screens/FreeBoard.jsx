@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import PhotoViewer from "../components/PhotoViewer.jsx";
 import { collection, doc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db, addFreeBoardPost, updateFreeBoardPost, deleteFreeBoardPost, addFreeBoardComment, deleteFreeBoardComment, syncFreeBoardCommentCount, toggleFreeBoardCommentLike, updateFreeboardNickname, deletePhoto } from "../firebase.js";
 import { formatRelativeTime } from "../utils/date.js";
@@ -15,6 +16,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
   const [photos, setPhotos] = useState([]);
   const [posting, setPosting] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [showAll, setShowAll] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
 
@@ -308,8 +310,9 @@ export default function FreeBoard({ authUser, user, setToast }) {
                 <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
               )}
               {(selectedPost.photos || []).map((p, i) => (
-                <img key={p.path || i} src={p.url} alt="" style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block' }} />
+                <img key={p.path || i} src={p.url} alt="" onClick={() => setViewer({ photos: selectedPost.photos, index: i })} style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block', cursor: 'zoom-in' }} />
               ))}
+              {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
 
               {/* 댓글 목록 */}
               <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--dm-border)' }}>

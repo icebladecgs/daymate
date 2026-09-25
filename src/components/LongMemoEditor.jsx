@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import PhotoViewer from "./PhotoViewer.jsx";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
@@ -12,6 +13,7 @@ function genPhotoPath(prefix) {
 export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
+  const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
   const [starred, setStarred] = useState(initialStarred);
@@ -185,11 +187,12 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const tagsAndPhotosBlock = (
     <div style={{ padding: '0 20px 12px' }}>
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+      {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
       <div style={{ paddingTop: 10 }}><MemoLinks text={text} /></div>
 
       {photos.map((p, idx) => (
         <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
-          <img src={p.url} alt="첨부 사진" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+          <img src={p.url} alt="첨부 사진" onClick={() => setViewer({ photos, index: idx })} style={{ width: '100%', borderRadius: 12, display: 'block', cursor: 'zoom-in' }} />
           <button
             onClick={() => handleRemovePhoto(idx)}
             aria-label="사진 삭제"

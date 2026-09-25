@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import PhotoViewer from "../components/PhotoViewer.jsx";
 import S from "../styles.js";
 import { getKeywordRecords, getRelatedKeywords } from "../utils/knowledge.js";
 import { formatKoreanDate } from "../utils/date.js";
@@ -17,6 +18,7 @@ export default function KeywordDetail({
     () => getRelatedKeywords(plans, keyword),
     [plans, keyword]
   );
+  const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [longMemo, setLongMemo] = useState(null); // { dateStr, id, text, photos, starred } | null
 
   const lastDate = records[0]?.dateStr || '';
@@ -61,6 +63,7 @@ export default function KeywordDetail({
 
   return (
     <div style={S.content}>
+      {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
       <div style={S.topbar}>
         <button
           onClick={onBack}
@@ -174,7 +177,8 @@ export default function KeywordDetail({
                       key={p.path || pi}
                       src={p.url}
                       alt="첨부 사진"
-                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                      onClick={(e) => { e.stopPropagation(); setViewer({ photos: rec.photos, index: pi }); }}
+                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, flexShrink: 0, cursor: 'zoom-in' }}
                     />
                   ))}
                 </div>

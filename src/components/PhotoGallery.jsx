@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import PhotoViewer from "./PhotoViewer.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 
@@ -51,7 +52,7 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
         <div key={p.path || idx} style={{ position: 'relative' }}>
           <img
             src={p.url}
-            onClick={() => setPreview(p.url)}
+            onClick={() => setPreview(idx)}
             style={{ ...tileStyle, objectFit: 'cover', border: '1.5px solid var(--dm-border)', cursor: 'pointer' }}
             alt="첨부 사진"
           />
@@ -79,26 +80,7 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
         )
       )}
 
-      {preview && (
-        <div
-          onClick={() => setPreview(null)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 500,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-          }}
-        >
-          <button
-            onClick={() => setPreview(null)}
-            aria-label="닫기"
-            style={{
-              position: 'fixed', top: 16, right: 16, width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
-              fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >✕</button>
-          <img src={preview} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 12 }} alt="첨부 사진 확대보기" />
-        </div>
-      )}
+      {preview !== null && <PhotoViewer photos={photos} index={preview} onClose={() => setPreview(null)} />}
     </div>
   );
 }
