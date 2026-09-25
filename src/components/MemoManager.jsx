@@ -259,6 +259,9 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
         {item.kind === "task" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
         )}
+        {item.kind === "memo" && window.daymateDesktop?.openSticky && (
+          <button onClick={() => window.daymateDesktop.openSticky(item.ds, item.id)} style={small}>📌 포스트잇으로</button>
+        )}
         {onOpenDate && <button onClick={() => onOpenDate(item.ds)} style={small}>날짜 열기 →</button>}
         {item.kind === "memo" && <button onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
       </div>

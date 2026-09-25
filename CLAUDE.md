@@ -444,4 +444,5 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
   - `persistDayData`는 저장 전 날짜를 "미동기화"(`dm_unsynced_days`)로 표시하고, 서버 저장이 성공하면 지운다. 로그인·새로고침 병합에서 **미동기화 날짜만 로컬 우선**, 나머지는 서버 우선이다.
   - 로그인 시에는 서버 내용과 달라진 날짜만 다시 저장한다(예전엔 앱을 켤 때마다 전체 날짜를 다시 썼다).
   - 날짜 문서에는 서버 시각 `_syncedAt`을 기록한다(앱 `firebase.js saveDay`와 텔레그램 봇 모두). 앱 복귀·창 포커스 시 `loadDaysChangedSince`로 바뀐 날짜만 받는다(15초 간격 제한). 서버에서 날짜 문서를 쓰는 새 코드를 만들면 `_syncedAt`도 같이 써야 다른 기기에 반영된다.
+- **데스크탑 포스트잇(간편 메모) 구조 (2026-09-25, 웹 v593 / 데스크탑 1.2.0).** 포스트잇 창은 앱 전체가 아니라 `?view=sticky` 가벼운 화면(`StickyMemo.jsx`, `main.jsx`에서 분기)이다. 포스트잇은 localStorage에만 쓰고 "미동기화" 표시만 하며, 트레이의 메인 창이 `storage` 이벤트로 받아 서버에 올린다(`App.jsx` onStorage). 창마다 앱 전체를 띄우면 창마다 로그인·전체 기록 읽기가 일어나므로 이 구조를 유지한다. 웹↔데스크탑 기능 호출은 `desktop/preload.js`의 `window.daymateDesktop`으로만 한다. `desktop/main.js`를 바꾸면 **설치 파일을 다시 만들어(`desktop`에서 `npm run build`) 사용자가 재설치**해야 반영된다(웹 배포만으로는 안 됨). 로컬 테스트는 `DAYMATE_URL`(로컬 서버)·`DAYMATE_USER_DATA`(별도 설정 폴더) 환경변수로 설치된 앱과 분리해서 Playwright `_electron`으로 한다.
 - **PowerShell here-string 커밋 메시지에 큰따옴표가 있으면 git 인자가 깨진다.** 스크래치패드에 메시지 파일을 쓰고 `git commit -F 파일`로 커밋한다.

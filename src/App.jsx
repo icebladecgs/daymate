@@ -9,6 +9,7 @@ import { sendTelegramMessage } from "./api/telegram.js";
 import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
+import { UNSYNCED_DAYS_KEY, markDayUnsynced, isDayUnsynced } from "./utils/daySync.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore } from "./data/growthStats.js";
 import { triggerVibration } from "./utils/notification.js";
@@ -43,8 +44,6 @@ const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
 const People = lazy(() => import("./screens/People.jsx"));
 
-// 서버 저장이 아직 확인되지 않은 날짜 목록 (로그인 병합 때 이 날짜만 로컬 할일 우선)
-const UNSYNCED_DAYS_KEY = "dm_unsynced_days";
 // 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
 const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
 
@@ -1178,14 +1177,6 @@ export default function App() {
     return mergeTasksIntoDay(baseWithLocalOverride, missingTasks);
   };
 
-  // 서버 저장이 확인되기 전까지 날짜를 "미동기화"로 표시 — 로그인 병합 때 이 날짜만 로컬 할일을 우선한다
-  const markDayUnsynced = (dateStr, unsynced) => {
-    const set = new Set(store.get(UNSYNCED_DAYS_KEY, []));
-    if (unsynced === set.has(dateStr)) return;
-    if (unsynced) set.add(dateStr); else set.delete(dateStr);
-    store.set(UNSYNCED_DAYS_KEY, [...set]);
-  };
-
   const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
     const normalizedDay = dedupeDayTasks(dayData);
     saveDay(dateStr, normalizedDay);
@@ -1306,6 +1297,24 @@ export default function App() {
       r.running = false;
     }
   };
+  // 같은 PC의 다른 창(데스크탑 포스트잇)이 날짜 기록을 바꾸면 즉시 반영하고, 그 창 대신 서버에 올린다
+  const syncOtherWindowRef = useRef(null);
+  syncOtherWindowRef.current = (dateStr, day) => {
+    plansRef.current = { ...plansRef.current, [dateStr]: day };
+    setPlans(prev => ({ ...prev, [dateStr]: day }));
+    if (authUser?.uid && syncReadyRef.current && isDayUnsynced(dateStr)) persistDayData(dateStr, day, authUser.uid, true);
+  };
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (!e.key?.startsWith('dm_day_') || !e.newValue) return;
+      try { syncOtherWindowRef.current(e.key.slice(7), JSON.parse(e.newValue)); } catch { /* 잘못된 값 무시 */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+  // 데스크탑 앱: 메모 관리자일 때만 창을 넓게
+  useEffect(() => { window.daymateDesktop?.setWideMode?.(screen === 'manager'); }, [screen]);
+
   // 검색 화면 등 하위 화면에서 전체 화면(메모 관리자)으로 이동 — changeScreen은 아래(조기 return 뒤)에 정의돼 ref로 연결
   const navigateRef = useRef(null);
   useEffect(() => {
