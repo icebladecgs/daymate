@@ -449,7 +449,7 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **메모 편집 도우미는 `utils/editorAssist.js` 한 곳**(계산·날짜 넣기·줄 복제·목록 이어쓰기). 새 메모 입력칸을 만들면 `onKeyDown`에 `handleEditorKey`를 연결한다. 계산은 `eval`을 쓰지 않는 자체 계산기다.
 - **반복 할일 규칙은 `utils/recurring.js`의 `matchesRecurring`** 한 곳에서 판단한다(`daily`, 요일 `0~6`, `nth:N:W` 매월 N번째 W요일).
 - **메모 잠금(암호화) (2026-09-25, 사용자가 "가리기" 대신 "암호화" 선택).** `utils/memoLock.js` — 비밀번호→PBKDF2(25만 번)→AES-GCM. 잠긴 메모는 `{ text: '', locked: {iv, ct} }`(본문·사진·파일 목록이 암호문 안), 계정 설정 `memoLock`에는 salt·확인용 암호문만 둔다. 비밀번호·키는 저장하지 않고 5분간 메모리에만. **비밀번호를 잊으면 복구 불가**(의도된 설계). 잠긴 메모에 평문을 쓰는 화면을 만들면 안 된다 — 새 메모 화면을 만들면 `memo.locked`일 때 내용 편집 대신 `requestMemoLock(id, 'open')`으로 잠금 창을 띄운다. 잠금 창은 body에 zIndex 950(메모 관리자 900 위, 사진 보기 1000 아래).
-- **휴대폰 공유 받기(Web Share Target).** `manifest.json` share_target → `sw.js`가 `/share-target` POST를 받아 사진은 `dm-share` 캐시에, 글·링크는 주소로 → `App.jsx`가 오늘 메모로 저장. **sw.js의 activate가 `dm-share` 캐시는 지우지 않도록** 예외를 유지한다. 안드로이드에 설치한 앱에서만 동작.
+- **휴대폰 공유 받기(Web Share Target).** `manifest.json` share_target → `sw.js`가 `/share-target` POST를 받아 사진은 `dm-share` 캐시에, 글·링크는 주소로 → `App.jsx`가 오늘 메모로 저장. **sw.js의 activate가 `dm-share` 캐시는 지우지 않도록** 예외를 유지한다. 안드로이드에 설치한 앱에서만 동작. **manifest(공유 대상 등) 변경은 이미 설치된 앱에 바로 반영되지 않는다** — 사용자에게 홈 화면 앱 삭제 → 크롬으로 다시 설치를 안내한다(2026-09-25 실제로 재설치 후 공유 목록에 나타남). 삼성 인터넷으로 설치한 앱은 공유 대상 미지원.
 - **문장 일정 입력은 `utils/nlSchedule.js`** (외부 AI 없이 규칙 해석 — 일정 내용을 밖으로 보내지 않기 위함). **어제 못 한 할일 넘기기**는 반복 할일·구글 캘린더 일정을 제외한다(`Today.jsx`).
 - **서버 API 인증.** `api/chat.js`는 Firebase ID 토큰 확인(클라이언트는 `src/api/chatFetch.js` 사용), `api/widget.js`는 `WIDGET_ACCESS_TOKEN` 미설정 시 거절. 새 서버 API를 만들면 로그인 확인 없이 개인 데이터나 유료 API를 열지 않는다.
 - **PowerShell here-string 커밋 메시지에 큰따옴표가 있으면 git 인자가 깨진다.** 스크래치패드에 메시지 파일을 쓰고 `git commit -F 파일`로 커밋한다.
