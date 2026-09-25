@@ -42,7 +42,30 @@ const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
 const People = lazy(() => import("./screens/People.jsx"));
 
-const CHUNK_LOAD_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
+// 서버 저장이 아직 확인되지 않은 날짜 목록 (로그인 병합 때 이 날짜만 로컬 할일 우선)
+const UNSYNCED_DAYS_KEY = "dm_unsynced_days";
+// 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
+const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
+
+// 서버 할일에는 없고 이 기기 할일(같은 ID)에만 남은 메모·사진·파일을 되살린다
+function restoreLostTaskDetails(day, localDay) {
+  const localMap = new Map((localDay?.tasks || []).map(t => [String(t.id), t]));
+  let changed = false;
+  const tasks = (day?.tasks || []).map(t => {
+    const lt = localMap.get(String(t.id));
+    if (!lt) return t;
+    const add = {};
+    if (!t.note?.trim() && lt.note?.trim()) add.note = lt.note;
+    if (!t.photos?.length && lt.photos?.length) add.photos = lt.photos;
+    if (!t.files?.length && lt.files?.length) add.files = lt.files;
+    if (!Object.keys(add).length) return t;
+    changed = true;
+    return { ...t, ...add };
+  });
+  return changed ? { ...day, tasks } : day;
+}
+
+const CHUNK_LOAD_ERROR_RE =/Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
 
 class ScreenErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -279,6 +302,7 @@ export default function App() {
   const canOpenAdmin = isPrimaryAdmin(authUser?.uid);
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
+  const daySaveSeqRef = useRef({}); // 날짜별 서버 저장 순번 — 마지막 저장이 성공했을 때만 "미동기화" 표시를 지운다
   const plansRef = useRef({});
   const gcalRefreshTimerRef = useRef(null);
   const driveRefreshTimerRef = useRef(null);
@@ -1098,11 +1122,13 @@ export default function App() {
     return Number.isFinite(createdAt) && (Date.now() - createdAt) < 5 * 60 * 1000;
   };
 
-  const mergeImportedGcalTasks = (baseDay, localDay) => {
+  // localWins: 같은 ID 태스크를 로컬 버전으로 덮을지 — 이 기기에 서버에 못 올린 변경이 있는 날짜만 true.
+  // 항상 로컬을 우선하면 다른 기기(PC)에서 입력한 메모·사진이 이 기기의 옛 버전에 가려지고,
+  // 그 옛 버전이 다시 서버에 저장돼 PC 입력분까지 지워진다 (2026-09-25).
+  const mergeImportedGcalTasks = (baseDay, localDay, localWins = true) => {
     const normalizedBaseDay = dedupeDayTasks(baseDay);
     const normalizedLocalDay = dedupeDayTasks(localDay);
-    // 같은 ID 태스크는 로컬 버전 우선 (Firebase 비동기 지연으로 인한 stale 데이터 방지)
-    const localTaskMap = new Map((normalizedLocalDay?.tasks || []).map(t => [String(t.id), t]));
+    const localTaskMap = new Map(localWins ? (normalizedLocalDay?.tasks || []).map(t => [String(t.id), t]) : []);
     const baseWithLocalOverride = normalizedBaseDay
       ? { ...normalizedBaseDay, tasks: (normalizedBaseDay.tasks || []).map(t => localTaskMap.get(String(t.id)) || t) }
       : normalizedBaseDay;
@@ -1131,10 +1157,25 @@ export default function App() {
     return mergeTasksIntoDay(baseWithLocalOverride, missingTasks);
   };
 
+  // 서버 저장이 확인되기 전까지 날짜를 "미동기화"로 표시 — 로그인 병합 때 이 날짜만 로컬 할일을 우선한다
+  const markDayUnsynced = (dateStr, unsynced) => {
+    const set = new Set(store.get(UNSYNCED_DAYS_KEY, []));
+    if (unsynced === set.has(dateStr)) return;
+    if (unsynced) set.add(dateStr); else set.delete(dateStr);
+    store.set(UNSYNCED_DAYS_KEY, [...set]);
+  };
+
   const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
     const normalizedDay = dedupeDayTasks(dayData);
     saveDay(dateStr, normalizedDay);
-    if (uidOverride && (forceRemote || syncReadyRef.current)) fsaveDay(uidOverride, dateStr, normalizedDay).catch(() => {});
+    markDayUnsynced(dateStr, true);
+    if (uidOverride && (forceRemote || syncReadyRef.current)) {
+      const seq = (daySaveSeqRef.current[dateStr] || 0) + 1;
+      daySaveSeqRef.current[dateStr] = seq;
+      fsaveDay(uidOverride, dateStr, normalizedDay)
+        .then(() => { if (daySaveSeqRef.current[dateStr] === seq) markDayUnsynced(dateStr, false); })
+        .catch(() => {});
+    }
     return normalizedDay;
   };
 
@@ -1248,9 +1289,13 @@ export default function App() {
             store.set("dm_goals", normalizedGoals);
           }
           const merged = {};
+          const unsyncedDays = new Set(store.get(UNSYNCED_DAYS_KEY, []));
+          const restoreDetails = !store.get(DAY_DETAIL_RESTORED_KEY, false);
           Object.entries(remote.days).forEach(([ds, remoteDay]) => {
             const localDay = loadDay(ds);
-            const nextDay = mergeImportedGcalTasks(remoteDay, localDay);
+            const localWins = unsyncedDays.has(ds);
+            let nextDay = mergeImportedGcalTasks(remoteDay, localDay, localWins);
+            if (!localWins && restoreDetails) nextDay = restoreLostTaskDetails(nextDay, localDay);
             merged[ds] = nextDay;
             persistDayData(ds, nextDay, firebaseUser.uid, true);
           });
@@ -1260,6 +1305,7 @@ export default function App() {
             if (!(localDay?.tasks || []).some(isImportedGcalTask)) return;
             merged[ds] = persistDayData(ds, localDay, firebaseUser.uid, true);
           });
+          store.set(DAY_DETAIL_RESTORED_KEY, true);
           if (Object.keys(merged).length > 0) setPlans(prev => {
             const next = { ...prev };
             for (const [ds, mergedDay] of Object.entries(merged)) {
@@ -1276,6 +1322,8 @@ export default function App() {
             goals,
             days: localDays,
           });
+          store.set(UNSYNCED_DAYS_KEY, []);
+          store.set(DAY_DETAIL_RESTORED_KEY, true);
         }
         // 내 초대 코드 — 서버에 이미 등록된 코드가 있으면 그걸 정본으로 쓰고,
         // 없으면(첫 로그인) 지금 이 기기의 코드를 서버에 등록해 이후 다른 기기도 같은 코드로 수렴시킨다.
