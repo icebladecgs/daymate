@@ -16,9 +16,11 @@ import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "
 import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
 import { chatFetch } from "../api/chatFetch.js";
+import { parseSchedule, describeSchedule } from "../utils/nlSchedule.js";
+import { recurringLabel } from "../utils/recurring.js";
 
 export default function Today({
-  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
+  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks,
   onOpenInvest, onOpenKnowledge, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
@@ -60,6 +62,7 @@ export default function Today({
     if (autoOpenLongMemo) setLongMemo({ id: null, text: '' });
   }, [autoOpenLongMemo]);
   const [taskInput, setTaskInput] = useState('');
+  const [nlOff, setNlOff] = useState(false); // 문장 해석 끄기 ("그냥 글자로") — 입력이 바뀌면 다시 켬
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
@@ -351,16 +354,33 @@ export default function Today({
     if (taskDayOffset === 0) onSetTodayTasks?.(next);
     else onUpdateDayData?.(targetDs, prev => ({ ...prev, tasks: next }));
   };
-  const addTargetTask = () => {
-    const title = taskInput.trim();
-    if (!title) return;
-    const newTask = { id: `t_${Date.now()}`, title, done: false };
-    const all = [...targetTasks];
-    const emptyIdx = all.findIndex(t => !t.title.trim());
+  const withNewTask = (list, newTask) => {
+    const all = [...(list || [])];
+    const emptyIdx = all.findIndex(t => !t.title?.trim());
     if (emptyIdx >= 0) all[emptyIdx] = newTask;
     else all.push(newTask);
-    setTargetTasks(all);
+    return all;
+  };
+  // 문장으로 일정 입력 — "내일 오후 3시 회의"는 그 날짜·시간으로, "매월 둘째 화요일 월례회의"는 반복 할일로 (utils/nlSchedule.js)
+  const parsedTask = !nlOff ? parseSchedule(taskInput) : null;
+  const addTargetTask = () => {
+    const raw = taskInput.trim();
+    if (!raw) return;
+    const p = parsedTask;
     setTaskInput('');
+    setNlOff(false);
+    if (p?.recurring && setRecurringTasks) {
+      setRecurringTasks(prev => [...(prev || []), { id: `r${Date.now()}`, title: p.title.slice(0, 40), days: p.recurring }]);
+      setToast(`🔁 반복 할일로 등록했어요 (${recurringLabel(p.recurring)})`);
+      return;
+    }
+    const newTask = { id: `t_${Date.now()}`, title: p ? p.title : raw, done: false, ...(p?.time ? { time: p.time } : {}) };
+    if (p?.date && p.date !== targetDs) {
+      onUpdateDayData?.(p.date, prev => ({ ...prev, tasks: withNewTask(prev?.tasks, newTask) }));
+      setToast(`📅 ${describeSchedule(p)}에 추가했어요`);
+      return;
+    }
+    setTargetTasks(withNewTask(targetTasks, newTask));
   };
   const toggleTargetTask = (id) => setTargetTasks(targetTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
   const deleteTargetTask = (id, { keepPhotos = false } = {}) => {
@@ -1005,13 +1025,21 @@ export default function Today({
           <input
             style={{ ...S.input, flex: 1, marginBottom: 0 }}
             value={taskInput}
-            onChange={e => setTaskInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addTargetTask()}
-            placeholder="할 일 추가 후 Enter"
+            onChange={e => { setTaskInput(e.target.value); setNlOff(false); }}
+            onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && addTargetTask()}
+            placeholder="할 일 추가 (예: 내일 오후 3시 회의)"
             maxLength={60}
           />
           <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
+        {parsedTask && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: 'var(--dm-sub)' }}>
+            <span style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '5px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: '#6C8EFF' }}>{describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
+            </span>
+            <button onClick={() => setNlOff(true)} style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
+          </div>
+        )}
       </div>
       )}
 
