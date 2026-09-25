@@ -51,6 +51,12 @@
 <label>메모 검색</label>
 <div class="row"><input id="memoSearch" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="memoSearch" title="단축키 지우기">지우기</button></div>
 
+<label>포스트잇 모두 보이기/감추기</label>
+<div class="row"><input id="toggleStickies" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="toggleStickies" title="단축키 지우기">지우기</button></div>
+
+<label>최근 편집한 메모 열기</label>
+<div class="row"><input id="recentMemo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="recentMemo" title="단축키 지우기">지우기</button></div>
+
 <div class="btns">
   <button class="cancel" onclick="window.close()">취소</button>
   <button class="save" onclick="save()">저장</button>
@@ -60,13 +66,15 @@
 <script>
   const { ipcRenderer } = require('electron');
 
-  ipcRenderer.invoke('get-shortcuts').then(({ memo, calendar, search, quickMemo, memoSearch }) => {
+  ipcRenderer.invoke('get-shortcuts').then(({ memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }) => {
     document.getElementById('memo').value = memo;
     document.getElementById('calendar').value = calendar;
     // 지운 단축키('')는 그대로 비워 두고, 설정한 적 없는 항목만 기본값
     document.getElementById('search').value = search ?? 'Ctrl+Shift+S';
     document.getElementById('quickMemo').value = quickMemo ?? 'Ctrl+Shift+N';
     document.getElementById('memoSearch').value = memoSearch ?? 'Ctrl+Alt+F';
+    document.getElementById('toggleStickies').value = toggleStickies ?? 'Ctrl+Alt+H';
+    document.getElementById('recentMemo').value = recentMemo ?? 'Ctrl+Alt+R';
   });
 
   function toElectronKey(e) {
@@ -110,9 +118,11 @@
     const search = document.getElementById('search').value.trim();
     const quickMemo = document.getElementById('quickMemo').value.trim();
     const memoSearch = document.getElementById('memoSearch').value.trim();
-    const used = [memo, calendar, search, quickMemo, memoSearch].filter(Boolean);
+    const toggleStickies = document.getElementById('toggleStickies').value.trim();
+    const recentMemo = document.getElementById('recentMemo').value.trim();
+    const used = [memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo].filter(Boolean);
     if (new Set(used).size < used.length) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
-    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, memoSearch }).then(ok => {
+    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }).then(ok => {
       if (ok) {
         document.getElementById('msg').style.display = 'block';
         setTimeout(() => window.close(), 800);

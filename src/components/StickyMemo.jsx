@@ -14,6 +14,18 @@ const desktop = () => window.daymateDesktop;
 // 데스크탑 앱이면 앱이 창을 닫고(목록에서 정리), 브라우저면 그냥 창 닫기
 const closeWindow = (info) => { if (desktop()?.stickyClose) desktop().stickyClose(info); else window.close(); };
 
+// 포스트잇 색 (메모잇처럼 여러 색) — 메모의 color 칸에 저장. 글자는 항상 검은색
+const STICKY_COLORS = {
+  yellow: { name: "노랑", bg: "#FFF7A8", bar: "#F5E97A", line: "#E8D95A", sub: "#8a7400" },
+  pink: { name: "분홍", bg: "#FFDDEA", bar: "#FFC2D8", line: "#F2A9C4", sub: "#9a3d63" },
+  blue: { name: "하늘", bg: "#DCEFFF", bar: "#BFE1FF", line: "#A3CFF2", sub: "#2f5f8a" },
+  green: { name: "연두", bg: "#E2F7D6", bar: "#C8EDB5", line: "#AEDD96", sub: "#3f6b2a" },
+  purple: { name: "보라", bg: "#ECE2FF", bar: "#DACBFF", line: "#C4B0F2", sub: "#5a3f96" },
+  orange: { name: "주황", bg: "#FFE6C9", bar: "#FFD3A3", line: "#F2BD85", sub: "#8a5214" },
+  gray: { name: "회색", bg: "#EEEEEE", bar: "#DDDDDD", line: "#C9C9C9", sub: "#555555" },
+  white: { name: "흰색", bg: "#FFFFFF", bar: "#F1F1F1", line: "#DDDDDD", sub: "#666666" },
+};
+
 const memoListOf = (day) => (day?.memos?.length ? day.memos : (day?.memo?.trim() ? [{ id: "legacy", text: day.memo.trim(), createdAt: "" }] : []));
 const findMemo = (ds, id) => memoListOf(loadDay(ds)).find(m => m.id === id) || null;
 
@@ -54,6 +66,8 @@ export default function StickyMemo() {
   useEffect(() => { if (memo) lastMemoRef.current = memo; }, [memo]);
   const [text, setText] = useState(() => findMemo(ds, id)?.text || "");
   const [pinned, setPinned] = useState(() => new URLSearchParams(window.location.search).get("pin") === "1");
+  const [folded, setFolded] = useState(() => new URLSearchParams(window.location.search).get("fold") === "1");
+  const [showColors, setShowColors] = useState(false);
   const [status, setStatus] = useState("");
   const [viewer, setViewer] = useState(null);
   const [uid, setUid] = useState(null);
@@ -158,12 +172,19 @@ export default function StickyMemo() {
     closeWindow({ deleted: true });
   };
   const close = () => { onLeave(); closeWindow({}); };
+  // 접기/펼치기 — 창을 제목줄 높이로 줄인다(크기는 데스크탑 앱이 조절·기억)
+  const toggleFold = async () => {
+    if (!desktop()?.fold) return;
+    const next = await desktop().fold(!folded);
+    if (typeof next === "boolean") setFolded(next);
+  };
   const togglePin = async () => {
     const next = await desktop()?.togglePin?.();
     if (typeof next === "boolean") setPinned(next);
   };
 
-  const iconBtn = { width: 24, height: 24, padding: 0, border: "none", background: "transparent", cursor: "pointer", fontSize: 13, lineHeight: 1, borderRadius: 4, WebkitAppRegion: "no-drag", color: "#5b4a00" };
+  const c = STICKY_COLORS[memo?.color] || STICKY_COLORS.yellow;
+  const iconBtn = { width: 24, height: 24, padding: 0, border: "none", background: "transparent", cursor: "pointer", fontSize: 13, lineHeight: 1, borderRadius: 4, WebkitAppRegion: "no-drag", color: "#333", flexShrink: 0 };
   const photos = memo?.photos || [];
 
   if (!memo) {
@@ -178,34 +199,49 @@ export default function StickyMemo() {
     );
   }
 
+  const firstLine = text.split("\n").map(l => l.trim()).find(Boolean) || "";
   return (
-    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#FFF7A8", color: "#000", fontFamily: "inherit", border: "1px solid #E8D95A" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "3px 4px 3px 8px", background: "#F5E97A", WebkitAppRegion: "drag", flexShrink: 0, userSelect: "none" }}>
-        <span style={{ flex: 1, fontSize: 11, color: "#8a7400", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-          {status || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}`}
+    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: c.bg, color: "#000", fontFamily: "inherit", border: `1px solid ${c.line}` }}>
+      {/* 제목줄: 끌어서 옮기기, 더블클릭으로 접기/펼치기. 접히면 창 전체(윈도우 최소 높이 39px)를 채움 */}
+      <div onDoubleClick={toggleFold}
+        style={{ display: "flex", alignItems: "center", gap: 1, height: folded ? "100%" : 28, padding: "0 4px 0 8px", background: c.bar, WebkitAppRegion: "drag", flexShrink: 0, userSelect: "none" }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: folded ? 12 : 11, fontWeight: folded ? 700 : 400, color: folded ? "#000" : c.sub, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+          {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}`}
         </span>
-        {desktop() && <button onClick={() => desktop().newSticky()} title="새 메모" style={iconBtn}>＋</button>}
-        {desktop() && <button onClick={togglePin} title={pinned ? "항상 위 해제" : "항상 위에 고정"} style={{ ...iconBtn, opacity: pinned ? 1 : 0.45 }}>📌</button>}
-        <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>
-        <button onClick={copyAll} title="전체 복사" style={iconBtn}>📋</button>
-        {desktop() && <button onClick={() => desktop().minimize()} title="접기" style={iconBtn}>−</button>}
-        <button onClick={remove} title="삭제" style={iconBtn}>🗑</button>
+        {!folded && desktop() && <button onClick={() => desktop().newSticky()} title="새 메모" style={iconBtn}>＋</button>}
+        {!folded && desktop() && <button onClick={togglePin} title={pinned ? "항상 위 해제" : "항상 위에 고정"} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
+        {!folded && <button onClick={() => setShowColors(v => !v)} title="색 바꾸기" style={iconBtn}>🎨</button>}
+        {!folded && <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>}
+        {!folded && <button onClick={copyAll} title="전체 복사" style={iconBtn}>📋</button>}
+        {desktop()?.fold && <button onClick={toggleFold} title={folded ? "펼치기" : "접기 (제목줄 더블클릭도 가능)"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
+        {!folded && <button onClick={remove} title="삭제" style={iconBtn}>🗑</button>}
         <button onClick={close} title="닫기 (메모는 남아요)" style={iconBtn}>✕</button>
       </div>
-      <textarea
-        autoFocus
-        value={text}
-        onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
-        onKeyDown={e => handleEditorKey(e, () => flash("계산할 수식이 없어요"))}
-        onPaste={onPaste}
-        placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
-        style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}
-      />
-      {photos.length > 0 && (
+      {showColors && !folded && (
+        <div style={{ display: "flex", gap: 6, padding: "6px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap" }}>
+          {Object.entries(STICKY_COLORS).map(([key, col]) => (
+            <button key={key} onClick={() => { patch({ color: key }); setShowColors(false); }} title={col.name}
+              style={{ width: 20, height: 20, padding: 0, borderRadius: "50%", background: col.bg, cursor: "pointer",
+                border: (memo.color || "yellow") === key ? "2px solid #333" : `1px solid ${col.line}` }} />
+          ))}
+        </div>
+      )}
+      {!folded && (
+        <textarea
+          autoFocus
+          value={text}
+          onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
+          onKeyDown={e => handleEditorKey(e, () => flash("계산할 수식이 없어요"))}
+          onPaste={onPaste}
+          placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
+          style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}
+        />
+      )}
+      {!folded && photos.length > 0 && (
         <div style={{ display: "flex", gap: 4, padding: "4px 6px 6px", overflowX: "auto", flexShrink: 0 }}>
           {photos.map((p, i) => (
             <img key={p.path || i} src={p.url} alt="첨부 사진" onClick={() => setViewer(i)}
-              style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 4, cursor: "zoom-in", border: "1px solid #E8D95A", flexShrink: 0 }} />
+              style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 4, cursor: "zoom-in", border: `1px solid ${c.line}`, flexShrink: 0 }} />
           ))}
         </div>
       )}

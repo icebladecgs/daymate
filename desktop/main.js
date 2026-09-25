@@ -29,7 +29,7 @@ const DAYMATE_URL = process.env.DAYMATE_URL || 'https://daymate-beta.vercel.app'
 // 단축키 설정 파일
 const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
 // 5가지 기능(새 메모·간편 메모·메모 관리자·달력 보기·메모 검색). 메모 검색은 VS Code의 Ctrl+Shift+F와 겹치지 않게 Ctrl+Alt+F
-const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F' };
+const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F', toggleStickies: 'Ctrl+Alt+H', recentMemo: 'Ctrl+Alt+R' };
 
 function loadShortcuts() {
   try { return Object.assign({}, DEFAULT_SHORTCUTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); } catch { return DEFAULT_SHORTCUTS; }
@@ -66,28 +66,30 @@ const stickyWindows = new Map(); // BrowserWindow → { ds, id, pinned }
 function saveStickyList() {
   prefs.stickies = [...stickyWindows.entries()]
     .filter(([w, info]) => !w.isDestroyed() && info.id)
-    .map(([w, info]) => ({ ds: info.ds, id: info.id, pinned: !!info.pinned, bounds: w.getBounds() }));
+    .map(([w, info]) => ({ ds: info.ds, id: info.id, pinned: !!info.pinned, folded: !!info.folded, unfoldHeight: info.unfoldHeight, bounds: w.getBounds() }));
   savePrefs(prefs);
 }
 
-function createSticky({ ds, id, pinned = true, bounds } = {}) {
+const FOLD_HEIGHT = 30; // 접힌 포스트잇 = 제목줄 높이
+
+function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHeight } = {}) {
   // 이미 떠 있는 메모면 그 창을 앞으로
   for (const [w, info] of stickyWindows) {
     if (!w.isDestroyed() && id && info.id === id && info.ds === ds) { w.show(); w.focus(); return w; }
   }
   const b = bounds || {};
   const win = new BrowserWindow({
-    width: b.width || 280, height: b.height || 240,
+    width: b.width || 280, height: folded ? FOLD_HEIGHT : (b.height || 240),
     ...(b.x !== undefined ? { x: b.x, y: b.y } : {}),
-    minWidth: 180, minHeight: 120,
+    minWidth: 180, minHeight: folded ? FOLD_HEIGHT : 120,
     frame: false, resizable: true, skipTaskbar: true,
     alwaysOnTop: pinned, backgroundColor: '#FFF7A8',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
   });
-  stickyWindows.set(win, { ds, id, pinned });
+  stickyWindows.set(win, { ds, id, pinned, folded, unfoldHeight: unfoldHeight || (folded ? 240 : undefined) });
   const q = id ? `ds=${encodeURIComponent(ds)}&id=${encodeURIComponent(id)}` : 'new=1';
-  win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}`);
+  win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}`);
   let t = null;
   const saveLater = () => { clearTimeout(t); t = setTimeout(saveStickyList, 500); };
   win.on('move', saveLater);
@@ -109,6 +111,52 @@ ipcMain.on('sticky-created', (event, { ds, id }) => {
 });
 ipcMain.on('sticky-close', (event) => { const win = stickyOf(event); if (win) win.close(); });
 ipcMain.on('sticky-minimize', (event) => { const win = stickyOf(event); if (win) win.minimize(); });
+ipcMain.handle('sticky-fold', (event, fold) => {
+  const win = stickyOf(event);
+  const info = win && stickyWindows.get(win);
+  if (!info) return false;
+  const [w, h] = win.getSize();
+  if (fold && !info.folded) {
+    info.unfoldHeight = h;
+    win.setMinimumSize(180, FOLD_HEIGHT);
+    win.setSize(w, FOLD_HEIGHT);
+  } else if (!fold && info.folded) {
+    win.setMinimumSize(180, 120);
+    win.setSize(w, info.unfoldHeight || 240);
+  }
+  info.folded = !!fold;
+  saveStickyList();
+  return info.folded;
+});
+
+// 포스트잇 모두 보이기/감추기 — 하나라도 보이면 모두 감추고, 모두 숨어 있으면 모두 보이기
+function toggleAllStickies() {
+  const wins = [...stickyWindows.keys()].filter(w => !w.isDestroyed());
+  if (wins.some(w => w.isVisible() && !w.isMinimized())) wins.forEach(w => w.hide());
+  else showAllStickies();
+}
+
+// 최근 편집한 메모를 포스트잇으로 — 메인 창의 저장소에서 수정 시각이 가장 늦은 메모를 찾는다
+function openRecentMemo() {
+  if (!memoWindow) return;
+  memoWindow.webContents.executeJavaScript(`(() => {
+    let best = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('dm_day_')) continue;
+      try {
+        for (const m of (JSON.parse(localStorage.getItem(k)).memos || [])) {
+          const t = m.updatedAt || '';
+          if (t && (!best || t > best.t)) best = { t, ds: k.slice(7), id: m.id };
+        }
+      } catch (e) {}
+    }
+    return best;
+  })()`)
+    .then(best => { if (best) { createSticky({ ds: best.ds, id: best.id }); saveStickyList(); } })
+    .catch(() => {});
+}
+
 ipcMain.handle('sticky-toggle-pin', (event) => {
   const win = stickyOf(event);
   const info = win && stickyWindows.get(win);
@@ -146,6 +194,8 @@ function registerShortcuts() {
   if (shortcuts.search) globalShortcut.register(shortcuts.search, () => showSearch());
   if (shortcuts.quickMemo) globalShortcut.register(shortcuts.quickMemo, () => createSticky());
   if (shortcuts.memoSearch) globalShortcut.register(shortcuts.memoSearch, () => showMemoSearch());
+  if (shortcuts.toggleStickies) globalShortcut.register(shortcuts.toggleStickies, () => toggleAllStickies());
+  if (shortcuts.recentMemo) globalShortcut.register(shortcuts.recentMemo, () => openRecentMemo());
 }
 
 function toggleAlwaysOnTop() {
@@ -166,7 +216,8 @@ function updateTray() {
     { label: menuLabel('달력 보기', shortcuts.calendar), click: () => showCalendar() },
     { label: menuLabel('메모 검색', shortcuts.memoSearch), click: () => showMemoSearch() },
     { type: 'separator' },
-    { label: '포스트잇 모두 보이기', click: () => showAllStickies() },
+    { label: menuLabel('포스트잇 모두 보이기/감추기', shortcuts.toggleStickies), click: () => toggleAllStickies() },
+    { label: menuLabel('최근 편집한 메모 열기', shortcuts.recentMemo), click: () => openRecentMemo() },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
     { type: 'separator' },
@@ -212,7 +263,7 @@ function openSettings() {
   }
   globalShortcut.unregisterAll(); // 설정 중 단축키 발동 방지
   settingsWindow = new BrowserWindow({
-    width: 400, height: 660,
+    width: 400, height: 800,
     resizable: false, frame: true,
     alwaysOnTop: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -233,7 +284,7 @@ function createTray() {
 
 // IPC: 설정 창 ↔ main
 ipcMain.handle('get-shortcuts', () => shortcuts);
-ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSearch }) => {
+ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }) => {
   globalShortcut.unregisterAll();
   // 비운 칸('')은 단축키 없음 — 등록하지 않고 성공으로 친다
   const reg = (key, fn) => !key || globalShortcut.register(key, fn);
@@ -243,9 +294,11 @@ ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSea
     reg(search, () => showSearch()),
     reg(quickMemo, () => createSticky()),
     reg(memoSearch, () => showMemoSearch()),
+    reg(toggleStickies, () => toggleAllStickies()),
+    reg(recentMemo, () => openRecentMemo()),
   ].every(Boolean);
   if (ok) {
-    shortcuts = { memo, calendar, search, quickMemo, memoSearch };
+    shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo };
     saveShortcuts(shortcuts);
     updateTray();
     return true;
@@ -295,7 +348,7 @@ function showMemoSearch() {
 }
 
 // 자동 테스트(Playwright _electron)에서만 이동 함수를 부를 수 있게 — 설치된 앱에는 노출 안 됨
-if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch };
+if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky };
 
 function toggleMemo() {
   if (!memoWindow) return;
