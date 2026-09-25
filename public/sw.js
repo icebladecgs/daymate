@@ -1,4 +1,4 @@
-const CACHE = 'daymate-f3e7098';
+const CACHE = 'daymate-e6a6c2f';
 const PRECACHE = ['/', '/index.html', '/icon.svg'];
 
 self.addEventListener('install', e => {

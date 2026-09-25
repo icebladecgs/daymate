@@ -159,7 +159,7 @@ export default function StickyMemo() {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#FFF7A8", color: "#333", fontFamily: "inherit", border: "1px solid #E8D95A" }}>
+    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#FFF7A8", color: "#000", fontFamily: "inherit", border: "1px solid #E8D95A" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "3px 4px 3px 8px", background: "#F5E97A", WebkitAppRegion: "drag", flexShrink: 0, userSelect: "none" }}>
         <span style={{ flex: 1, fontSize: 11, color: "#8a7400", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
           {status || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}`}
@@ -178,7 +178,7 @@ export default function StickyMemo() {
         onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
         onPaste={onPaste}
         placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
-        style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#333", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}
+        style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}
       />
       {photos.length > 0 && (
         <div style={{ display: "flex", gap: 4, padding: "4px 6px 6px", overflowX: "auto", flexShrink: 0 }}>

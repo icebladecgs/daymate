@@ -28,7 +28,7 @@ const DAYMATE_URL = process.env.DAYMATE_URL || 'https://daymate-beta.vercel.app'
 
 // 단축키 설정 파일
 const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
-const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S' };
+const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N' };
 
 function loadShortcuts() {
   try { return Object.assign({}, DEFAULT_SHORTCUTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); } catch { return DEFAULT_SHORTCUTS; }
@@ -61,7 +61,6 @@ let navGen = 0; // 이전 waitAndClick 취소용
 // ---------- 바탕화면 포스트잇 (간편 메모) ----------
 // 포스트잇 창은 웹의 ?view=sticky 화면(가벼운 메모 화면)을 띄운다. 열린 포스트잇 목록·위치·고정 여부는
 // prefs.stickies에 저장해 두었다가 앱을 다시 켜면 그 자리에 다시 띄운다.
-const QUICK_MEMO_SHORTCUT = 'Ctrl+Shift+N';
 const stickyWindows = new Map(); // BrowserWindow → { ds, id, pinned }
 
 function saveStickyList() {
@@ -144,7 +143,7 @@ function registerShortcuts() {
   globalShortcut.register(shortcuts.memo, () => toggleMemo());
   globalShortcut.register(shortcuts.calendar, () => showCalendar());
   if (shortcuts.search) globalShortcut.register(shortcuts.search, () => showSearch());
-  globalShortcut.register(QUICK_MEMO_SHORTCUT, () => createSticky());
+  if (shortcuts.quickMemo) globalShortcut.register(shortcuts.quickMemo, () => createSticky());
 }
 
 function toggleAlwaysOnTop() {
@@ -161,7 +160,7 @@ function updateTray() {
     { label: `Daymate 달력  (${shortcuts.calendar})`, click: () => showCalendar() },
     { label: `메모 관리자  (${shortcuts.search || 'Ctrl+Shift+S'})`, click: () => showSearch() },
     { type: 'separator' },
-    { label: `새 간편 메모  (${QUICK_MEMO_SHORTCUT})`, click: () => createSticky() },
+    { label: `새 간편 메모  (${shortcuts.quickMemo || 'Ctrl+Shift+N'})`, click: () => createSticky() },
     { label: '포스트잇 모두 보이기', click: () => showAllStickies() },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
@@ -208,7 +207,7 @@ function openSettings() {
   }
   globalShortcut.unregisterAll(); // 설정 중 단축키 발동 방지
   settingsWindow = new BrowserWindow({
-    width: 400, height: 430,
+    width: 400, height: 510,
     resizable: false, frame: true,
     alwaysOnTop: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -229,14 +228,14 @@ function createTray() {
 
 // IPC: 설정 창 ↔ main
 ipcMain.handle('get-shortcuts', () => shortcuts);
-ipcMain.handle('set-shortcuts', (_, { memo, calendar, search }) => {
+ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo }) => {
   globalShortcut.unregisterAll();
   const okMemo = globalShortcut.register(memo, () => toggleMemo());
   const okCal = globalShortcut.register(calendar, () => showCalendar());
   const okSearch = globalShortcut.register(search, () => showSearch());
-  globalShortcut.register(QUICK_MEMO_SHORTCUT, () => createSticky());
-  if (okMemo && okCal && okSearch) {
-    shortcuts = { memo, calendar, search };
+  const okQuick = globalShortcut.register(quickMemo, () => createSticky());
+  if (okMemo && okCal && okSearch && okQuick) {
+    shortcuts = { memo, calendar, search, quickMemo };
     saveShortcuts(shortcuts);
     updateTray();
     return true;

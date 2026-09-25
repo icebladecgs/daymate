@@ -3,6 +3,7 @@ import { parseWikiLinks } from "./knowledge.js";
 import { toDateStr, addDays } from "./date.js";
 
 const norm = (s) => (s || "").normalize("NFC").toLowerCase();
+const validTime = (t) => (/^\d{1,2}:\d{2}$/.test(t || "") ? t : ""); // 예전 앱이 넣은 "편집됨" 같은 값은 시각이 아님
 const firstLine = (s) => (s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
 
 // 메모 관리자에 보여줄 항목 — 메모·일정(할일)·일기를 한 목록으로
@@ -16,7 +17,7 @@ export function buildManagerItems(plans) {
       items.push({
         key: `memo|${ds}|${m.id}`, kind: "memo", ds, id: m.id,
         title: firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
-        text, time: m.createdAt || "", updatedAt: m.updatedAt || "",
+        text, time: validTime(m.createdAt), updatedAt: m.updatedAt || "",
         starred: !!m.starred, photos: m.photos || [], tags: parseWikiLinks(text),
       });
     });
@@ -92,10 +93,19 @@ const SORTERS = {
   photo: (it) => String(it.photos.length).padStart(3, "0"),
 };
 
-export function sortItems(items, { key, dir }) {
+// 날짜 최신순일 때 앞으로의 일정(오늘 이후 날짜)은 오늘까지의 기록 아래로 — 안 그러면 다음 달 일정이
+// 목록 맨 위를 차지해 오늘 쓴 메모가 한참 아래로 밀린다. 아래쪽 일정은 가까운 날짜부터
+export function sortItems(items, { key, dir }, today = toDateStr()) {
   const get = SORTERS[key] || SORTERS.date;
   const sign = dir === "asc" ? 1 : -1;
+  const futureLast = key === "date" && dir === "desc";
   return [...items].sort((a, b) => {
+    if (futureLast) {
+      const fa = a.ds > today ? 1 : 0;
+      const fb = b.ds > today ? 1 : 0;
+      if (fa !== fb) return fa - fb;
+      if (fa) return SORTERS.date(a).localeCompare(SORTERS.date(b)); // 앞으로의 일정은 가까운 날부터
+    }
     const r = get(a).localeCompare(get(b), "ko");
     if (r) return r * sign;
     return SORTERS.date(b).localeCompare(SORTERS.date(a)); // 같으면 최신 날짜 먼저

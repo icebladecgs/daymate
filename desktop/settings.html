@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Daymate 단축키 설정</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: #e0e0f0; padding: 24px; user-select: none; }
+  h2 { font-size: 16px; margin-bottom: 20px; color: #fff; }
+  label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; margin-top: 16px; }
+  input {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #444; background: #2a2a3e; color: #fff;
+    font-size: 14px; outline: none;
+  }
+  input:focus { border-color: #4B6FFF; }
+  input.capturing { border-color: #f0a500; background: #2a2a1e; }
+  .hint { font-size: 11px; color: #666; margin-top: 4px; }
+  .btns { display: flex; gap: 10px; margin-top: 24px; }
+  button {
+    flex: 1; padding: 10px; border-radius: 8px; border: none;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .save { background: #4B6FFF; color: #fff; }
+  .save:hover { background: #3a5fe0; }
+  .cancel { background: #333; color: #aaa; }
+  .cancel:hover { background: #444; }
+  .msg { font-size: 12px; color: #4caf50; margin-top: 12px; text-align: center; display: none; }
+</style>
+</head>
+<body>
+<h2>단축키 설정</h2>
+
+<label>메모 열기</label>
+<input id="memo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+<div class="hint">클릭 후 원하는 키 조합을 누르면 자동 입력됩니다</div>
+
+<label>달력 열기</label>
+<input id="calendar" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+
+<label>메모 관리자 열기</label>
+<input id="search" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+
+<label>새 간편 메모 (바탕화면 포스트잇)</label>
+<input id="quickMemo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+
+<div class="btns">
+  <button class="cancel" onclick="window.close()">취소</button>
+  <button class="save" onclick="save()">저장</button>
+</div>
+<div class="msg" id="msg">저장됐습니다!</div>
+
+<script>
+  const { ipcRenderer } = require('electron');
+
+  ipcRenderer.invoke('get-shortcuts').then(({ memo, calendar, search, quickMemo }) => {
+    document.getElementById('memo').value = memo;
+    document.getElementById('calendar').value = calendar;
+    document.getElementById('search').value = search || 'Ctrl+Shift+S';
+    document.getElementById('quickMemo').value = quickMemo || 'Ctrl+Shift+N';
+  });
+
+  function toElectronKey(e) {
+    const parts = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.altKey) parts.push('Alt');
+    if (e.metaKey) parts.push('Meta');
+    const ignore = ['Control', 'Shift', 'Alt', 'Meta'];
+    if (!ignore.includes(e.key)) {
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      parts.push(key);
+    }
+    return parts.length > 1 ? parts.join('+') : null;
+  }
+
+  document.querySelectorAll('input[type=text]').forEach(input => {
+    input.addEventListener('focus', () => {
+      input.classList.add('capturing');
+      input.placeholder = '키 조합을 누르세요...';
+    });
+    input.addEventListener('blur', () => {
+      input.classList.remove('capturing');
+      input.placeholder = '클릭 후 키 조합을 누르세요';
+    });
+    input.addEventListener('keydown', e => {
+      e.preventDefault();
+      const combo = toElectronKey(e);
+      if (combo) input.value = combo;
+    });
+  });
+
+  function save() {
+    const memo = document.getElementById('memo').value.trim();
+    const calendar = document.getElementById('calendar').value.trim();
+    const search = document.getElementById('search').value.trim();
+    const quickMemo = document.getElementById('quickMemo').value.trim();
+    if (new Set([memo, calendar, search, quickMemo]).size < 4) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
+    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo }).then(ok => {
+      if (ok) {
+        document.getElementById('msg').style.display = 'block';
+        setTimeout(() => window.close(), 800);
+      } else {
+        alert('유효하지 않은 단축키입니다. 다시 입력해주세요.');
+      }
+    });
+  }
+</script>
+</body>
+</html>
