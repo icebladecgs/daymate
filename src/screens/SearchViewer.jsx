@@ -195,6 +195,11 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
           <div style={S.title}>통합 검색</div>
           <div style={S.sub}>{tab === "photo" ? `사진 ${photoItems.length}장` : query.trim() ? `${totalCount}개 결과` : "할일 · 메모 · 일기"}</div>
         </div>
+        {/* PC용 넓은 관리 화면 (메모잇 메모관리자 방식) */}
+        <button onClick={() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }))}
+          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, marginRight: 4 }}>
+          🗂 관리자
+        </button>
         {query.trim() && totalCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
             <span style={{ fontSize: 12, color: 'var(--dm-muted)', marginRight: 4, whiteSpace: 'nowrap' }}>

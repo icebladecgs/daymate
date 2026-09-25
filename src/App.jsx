@@ -38,6 +38,7 @@ const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
+const MemoManager = lazy(() => import("./components/MemoManager.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
 const People = lazy(() => import("./screens/People.jsx"));
@@ -46,6 +47,22 @@ const People = lazy(() => import("./screens/People.jsx"));
 const UNSYNCED_DAYS_KEY = "dm_unsynced_days";
 // 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
 const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
+
+// 메모가 새로 생기거나 글·사진·파일이 바뀌면 수정 시각을 남긴다 (메모 관리자의 "수정일")
+function stampMemoUpdates(prevDay, nextDay) {
+  const nextMemos = nextDay?.memos;
+  if (!Array.isArray(nextMemos) || nextMemos === prevDay?.memos) return nextDay;
+  const prevMap = new Map((prevDay?.memos || []).map(m => [m.id, m]));
+  const now = new Date().toISOString();
+  let changed = false;
+  const memos = nextMemos.map(m => {
+    const p = prevMap.get(m.id);
+    if (p && p.text === m.text && p.photos === m.photos && p.files === m.files) return m;
+    changed = true;
+    return { ...m, updatedAt: now };
+  });
+  return changed ? { ...nextDay, memos } : nextDay;
+}
 
 // 서버 할일에는 없고 이 기기 할일(같은 ID)에만 남은 메모·사진·파일을 되살린다
 function restoreLostTaskDetails(day, localDay) {
@@ -1289,6 +1306,13 @@ export default function App() {
       r.running = false;
     }
   };
+  // 검색 화면 등 하위 화면에서 전체 화면(메모 관리자)으로 이동 — changeScreen은 아래(조기 return 뒤)에 정의돼 ref로 연결
+  const navigateRef = useRef(null);
+  useEffect(() => {
+    const onNavigate = (e) => navigateRef.current?.(e.detail);
+    window.addEventListener('dm:navigate', onNavigate);
+    return () => window.removeEventListener('dm:navigate', onNavigate);
+  }, []);
   const refreshDaysRef = useRef(refreshFromServer);
   useEffect(() => { refreshDaysRef.current = refreshFromServer; });
   useEffect(() => {
@@ -1573,7 +1597,7 @@ export default function App() {
   const setTodayData = (updater) => {
     setPlans((prev) => {
       const cur = prev[todayStr] || newDay(todayStr);
-      const nextDay = typeof updater === "function" ? updater(cur) : updater;
+      const nextDay = stampMemoUpdates(cur, typeof updater === "function" ? updater(cur) : updater);
       const savedDay = persistDayData(todayStr, nextDay);
       const next = { ...prev, [todayStr]: savedDay };
       return next;
@@ -1586,7 +1610,7 @@ export default function App() {
     // XP 지급·GCal 동기화 같은 부수효과가 있어 setPlans updater 안에서 계산하지 않는다(StrictMode 이중 실행 방지).
     const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
-    const nextDayRaw = typeof updater === "function" ? updater(cur) : updater;
+    const nextDayRaw = stampMemoUpdates(cur, typeof updater === "function" ? updater(cur) : updater);
     const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
     const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
@@ -2022,6 +2046,7 @@ export default function App() {
     try { document.activeElement?.blur?.(); } catch {}
     history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
   };
+  navigateRef.current = changeScreen;
 
   const openKeywordDetail = (kw) => {
     setOpenKeyword(kw);
@@ -2468,6 +2493,18 @@ export default function App() {
         />
       );
     }
+    if (screen === "manager") {
+      return (
+        <MemoManager
+          plans={plans}
+          onUpdateDayData={setDayData}
+          uid={authUser?.uid}
+          onClose={() => history.back()}
+          onOpenDate={(ds) => openDetail(ds)}
+          onError={setToast}
+        />
+      );
+    }
     if (screen === "keyword-detail") {
       return (
         <KeywordDetail
@@ -2552,7 +2589,7 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}
