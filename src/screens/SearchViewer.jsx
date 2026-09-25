@@ -5,6 +5,8 @@ import JournalViewer from "./JournalViewer.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import KeywordDetail from "./KeywordDetail.jsx";
 import { getTopKeywords } from "../utils/knowledge.js";
+import PhotoWall from "../components/PhotoWall.jsx";
+import { collectPhotos } from "../utils/photoWall.js";
 
 function highlight(text, query) {
   if (!query.trim()) return text;
@@ -92,6 +94,16 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
   }, [plans, query, tab]);
 
   const totalCount = results.reduce((a, r) => a + r.matches.length, 0);
+  const photoItems = useMemo(() => (tab === "photo" ? collectPhotos(plans, query) : []), [plans, query, tab]);
+  const openPhoto = (p) => {
+    if (p.kind === "memo") {
+      const m = p.memo;
+      setFocusedResult({ type: 'memo', ds: p.ds, memoId: m.id, text: m.text || '', createdAt: m.createdAt || '', photos: m.photos, files: m.files || [], starred: m.starred || false });
+      return;
+    }
+    onOpenDate?.(p.ds);
+    onClose?.();
+  };
 
   // 결과 카드 간 순서대로 훑어보기 (윈도우 찾기처럼 </> 로 이동)
   const flatMatches = useMemo(() => {
@@ -181,7 +193,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={S.title}>통합 검색</div>
-          <div style={S.sub}>{query.trim() ? `${totalCount}개 결과` : "할일 · 메모 · 일기"}</div>
+          <div style={S.sub}>{tab === "photo" ? `사진 ${photoItems.length}장` : query.trim() ? `${totalCount}개 결과` : "할일 · 메모 · 일기"}</div>
         </div>
         {query.trim() && totalCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
@@ -223,8 +235,8 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 6, padding: "8px 16px", flexShrink: 0 }}>
-        {[["memo", "메모"], ["task", "할일"], ["journal", "일기"], ["all", "전체"]].map(([id, label]) => (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 16px", flexShrink: 0 }}>
+        {[["memo", "메모"], ["task", "할일"], ["journal", "일기"], ["all", "전체"], ["photo", "📷 사진"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ ...S.pill(tab === id), fontSize: 12, padding: "5px 12px" }}>
             {label}
           </button>
@@ -232,7 +244,9 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
       </div>
 
       <div style={{ ...S.content, paddingBottom: 32 }}>
-        {results.length === 0 ? (
+        {tab === "photo" ? (
+          <PhotoWall key={query} photos={photoItems} query={query} onOpen={openPhoto} />
+        ) : results.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--dm-muted)", fontSize: 14, lineHeight: 1.8 }}>
             {query.trim() ? "검색 결과가 없어요." : "검색어를 입력하면\n모든 기록에서 찾아드려요."}
           </div>
