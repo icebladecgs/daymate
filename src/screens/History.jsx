@@ -406,6 +406,24 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
+  // 달력 미리보기 할일 삭제 — 목록의 ✕와 상세 창의 삭제 버튼이 함께 쓴다 (확인창에서 취소하면 false)
+  const deletePreviewTask = (t) => {
+    const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
+    const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
+    const msg = willDeleteFromGcal
+      ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
+      : `"${t.title}" 할일을 삭제할까요?`;
+    if (!window.confirm(msg)) return false;
+    // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움 (기존과 같이 제목을 비워 삭제 처리)
+    (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+    const ds = preview;
+    onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
+      if (tk.id !== t.id) return tk;
+      const { note, photos, files, ...rest } = tk; // eslint-disable-line no-unused-vars
+      return { ...rest, title: '' };
+    }) }));
+  };
+
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
       {detailTask && (
@@ -416,22 +434,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onSave={(patch) => { const ds = preview; onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => tk.id === detailTask.id ? { ...tk, ...patch } : tk) })); }}
           onClose={() => setDetailTaskId(null)}
           onError={showToast}
-          onDelete={(t) => {
-            const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
-            const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
-            const msg = willDeleteFromGcal
-              ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
-              : `"${t.title}" 할일을 삭제할까요?`;
-            if (!window.confirm(msg)) return false;
-            // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움 (기존과 같이 제목을 비워 삭제 처리)
-            (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
-            const ds = preview;
-            onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
-              if (tk.id !== t.id) return tk;
-              const { note, photos, files, ...rest } = tk; // eslint-disable-line no-unused-vars
-              return { ...rest, title: '' };
-            }) }));
-          }}
+          onDelete={deletePreviewTask}
         />
       )}
       {gcalToast && (
@@ -803,8 +806,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         <span style={{ minWidth: 0 }}>{t.title}</span>
                         {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
                         <TaskDetailBadge task={t} />
-                        <span style={{ marginLeft: 'auto', color: 'var(--dm-muted)', fontSize: 16, flexShrink: 0, opacity: 0.6 }}>›</span>
                       </div>
+                      {/* 오늘 탭·언젠가할일 목록의 ✕와 같은 모양 */}
+                      <button
+                        onClick={() => deletePreviewTask(t)}
+                        aria-label="삭제"
+                        style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}
+                      >✕</button>
                     </div>
                   );
                   return (
