@@ -22,6 +22,7 @@ import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
+import { parseNth, NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -1688,16 +1689,22 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       )}
       {editingRecurring && (
         <div style={S.card}>
-          <div style={{ fontSize: 12, color: 'var(--dm-sub)', marginBottom: 10 }}>매일 또는 특정 요일에 자동으로 추가되는 할일이에요.</div>
-          {(recurringTasks || []).map(t => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <select value={t.days}
-                onChange={e => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days: e.target.value} : x))}
-                style={{ ...S.input, width: 80, marginBottom: 0, padding: '8px 6px', fontSize: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--dm-sub)', marginBottom: 10 }}>매일, 특정 요일, 또는 매월 n번째 요일에 자동으로 추가되는 할일이에요.</div>
+          {(recurringTasks || []).map(t => {
+            const setDays = (days) => setRecurringTasks(prev => prev.map(x => x.id === t.id ? {...x, days} : x));
+            const nth = parseNth(t.days);
+            const smallSel = { ...S.input, marginBottom: 0, padding: '8px 4px', fontSize: 12 };
+            return (
+            <div key={t.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <select value={nth ? 'nth' : t.days}
+                onChange={e => setDays(e.target.value === 'nth' ? `nth:1:${new Date().getDay()}` : e.target.value)}
+                style={{ ...smallSel, width: 80, padding: '8px 6px' }}>
                 <option value="daily">매일</option>
                 <option value="1">월</option><option value="2">화</option><option value="3">수</option>
                 <option value="4">목</option><option value="5">금</option>
                 <option value="6">토</option><option value="0">일</option>
+                <option value="nth">매월…</option>
               </select>
               <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
                 value={t.title} maxLength={40} placeholder="반복 할일 이름"
@@ -1705,7 +1712,22 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               <button onClick={() => setRecurringTasks(prev => prev.filter(x => x.id !== t.id))}
                 style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
             </div>
-          ))}
+            {/* 매월 n번째 ○요일 (예: 매월 둘째 화요일, 마지막 금요일) */}
+            {nth && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, paddingLeft: 4, fontSize: 12, color: 'var(--dm-sub)' }}>
+                매월
+                <select value={nth.n} onChange={e => setDays(`nth:${e.target.value}:${nth.w}`)} style={{ ...smallSel, width: 76 }}>
+                  {[1, 2, 3, 4, -1].map(n => <option key={n} value={n}>{NTH_LABELS[n]}</option>)}
+                </select>
+                <select value={nth.w} onChange={e => setDays(`nth:${nth.n}:${e.target.value}`)} style={{ ...smallSel, width: 64 }}>
+                  {[1, 2, 3, 4, 5, 6, 0].map(w => <option key={w} value={w}>{WEEKDAY_LABELS[w]}</option>)}
+                </select>
+                요일
+              </div>
+            )}
+            </div>
+            );
+          })}
           {(recurringTasks || []).length < 10 && (
             <button style={{ ...S.btn, marginTop: (recurringTasks||[]).length > 0 ? 4 : 0 }}
               onClick={() => setRecurringTasks(prev => [...prev, { id: `r${Date.now()}`, title: '', days: 'daily' }])}>

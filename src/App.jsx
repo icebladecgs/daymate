@@ -22,6 +22,7 @@ import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
 import { genMemoId } from "./components/MemoTimeline.jsx";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
+import { matchesRecurring } from "./utils/recurring.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
 const DailyPage = lazy(() => import("./screens/DailyPage.jsx"));
@@ -1678,8 +1679,7 @@ export default function App() {
     setPlans((prev) => {
       if (prev[ds]) return prev;
       const d = newDay(ds);
-      const dayOfWeek = new Date(ds + 'T00:00:00').getDay();
-      const applicable = recurringTasks.filter(t => t.title.trim() && (t.days === 'daily' || String(t.days) === String(dayOfWeek)));
+      const applicable = recurringTasks.filter(t => t.title.trim() && matchesRecurring(t.days, ds));
       if (applicable.length > 0) {
         d.tasks = [...d.tasks.filter(t => t.title.trim()), ...applicable.map(t => ({id:`r${t.id}_${ds}`, title: t.title, done: false, checkedAt: null, priority: false}))];
       }
