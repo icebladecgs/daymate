@@ -140,8 +140,9 @@ ipcMain.on('set-wide-mode', (event, on) => {
 
 function registerShortcuts() {
   globalShortcut.unregisterAll();
-  globalShortcut.register(shortcuts.memo, () => toggleMemo());
-  globalShortcut.register(shortcuts.calendar, () => showCalendar());
+  // 비워 둔(지운) 단축키는 등록하지 않음
+  if (shortcuts.memo) globalShortcut.register(shortcuts.memo, () => toggleMemo());
+  if (shortcuts.calendar) globalShortcut.register(shortcuts.calendar, () => showCalendar());
   if (shortcuts.search) globalShortcut.register(shortcuts.search, () => showSearch());
   if (shortcuts.quickMemo) globalShortcut.register(shortcuts.quickMemo, () => createSticky());
 }
@@ -154,13 +155,15 @@ function toggleAlwaysOnTop() {
   updateTray();
 }
 
+const menuLabel = (name, key) => (key ? `${name}  (${key})` : name);
+
 function updateTray() {
   const menu = Menu.buildFromTemplate([
-    { label: `Daymate 메모  (${shortcuts.memo})`, click: () => showMemo() },
-    { label: `Daymate 달력  (${shortcuts.calendar})`, click: () => showCalendar() },
-    { label: `메모 관리자  (${shortcuts.search || 'Ctrl+Shift+S'})`, click: () => showSearch() },
+    { label: menuLabel('Daymate 메모', shortcuts.memo), click: () => showMemo() },
+    { label: menuLabel('Daymate 달력', shortcuts.calendar), click: () => showCalendar() },
+    { label: menuLabel('메모 관리자', shortcuts.search), click: () => showSearch() },
     { type: 'separator' },
-    { label: `새 간편 메모  (${shortcuts.quickMemo || 'Ctrl+Shift+N'})`, click: () => createSticky() },
+    { label: menuLabel('새 간편 메모', shortcuts.quickMemo), click: () => createSticky() },
     { label: '포스트잇 모두 보이기', click: () => showAllStickies() },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
@@ -207,7 +210,7 @@ function openSettings() {
   }
   globalShortcut.unregisterAll(); // 설정 중 단축키 발동 방지
   settingsWindow = new BrowserWindow({
-    width: 400, height: 510,
+    width: 400, height: 580,
     resizable: false, frame: true,
     alwaysOnTop: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -230,11 +233,15 @@ function createTray() {
 ipcMain.handle('get-shortcuts', () => shortcuts);
 ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo }) => {
   globalShortcut.unregisterAll();
-  const okMemo = globalShortcut.register(memo, () => toggleMemo());
-  const okCal = globalShortcut.register(calendar, () => showCalendar());
-  const okSearch = globalShortcut.register(search, () => showSearch());
-  const okQuick = globalShortcut.register(quickMemo, () => createSticky());
-  if (okMemo && okCal && okSearch && okQuick) {
+  // 비운 칸('')은 단축키 없음 — 등록하지 않고 성공으로 친다
+  const reg = (key, fn) => !key || globalShortcut.register(key, fn);
+  const ok = [
+    reg(memo, () => toggleMemo()),
+    reg(calendar, () => showCalendar()),
+    reg(search, () => showSearch()),
+    reg(quickMemo, () => createSticky()),
+  ].every(Boolean);
+  if (ok) {
     shortcuts = { memo, calendar, search, quickMemo };
     saveShortcuts(shortcuts);
     updateTray();

@@ -16,6 +16,10 @@
   input:focus { border-color: #4B6FFF; }
   input.capturing { border-color: #f0a500; background: #2a2a1e; }
   .hint { font-size: 11px; color: #666; margin-top: 4px; }
+  .row { display: flex; gap: 6px; }
+  .row input { flex: 1; min-width: 0; }
+  .row .clear { flex: 0 0 auto; padding: 0 12px; border-radius: 8px; border: 1px solid #444; background: #2a2a3e; color: #aaa; font-size: 12px; font-weight: 600; }
+  .row .clear:hover { background: #3a2a2e; color: #f88; }
   .btns { display: flex; gap: 10px; margin-top: 24px; }
   button {
     flex: 1; padding: 10px; border-radius: 8px; border: none;
@@ -32,17 +36,17 @@
 <h2>단축키 설정</h2>
 
 <label>메모 열기</label>
-<input id="memo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
-<div class="hint">클릭 후 원하는 키 조합을 누르면 자동 입력됩니다</div>
+<div class="row"><input id="memo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="memo" title="단축키 지우기">지우기</button></div>
+<div class="hint">클릭 후 원하는 키 조합을 누르면 자동 입력됩니다. 필요 없으면 '지우기'(또는 칸에서 Backspace)</div>
 
 <label>달력 열기</label>
-<input id="calendar" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+<div class="row"><input id="calendar" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="calendar" title="단축키 지우기">지우기</button></div>
 
 <label>메모 관리자 열기</label>
-<input id="search" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+<div class="row"><input id="search" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="search" title="단축키 지우기">지우기</button></div>
 
 <label>새 간편 메모 (바탕화면 포스트잇)</label>
-<input id="quickMemo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly />
+<div class="row"><input id="quickMemo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="quickMemo" title="단축키 지우기">지우기</button></div>
 
 <div class="btns">
   <button class="cancel" onclick="window.close()">취소</button>
@@ -56,8 +60,9 @@
   ipcRenderer.invoke('get-shortcuts').then(({ memo, calendar, search, quickMemo }) => {
     document.getElementById('memo').value = memo;
     document.getElementById('calendar').value = calendar;
-    document.getElementById('search').value = search || 'Ctrl+Shift+S';
-    document.getElementById('quickMemo').value = quickMemo || 'Ctrl+Shift+N';
+    // 지운 단축키('')는 그대로 비워 두고, 설정한 적 없는 항목만 기본값
+    document.getElementById('search').value = search ?? 'Ctrl+Shift+S';
+    document.getElementById('quickMemo').value = quickMemo ?? 'Ctrl+Shift+N';
   });
 
   function toElectronKey(e) {
@@ -85,9 +90,14 @@
     });
     input.addEventListener('keydown', e => {
       e.preventDefault();
+      if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.shiftKey && !e.altKey) { input.value = ''; return; }
       const combo = toElectronKey(e);
       if (combo) input.value = combo;
     });
+  });
+
+  document.querySelectorAll('.clear').forEach(btn => {
+    btn.addEventListener('click', () => { document.getElementById(btn.dataset.for).value = ''; });
   });
 
   function save() {
@@ -95,7 +105,8 @@
     const calendar = document.getElementById('calendar').value.trim();
     const search = document.getElementById('search').value.trim();
     const quickMemo = document.getElementById('quickMemo').value.trim();
-    if (new Set([memo, calendar, search, quickMemo]).size < 4) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
+    const used = [memo, calendar, search, quickMemo].filter(Boolean);
+    if (new Set(used).size < used.length) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
     ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo }).then(ok => {
       if (ok) {
         document.getElementById('msg').style.display = 'block';
