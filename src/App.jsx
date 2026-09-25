@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto } from "./firebase.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
@@ -20,7 +20,8 @@ import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
-import { genMemoId } from "./components/MemoTimeline.jsx";
+import { genMemoId, withMemoList } from "./components/MemoTimeline.jsx";
+import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 import { matchesRecurring } from "./utils/recurring.js";
 
@@ -1338,6 +1339,53 @@ export default function App() {
   }, []);
   // 데스크탑 앱: 메모 관리자일 때만 창을 넓게
   useEffect(() => { window.daymateDesktop?.setWideMode?.(screen === 'manager'); }, [screen]);
+
+  // 휴대폰 공유 → DayMate ("나와의 채팅"처럼 던져두기). sw.js의 share-target이 ?share-target=1 로 앱을 연다.
+  // 글·링크는 주소에서, 사진은 서비스워커 임시 보관함(dm-share)에서 가져와 오늘 메모로 저장한다.
+  // 사진 업로드에는 로그인이 필요해서 로그인 확인을 기다리고, 8초 안에 안 되면 글만 저장한다.
+  const [shareInit] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get('share-target') !== '1') return null;
+      return { title: q.get('title') || '', text: q.get('text') || '', url: q.get('url') || '', files: Number(q.get('files') || 0), done: false };
+    } catch { return null; }
+  });
+  const shareRef = useRef(shareInit);
+  useEffect(() => {
+    const share = shareRef.current;
+    if (!share || share.done) return;
+    const run = async (uid) => {
+      if (share.done) return;
+      share.done = true;
+      history.replaceState(history.state, '', window.location.pathname); // 주소에서 공유 내용 지우기
+      const parts = [];
+      [share.title, share.text, share.url].forEach(v => { const t = v.trim(); if (t && !parts.some(x => x.includes(t))) parts.push(t); });
+      const photos = [];
+      let note = '';
+      if (share.files > 0) {
+        const cache = await caches.open('dm-share').catch(() => null);
+        if (cache && uid) {
+          for (let i = 0; i < share.files; i++) {
+            const res = await cache.match(`/share-file/${i}`);
+            if (!res) continue;
+            try {
+              const blob = await compressImage(await res.blob());
+              photos.push(await uploadPhoto(`users/${uid}/memos/${Date.now()}_share${i}.jpg`, blob, uid));
+            } catch { note = '일부 사진을 올리지 못했어요'; }
+          }
+        } else if (!uid) note = '사진은 로그인 후에 공유해 주세요';
+        if (cache) for (let i = 0; i < share.files; i++) await cache.delete(`/share-file/${i}`);
+      }
+      if (!parts.length && !photos.length) { setToast(note || '공유된 내용이 없어요'); return; }
+      const time = new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      setTodayData(prev => ({ ...prev, memos: [...withMemoList(prev), { id: genMemoId(), text: parts.join('\n'), createdAt: time, ...(photos.length ? { photos } : {}) }] }));
+      setToast(note ? `📥 메모로 저장했어요 (${note})` : '📥 공유한 내용을 오늘 메모로 저장했어요');
+      navigateRef.current?.('memo');
+    };
+    if (authUser?.uid || !share.files) { run(authUser?.uid || null); return; }
+    const timer = setTimeout(() => run(null), 8000);
+    return () => clearTimeout(timer);
+  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 검색 화면 등 하위 화면에서 전체 화면(메모 관리자)으로 이동 — changeScreen은 아래(조기 return 뒤)에 정의돼 ref로 연결
   const navigateRef = useRef(null);
