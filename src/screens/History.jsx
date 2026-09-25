@@ -9,8 +9,9 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import SearchViewer from "./SearchViewer.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import { pickTaskDetail } from "../utils/taskDetail.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -424,6 +425,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     }) }));
   };
 
+  // 언젠가할일로 보내기 — 오늘 탭과 같이 상세 정보(pickTaskDetail)를 함께 옮기고, 사진은 지우지 않고 목록에서만 뺀다
+  const movePreviewTaskToSomeday = (t) => {
+    setSomeday?.(prev => [...(prev || []), { id: `sd${Date.now()}`, title: t.title, done: false, ...pickTaskDetail(t) }]);
+    const ds = preview;
+    onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).filter(tk => tk.id !== t.id) }));
+    showToast('언젠가 할일로 이동 ✅');
+  };
+
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
       {detailTask && (
@@ -807,7 +816,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
                         <TaskDetailBadge task={t} />
                       </div>
-                      {/* 오늘 탭·언젠가할일 목록의 ✕와 같은 모양 */}
+                      {/* 오늘 탭과 같이 "언젠가"(미완료만)와 ✕(확인 후 삭제)만 목록에 바로 노출 */}
+                      {!t.done && setSomeday && (
+                        <button
+                          onClick={() => movePreviewTaskToSomeday(t)}
+                          style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >언젠가</button>
+                      )}
                       <button
                         onClick={() => deletePreviewTask(t)}
                         aria-label="삭제"
