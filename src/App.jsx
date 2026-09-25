@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
@@ -303,6 +303,9 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const syncReadyRef = useRef(false);
   const daySaveSeqRef = useRef({}); // 날짜별 서버 저장 순번 — 마지막 저장이 성공했을 때만 "미동기화" 표시를 지운다
+  const daySyncedAtRef = useRef(0); // 서버에서 받은 날짜 문서 중 가장 늦은 저장 시각(서버 시각 ms)
+  const lastLocalSaveRef = useRef({}); // 날짜별 이 기기 마지막 저장 시각 — 새로고침 중 고친 날짜는 덮어쓰지 않기 위해
+  const dayRefreshRef = useRef({ running: false, at: 0 });
   const plansRef = useRef({});
   const gcalRefreshTimerRef = useRef(null);
   const driveRefreshTimerRef = useRef(null);
@@ -1168,6 +1171,7 @@ export default function App() {
   const persistDayData = (dateStr, dayData, uidOverride = authUser?.uid, forceRemote = false) => {
     const normalizedDay = dedupeDayTasks(dayData);
     saveDay(dateStr, normalizedDay);
+    lastLocalSaveRef.current[dateStr] = Date.now();
     markDayUnsynced(dateStr, true);
     if (uidOverride && (forceRemote || syncReadyRef.current)) {
       const seq = (daySaveSeqRef.current[dateStr] || 0) + 1;
@@ -1231,6 +1235,52 @@ export default function App() {
     });
   };
 
+  // 앱으로 돌아올 때(화면 복귀·창 포커스) 다른 기기·텔레그램에서 바뀐 날짜만 서버에서 받아 반영.
+  // 서버에 못 올린 변경이 있는 날짜는 이 기기 할일을 우선해 다시 올리고, 받는 도중 이 기기에서 고친 날짜는 건드리지 않는다.
+  const refreshDaysFromServer = async () => {
+    const uid = authUser?.uid;
+    const r = dayRefreshRef.current;
+    if (!uid || !syncReadyRef.current || r.running || Date.now() - r.at < 15000) return;
+    r.running = true;
+    r.at = Date.now();
+    const startedAt = Date.now();
+    try {
+      const { days, latestMs } = await loadDaysChangedSince(uid, daySyncedAtRef.current);
+      daySyncedAtRef.current = Math.max(daySyncedAtRef.current, latestMs);
+      const unsyncedDays = new Set(store.get(UNSYNCED_DAYS_KEY, []));
+      const updates = {};
+      Object.entries(days).forEach(([ds, remoteDay]) => {
+        if ((lastLocalSaveRef.current[ds] || 0) >= startedAt) return;
+        if (unsyncedDays.has(ds)) {
+          updates[ds] = persistDayData(ds, mergeImportedGcalTasks(remoteDay, loadDay(ds), true), uid, true);
+          return;
+        }
+        const nextDay = dedupeDayTasks(remoteDay);
+        saveDay(ds, nextDay);
+        updates[ds] = nextDay;
+      });
+      if (Object.keys(updates).length > 0) {
+        plansRef.current = { ...plansRef.current, ...updates };
+        setPlans(prev => ({ ...prev, ...updates }));
+      }
+    } catch (e) {
+      console.warn('[App] day refresh failed:', e);
+    } finally {
+      r.running = false;
+    }
+  };
+  const refreshDaysRef = useRef(refreshDaysFromServer);
+  useEffect(() => { refreshDaysRef.current = refreshDaysFromServer; });
+  useEffect(() => {
+    const onReturn = () => { if (document.visibilityState === 'visible') refreshDaysRef.current(); };
+    document.addEventListener('visibilitychange', onReturn);
+    window.addEventListener('focus', onReturn);
+    return () => {
+      document.removeEventListener('visibilitychange', onReturn);
+      window.removeEventListener('focus', onReturn);
+    };
+  }, []);
+
   // Firebase auth listener
   useEffect(() => {
     return onAuth(async (firebaseUser) => {
@@ -1247,6 +1297,7 @@ export default function App() {
       }).catch(() => {});
       try {
         const remote = await loadAllFromFirestore(firebaseUser.uid);
+        daySyncedAtRef.current = remote.daysSyncedAt || 0;
         const hasRemote = remote.settings || remote.goals || Object.keys(remote.days).length > 0;
 
         if (hasRemote) {

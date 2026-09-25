@@ -1,5 +1,5 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 
 if (!getApps().length) {
@@ -187,7 +187,7 @@ async function executeTool(name, input, today, todayData, uid) {
     if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
     else tasks.push(newTask);
     const nextDayData = { ...todayData, tasks };
-    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { message: `"${input.title}" 추가됨`, nextDayData };
   }
 
@@ -196,7 +196,7 @@ async function executeTool(name, input, today, todayData, uid) {
     if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
     const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
     const nextDayData = { ...todayData, tasks: updated };
-    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { message: `"${target.title}" 완료 처리됨`, nextDayData };
   }
 
@@ -205,7 +205,7 @@ async function executeTool(name, input, today, todayData, uid) {
     if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
     const updated = allTasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
     const nextDayData = { ...todayData, tasks: updated };
-    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { message: `"${target.title}" 삭제됨`, nextDayData };
   }
 
@@ -213,7 +213,7 @@ async function executeTool(name, input, today, todayData, uid) {
     const prev = todayData.memo || '';
     const newMemo = prev ? `${prev}\n${input.content}` : input.content;
     const nextDayData = { ...todayData, memo: newMemo };
-    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { message: `메모 추가됨`, nextDayData };
   }
 
@@ -224,7 +224,7 @@ async function executeTool(name, input, today, todayData, uid) {
     if (!target) return { message: `"${input.habit_name}" 습관을 찾을 수 없습니다`, nextDayData: todayData };
     const cur = todayData.habitChecks || {};
     const nextDayData = { ...todayData, habitChecks: { ...cur, [target.id]: input.done } };
-    await db.doc(`users/${uid}/days/${today}`).set(nextDayData, { merge: true });
+    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { message: `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`, nextDayData };
   }
 
@@ -313,7 +313,7 @@ export default async function handler(req, res) {
       } else {
         const target = filledTasks[num - 1];
         const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
-        await db.doc(`users/${uid}/days/${today}`).set({ ...d, tasks: updated }, { merge: true });
+        await db.doc(`users/${uid}/days/${today}`).set({ ...d, tasks: updated, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
         await send(fromChatId, `✅ <b>${target.title}</b> 완료!`);
       }
     } else if (text === '/stats' || text === '/통계') {

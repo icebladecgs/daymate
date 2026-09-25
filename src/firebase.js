@@ -27,6 +27,8 @@ import {
   orderBy,
   addDoc,
   onSnapshot,
+  serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -80,13 +82,38 @@ export async function saveGoals(uid, data) {
   await setDoc(doc(db, "users", uid, "data", "goals"), data);
 }
 
+// 날짜 문서의 서버 저장 시각 — 앱으로 돌아올 때 "마지막으로 받은 뒤 바뀐 날짜"만 골라 받는 데 쓴다.
+// 기기마다 시계가 달라도 어긋나지 않게 서버 시각(serverTimestamp)으로 기록하고, 앱 데이터에는 넣지 않는다.
+const DAY_SYNCED_AT = "_syncedAt";
+const readDayDoc = (snap) => {
+  const { [DAY_SYNCED_AT]: syncedAt, ...day } = snap.data();
+  return { day, ms: syncedAt?.toMillis?.() || 0 };
+};
+
 export async function saveDay(uid, dateStr, data) {
-  await setDoc(doc(db, "users", uid, "days", dateStr), data);
+  const { [DAY_SYNCED_AT]: _ignored, ...day } = data || {};
+  await setDoc(doc(db, "users", uid, "days", dateStr), { ...day, [DAY_SYNCED_AT]: serverTimestamp() });
+}
+
+// sinceMs(서버 시각) 이후 저장된 날짜 문서만 — latestMs는 받은 문서 중 가장 늦은 저장 시각
+export async function loadDaysChangedSince(uid, sinceMs = 0) {
+  const snap = await getDocs(query(
+    collection(db, "users", uid, "days"),
+    where(DAY_SYNCED_AT, ">", Timestamp.fromMillis(sinceMs)),
+  ));
+  const days = {};
+  let latestMs = sinceMs;
+  snap.forEach((d) => {
+    const { day, ms } = readDayDoc(d);
+    days[d.id] = day;
+    latestMs = Math.max(latestMs, ms);
+  });
+  return { days, latestMs };
 }
 
 // 로그인 시 Firestore → 앱으로 전체 로드
 export async function loadAllFromFirestore(uid) {
-  const result = { settings: null, goals: null, days: {} };
+  const result = { settings: null, goals: null, days: {}, daysSyncedAt: 0 };
 
   const settingsSnap = await getDoc(doc(db, "users", uid, "data", "settings"));
   if (settingsSnap.exists()) result.settings = settingsSnap.data();
@@ -95,7 +122,11 @@ export async function loadAllFromFirestore(uid) {
   if (goalsSnap.exists()) result.goals = goalsSnap.data();
 
   const daysSnap = await getDocs(collection(db, "users", uid, "days"));
-  daysSnap.forEach((d) => { result.days[d.id] = d.data(); });
+  daysSnap.forEach((d) => {
+    const { day, ms } = readDayDoc(d);
+    result.days[d.id] = day;
+    result.daysSyncedAt = Math.max(result.daysSyncedAt, ms);
+  });
 
   return result;
 }
