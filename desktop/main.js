@@ -28,7 +28,8 @@ const DAYMATE_URL = process.env.DAYMATE_URL || 'https://daymate-beta.vercel.app'
 
 // 단축키 설정 파일
 const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
-const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N' };
+// 5가지 기능(새 메모·간편 메모·메모 관리자·달력 보기·메모 검색). 메모 검색은 VS Code의 Ctrl+Shift+F와 겹치지 않게 Ctrl+Alt+F
+const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F' };
 
 function loadShortcuts() {
   try { return Object.assign({}, DEFAULT_SHORTCUTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); } catch { return DEFAULT_SHORTCUTS; }
@@ -56,7 +57,6 @@ let memoWindow = null;
 let settingsWindow = null;
 let tray = null;
 let isQuitting = false;
-let navGen = 0; // 이전 waitAndClick 취소용
 
 // ---------- 바탕화면 포스트잇 (간편 메모) ----------
 // 포스트잇 창은 웹의 ?view=sticky 화면(가벼운 메모 화면)을 띄운다. 열린 포스트잇 목록·위치·고정 여부는
@@ -145,6 +145,7 @@ function registerShortcuts() {
   if (shortcuts.calendar) globalShortcut.register(shortcuts.calendar, () => showCalendar());
   if (shortcuts.search) globalShortcut.register(shortcuts.search, () => showSearch());
   if (shortcuts.quickMemo) globalShortcut.register(shortcuts.quickMemo, () => createSticky());
+  if (shortcuts.memoSearch) globalShortcut.register(shortcuts.memoSearch, () => showMemoSearch());
 }
 
 function toggleAlwaysOnTop() {
@@ -159,11 +160,12 @@ const menuLabel = (name, key) => (key ? `${name}  (${key})` : name);
 
 function updateTray() {
   const menu = Menu.buildFromTemplate([
-    { label: menuLabel('Daymate 메모', shortcuts.memo), click: () => showMemo() },
-    { label: menuLabel('Daymate 달력', shortcuts.calendar), click: () => showCalendar() },
+    { label: menuLabel('새 메모', shortcuts.memo), click: () => showMemo() },
+    { label: menuLabel('간편 메모', shortcuts.quickMemo), click: () => createSticky() },
     { label: menuLabel('메모 관리자', shortcuts.search), click: () => showSearch() },
+    { label: menuLabel('달력 보기', shortcuts.calendar), click: () => showCalendar() },
+    { label: menuLabel('메모 검색', shortcuts.memoSearch), click: () => showMemoSearch() },
     { type: 'separator' },
-    { label: menuLabel('새 간편 메모', shortcuts.quickMemo), click: () => createSticky() },
     { label: '포스트잇 모두 보이기', click: () => showAllStickies() },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
@@ -210,7 +212,7 @@ function openSettings() {
   }
   globalShortcut.unregisterAll(); // 설정 중 단축키 발동 방지
   settingsWindow = new BrowserWindow({
-    width: 400, height: 580,
+    width: 400, height: 660,
     resizable: false, frame: true,
     alwaysOnTop: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -231,7 +233,7 @@ function createTray() {
 
 // IPC: 설정 창 ↔ main
 ipcMain.handle('get-shortcuts', () => shortcuts);
-ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo }) => {
+ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSearch }) => {
   globalShortcut.unregisterAll();
   // 비운 칸('')은 단축키 없음 — 등록하지 않고 성공으로 친다
   const reg = (key, fn) => !key || globalShortcut.register(key, fn);
@@ -240,9 +242,10 @@ ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo }) => {
     reg(calendar, () => showCalendar()),
     reg(search, () => showSearch()),
     reg(quickMemo, () => createSticky()),
+    reg(memoSearch, () => showMemoSearch()),
   ].every(Boolean);
   if (ok) {
-    shortcuts = { memo, calendar, search, quickMemo };
+    shortcuts = { memo, calendar, search, quickMemo, memoSearch };
     saveShortcuts(shortcuts);
     updateTray();
     return true;
@@ -251,18 +254,6 @@ ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo }) => {
   registerShortcuts();
   return false;
 });
-
-function clickTab(label) {
-  return memoWindow.webContents.executeJavaScript(`
-    (function() {
-      const btns = document.querySelectorAll('button');
-      for (const b of btns) {
-        if (b.textContent.includes('${label}')) { b.click(); return true; }
-      }
-      return false;
-    })()
-  `).catch(() => false);
-}
 
 function closeOverlay() {
   // SearchViewer 또는 LongMemoEditor의 ← 버튼 클릭
@@ -277,79 +268,34 @@ function closeOverlay() {
   `).catch(() => false);
 }
 
-function waitAndClick(label, maxTries = 10, interval = 200, exact = false) {
-  const gen = ++navGen; // 새 탐색 시작 시 이전 건 취소
-  let tries = 0;
-  const attempt = () => {
-    if (navGen !== gen) return; // 새 탐색이 시작됐으면 중단
-    memoWindow.webContents.executeJavaScript(`
-      (function() {
-        const btns = document.querySelectorAll('button');
-        for (const b of btns) {
-          const t = b.textContent.trim();
-          if (${exact ? "t === '" + label + "'" : "t.includes('" + label + "')"}) { b.click(); return true; }
-        }
-        return false;
-      })()
-    `).then(found => {
-      if (navGen !== gen) return;
-      if (!found && tries++ < maxTries) setTimeout(attempt, interval);
-    }).catch(() => {});
-  };
-  attempt();
-}
-
-function goToToday() {
-  return memoWindow.webContents.executeJavaScript(`
-    (function() {
-      const all = document.querySelectorAll('*');
-      for (const el of all) {
-        const st = window.getComputedStyle(el);
-        if (st.position === 'fixed' && st.bottom === '0px') {
-          const btns = el.querySelectorAll('button');
-          for (const b of btns) {
-            if (b.textContent.includes('오늘')) { b.click(); return true; }
-          }
-        }
-      }
-      return false;
-    })()
-  `).catch(() => {});
-}
-
-function showMemo() {
+// 화면 이동은 버튼 글자를 찾아 누르지 않고, 웹 앱에 이동 신호(dm:navigate)를 보낸다.
+// 예전 방식은 아래쪽 탭이 없는 화면(메모 관리자 등)에서는 누를 버튼이 없어 이동이 안 됐다.
+function navigateTo(screen, extraJs = '') {
   if (!memoWindow) return;
   memoWindow.show();
   memoWindow.focus();
   closeOverlay(); // SearchViewer/LongMemoEditor가 열려있으면 닫기
-  // "메모"가 하단 탭의 정식 화면으로 바뀌면서(기존엔 오늘 화면 안의 "긴 메모" 버튼이었음)
-  // 하단 네비게이션의 "메모" 탭을 직접 클릭하는 방식으로 변경 — 누르면 새 메모 작성 화면이 바로 뜸
-  setTimeout(() => {
-    waitAndClick('메모', 10, 200, true); // 하단 탭 라벨과 정확히 일치하는 버튼만 클릭("긴메모편집" 등 다른 버튼과 혼동 방지)
-    setTimeout(() => memoWindow.webContents.focus(), 300); // textarea 포커스 보장
-  }, 200);
-}
-
-function showCalendar() {
-  if (!memoWindow) return;
-  memoWindow.show();
-  memoWindow.focus();
-  closeOverlay();
-  setTimeout(() => clickTab('달력'), 300);
-}
-
-// 검색 단축키 → 메모 관리자(메모잇 메모관리자 방식의 넓은 화면). 창 크기는 웹이 set-wide-mode로 요청
-function showSearch() {
-  if (!memoWindow) return;
-  memoWindow.show();
-  memoWindow.focus();
-  closeOverlay(); // LongMemoEditor가 열려있으면 닫기
   setTimeout(() => {
     memoWindow.webContents.executeJavaScript(
-      "window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }))"
+      `window.dispatchEvent(new CustomEvent('dm:navigate', { detail: '${screen}' }));${extraJs}`
     ).catch(() => {});
+    setTimeout(() => memoWindow.webContents.focus(), 300); // 입력칸 포커스 보장
   }, 150);
 }
+
+// 메모 탭 — 새 메모 작성 화면이 바로 뜸
+function showMemo() { navigateTo('memo'); }
+function showCalendar() { navigateTo('history'); }
+// 메모 관리자(메모잇 메모관리자 방식의 넓은 화면). 창 크기는 웹이 set-wide-mode로 요청
+function showSearch() { navigateTo('manager'); }
+// 메모 검색(휴대폰식 통합 검색) — 오늘 화면으로 간 뒤 검색창 열기.
+// 오늘 화면이 뜨기 전에 신호가 도착해도 놓치지 않도록 대기 표시를 남긴다(Today.jsx)
+function showMemoSearch() {
+  navigateTo('today', "window.__dmOpenSearchPending = true; window.dispatchEvent(new Event('dm:open-search'));");
+}
+
+// 자동 테스트(Playwright _electron)에서만 이동 함수를 부를 수 있게 — 설치된 앱에는 노출 안 됨
+if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch };
 
 function toggleMemo() {
   if (!memoWindow) return;

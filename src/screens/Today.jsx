@@ -420,6 +420,15 @@ export default function Today({
     deleteSomeday(item.id, { keepPhotos: true });
   };
 
+  // 데스크탑 앱의 "메모 검색" 단축키 — 오늘 화면으로 이동한 뒤 검색창을 연다.
+  // 화면이 뜨기 전에 신호가 오면 놓치지 않게 window.__dmOpenSearchPending 표시도 확인
+  useEffect(() => {
+    const open = () => { window.__dmOpenSearchPending = false; setShowSearch(true); };
+    if (window.__dmOpenSearchPending) open();
+    window.addEventListener('dm:open-search', open);
+    return () => window.removeEventListener('dm:open-search', open);
+  }, []);
+
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
   if (longMemo) return (
