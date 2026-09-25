@@ -111,6 +111,18 @@ export async function loadDaysChangedSince(uid, sinceMs = 0) {
   return { days, latestMs };
 }
 
+// 앱 복귀 시 다른 기기에서 바뀐 언젠가할일·목표를 받기 위한 설정·목표 문서 (문서 2개만 읽음)
+export async function loadSettingsAndGoals(uid) {
+  const [settingsSnap, goalsSnap] = await Promise.all([
+    getDoc(doc(db, "users", uid, "data", "settings")),
+    getDoc(doc(db, "users", uid, "data", "goals")),
+  ]);
+  return {
+    settings: settingsSnap.exists() ? settingsSnap.data() : null,
+    goals: goalsSnap.exists() ? goalsSnap.data() : null,
+  };
+}
+
 // 로그인 시 Firestore → 앱으로 전체 로드
 export async function loadAllFromFirestore(uid) {
   const result = { settings: null, goals: null, days: {}, daysSyncedAt: 0 };

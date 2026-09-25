@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto } from "./firebase.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
@@ -306,6 +306,7 @@ export default function App() {
   const daySyncedAtRef = useRef(0); // 서버에서 받은 날짜 문서 중 가장 늦은 저장 시각(서버 시각 ms)
   const lastLocalSaveRef = useRef({}); // 날짜별 이 기기 마지막 저장 시각 — 새로고침 중 고친 날짜는 덮어쓰지 않기 위해
   const dayRefreshRef = useRef({ running: false, at: 0 });
+  const prefsLocalChangeRef = useRef(0); // 언젠가할일·목표가 마지막으로 바뀐 시각 — 새로고침 중 바뀌면 서버 값으로 덮지 않음
   const plansRef = useRef({});
   const gcalRefreshTimerRef = useRef(null);
   const driveRefreshTimerRef = useRef(null);
@@ -1235,9 +1236,24 @@ export default function App() {
     });
   };
 
-  // 앱으로 돌아올 때(화면 복귀·창 포커스) 다른 기기·텔레그램에서 바뀐 날짜만 서버에서 받아 반영.
-  // 서버에 못 올린 변경이 있는 날짜는 이 기기 할일을 우선해 다시 올리고, 받는 도중 이 기기에서 고친 날짜는 건드리지 않는다.
-  const refreshDaysFromServer = async () => {
+  // 다른 기기에서 바꾼 언젠가할일·목표(인생목표·실천항목·올해/월간 목표)를 반영 — 내용이 다를 때만 바꾼다
+  const applyRemotePrefs = ({ settings: s, goals: remoteGoals }) => {
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    if (Array.isArray(s?.someday) && !same(s.someday, someday)) setSomeday(s.someday);
+    if (Array.isArray(s?.lifeGoals)) {
+      const nextLifeGoals = s.lifeGoals.filter(Boolean);
+      if (!same(nextLifeGoals, lifeGoals)) setLifeGoals(nextLifeGoals);
+    }
+    if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
+    if (remoteGoals) {
+      const nextGoals = normalizeGoals(remoteGoals, currentGoalMonthKey);
+      if (!same(nextGoals, goals)) setGoals(nextGoals);
+    }
+  };
+
+  // 앱으로 돌아올 때(화면 복귀·창 포커스) 다른 기기·텔레그램에서 바뀐 날짜만 서버에서 받아 반영하고, 언젠가할일·목표도 맞춘다.
+  // 서버에 못 올린 변경이 있는 날짜는 이 기기 할일을 우선해 다시 올리고, 받는 도중 이 기기에서 고친 날짜·목록은 건드리지 않는다.
+  const refreshFromServer = async () => {
     const uid = authUser?.uid;
     const r = dayRefreshRef.current;
     if (!uid || !syncReadyRef.current || r.running || Date.now() - r.at < 15000) return;
@@ -1245,7 +1261,11 @@ export default function App() {
     r.at = Date.now();
     const startedAt = Date.now();
     try {
-      const { days, latestMs } = await loadDaysChangedSince(uid, daySyncedAtRef.current);
+      const [{ days, latestMs }, prefs] = await Promise.all([
+        loadDaysChangedSince(uid, daySyncedAtRef.current),
+        loadSettingsAndGoals(uid),
+      ]);
+      if (prefsLocalChangeRef.current < startedAt) applyRemotePrefs(prefs);
       daySyncedAtRef.current = Math.max(daySyncedAtRef.current, latestMs);
       const unsyncedDays = new Set(store.get(UNSYNCED_DAYS_KEY, []));
       const updates = {};
@@ -1264,13 +1284,13 @@ export default function App() {
         setPlans(prev => ({ ...prev, ...updates }));
       }
     } catch (e) {
-      console.warn('[App] day refresh failed:', e);
+      console.warn('[App] refresh from server failed:', e);
     } finally {
       r.running = false;
     }
   };
-  const refreshDaysRef = useRef(refreshDaysFromServer);
-  useEffect(() => { refreshDaysRef.current = refreshDaysFromServer; });
+  const refreshDaysRef = useRef(refreshFromServer);
+  useEffect(() => { refreshDaysRef.current = refreshFromServer; });
   useEffect(() => {
     const onReturn = () => { if (document.visibilityState === 'visible') refreshDaysRef.current(); };
     document.addEventListener('visibilitychange', onReturn);
@@ -1348,12 +1368,21 @@ export default function App() {
             let nextDay = mergeImportedGcalTasks(remoteDay, localDay, localWins);
             if (!localWins && restoreDetails) nextDay = restoreLostTaskDetails(nextDay, localDay);
             merged[ds] = nextDay;
-            persistDayData(ds, nextDay, firebaseUser.uid, true);
+            // 서버 내용과 달라진 날짜(미동기화 변경·복구·로컬 전용 할일)만 다시 저장 — 예전엔 앱을 켤 때마다
+            // 모든 날짜를 통째로 다시 써서 쓰기 비용이 날짜 수만큼 들고, 다른 기기의 새 내용을 덮을 위험도 있었다
+            const remoteNormalized = dedupeDayTasks(remoteDay);
+            if (JSON.stringify(nextDay) !== JSON.stringify(remoteNormalized)) {
+              persistDayData(ds, nextDay, firebaseUser.uid, true);
+            } else {
+              saveDay(ds, remoteNormalized);
+              markDayUnsynced(ds, false);
+            }
           });
           listAllDays().forEach((ds) => {
             if (merged[ds]) return;
             const localDay = loadDay(ds);
-            if (!(localDay?.tasks || []).some(isImportedGcalTask)) return;
+            // 서버에 없는 날짜: 못 올린 변경이 있거나 구글 캘린더에서 가져온 할일이 있으면 올린다
+            if (!unsyncedDays.has(ds) && !(localDay?.tasks || []).some(isImportedGcalTask)) return;
             merged[ds] = persistDayData(ds, localDay, firebaseUser.uid, true);
           });
           store.set(DAY_DETAIL_RESTORED_KEY, true);
@@ -1417,6 +1446,7 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { name: user.name }).catch(() => {});
   }, [user, authUser]);
   useEffect(() => {
+    prefsLocalChangeRef.current = Date.now();
     store.set("dm_goals", goals);
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, goals).catch(() => {});
   }, [goals, authUser]);
@@ -1425,9 +1455,11 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { businessCards }).catch(() => {});
   }, [businessCards, authUser]);
   useEffect(() => {
+    prefsLocalChangeRef.current = Date.now();
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoals }).catch(() => {});
   }, [lifeGoals, authUser]);
   useEffect(() => {
+    prefsLocalChangeRef.current = Date.now();
     store.set("dm_life_goal_actions", lifeGoalActions);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { lifeGoalActions }).catch(() => {});
   }, [lifeGoalActions, authUser]);
@@ -1457,6 +1489,7 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { recurringTasks }).catch(() => {});
   }, [recurringTasks, authUser]);
   useEffect(() => {
+    prefsLocalChangeRef.current = Date.now();
     store.set("dm_someday", someday);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { someday }).catch(() => {});
   }, [someday, authUser]);
