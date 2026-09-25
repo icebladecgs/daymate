@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
 import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../data/stats.js";
 import S from "../styles.js";
+import { chatFetch } from "../api/chatFetch.js";
 
 export default function Stats({ plans, habits, authUser, user, onBack }) {
   const nowMonth = new Date().getMonth();
@@ -293,7 +294,7 @@ const last30 = useMemo(() => {
               setAiLoading(true);
               setAiReview(null);
               try {
-                const res = await fetch('/api/chat?action=monthly-review', {
+                const res = await chatFetch('/api/chat?action=monthly-review', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({

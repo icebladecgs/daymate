@@ -1,4 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+
+if (!getApps().length) {
+  initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+}
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -113,6 +119,16 @@ const tools = [
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+  // 로그인한 DayMate 사용자만 — 예전엔 누구나 호출할 수 있어 주소만 알면 AI 비용을 대신 쓰게 할 수 있었다(2026-09-25)
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!idToken) return res.status(401).json({ error: '로그인 후 이용할 수 있어요' });
+  try {
+    await getAuth().verifyIdToken(idToken);
+  } catch {
+    return res.status(401).json({ error: '로그인이 만료됐어요. 다시 로그인해 주세요' });
+  }
 
   // ?action=life-coach → 인생 코칭 액션플랜 생성
   if (req.query.action === 'life-coach') {

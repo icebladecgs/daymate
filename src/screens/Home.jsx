@@ -23,6 +23,7 @@ import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
 import { parseNth, NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
+import { chatFetch } from "../api/chatFetch.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -554,7 +555,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         .sort(([a], [b]) => b.localeCompare(a))
         .slice(0, 7)
         .flatMap(([, d]) => (d.tasks || []).filter(t => t.title?.trim()).map(t => t.title));
-      const res = await fetch('/api/chat', {
+      const res = await chatFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

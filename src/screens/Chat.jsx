@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import S from "../styles.js";
+import { chatFetch } from "../api/chatFetch.js";
 
 export default function Chat({ user, todayData, habits, scores, onBack, onSetTodayTasks, onSetMemo, onToggleHabit, someday, setSomeday }) {
   const [messages, setMessages] = useState([
@@ -90,7 +91,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
 
     try {
       const history = newMessages.slice(0, -1); // 마지막 유저 메시지 제외
-      const res = await fetch('/api/chat', {
+      const res = await chatFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { DEFAULT_DIARY_QUESTIONS } from "../utils/diary.js";
+import { chatFetch } from "../api/chatFetch.js";
 
 export default function VoiceDiary({ user, questions, toast, setToast, onBack, onComplete }) {
   const qList = questions?.length ? questions : DEFAULT_DIARY_QUESTIONS;
@@ -85,7 +86,7 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
     setError("");
     try {
       const payload = qList.map((q, i) => ({ question: q, answer: ans[i] }));
-      const res = await fetch("/api/chat?action=voice-diary", {
+      const res = await chatFetch("/api/chat?action=voice-diary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: payload, userName: user?.name || "사용자" }),

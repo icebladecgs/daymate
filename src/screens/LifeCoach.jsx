@@ -1,5 +1,6 @@
 import { useState } from "react";
 import S from "../styles.js";
+import { chatFetch } from "../api/chatFetch.js";
 
 const QUESTIONS = [
   {
@@ -63,7 +64,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
     setError("");
     try {
       const payload = QUESTIONS.map((q, i) => ({ question: q.text, answer: ans[i] }));
-      const res = await fetch("/api/chat?action=life-coach", {
+      const res = await chatFetch("/api/chat?action=life-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: payload, userName: user?.name || "사용자" }),

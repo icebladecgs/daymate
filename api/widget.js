@@ -31,7 +31,9 @@ function applyCors(req, res) {
 }
 
 function isAuthorized(req) {
-  if (!WIDGET_ACCESS_TOKEN) return true;
+  // 토큰이 설정되지 않았으면 닫힘 — 예전엔 열려 있어서 로그인 없이 오늘 할일이 보였다(2026-09-25 발견).
+  // 위젯을 쓰려면 Vercel 환경변수 WIDGET_ACCESS_TOKEN을 설정하고 요청에 토큰을 붙인다.
+  if (!WIDGET_ACCESS_TOKEN) return false;
 
   const authHeader = req.headers.authorization || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';

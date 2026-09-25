@@ -15,6 +15,7 @@ import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
 import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
+import { chatFetch } from "../api/chatFetch.js";
 
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData,
@@ -263,7 +264,7 @@ export default function Today({
     setFortuneLoading(true);
     setFortuneError(false);
     try {
-      const res = await fetch('/api/chat?action=fortune', {
+      const res = await chatFetch('/api/chat?action=fortune', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', today: dateStr }),
@@ -288,7 +289,7 @@ export default function Today({
     if (!birthDate) return;
     setFortuneLoading(true);
     try {
-      const res = await fetch('/api/chat?action=saju', {
+      const res = await chatFetch('/api/chat?action=saju', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자' }),
@@ -305,7 +306,7 @@ export default function Today({
     setFortuneLoading(true);
     try {
       const year = new Date().getFullYear();
-      const res = await fetch('/api/chat?action=tojeong', {
+      const res = await chatFetch('/api/chat?action=tojeong', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ birthDate, birthTime, userName: user?.name || '사용자', year }),
