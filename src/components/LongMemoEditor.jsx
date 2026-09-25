@@ -5,6 +5,7 @@ import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
+import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -230,6 +231,17 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
             }}
           >{drive.busy ? drive.label : '📁 구글 드라이브'}</button>
         )}
+        {/* 휴대폰용 계산 버튼 (PC는 F12·Ctrl+/) — 누를 때 입력칸 포커스가 빠지지 않게 onMouseDown 막음 */}
+        <button
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => { if (!calcAtCursor(textareaRef.current)) onPhotoError?.('계산할 줄에 커서를 두고 눌러요 (예: 1500000*12)'); }}
+          title="현재 줄 계산 (F12 또는 Ctrl+/) · 빈 줄이면 위 숫자 합계"
+          style={{
+            flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)',
+            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >🧮 계산</button>
       </div>
 
       <div style={{ marginBottom: 8 }}>
@@ -329,7 +341,11 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       ref={textareaRef}
       value={text}
       onChange={e => setText(e.target.value)}
-      onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose(); }}
+      onKeyDown={e => {
+        // 편집 도우미: F12·Ctrl+/ 계산, Ctrl+; 날짜, Ctrl+D 줄 복제, 목록 이어쓰기 (utils/editorAssist.js)
+        if (handleEditorKey(e, () => onPhotoError?.('계산할 수식이 없어요 (예: 1500000*12)'))) return;
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleClose();
+      }}
       onPaste={handlePaste}
       placeholder="자유롭게 작성하세요"
       style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}

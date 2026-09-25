@@ -47,7 +47,10 @@ const People = lazy(() => import("./screens/People.jsx"));
 // 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
 const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
 
-// 메모가 새로 생기거나 글·사진·파일이 바뀌면 수정 시각을 남긴다 (메모 관리자의 "수정일")
+// 메모가 새로 생기거나 글·사진·파일이 바뀌면 수정 시각을 남긴다 (메모 관리자의 "수정일").
+// 또 메모가 목록에서 사라지면(어느 화면에서 지웠든) 날짜 기록의 memoTrash(휴지통)로 옮기고, 30일 지난 것은 비운다.
+// 모든 날짜 저장이 여기(setDayData/setTodayData)를 거치므로 삭제 화면마다 따로 처리하지 않아도 된다.
+const MEMO_TRASH_DAYS = 30;
 function stampMemoUpdates(prevDay, nextDay) {
   const nextMemos = nextDay?.memos;
   if (!Array.isArray(nextMemos) || nextMemos === prevDay?.memos) return nextDay;
@@ -57,10 +60,18 @@ function stampMemoUpdates(prevDay, nextDay) {
   const memos = nextMemos.map(m => {
     const p = prevMap.get(m.id);
     if (p && p.text === m.text && p.photos === m.photos && p.files === m.files) return m;
+    if (!p && m.updatedAt) return m; // 새로 넣는 메모에 이미 시각이 있으면 그대로 (휴지통에서 되살리기 등)
     changed = true;
     return { ...m, updatedAt: now };
   });
-  return changed ? { ...nextDay, memos } : nextDay;
+  const nextIds = new Set(nextMemos.map(m => m.id));
+  const removed = (prevDay?.memos || []).filter(m => !nextIds.has(m.id) && (m.text?.trim() || m.photos?.length || m.files?.length));
+  const cutoff = Date.now() - MEMO_TRASH_DAYS * 86400000;
+  const oldTrash = nextDay.memoTrash || [];
+  const trash = [...oldTrash, ...removed.map(m => ({ ...m, deletedAt: now }))].filter(t => Date.parse(t.deletedAt) > cutoff);
+  const trashChanged = removed.length > 0 || trash.length !== oldTrash.length;
+  if (!changed && !trashChanged) return nextDay;
+  return { ...nextDay, ...(changed ? { memos } : {}), ...(trashChanged ? { memoTrash: trash } : {}) };
 }
 
 // 서버에 못 올린 변경이 있는 날짜: 할일은 mergeImportedGcalTasks(localWins)로 합치고, 나머지(메모·일기·습관 체크 등)도

@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
+import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, topTags, filterItems, sortItems } from "../utils/memoManager.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
+import { handleEditorKey } from "../utils/editorAssist.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
   task: { icon: "📅", label: "일정", color: "#4ADE80" },
   journal: { icon: "📖", label: "일기", color: "#A78BFA" },
+  trash: { icon: "🗑", label: "휴지통", color: "#F87171" },
 };
 const PAGE = 300;
 
@@ -88,8 +91,45 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     newMemoRef.current = { key, ds, id };
     setSelectedKey(key);
   };
+  // 휴지통: 되살리기(원래 날짜 메모로) · 영구 삭제(사진 파일도 정리) · 비우기
+  const restoreTrash = (it) => {
+    onUpdateDayData(it.ds, prev => {
+      const t = (prev.memoTrash || []).find(m => m.id === it.id);
+      if (!t) return prev;
+      const { deletedAt, ...memo } = t; // eslint-disable-line no-unused-vars
+      const memos = withMemoList(prev);
+      return {
+        ...prev,
+        memos: memos.some(m => m.id === memo.id) ? memos : [...memos, memo],
+        memoTrash: (prev.memoTrash || []).filter(m => m.id !== it.id),
+      };
+    });
+    setSelectedKey(`memo|${it.ds}|${it.id}`);
+    setFilter("all");
+    onError?.("메모를 되살렸어요");
+  };
+  const purgeTrash = (targets) => {
+    const byDay = new Map();
+    targets.forEach(it => byDay.set(it.ds, [...(byDay.get(it.ds) || []), it.id]));
+    byDay.forEach((ids, ds) => {
+      const gone = (plans[ds]?.memoTrash || []).filter(m => ids.includes(m.id));
+      gone.forEach(m => (m.photos || []).forEach(p => p?.path && deletePhoto(p.path)));
+      onUpdateDayData(ds, prev => ({ ...prev, memoTrash: (prev.memoTrash || []).filter(m => !ids.includes(m.id)) }));
+    });
+    setSelectedKey(null);
+  };
+  const deleteForever = (it) => {
+    if (!window.confirm(`"${it.title}" 메모를 영구 삭제할까요? 되돌릴 수 없어요.`)) return;
+    purgeTrash([it]);
+  };
+  const emptyTrash = () => {
+    const all = items.filter(it => it.kind === "trash");
+    if (!all.length || !window.confirm(`휴지통의 메모 ${all.length}개를 모두 영구 삭제할까요? 되돌릴 수 없어요.`)) return;
+    purgeTrash(all);
+  };
+
   const deleteMemo = (it) => {
-    if (!window.confirm(`"${it.title}" 메모를 삭제할까요?`)) return;
+    if (!window.confirm(`"${it.title}" 메모를 삭제할까요? (휴지통에 30일 보관)`)) return;
     onUpdateDayData(it.ds, prev => {
       const next = updateMemoIn(prev, it.id, {});
       return { ...next, memos: next.memos.filter(m => m.id !== it.id) };
@@ -133,7 +173,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             {th("kind", "", { width: 30 })}
             {th("title", "제목")}
             {th("date", "날짜", { width: wide ? 150 : 96 })}
-            {wide && th("updated", "수정일", { width: 130 })}
+            {wide && th("updated", filter === "trash" ? "삭제일" : "수정일", { width: 130 })}
             {wide && <th style={{ width: 150, textAlign: "left", padding: "7px 8px", fontSize: 12, fontWeight: 700, ...muted, position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border }}>태그</th>}
             {th("photo", "📷", { width: 40 })}
           </tr>
@@ -181,6 +221,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           <button onClick={() => move(1)} aria-label="다음" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▼</button>
           <button onClick={() => move(-1)} aria-label="이전" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▲</button>
           <span style={{ fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{list.length}개</span>
+          {filter === "trash" && list.length > 0 && (
+            <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
+          )}
         </div>
       </div>
 
@@ -190,7 +233,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{table}</div>
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} />
+              <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
             </div>
           </div>
         </div>
@@ -199,7 +242,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>
           <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{table}</div>
           <div style={{ flex: "1 1 60%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} />
+            <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
           </div>
         </div>
       )}
@@ -209,7 +252,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo }) {
+function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -235,6 +278,24 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
   }, [text, title]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { const l = latest.current; l.save(l.text, l.title); }, []);
 
+  if (item?.kind === "trash") {
+    const btn = { padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#F87171" }}>🗑 휴지통</span>
+          <span style={{ fontSize: 12, color: "var(--dm-muted)" }}>{formatKoreanDate(item.ds)} 메모 · 삭제 {fmtUpdated(item.updatedAt)}</span>
+          <span style={{ flex: 1 }} />
+          <button onClick={() => onRestore(item)} style={{ ...btn, border: "1px solid rgba(74,222,128,.5)", background: "rgba(74,222,128,.12)", color: "#4ADE80" }}>↩ 되살리기</button>
+          <button onClick={() => onDeleteForever(item)} style={{ ...btn, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.08)", color: "#F87171" }}>영구 삭제</button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", padding: "10px 12px", borderRadius: 8, border: "1px dashed var(--dm-border)", color: "var(--dm-sub)", fontSize: 14, lineHeight: 1.7 }}>
+          {item.text || "(내용 없음)"}
+        </div>
+        {item.photos.length > 0 && <div style={{ fontSize: 12, color: "var(--dm-muted)", flexShrink: 0 }}>📷 사진 {item.photos.length}장 (되살리면 다시 보여요)</div>}
+      </div>
+    );
+  }
   if (!item) {
     return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dm-muted)", fontSize: 13, padding: 20, textAlign: "center" }}>목록에서 항목을 고르면 여기서 바로 보고 고칠 수 있어요.<br />↑↓ 키로 이동할 수 있어요.</div>;
   }
@@ -270,6 +331,7 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
           style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
       <textarea value={text} onChange={e => setText(e.target.value)}
+        onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
         placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
         style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
       {item.kind === "journal" && (journal?.good || journal?.regret || journal?.tomorrow) && (

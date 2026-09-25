@@ -404,8 +404,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           ))}
           onDelete={(id) => {
             if (id === 'legacy') { setData(prev => ({ ...prev, memo: '' })); return; }
-            const target = (data.memos || []).find(m => m.id === id);
-            (target?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+            // 사진 파일은 지우지 않음 — 메모가 휴지통으로 가서 되살릴 수 있으므로 영구 삭제 때 정리한다
             setData(prev => ({
               ...prev,
               memos: (prev.memos || []).filter(m => m.id !== id),

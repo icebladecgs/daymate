@@ -5,6 +5,7 @@ import { newDay, loadDay, saveDay, dayKey } from "../data/model.js";
 import { markDayUnsynced } from "../utils/daySync.js";
 import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
+import { handleEditorKey } from "../utils/editorAssist.js";
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -22,7 +23,11 @@ function writeMemo(ds, id, patchOrRemove) {
   const memos = patchOrRemove === null
     ? list.filter(m => m.id !== id)
     : list.map(m => (m.id === id ? { ...m, ...patchOrRemove, updatedAt: new Date().toISOString() } : m));
-  saveDay(ds, { ...day, memos });
+  // 지운 메모는 휴지통으로 (앱의 저장 경로를 거치지 않으므로 여기서 직접) — 빈 메모는 제외
+  const gone = patchOrRemove === null ? list.find(m => m.id === id) : null;
+  const trashed = gone && (gone.text?.trim() || gone.photos?.length || gone.files?.length)
+    ? { memoTrash: [...(day.memoTrash || []), { ...gone, deletedAt: new Date().toISOString() }] } : {};
+  saveDay(ds, { ...day, memos, ...trashed });
   markDayUnsynced(ds, true);
 }
 
@@ -191,6 +196,7 @@ export default function StickyMemo() {
         autoFocus
         value={text}
         onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
+        onKeyDown={e => handleEditorKey(e, () => flash("계산할 수식이 없어요"))}
         onPaste={onPaste}
         placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
         style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}

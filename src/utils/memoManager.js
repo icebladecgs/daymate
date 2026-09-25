@@ -29,6 +29,15 @@ export function buildManagerItems(plans) {
         done: !!t.done, starred: false, photos: t.photos || [], tags: parseWikiLinks(`${t.title} ${t.note || ""}`),
       });
     });
+    (d.memoTrash || []).forEach(m => {
+      const text = m.text || "";
+      items.push({
+        key: `trash|${ds}|${m.id}`, kind: "trash", ds, id: m.id,
+        title: firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
+        text, time: validTime(m.createdAt), updatedAt: m.deletedAt || "",
+        starred: false, photos: m.photos || [], tags: [],
+      });
+    });
     const j = d.journal || {};
     const journalText = [j.body, j.good, j.regret, j.tomorrow].filter(s => s?.trim()).join("\n");
     if (journalText.trim()) {
@@ -55,6 +64,7 @@ export const BASE_FILTERS = [
   { id: "d7", label: "최근 일주일", icon: "🕐" },
   { id: "d15", label: "최근 15일", icon: "🕐" },
   { id: "d30", label: "최근 한달", icon: "🕐" },
+  { id: "trash", label: "휴지통 (30일 보관)", icon: "🗑" },
 ];
 
 export function topTags(items, limit = 30) {
@@ -80,9 +90,12 @@ export function filterItems(items, filter, query, today = toDateStr()) {
     d7: recent(7),
     d15: recent(15),
     d30: recent(30),
+    trash: () => true,
   }[filter] || ((it) => it.tags.includes(filter.replace(/^#/, "")));
   const q = norm(query.trim());
-  return items.filter(it => byFilter(it) && (!q || norm(`${it.title}\n${it.text}`).includes(q)));
+  // 휴지통 항목은 휴지통 보기에서만, 다른 보기에서는 제외
+  const inView = (it) => (filter === "trash" ? it.kind === "trash" : it.kind !== "trash");
+  return items.filter(it => inView(it) && byFilter(it) && (!q || norm(`${it.title}\n${it.text}`).includes(q)));
 }
 
 const SORTERS = {
