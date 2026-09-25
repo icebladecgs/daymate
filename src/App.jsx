@@ -63,6 +63,17 @@ function stampMemoUpdates(prevDay, nextDay) {
   return changed ? { ...nextDay, memos } : nextDay;
 }
 
+// 서버에 못 올린 변경이 있는 날짜: 할일은 mergeImportedGcalTasks(localWins)로 합치고, 나머지(메모·일기·습관 체크 등)도
+// 이 기기 내용을 우선한다. 메모는 같은 id면 이 기기 것, 서버에만 있는 메모(그 사이 다른 기기에서 쓴 것)는 뒤에 붙인다.
+// 예전엔 할일만 지켜서, 데스크탑 간편 메모를 만든 직후 서버 내용을 받으면 새 메모가 사라졌다(2026-09-25).
+function keepUnsyncedLocal(mergedDay, localDay) {
+  if (!localDay) return mergedDay;
+  const localMemos = Array.isArray(localDay.memos) ? localDay.memos : [];
+  const localIds = new Set(localMemos.map(m => m.id));
+  const remoteOnly = (mergedDay?.memos || []).filter(m => !localIds.has(m.id));
+  return { ...mergedDay, ...localDay, tasks: mergedDay?.tasks || localDay.tasks, memos: [...localMemos, ...remoteOnly] };
+}
+
 // 서버 할일에는 없고 이 기기 할일(같은 ID)에만 남은 메모·사진·파일을 되살린다
 function restoreLostTaskDetails(day, localDay) {
   const localMap = new Map((localDay?.tasks || []).map(t => [String(t.id), t]));
@@ -1280,7 +1291,8 @@ export default function App() {
       Object.entries(days).forEach(([ds, remoteDay]) => {
         if ((lastLocalSaveRef.current[ds] || 0) >= startedAt) return;
         if (unsyncedDays.has(ds)) {
-          updates[ds] = persistDayData(ds, mergeImportedGcalTasks(remoteDay, loadDay(ds), true), uid, true);
+          const localDay = loadDay(ds);
+          updates[ds] = persistDayData(ds, keepUnsyncedLocal(mergeImportedGcalTasks(remoteDay, localDay, true), localDay), uid, true);
           return;
         }
         const nextDay = dedupeDayTasks(remoteDay);
@@ -1399,6 +1411,7 @@ export default function App() {
             const localDay = loadDay(ds);
             const localWins = unsyncedDays.has(ds);
             let nextDay = mergeImportedGcalTasks(remoteDay, localDay, localWins);
+            if (localWins) nextDay = keepUnsyncedLocal(nextDay, localDay);
             if (!localWins && restoreDetails) nextDay = restoreLostTaskDetails(nextDay, localDay);
             merged[ds] = nextDay;
             // 서버 내용과 달라진 날짜(미동기화 변경·복구·로컬 전용 할일)만 다시 저장 — 예전엔 앱을 켤 때마다

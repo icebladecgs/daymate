@@ -45,6 +45,8 @@ export default function StickyMemo() {
   const { ds, id } = target;
   const isNewRef = useRef(target.isNew); // 새로 만든 메모 — 비워 둔 채 닫으면 지운다
   const [memo, setMemo] = useState(() => findMemo(ds, id));
+  const lastMemoRef = useRef(memo); // 다른 곳에서 지워졌을 때 되살리기용 마지막 모습
+  useEffect(() => { if (memo) lastMemoRef.current = memo; }, [memo]);
   const [text, setText] = useState(() => findMemo(ds, id)?.text || "");
   const [pinned, setPinned] = useState(() => new URLSearchParams(window.location.search).get("pin") === "1");
   const [status, setStatus] = useState("");
@@ -108,6 +110,16 @@ export default function StickyMemo() {
     return () => window.removeEventListener("storage", onStorage);
   }, [ds, id]);
 
+  // 이 창에 남아 있는 내용으로 메모를 다시 만든다 (같은 id)
+  const restore = () => {
+    const day = loadDay(ds) || newDay(ds);
+    const base = lastMemoRef.current || { id, createdAt: getMemoTimeStr() };
+    saveDay(ds, { ...day, memos: [...memoListOf(day), { ...base, id, text: textRef.current, updatedAt: new Date().toISOString() }] });
+    markDayUnsynced(ds, true);
+    saved.current = textRef.current;
+    setMemo(findMemo(ds, id));
+  };
+
   const flash = (msg) => { setStatus(msg); setTimeout(() => setStatus(""), 1800); };
   const patch = (p) => { writeMemo(ds, id, p); setMemo(findMemo(ds, id)); };
 
@@ -153,7 +165,10 @@ export default function StickyMemo() {
     return (
       <div style={{ position: "fixed", inset: 0, background: "#FFF7A8", color: "#5b4a00", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 13, fontFamily: "inherit" }}>
         이 메모는 삭제되었어요.
-        <button onClick={() => closeWindow({ deleted: true })} style={{ ...iconBtn, width: "auto", padding: "4px 12px", background: "#F5E97A" }}>닫기</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {text.trim() && <button onClick={restore} style={{ ...iconBtn, width: "auto", padding: "4px 12px", background: "#F5E97A" }}>되살리기</button>}
+          <button onClick={() => closeWindow({ deleted: true })} style={{ ...iconBtn, width: "auto", padding: "4px 12px", background: "#F5E97A" }}>닫기</button>
+        </div>
       </div>
     );
   }
