@@ -465,6 +465,8 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **휴대폰 공유 받기(Web Share Target).** `manifest.json` share_target → `sw.js`가 `/share-target` POST를 받아 사진은 `dm-share` 캐시에, 글·링크는 주소로 → `App.jsx`가 오늘 메모로 저장. **sw.js의 activate가 `dm-share` 캐시는 지우지 않도록** 예외를 유지한다. 안드로이드에 설치한 앱에서만 동작. **manifest(공유 대상 등) 변경은 이미 설치된 앱에 바로 반영되지 않는다** — 사용자에게 홈 화면 앱 삭제 → 크롬으로 다시 설치를 안내한다(2026-09-25 실제로 재설치 후 공유 목록에 나타남). 삼성 인터넷으로 설치한 앱은 공유 대상 미지원.
 - **문장 일정 입력은 `utils/nlSchedule.js`** (외부 AI 없이 규칙 해석 — 일정 내용을 밖으로 보내지 않기 위함). **어제 못 한 할일 넘기기**는 반복 할일·구글 캘린더 일정을 제외한다(`Today.jsx`).
 - **서버 API 인증.** `api/chat.js`는 Firebase ID 토큰 확인(클라이언트는 `src/api/chatFetch.js` 사용), `api/widget.js`는 `WIDGET_ACCESS_TOKEN` 미설정 시 거절. 새 서버 API를 만들면 로그인 확인 없이 개인 데이터나 유료 API를 열지 않는다.
+- **Firestore는 `undefined` 값이 있으면 저장 전체를 거부한다.** `firebase.js`에서 `initializeFirestore(app, { ignoreUndefinedProperties: true })`로 그 칸만 빼고 저장하게 했다 (2026-09-26, "시간 지우기" 등 뒤 그날 기록이 다른 기기로 동기화되지 않던 문제). 이 설정을 지우지 않는다. `persistDayData`가 서버 저장 오류를 조용히 무시하므로, 저장 실패는 화면에 드러나지 않는다는 점도 기억한다.
+- **성장 능력치 지급은 `applyTaskXpGrants`(할일)를 거쳐야 한다.** 할일 완료를 저장하는 새 경로를 만들면 `setDayData`·`onSetTodayTasks`·`setDetailData` 중 하나를 쓴다 — `setTodayData`로 바로 저장하면 체크해도 능력치가 오르지 않는다(홈 화면에서 실제 발생, 2026-09-26). 지급(`grantStatXp`)은 setState 업데이터 밖에서 부른다(안에서 부르면 두 번 지급될 수 있다). 습관은 `statTag`로 능력치를 직접 고를 수 있고, 목표는 사용자가 고르지 않고 자동 분류를 쓴다(사용자 결정).
 - **알림(toast)은 화면마다 따로 그린다.** `setToast`만 부르고 그 화면에 `<Toast>`가 없으면 알림이 대기하다 다른 화면에서 늦게 뜬다(메모 화면에서 실제 발생, 2026-09-25). 새 화면을 만들면 알림 표시도 넣는다.
 - **코드 수정 스크립트(python 등)에 `
 `이 든 JS 문자열을 넣을 때 조심한다.** 줄바꿈으로 바뀌어 "Unterminated string" 오류가 반복됐다. 짧은 수정은 Edit 도구로, 긴 수정은 스크래치패드에 스크립트 파일을 써서 실행한다.
