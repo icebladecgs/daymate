@@ -291,36 +291,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         )}
       </div>
 
-      {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동을 설명 문장으로 */}
-      <div style={{ ...S.card, maxHeight: 260, overflowY: 'auto', padding: '8px 12px' }}>
-        {rounds.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', paddingBottom: 4, borderBottom: '1px solid var(--dm-row)' }}>
-            <span style={{ width: 26, flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerLabel}</span>
-            <span style={{ width: 1, flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{npc.name}</span>
-          </div>
-        )}
-        {rounds.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '6px 0' }}>공격하면 라운드별 기록이 여기 표시돼요</div>}
-        {rounds.map(r => (
-          <div key={r.round} style={{ padding: '7px 0', borderBottom: '1px solid var(--dm-row)' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', width: 26, flexShrink: 0, paddingTop: 1 }}>{r.round}R</span>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#6C8EFF' }}>
-                {r.player.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
-              </div>
-              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dm-row)', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#F87171' }}>
-                {r.npc.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
-              </div>
-            </div>
-            {r.result && <div style={{ fontSize: 13, textAlign: 'center', marginTop: 4, ...logLineStyle(r.result) }}>{r.result.text}</div>}
-          </div>
-        ))}
-      </div>
-
+      {/* 공격 버튼 — 기록이 길어져도 찾기 쉽게 캐릭터 칸 바로 아래, 라운드 기록 위 */}
       {status === 'ongoing' ? (
-        <div style={{ margin: '0 16px', opacity: resolving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+        <div style={{ margin: '0 16px 14px', opacity: resolving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
           <button onClick={() => act({ type: 'basic' })} disabled={resolving} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: resolving ? 'default' : 'pointer' }}>⚔️ 기본공격 · {player.basicMove || '기본공격'}</button>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.06em' }}>SPECIAL</div>
           {availableSpecials.length === 0 ? (
@@ -360,6 +333,34 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           </div>
         </div>
       )}
+      {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동을 설명 문장으로 */}
+      <div style={{ ...S.card, maxHeight: 260, overflowY: 'auto', padding: '8px 12px' }}>
+        {rounds.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', paddingBottom: 4, borderBottom: '1px solid var(--dm-row)' }}>
+            <span style={{ width: 26, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerLabel}</span>
+            <span style={{ width: 1, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{npc.name}</span>
+          </div>
+        )}
+        {rounds.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '6px 0' }}>공격하면 라운드별 기록이 여기 표시돼요</div>}
+        {rounds.map(r => (
+          <div key={r.round} style={{ padding: '7px 0', borderBottom: '1px solid var(--dm-row)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', width: 26, flexShrink: 0, paddingTop: 1 }}>{r.round}R</span>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#6C8EFF' }}>
+                {r.player.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
+              </div>
+              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dm-row)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#F87171' }}>
+                {r.npc.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
+              </div>
+            </div>
+            {r.result && <div style={{ fontSize: 13, textAlign: 'center', marginTop: 4, ...logLineStyle(r.result) }}>{r.result.text}</div>}
+          </div>
+        ))}
+      </div>
+
       <div style={{ height: 16 }} />
     </div>
   );
