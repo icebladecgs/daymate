@@ -142,8 +142,8 @@ function resolveAttack(attacker, defender, { useStat, mult = 1, ignoreDefense = 
 
 function formatAttackLog(actorLabel, moveName, r, side, isSpecial) {
   // move·amount는 배틀 화면의 좌우 액션 표시용 (계산에는 쓰지 않음)
-  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효`, side, kind: 'fumble', move: moveName };
-  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!`, side, kind: 'miss', move: moveName };
+  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효`, side, kind: 'fumble', move: moveName, special: !!isSpecial };
+  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!`, side, kind: 'miss', move: moveName, special: !!isSpecial };
   const tags = [r.crit && '크리티컬!', r.awaken && '각성!'].filter(Boolean).join(' ');
   return { text: `${actorLabel}: ${moveName} → ${tags ? tags + ' ' : ''}${r.damage} 데미지`, side, kind: 'attack', crit: r.crit, special: !!isSpecial, awaken: !!r.awaken, amount: r.damage, move: moveName };
 }
@@ -187,7 +187,7 @@ function performAction(actor, target, action, log, actorLabel, side) {
     actor.critGuaranteed = false;
     const r = resolveAttack(actor, target, { useStat: actor.primaryStat, forceCrit });
     applyDamage(target, r.damage);
-    log.push(formatAttackLog(actorLabel, '기본공격', r, side, false));
+    log.push(formatAttackLog(actorLabel, actor.basicMove || '기본공격', r, side, false));
     return;
   }
 

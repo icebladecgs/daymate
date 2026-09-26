@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import S from "../styles.js";
-import { getNpcById, getNpcAvatar } from "../data/battle/npcs.js";
+import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
+import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
 import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance } from "../data/battle/engine.js";
 
@@ -41,7 +42,7 @@ function logLineStyle(entry) {
 // 공격을 받으면 그 칸이 흔들리고 숫자가 튀어 오른다. 회복·보호막·버프는 행동한 쪽에 표시.
 const PLAYER_AVATAR = '😎';
 
-function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, shakeKey }) {
+function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, shakeKey, callout }) {
   const pct = fighter.energyMax > 0 ? Math.max(0, Math.round((fighter.energy / fighter.energyMax) * 100)) : 0;
   return (
     <div key={shakeKey || 'still'} className={shakeKey ? 'dm-battle-shake' : ''}
@@ -59,6 +60,9 @@ function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, sha
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-sub)', marginTop: 4 }}>
         {fighter.energy.toLocaleString()} / {fighter.energyMax.toLocaleString()}
       </div>
+      {callout && (
+        <div key={callout.key} className="dm-battle-callout" style={{ color: callout.color, borderColor: callout.color }}>{callout.text}</div>
+      )}
       {pops.map(p => (
         <div key={p.key} className="dm-battle-pop" onAnimationEnd={() => onPopEnd(side, p.key)}
           style={{ color: p.color, fontSize: p.big ? 26 : 20 }}>{p.text}</div>
@@ -72,13 +76,13 @@ function shortLabel(e) {
   switch (e.kind) {
     case 'attack':
       if (e.crit) return `💥 ${e.amount}`;
-      return `${e.special ? '✨' : '⚔️'} ${e.amount}${e.awaken ? ' 🔥' : ''}`;
+      return `${e.special ? `✨ ${e.move}` : '⚔️'} ${e.amount}${e.awaken ? ' 🔥' : ''}`;
     case 'miss': return '💨 빗나감';
     case 'fumble': return '😵 실수';
-    case 'heal': return `💚 +${e.amount}`;
+    case 'heal': return `💚 ${e.move} +${e.amount}`;
     case 'regen': return `🌱 +${e.amount}`;
-    case 'shield': return '🛡️ 보호막';
-    case 'buff': return '⚡ 크리 준비';
+    case 'shield': return `🛡️ ${e.move}`;
+    case 'buff': return `⚡ ${e.move}`;
     default: return e.text;
   }
 }
@@ -99,6 +103,15 @@ function effectOf(e) {
   }
 }
 
+// 행동한 쪽 칸 위에 잠깐 뜨는 기술 외침 ("🍻 폭탄주 러시!", "🧠 분석!")
+function calloutOf(e, specialIcon) {
+  if (!e.move || !e.side) return null;
+  const icon = ['attack', 'miss', 'fumble'].includes(e.kind) && !e.special ? '⚔️' : (specialIcon || '✨');
+  const tail = e.kind === 'attack' && e.crit ? ' 크리티컬!' : e.kind === 'attack' && e.awaken ? ' 각성!' : '!';
+  const color = e.kind === 'heal' ? '#4ADE80' : e.kind === 'shield' ? '#60A5FA' : e.kind === 'buff' ? '#A78BFA' : e.crit ? '#F59E0B' : e.side === 'player' ? '#4B6FFF' : '#EF4444';
+  return { text: `${icon} ${e.move}${tail}`, color };
+}
+
 // 새로 추가된 기록에 라운드 번호를 붙인다 (선공·후공 모두 같은 라운드)
 function tagRound(prevLog, nextLog, round) {
   return [...prevLog, ...nextLog.slice(prevLog.length).map(e => ({ ...e, round }))];
@@ -107,16 +120,21 @@ function tagRound(prevLog, nextLog, round) {
 export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd }) {
   const playerLabel = battleNickname?.trim() || '나';
   const npcDef = getNpcById(npcId);
-  const [state, setState] = useState(() => createBattleState(
-    createPlayerFighter(totalScore, statXp),
-    createNpcFighter(npcDef || { id: 'unknown', level: 1, name: '???', energyMax: 100, stats: {}, trait: null })
-  ));
+  // 기본공격 이름: 나는 가장 높은 능력치, 상대는 전용 기술 (표시용)
+  const makeState = () => {
+    const p = createPlayerFighter(totalScore, statXp);
+    const n = createNpcFighter(npcDef || { id: 'unknown', level: 1, name: '???', energyMax: 100, stats: {}, trait: null });
+    return createBattleState({ ...p, basicMove: PLAYER_BASIC_MOVES[p.primaryStat] || '기본공격' }, { ...n, basicMove: getNpcBasicMove(n.id) });
+  };
+  const [state, setState] = useState(makeState);
   const [resolving, setResolving] = useState(false);
   const [flash, setFlash] = useState(null);
   const [showNpcStats, setShowNpcStats] = useState(true);
   const [pops, setPops] = useState({ player: [], npc: [] }); // 칸마다 튀어 오르는 숫자
   const [shake, setShake] = useState({ player: null, npc: null }); // 흔들 칸 (key가 바뀔 때마다 다시 흔들림)
   const [openRound, setOpenRound] = useState(null); // 기록에서 눌러 펼친 라운드 (자세한 문장 보기)
+  const [callouts, setCallouts] = useState({ player: null, npc: null }); // 칸 위 기술 외침
+  const [narration, setNarration] = useState(null); // 두 칸 아래 해설 한 줄 (방금 일어난 일)
   const removePop = (side, key) => setPops(prev => ({ ...prev, [side]: prev[side].filter(p => p.key !== key) }));
 
   useEffect(() => {
@@ -154,6 +172,11 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   // 방금 새로 추가된 로그 항목들에 대해 진동/색 효과를 판정
   const triggerEffects = (prevLog, newLog) => {
     newLog.slice(prevLog.length).forEach(entry => {
+      const special = entry.special || ['heal', 'shield', 'buff'].includes(entry.kind);
+      const sp = special ? Object.values(SPECIALS_TIER10).find(x => x.name === entry.move) : null;
+      const co = calloutOf(entry, sp?.icon);
+      if (co) setCallouts(prev => ({ ...prev, [entry.side]: { ...co, key: Date.now() + Math.random() } }));
+      if (entry.kind !== 'regen') setNarration({ key: Date.now() + Math.random(), entry });
       const fx = effectOf(entry);
       if (fx) {
         const key = Date.now() + Math.random();
@@ -199,7 +222,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     setPops({ player: [], npc: [] });
     setShake({ player: null, npc: null });
     setOpenRound(null);
-    setState(createBattleState(createPlayerFighter(totalScore, statXp), createNpcFighter(npcDef)));
+    setCallouts({ player: null, npc: null });
+    setNarration(null);
+    setState(makeState());
   };
 
   return (
@@ -243,10 +268,16 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         )}
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
           <FighterPanel side="player" label={playerLabel} fighter={player} color="#4B6FFF" avatar={PLAYER_AVATAR}
-            pops={pops.player} onPopEnd={removePop} shakeKey={shake.player} />
+            pops={pops.player} onPopEnd={removePop} shakeKey={shake.player} callout={callouts.player} />
           <div style={{ alignSelf: 'center', fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', flexShrink: 0 }}>VS</div>
           <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={getNpcAvatar(npcId)}
-            pops={pops.npc} onPopEnd={removePop} shakeKey={shake.npc} />
+            pops={pops.npc} onPopEnd={removePop} shakeKey={shake.npc} callout={callouts.npc} />
+        </div>
+        <div key={narration?.key || 'none'} className={narration ? 'dm-battle-narration' : ''}
+          style={{ minHeight: 40, marginTop: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--dm-input)', textAlign: 'center',
+            fontSize: 14, lineHeight: 1.45, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            ...(narration ? logLineStyle(narration.entry) : { color: 'var(--dm-muted)', fontSize: 13 }) }}>
+          {narration ? narration.entry.text : '공격 버튼을 눌러 일기토를 시작하세요'}
         </div>
         {status === 'ongoing' && (
           <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#A78BFA', marginTop: 8 }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>
@@ -280,7 +311,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
       {status === 'ongoing' ? (
         <div style={{ margin: '0 16px', opacity: resolving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
-          <button onClick={() => act({ type: 'basic' })} disabled={resolving} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: resolving ? 'default' : 'pointer' }}>⚔️ 기본공격</button>
+          <button onClick={() => act({ type: 'basic' })} disabled={resolving} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: resolving ? 'default' : 'pointer' }}>⚔️ 기본공격 · {player.basicMove || '기본공격'}</button>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.06em' }}>SPECIAL</div>
           {availableSpecials.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아직 사용 가능한 SPECIAL이 없어요 (능력치 10 이상 필요)</div>

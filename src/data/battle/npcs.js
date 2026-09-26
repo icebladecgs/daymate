@@ -223,4 +223,16 @@ const NPC_AVATARS = {
 };
 export const getNpcAvatar = (id) => NPC_AVATARS[id] || '😈';
 
+// 상대마다 전용 기본공격 이름 (표시용 — 계산은 기본공격과 같음)
+const NPC_BASIC_MOVES = {
+  npc_1: '내일부터 할게 펀치', npc_2: '폭탄주 러시', npc_3: '3대 500 스매시', npc_4: '벼락치기 노트 투척',
+  npc_4b: '택배 보관 압박', npc_5: '가계부 싸대기', npc_6: '명함 폭격', npc_7: '보고서 폭탄',
+  npc_8: '새벽 5시 알람', npc_8b: '만능 잡무 콤보', npc_9: '실적 압박', npc_10: '철인 결재',
+  npc_11: '비움의 일격', npc_12: '인터벌 러시', npc_12b: '그림자 일격', npc_13: '문장의 칼날',
+  npc_14: '시드머니 강타', npc_15: '알고리즘 떡상', npc_16: '체크메이트', npc_16b: '새벽 데드리프트',
+  npc_17: '풀매수 돌격', npc_18: '피벗 어택', npc_19: '돈방석 프레스', npc_20: '비교 공격',
+  npc_20b: '갓생 오라',
+};
+export const getNpcBasicMove = (id) => NPC_BASIC_MOVES[id] || '기본공격';
+
 export const getNpcById = (id) => NPCS.find(n => n.id === id) || null;

@@ -261,6 +261,37 @@ button:focus-visible {
   70%  { opacity: 1; transform: translate(-50%, -22px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
 }
+@keyframes dm-battle-callout {
+  0%   { opacity: 0; transform: translate(-50%, 4px) scale(0.85); }
+  12%  { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  20%  { transform: translate(-50%, 0) scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+.dm-battle-callout {
+  position: absolute;
+  left: 50%;
+  top: -12px;
+  max-width: 96%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: var(--dm-card);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 3px 10px rgba(0,0,0,.18);
+  pointer-events: none;
+  animation: dm-battle-callout 1.6s ease-out forwards;
+  z-index: 7;
+}
+@keyframes dm-battle-narration {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.dm-battle-narration { animation: dm-battle-narration 0.25s ease-out; }
 .dm-battle-pop {
   position: absolute;
   left: 50%;
