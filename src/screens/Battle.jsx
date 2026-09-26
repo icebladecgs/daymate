@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import S from "../styles.js";
-import { getNpcById } from "../data/battle/npcs.js";
+import { getNpcById, getNpcAvatar } from "../data/battle/npcs.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
 import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance } from "../data/battle/engine.js";
 
@@ -40,7 +40,6 @@ function logLineStyle(entry) {
 // ── 좌우 캐릭터 칸 (왼쪽 나, 오른쪽 상대) ──
 // 공격을 받으면 그 칸이 흔들리고 숫자가 튀어 오른다. 회복·보호막·버프는 행동한 쪽에 표시.
 const PLAYER_AVATAR = '😎';
-const NPC_AVATAR = '😈';
 
 function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, shakeKey }) {
   const pct = fighter.energyMax > 0 ? Math.max(0, Math.round((fighter.energy / fighter.energyMax) * 100)) : 0;
@@ -246,7 +245,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           <FighterPanel side="player" label={playerLabel} fighter={player} color="#4B6FFF" avatar={PLAYER_AVATAR}
             pops={pops.player} onPopEnd={removePop} shakeKey={shake.player} />
           <div style={{ alignSelf: 'center', fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', flexShrink: 0 }}>VS</div>
-          <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={NPC_AVATAR}
+          <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={getNpcAvatar(npcId)}
             pops={pops.npc} onPopEnd={removePop} shakeKey={shake.npc} />
         </div>
         {status === 'ongoing' && (

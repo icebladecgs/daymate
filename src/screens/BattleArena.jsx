@@ -2,7 +2,7 @@ import { useState } from "react";
 import S from "../styles.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
-import { NPCS } from "../data/battle/npcs.js";
+import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
 
 const NICKNAME_MAX = 10;
 
@@ -109,8 +109,8 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
         const vs = record.vsRecord?.[npc.id];
         return (
           <div key={npc.id} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-              🥊
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+              {getNpcAvatar(npc.id)}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>

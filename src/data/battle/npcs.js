@@ -213,4 +213,14 @@ export const NPCS = [
   },
 ];
 
+// 배틀 화면 캐릭터 얼굴 — 이름에 어울리는 이모지. 능력치 아이콘(⚔️🧠💰🤝🚀🏠)과 내 얼굴(😎)은 피한다
+const NPC_AVATARS = {
+  npc_1: '😪', npc_2: '🍻', npc_3: '💪', npc_4: '🤓', npc_4b: '👮',
+  npc_5: '🪙', npc_6: '🥂', npc_7: '💼', npc_8: '⏰', npc_8b: '🧰',
+  npc_9: '🏦', npc_10: '🦾', npc_11: '🧘', npc_12: '🏃', npc_12b: '🥷',
+  npc_13: '📚', npc_14: '😇', npc_15: '🤳', npc_16: '♟️', npc_16b: '🏋️',
+  npc_17: '🐜', npc_18: '🦄', npc_19: '🤑', npc_20: '🌟', npc_20b: '👑',
+};
+export const getNpcAvatar = (id) => NPC_AVATARS[id] || '😈';
+
 export const getNpcById = (id) => NPCS.find(n => n.id === id) || null;
