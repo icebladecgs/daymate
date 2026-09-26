@@ -10,7 +10,7 @@ import {
   browserLocalPersistence,
 } from "firebase/auth";
 import {
-  getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   setDoc,
@@ -50,7 +50,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence).catch(() => {});
-export const db = getFirestore(app);
+// 저장할 데이터에 undefined 값이 섞여 있어도 그 칸만 빼고 저장한다. 설정하지 않으면 setDoc이 저장 전체를 거부하는데
+// (예: 할일 '시간 지우기' → time: undefined) 앱은 오류를 무시하고 있어서, 그날 기록이 조용히 서버에 올라가지 않았다 (2026-09-26)
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const storage = getStorage(app);
 
 // ---------- Auth ----------
