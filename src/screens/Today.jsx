@@ -20,7 +20,7 @@ import { parseSchedule, describeSchedule } from "../utils/nlSchedule.js";
 import { recurringLabel } from "../utils/recurring.js";
 
 export default function Today({
-  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks,
+  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks, onMoveTaskDate,
   onOpenInvest, onOpenKnowledge, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
@@ -529,6 +529,8 @@ export default function Today({
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
           onDelete={confirmDeleteTargetTask}
+          dateStr={targetDs}
+          onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, targetDs, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
       )}
       {detailSomeday && (
@@ -540,6 +542,7 @@ export default function Today({
           onClose={() => setDetailSomedayId(null)}
           onError={setToast}
           onDelete={confirmDeleteSomeday}
+          onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, null, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
       )}
       {statFeedback && (() => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { toDateStr, formatKoreanDate } from "../utils/date.js";
+import { toDateStr, formatKoreanDate, formatShortKoreanDate } from "../utils/date.js";
 import { playSuccessSound } from "../utils/sound.js";
 import { gcalCreateEvent, gcalDeleteEvent, gcalUpdateEvent, gcalFetchTodayEvents } from "../api/gcal.js";
 import { deletePhoto } from "../firebase.js";
@@ -10,7 +10,7 @@ import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.
 import { pickTaskDetail } from "../utils/taskDetail.js";
 import TimeSelect from "../components/TimeSelect.jsx";
 
-export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay, uid }) {
+export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay, uid, onMoveTaskDate }) {
   const isToday = dateStr === toDateStr();
   const isPast = dateStr < toDateStr();
   const doneCount = data.tasks.filter((t) => t.done && t.title.trim()).length;
@@ -148,6 +148,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           onSave={(patch) => saveTaskDetail(detailTask.id, patch)}
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
+          dateStr={dateStr}
+          onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, dateStr, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
       )}
       <div style={S.topbar}>

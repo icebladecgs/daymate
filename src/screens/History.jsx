@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js";
+import { toDateStr, pad2, monthLabel, formatKoreanDate, formatShortKoreanDate } from "../utils/date.js";
 import { isPerfectDay } from "../data/stats.js";
 import { gcalFetchRangeEvents } from "../api/gcal.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, normalizeGoals, setMonthGoals, setYearGoals, updateYearGoal } from "../utils/goals.js";
@@ -11,7 +11,7 @@ import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -444,6 +444,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onClose={() => setDetailTaskId(null)}
           onError={showToast}
           onDelete={deletePreviewTask}
+          dateStr={preview}
+          onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, preview, to); if (ok) showToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
       )}
       {gcalToast && (

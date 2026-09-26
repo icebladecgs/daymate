@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { toDateStr, formatKoreanDate } from "../utils/date.js";
+import { toDateStr, formatKoreanDate, formatShortKoreanDate } from "../utils/date.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
 import { triggerVibration } from "../utils/notification.js";
@@ -87,7 +87,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, lifeGoalActions = [], setLifeGoalActions, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {} }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, lifeGoalActions = [], setLifeGoalActions, isMyTab = false, todayData, plans, onToggleTask, onSetTodayTasks, habits, setHabits, onToggleHabit, onOpenDate, onOpenDateMemo, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isKakao, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, getValidGcalToken, myRank, onOpenStats, recurringTasks, setRecurringTasks, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, onOpenGoalsHub, onOpenSettings, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, communityEventsToday = [], communityEventChecks = {}, onToggleCommunityEvent, myChallenges = [], onOpenChallengeHub, onOpenChallengeItem, telegramCfg, onOpenPortfolio, onAddMemo, onUpdateMemo, onDeleteMemo, onToggleMode, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {}, onMoveTaskDate }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -1436,6 +1436,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           onSave={(patch) => saveSomedayDetail(detailSomeday.id, patch)}
           onClose={() => setDetailSomedayId(null)}
           onError={setSheetToast}
+          onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, null, to); if (ok) setSheetToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
           onDelete={(item) => {
             if (!window.confirm(`"${item.title}" 언젠가할일을 삭제할까요?`)) return false;
             deleteSomeday(item.id);

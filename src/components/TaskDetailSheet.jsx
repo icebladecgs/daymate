@@ -5,6 +5,7 @@ import PhotoGallery from "./PhotoGallery.jsx";
 import TimeSelect from "./TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, classifyTodoStat } from "../data/growthStats.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
+import { formatShortKoreanDate } from "../utils/date.js";
 
 const chip = (active) => ({
   fontSize: 12, padding: '5px 10px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -18,7 +19,8 @@ const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, 
 // - 구글 캘린더에는 메모·사진을 반영하지 않음 (제목·시간은 기존 동기화 그대로)
 // - 할일·언젠가할일 모두 같은 화면 사용 (언젠가로 옮기기는 목록의 버튼으로)
 // - onDelete를 넘긴 화면에서만 삭제 버튼 표시
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete }) {
+// - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -56,7 +58,17 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
     onClose();
   };
 
-  const autoStat = GROWTH_STAT_MAP[classifyTodoStat(title || task.title || '')];
+  // 날짜 바꾸기 — 입력 중인 제목·메모까지 담아서 옮긴다 (옮긴 뒤에는 원래 자리에 저장하지 않음)
+  const importedGcal = !!(task.gcalEventId && String(task.id || '').startsWith('gcal_'));
+  const handleMoveDate = (toDs) => {
+    if (!toDs || toDs === dateStr) return;
+    const latest = { ...task, title: title.trim() || task.title, note };
+    if (onMoveDate(latest, toDs) === false) return;
+    doneRef.current = true;
+    onClose();
+  };
+
+  const autoStat =GROWTH_STAT_MAP[classifyTodoStat(title || task.title || '')];
 
   // 구글 드라이브 첨부 — 올리거나 목록에서 뺄 때 즉시 저장
   const files = task.files || [];
@@ -94,8 +106,24 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             style={{ ...S.input, marginBottom: 14 }}
           />
 
-          <div style={sectionLabel}>시간</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, minHeight: 32 }}>
+          <div style={sectionLabel}>{onMoveDate ? '날짜·시간' : '시간'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: importedGcal && onMoveDate ? 6 : 14, minHeight: 32, flexWrap: 'wrap' }}>
+            {onMoveDate && (
+              // 버튼 위에 투명한 날짜 입력칸을 겹쳐서 누르면 휴대폰·PC 기본 달력이 열리게 한다
+              <label style={{ ...chip(!!dateStr), position: 'relative', color: dateStr ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, opacity: importedGcal ? 0.5 : 1, cursor: importedGcal ? 'default' : 'pointer' }}>
+                📅 {dateStr ? formatShortKoreanDate(dateStr) : '날짜 정하기'}
+                {!importedGcal && (
+                  <input
+                    type="date"
+                    value={dateStr || ''}
+                    onChange={e => handleMoveDate(e.target.value)}
+                    onClick={e => { try { e.currentTarget.showPicker(); } catch { /* 지원 안 하는 브라우저는 기본 동작 */ } }}
+                    aria-label="날짜 바꾸기"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+                  />
+                )}
+              </label>
+            )}
             {editingTime ? (
               <TimeSelect autoFocus value={task.time} onChange={v => onSave({ time: v || undefined })} onClose={() => setEditingTime(false)} />
             ) : (
@@ -107,6 +135,9 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               <button onClick={() => { setEditingTime(false); onSave({ time: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
             )}
           </div>
+          {importedGcal && onMoveDate && (
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 14 }}>구글 캘린더에서 가져온 일정은 구글 캘린더에서 날짜를 바꿔주세요</div>
+          )}
 
           <div style={sectionLabel}>성장 스탯</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>

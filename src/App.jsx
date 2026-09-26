@@ -25,6 +25,7 @@ import { genMemoId, withMemoList } from "./components/MemoTimeline.jsx";
 import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 import { matchesRecurring } from "./utils/recurring.js";
+import { pickTaskDetail } from "./utils/taskDetail.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
 const DailyPage = lazy(() => import("./screens/DailyPage.jsx"));
@@ -446,6 +447,8 @@ export default function App() {
     const prevMap = new Map((prevTasks || []).map(t => [t.id, t]));
     return (nextTasks || []).map(task => {
       const prevTask = prevMap.get(task.id);
+      // 다른 날짜에서 옮겨온 완료 할일(이미 지급 기록 있음)은 새로 완료한 것이 아니므로 다시 지급하지 않는다
+      if (!prevTask && task.done && task.statXpGrant) return task;
       const wasDone = !!prevTask?.done;
       if (task.done === wasDone) return task;
       if (task.done) {
@@ -1827,6 +1830,26 @@ export default function App() {
     });
   };
 
+  // 할일 상세 창의 날짜 바꾸기 — 원래 날짜(언젠가할일이면 fromDs 없음)에서 빼고 새 날짜에 넣는다.
+  // 구글 캘린더 연동 할일은 연결을 떼고 옮겨서, 원래 날짜 일정은 지워지고 새 날짜에 다시 만들어진다(syncTasksToGcal).
+  // 구글 캘린더에서 가져온 일정은 구글 쪽 날짜가 그대로라 다시 가져와지므로 옮기지 않는다(상세 창에서 막음).
+  const moveTaskToDate = (task, fromDs, toDs) => {
+    if (!task || !toDs || fromDs === toDs || isImportedGcalTask(task)) return false;
+    const { gcalEventId, ...rest } = task;
+    const moved = fromDs
+      ? rest
+      : { id: `t${Date.now()}`, title: task.title, done: false, checkedAt: null, priority: false, ...pickTaskDetail(task) };
+    if (fromDs) setDayData(fromDs, prev => ({ ...prev, tasks: (prev.tasks || []).filter(t => t.id !== task.id) }));
+    else setSomeday(prev => (prev || []).filter(x => x.id !== task.id));
+    setDayData(toDs, prev => {
+      const tasks = [...(prev.tasks || [])];
+      const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+      if (emptyIdx >= 0) tasks[emptyIdx] = moved; else tasks.push(moved);
+      return { ...prev, tasks };
+    });
+    return true;
+  };
+
   const setDetailData = (updater) => {
     if (!openDate) return;
     const dateStr = openDate;
@@ -2153,6 +2176,7 @@ export default function App() {
       // My 탭 — 대시보드만 (DailyPage 없음)
       return (
         <Home
+          onMoveTaskDate={moveTaskToDate}
           user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
           lifeGoalActions={lifeGoalActions} setLifeGoalActions={setLifeGoalActions}
           businessCards={businessCards} setBusinessCards={setBusinessCards} authUser={authUser}
@@ -2231,6 +2255,7 @@ export default function App() {
       }
       return (
         <Home
+          onMoveTaskDate={moveTaskToDate}
           user={user} goals={goals} todayData={todayData} plans={plans}
           onToggleTask={(id) => {
             setTodayData(prev => {
@@ -2296,7 +2321,7 @@ export default function App() {
     if (screen === "today") {
       const d = plans[todayStr] || newDay(todayStr);
       return (
-        <Today dateStr={todayStr} data={d} setData={setTodayData} setRecurringTasks={setRecurringTasks}
+        <Today onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} setRecurringTasks={setRecurringTasks}
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
@@ -2406,7 +2431,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} />;
+      return <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
@@ -2453,7 +2478,7 @@ export default function App() {
         );
       }
       return (
-        <DayDetail dateStr={openDate} data={d} setData={setDetailData}
+        <DayDetail onMoveTaskDate={moveTaskToDate} dateStr={openDate} data={d} setData={setDetailData}
           onBack={() => history.back()}
           toast={toast} setToast={setToast}
           habits={habits} scrollToMemo={scrollToMemo}
