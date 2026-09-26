@@ -71,18 +71,27 @@ function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, sha
   );
 }
 
-// 라운드 기록의 짧은 표시 (아이콘+숫자) — 좁은 좌우 칸에서도 한 줄로
-function shortLabel(e) {
+// 칸 안 한 줄 모양 — 좁은 칸이라 줄바꿈 허용, 크리티컬은 주황, 빗나감·실수는 흐리게
+function cellStyle(e) {
+  return {
+    lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere', padding: '1px 0',
+    ...(e.crit ? { color: '#F59E0B' } : {}),
+    ...(e.kind === 'miss' || e.kind === 'fumble' ? { color: 'var(--dm-muted)', fontWeight: 600 } : {}),
+    ...(e.kind === 'heal' || e.kind === 'regen' ? { color: '#22C55E' } : {}),
+  };
+}
+
+// 라운드 기록 칸의 설명 문장 — 누가 했는지는 칸 위치(왼쪽 나, 오른쪽 상대)로 보이므로 이름은 뺀다
+function actionLabel(e) {
+  const tags = [e.crit && '크리티컬!', e.awaken && '각성!'].filter(Boolean).join(' ');
   switch (e.kind) {
-    case 'attack':
-      if (e.crit) return `💥 ${e.amount}`;
-      return `${e.special ? `✨ ${e.move}` : '⚔️'} ${e.amount}${e.awaken ? ' 🔥' : ''}`;
-    case 'miss': return '💨 빗나감';
-    case 'fumble': return '😵 실수';
-    case 'heal': return `💚 ${e.move} +${e.amount}`;
-    case 'regen': return `🌱 +${e.amount}`;
-    case 'shield': return `🛡️ ${e.move}`;
-    case 'buff': return `⚡ ${e.move}`;
+    case 'attack': return `${e.crit ? '💥' : e.special ? '✨' : '⚔️'} ${e.move} → ${tags ? tags + ' ' : ''}${e.amount} 데미지`;
+    case 'miss': return `💨 ${e.move} → 빗나감`;
+    case 'fumble': return `😵 ${e.move} → 실수! 공격 무효`;
+    case 'heal': return `💚 ${e.move} → Energy +${e.amount}`;
+    case 'regen': return `🌱 복리 효과 → Energy +${e.amount}`;
+    case 'shield': return `🛡️ ${e.move} → 보호막 준비`;
+    case 'buff': return `⚡ ${e.move} → 다음 공격 크리티컬`;
     default: return e.text;
   }
 }
@@ -132,7 +141,6 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const [showNpcStats, setShowNpcStats] = useState(true);
   const [pops, setPops] = useState({ player: [], npc: [] }); // 칸마다 튀어 오르는 숫자
   const [shake, setShake] = useState({ player: null, npc: null }); // 흔들 칸 (key가 바뀔 때마다 다시 흔들림)
-  const [openRound, setOpenRound] = useState(null); // 기록에서 눌러 펼친 라운드 (자세한 문장 보기)
   const [callouts, setCallouts] = useState({ player: null, npc: null }); // 칸 위 기술 외침
   const [narration, setNarration] = useState(null); // 두 칸 아래 해설 한 줄 (방금 일어난 일)
   const removePop = (side, key) => setPops(prev => ({ ...prev, [side]: prev[side].filter(p => p.key !== key) }));
@@ -221,7 +229,6 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     setFlash(null);
     setPops({ player: [], npc: [] });
     setShake({ player: null, npc: null });
-    setOpenRound(null);
     setCallouts({ player: null, npc: null });
     setNarration(null);
     setState(makeState());
@@ -284,27 +291,30 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         )}
       </div>
 
-      {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동. 줄을 누르면 자세한 문장 */}
-      <div style={{ ...S.card, maxHeight: 220, overflowY: 'auto', padding: '8px 12px' }}>
+      {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동을 설명 문장으로 */}
+      <div style={{ ...S.card, maxHeight: 260, overflowY: 'auto', padding: '8px 12px' }}>
+        {rounds.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', paddingBottom: 4, borderBottom: '1px solid var(--dm-row)' }}>
+            <span style={{ width: 26, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerLabel}</span>
+            <span style={{ width: 1, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{npc.name}</span>
+          </div>
+        )}
         {rounds.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '6px 0' }}>공격하면 라운드별 기록이 여기 표시돼요</div>}
         {rounds.map(r => (
-          <div key={r.round} onClick={() => setOpenRound(v => (v === r.round ? null : r.round))}
-            style={{ padding: '6px 0', borderBottom: '1px solid var(--dm-row)', cursor: 'pointer' }}>
+          <div key={r.round} style={{ padding: '7px 0', borderBottom: '1px solid var(--dm-row)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', width: 26, flexShrink: 0, paddingTop: 1 }}>{r.round}R</span>
               <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#6C8EFF' }}>
-                {r.player.map((e, i) => <div key={i} style={{ whiteSpace: 'nowrap', ...(e.crit ? { color: '#FCD34D' } : {}) }}>{shortLabel(e)}</div>)}
+                {r.player.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
               </div>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#F87171', textAlign: 'right' }}>
-                {r.npc.map((e, i) => <div key={i} style={{ whiteSpace: 'nowrap', ...(e.crit ? { color: '#FCD34D' } : {}) }}>{shortLabel(e)}</div>)}
+              <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--dm-row)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#F87171' }}>
+                {r.npc.map((e, i) => <div key={i} style={cellStyle(e)}>{actionLabel(e)}</div>)}
               </div>
             </div>
             {r.result && <div style={{ fontSize: 13, textAlign: 'center', marginTop: 4, ...logLineStyle(r.result) }}>{r.result.text}</div>}
-            {openRound === r.round && (
-              <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 8, background: 'var(--dm-input)' }}>
-                {r.all.map((l, i) => <div key={i} style={{ fontSize: 12, padding: '2px 0', ...logLineStyle(l) }}>{l.text}</div>)}
-              </div>
-            )}
           </div>
         ))}
       </div>
