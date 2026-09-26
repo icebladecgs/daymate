@@ -11,7 +11,8 @@ import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { UNSYNCED_DAYS_KEY, markDayUnsynced, isDayUnsynced } from "./utils/daySync.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
-import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore } from "./data/growthStats.js";
+import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
+import StatAskBar from "./components/StatAskBar.jsx";
 import { triggerVibration } from "./utils/notification.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
@@ -423,6 +424,12 @@ export default function App() {
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
   const [statXp, setStatXp] = useState(() => store.get("dm_stat_xp", DEFAULT_STAT_XP));
   const [statFeedback, setStatFeedback] = useState(null); // { statId, xp, key } | null — 체크 순간 피드백
+  // 분류 안 된 할일 능력치 묻기 — 고른 답은 "내 단어"(statWords)로 기억해 다음부터 자동 분류 (계정 설정에 동기화)
+  const [statWords, setStatWords] = useState(() => store.get("dm_stat_words", []));
+  const [statAskOff, setStatAskOff] = useState(() => !!store.get("dm_stat_ask_off", false));
+  const [statAsk, setStatAsk] = useState(null); // { ds, taskId, title, key } | null
+  const statAskedRef = useRef(new Set()); // 이번 실행에서 이미 물어본 제목 (같은 제목을 거듭 묻지 않게)
+  setUserStatWords(statWords); // 분류 함수(classifyTodoStat)가 기본 사전보다 먼저 보도록
   const clearStatFeedback = () => setStatFeedback(null);
   // opts.silent: 체크 해제로 인한 회수 시 플로팅/진동 피드백을 띄우지 않기 위함
   const grantStatXp = (statId, amount, opts = {}) => {
@@ -443,7 +450,13 @@ export default function App() {
   const resolveTaskStat = (task) => task.statTag || classifyTodoStat(task.title);
   // 체크(false→true) 시 지급, 체크 해제(true→false) 시 지급했던 만큼 정확히 회수 (실수 체크 대비)
   // 반복 토글해도 항상 "현재 체크 상태"만 반영되므로 중복지급/어뷰징 없음
-  const applyTaskXpGrants = (prevTasks, nextTasks) => {
+  const maybeAskStat = (ds, task) => {
+    const key = normalizeStatWord(task?.title);
+    if (!ds || !key || statAskOff || statAskedRef.current.has(key)) return;
+    statAskedRef.current.add(key);
+    setStatAsk({ ds, taskId: task.id, title: task.title.trim(), key });
+  };
+  const applyTaskXpGrants = (prevTasks, nextTasks, ds) => {
     const prevMap = new Map((prevTasks || []).map(t => [t.id, t]));
     return (nextTasks || []).map(task => {
       const prevTask = prevMap.get(task.id);
@@ -453,6 +466,7 @@ export default function App() {
       if (task.done === wasDone) return task;
       if (task.done) {
         const statId = resolveTaskStat(task);
+        if (!statId) maybeAskStat(ds, task); // 사전에도 내 단어에도 없는 할일 — 어느 능력치인지 한 번 묻는다
         if (!statId || statId === 'NONE') return task;
         const amount = task.priority ? STAT_XP_PRIORITY_TASK : STAT_XP_TASK;
         grantStatXp(statId, amount);
@@ -1457,6 +1471,8 @@ export default function App() {
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
             if (s.telegram) { setTelegramCfg(s.telegram); store.set("dm_telegram", s.telegram); }
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
+            if (Array.isArray(s.statWords)) { setStatWords(s.statWords); store.set("dm_stat_words", s.statWords); }
+            if (s.statAskOff !== undefined) { setStatAskOff(!!s.statAskOff); store.set("dm_stat_ask_off", !!s.statAskOff); }
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.birthDate !== undefined) { setBirthDate(s.birthDate); store.set("dm_birth_date", s.birthDate); }
             if (s.birthTime !== undefined) { setBirthTime(s.birthTime); store.set("dm_birth_time", s.birthTime); }
@@ -1603,6 +1619,14 @@ export default function App() {
   }, [statXp, authUser]);
   useEffect(() => { store.set("dm_notif_enabled", notifEnabled); }, [notifEnabled]);
   useEffect(() => {
+    store.set("dm_stat_words", statWords);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statWords }).catch(() => {});
+  }, [statWords, authUser]);
+  useEffect(() => {
+    store.set("dm_stat_ask_off", statAskOff);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statAskOff }).catch(() => {});
+  }, [statAskOff, authUser]);
+  useEffect(() => {
     store.set("dm_habits", habits);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { habits }).catch(() => {});
   }, [habits, authUser]);
@@ -1718,7 +1742,7 @@ export default function App() {
     const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
     const nextDayRaw = stampMemoUpdates(cur, typeof updater === "function" ? updater(cur) : updater);
-    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
+    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || [], dateStr);
     const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
     plansRef.current = { ...plansRef.current, [dateStr]: savedDay };
@@ -1850,6 +1874,20 @@ export default function App() {
     return true;
   };
 
+  // 능력치 묻기에 답함 — 그 제목을 내 단어로 기억하고, 방금 완료한 할일에도 바로 지급한다 ('NONE'이면 기억만)
+  const answerStatAsk = (statId) => {
+    const a = statAsk;
+    setStatAsk(null);
+    if (!a || !statId) return;
+    setStatWords(prev => [...(prev || []).filter(x => x.w !== a.key), { w: a.key, s: statId }]);
+    if (statId === 'NONE') return;
+    const task = (plansRef.current[a.ds]?.tasks || []).find(t => t.id === a.taskId);
+    if (!task?.done || task.statXpGrant || task.statTag) return; // 그사이 체크를 풀었거나 이미 지급된 경우
+    const amount = task.priority ? STAT_XP_PRIORITY_TASK : STAT_XP_TASK;
+    grantStatXp(statId, amount);
+    setDayData(a.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === a.taskId ? { ...t, statXpGrant: { statId, xp: amount } } : t) }));
+  };
+
   const setDetailData = (updater) => {
     if (!openDate) return;
     const dateStr = openDate;
@@ -1858,7 +1896,7 @@ export default function App() {
     const prevTasks = cur.tasks || [];
     const nextDayRaw = typeof updater === "function" ? updater(cur) : updater;
     // 자세히보기에서 체크해도 성장 능력치가 지급·회수되도록 (setDayData와 같은 처리)
-    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
+    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || [], dateStr);
     const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
     plansRef.current = { ...plansRef.current, [dateStr]: savedDay };
@@ -1901,7 +1939,7 @@ export default function App() {
       if (!task.gcalEventId) return task;
       const { gcalEventId, ...rest } = task;
       return rest;
-    }));
+    }), todayStr);
     setTodayData(prev => ({ ...prev, tasks: normalizedTasks }));
     syncTasksToGcal(todayStr, prevTasks, normalizedTasks, (updates) => {
       setTodayData(prev => ({
@@ -2485,6 +2523,7 @@ export default function App() {
     if (screen === "settings") {
       return (
         <Settings
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff}
           user={user} setUser={setUser} goals={goals} setGoals={setGoals}
           notifEnabled={notifEnabled} setNotifEnabled={setNotifEnabled}
           telegramCfg={telegramCfg} setTelegramCfg={setTelegramCfg}
@@ -2525,6 +2564,7 @@ export default function App() {
       return canOpenAdmin
         ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
         : <Settings
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff}
           user={user} setUser={setUser}
           goals={goals} setGoals={setGoals}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
@@ -2706,6 +2746,10 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
+        {statAsk && (
+          <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
+            onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
+        )}
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "life-coach" && screen !== "keyword-detail" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,

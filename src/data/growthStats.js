@@ -59,10 +59,24 @@ const ALL_KEYWORDS = [
   ...NONE_KEYWORDS.map(w => ({ word: w.replace(/\s+/g, ''), statId: 'NONE' })),
 ].sort((a, b) => b.word.length - a.word.length);
 
+export const normalizeStatWord = (t) => (t || '').replace(/\s+/g, '').toLowerCase();
+
+// 사용자별 "내 단어" — 분류 안 된 할일을 체크했을 때 사용자가 고른 능력치를 기억한 것 ([{ w, s }], 계정 설정 statWords).
+// App이 바뀔 때마다 setUserStatWords로 넘겨주고, 기본 사전보다 먼저 본다. 2글자 미만 단어는 제목 전체가 같을 때만.
+let userStatWords = [];
+export function setUserStatWords(list) {
+  userStatWords = (Array.isArray(list) ? list : [])
+    .filter(x => x?.w && x?.s)
+    .map(x => ({ w: normalizeStatWord(x.w), s: x.s }))
+    .sort((a, b) => b.w.length - a.w.length);
+}
+
 export function classifyTodoStat(title) {
   // 띄어쓰기 유무(예: "현금흐름" vs "현금 흐름")에 흔들리지 않도록 공백 제거 후 비교
-  const text = (title || '').replace(/\s+/g, '').toLowerCase();
+  const text = normalizeStatWord(title);
   if (!text) return null;
+  const mine = userStatWords.find(({ w }) => (w.length >= 2 ? text.includes(w) : text === w));
+  if (mine) return mine.s;
   const hit = ALL_KEYWORDS.find(({ word }) => text.includes(word));
   return hit ? hit.statId : null; // null = 미분류
 }

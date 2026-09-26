@@ -13,6 +13,7 @@ import Toast from "../components/Toast.jsx";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
+import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
   return (
@@ -143,7 +144,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, onMemoHistoryBackup, lastDriveBackup,
-  onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen }) {
+  onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen,
+  statWords = [], setStatWords, statAskOff = false, setStatAskOff }) {
 
   const [subPage, setSubPage] = useState(() => {
     const next = store.get('dm_open_settings_subpage', null);
@@ -1247,6 +1249,38 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <button style={S.btn} onClick={exportData}>📦 데이터 내보내기 (백업)</button>
         <button style={S.btnGhost} onClick={() => fileInputRef.current?.click()}>📥 데이터 가져오기 (복구)</button>
         <input ref={fileInputRef} type="file" accept="application/json" onChange={importData} style={{ display: "none" }} />
+      </div>
+
+      <div style={S.sectionTitle}>🌱 성장 능력치</div>
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 13 }}>분류 안 된 할일 물어보기</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>능력치를 알 수 없는 할일을 완료하면 한 번 물어보고 기억해요</div>
+          </div>
+          <div onClick={() => setStatAskOff?.(v => !v)} role="switch" aria-checked={!statAskOff} style={{
+            width: 52, height: 28, borderRadius: 999, background: !statAskOff ? "#6C8EFF" : "var(--dm-border)",
+            cursor: "pointer", position: "relative", flexShrink: 0,
+          }}>
+            <div style={{ position: "absolute", top: 4, left: !statAskOff ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+          </div>
+        </div>
+        {statWords.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>기억한 단어 ({statWords.length})</div>
+            {statWords.map(x => {
+              const stat = GROWTH_STAT_MAP[x.s];
+              return (
+                <div key={x.w} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.w}</span>
+                  <span style={{ fontSize: 12, color: stat ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, flexShrink: 0 }}>{stat ? `${stat.icon} ${stat.name}` : '🚫 해당 없음'}</span>
+                  <button onClick={() => setStatWords?.(prev => (prev || []).filter(y => y.w !== x.w))} aria-label="지우기"
+                    style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 15, padding: '0 4px', flexShrink: 0 }}>✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={S.sectionTitle}>고급 설정</div>
