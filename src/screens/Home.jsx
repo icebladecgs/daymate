@@ -15,7 +15,7 @@ import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
 import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, setYearGoals as setYearGoalsUtil, setMonthGoals as setMonthGoalsUtil, updateYearGoal, matchGoalsByTitle } from "../utils/goals.js";
 import GoalDetailSheet from "../components/GoalDetailSheet.jsx";
 import MemoTimeline from "../components/MemoTimeline.jsx";
-import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
+import TaskDetailSheet, { TaskDetailBadge, TaskStatIcon } from "../components/TaskDetailSheet.jsx";
 import Toast from "../components/Toast.jsx";
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
@@ -1463,6 +1463,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <div onClick={() => setDetailSomedayId(item.id)} style={{ flex: 1, minWidth: 0, fontSize: 14, color: item.done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: item.done ? "line-through" : "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: "keep-all", overflowWrap: "anywhere" }}>{item.title}</span>
               {item.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
+              <TaskStatIcon task={item} />
               <TaskDetailBadge task={item} />
             </div>
             <button onClick={() => moveToToday(item)} title="오늘 할일로 이동" style={{
