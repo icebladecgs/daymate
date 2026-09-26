@@ -75,9 +75,6 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
       >
         ⋮⋮
       </button>
-      <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
-        value={habit.icon} maxLength={2} placeholder="🎯"
-        onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, icon: e.target.value } : x))} />
       <input style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
         value={habit.name} maxLength={20} placeholder="습관 이름"
         onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, name: e.target.value } : x))} />
@@ -1635,7 +1632,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                         }}>
                           {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
                         </div>
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{h.icon}</span>
+                        {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
+                        <span style={{ minWidth: 22, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={18} /></span>
                         <div style={{
                           fontSize: 14, fontWeight: 700, flex: 1,
                           color: checked ? "var(--dm-muted)" : "var(--dm-text)",

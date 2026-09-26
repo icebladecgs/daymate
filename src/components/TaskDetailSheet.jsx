@@ -203,11 +203,11 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
 
 // 목록에서 할일 제목 옆에 붙이는 성장 능력치 아이콘 — 체크하면 오를 능력치 (직접 고른 것 우선, 없으면 자동 분류·내 단어).
 // 분류가 안 되거나 '없음'이면 표시하지 않는다.
-export function TaskStatIcon({ task }) {
+export function TaskStatIcon({ task, size = 12 }) {
   const statId = task?.statTag || classifyTodoStat(task?.title || '');
   const stat = statId && statId !== 'NONE' ? GROWTH_STAT_MAP[statId] : null;
   if (!stat) return null;
-  return <span title={`${stat.name} 능력치`} aria-label={`${stat.name} 능력치`} style={{ fontSize: 12, flexShrink: 0, lineHeight: 1 }}>{stat.icon}</span>;
+  return <span title={`${stat.name} 능력치`} aria-label={`${stat.name} 능력치`} style={{ fontSize: size, flexShrink: 0, lineHeight: 1 }}>{stat.icon}</span>;
 }
 
 // 목록에서 메모·사진·드라이브 파일이 있는 할일 옆에 붙이는 작은 표시

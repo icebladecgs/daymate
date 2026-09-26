@@ -1109,11 +1109,6 @@ export default function Today({
             {visibleHabits.map(h => (
               <div key={h.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                 <input
-                  value={h.icon || ''} maxLength={2} placeholder="🎯"
-                  onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, icon: e.target.value } : x))}
-                  style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
-                />
-                <input
                   value={h.name || ''} maxLength={20} placeholder="습관 이름"
                   onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
                   style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
@@ -1125,9 +1120,6 @@ export default function Today({
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: visibleHabits.length > 0 ? 4 : 0, alignItems: 'center' }}>
-              <input value={newHabitIcon} maxLength={2} placeholder="🎯"
-                onChange={e => setNewHabitIcon(e.target.value)}
-                style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }} />
               <input value={newHabitName} maxLength={20} placeholder="새 습관 이름"
                 onChange={e => setNewHabitName(e.target.value)}
                 onKeyDown={e => {
@@ -1159,7 +1151,8 @@ export default function Today({
               return (
                 <button key={h.id} onClick={() => onToggleHabit?.(h.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                  <span style={{ fontSize: 20, minWidth: 24, textAlign: 'center' }}>{h.icon || '🎯'}</span>
+                  {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
+                  <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
                   <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
                   {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
                 </button>
