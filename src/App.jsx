@@ -1856,8 +1856,10 @@ export default function App() {
     // setDayData와 동일하게 plansRef 기준 — 사진 업로드 완료처럼 늦게 도착하는 저장도 최신 상태 위에 병합
     const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
-    const nextDay = typeof updater === "function" ? updater(cur) : updater;
-    const nextTasks = nextDay.tasks || [];
+    const nextDayRaw = typeof updater === "function" ? updater(cur) : updater;
+    // 자세히보기에서 체크해도 성장 능력치가 지급·회수되도록 (setDayData와 같은 처리)
+    const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || []);
+    const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);
     plansRef.current = { ...plansRef.current, [dateStr]: savedDay };
 
@@ -1912,6 +1914,19 @@ export default function App() {
     });
   };
 
+  // 홈·My 탭 할일 체크 — 오늘 탭과 같은 onSetTodayTasks 경로를 거쳐야 성장 능력치가 지급·회수된다
+  // (예전엔 setTodayData로 바로 저장해서 체크해도 능력치가 오르지 않았다)
+  const toggleTodayTaskFromHome = (id) => {
+    const next = (todayData?.tasks || []).map(t => t.id === id ? { ...t, done: !t.done } : t);
+    if (next.find(t => t.id === id)?.done) {
+      const filled = next.filter(t => t.title?.trim());
+      const allDone = filled.length > 0 && filled.every(t => t.done);
+      if (allDone) setToast(`🎉 할일 전부 완료! +${10 + 20} XP`);
+      else setToast(`✅ 할일 완료 · +10 XP`);
+    }
+    onSetTodayTasks(next);
+  };
+
   const onSaveMonthGoals = (monthGoals) => {
     const nextGoals = setGoalsMonth(goals, currentGoalMonthKey, monthGoals, currentGoalMonthKey);
     setGoals(nextGoals);
@@ -1926,30 +1941,31 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
   };
 
+  // 능력치 지급은 setState 업데이터 밖에서 한 번만 한다 (업데이터 안에서 하면 StrictMode 등에서 두 번 지급됨)
   const onToggleHabit = (habitId) => {
-    setTodayData(prev => {
-      const cur = prev.habitChecks || {};
-      const nowChecked = !cur[habitId];
-      const grantMap = prev.habitXpGrant || {}; // { habitId: {statId, xp} } — 회수를 위해 지급 내역 보관
-      const next = { ...prev, habitChecks: { ...cur, [habitId]: nowChecked } };
-      if (nowChecked) {
-        const allHabitsDone = habits.length > 0 && habits.every(h => next.habitChecks[h.id]);
-        if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
-        else setToast(`✅ 습관 체크 · +5 XP`);
-        const habit = habits.find(h => h.id === habitId);
-        const statId = habit ? classifyTodoStat(habit.name) : null;
-        if (statId && statId !== 'NONE') {
-          grantStatXp(statId, STAT_XP_HABIT);
-          next.habitXpGrant = { ...grantMap, [habitId]: { statId, xp: STAT_XP_HABIT } };
-        }
-      } else if (grantMap[habitId]) {
-        const grant = grantMap[habitId];
-        grantStatXp(grant.statId, -grant.xp, { silent: true });
-        const { [habitId]: _, ...restGrant } = grantMap;
-        next.habitXpGrant = restGrant;
+    const prev = plansRef.current[todayStr] || plans[todayStr] || newDay(todayStr);
+    const cur = prev.habitChecks || {};
+    const nowChecked = !cur[habitId];
+    const grantMap = prev.habitXpGrant || {}; // { habitId: {statId, xp} } — 회수를 위해 지급 내역 보관
+    const habitChecks = { ...cur, [habitId]: nowChecked };
+    let habitXpGrant = grantMap;
+    if (nowChecked) {
+      const allHabitsDone = habits.length > 0 && habits.every(h => habitChecks[h.id]);
+      if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
+      else setToast(`✅ 습관 체크 · +5 XP`);
+      const habit = habits.find(h => h.id === habitId);
+      const statId = habit ? (habit.statTag || classifyTodoStat(habit.name)) : null; // 직접 고른 능력치 우선
+      if (statId && statId !== 'NONE') {
+        grantStatXp(statId, STAT_XP_HABIT);
+        habitXpGrant = { ...grantMap, [habitId]: { statId, xp: STAT_XP_HABIT } };
       }
-      return next;
-    });
+    } else if (grantMap[habitId]) {
+      const grant = grantMap[habitId];
+      grantStatXp(grant.statId, -grant.xp, { silent: true });
+      const { [habitId]: _, ...restGrant } = grantMap;
+      habitXpGrant = restGrant;
+    }
+    setDayData(todayStr, d => ({ ...d, habitChecks, habitXpGrant }));
   };
 
   // 온보딩
@@ -2181,19 +2197,7 @@ export default function App() {
           lifeGoalActions={lifeGoalActions} setLifeGoalActions={setLifeGoalActions}
           businessCards={businessCards} setBusinessCards={setBusinessCards} authUser={authUser}
           todayData={todayData} plans={plans}
-          onToggleTask={(id) => {
-            setTodayData(prev => {
-              const next = { ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) };
-              const nowDone = next.tasks.find(t => t.id === id)?.done;
-              if (nowDone) {
-                const filled = next.tasks.filter(t => t.title.trim());
-                const allDone = filled.length > 0 && filled.every(t => t.done);
-                if (allDone) setToast(`🎉 할일 전부 완료! +${10 + 20} XP`);
-                else setToast(`✅ 할일 완료 · +10 XP`);
-              }
-              return next;
-            });
-          }}
+          onToggleTask={toggleTodayTaskFromHome}
           onSetTodayTasks={onSetTodayTasks}
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
@@ -2257,19 +2261,7 @@ export default function App() {
         <Home
           onMoveTaskDate={moveTaskToDate}
           user={user} goals={goals} todayData={todayData} plans={plans}
-          onToggleTask={(id) => {
-            setTodayData(prev => {
-              const next = { ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) };
-              const nowDone = next.tasks.find(t => t.id === id)?.done;
-              if (nowDone) {
-                const filled = next.tasks.filter(t => t.title.trim());
-                const allDone = filled.length > 0 && filled.every(t => t.done);
-                if (allDone) setToast(`🎉 할일 전부 완료! +${10 + 20} XP`);
-                else setToast(`✅ 할일 완료 · +10 XP`);
-              }
-              return next;
-            });
-          }}
+          onToggleTask={toggleTodayTaskFromHome}
           onSetTodayTasks={onSetTodayTasks}
           habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
           recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}

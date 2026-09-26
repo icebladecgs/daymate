@@ -19,6 +19,7 @@ import { chatFetch } from "../api/chatFetch.js";
 import { parseSchedule, describeSchedule } from "../utils/nlSchedule.js";
 import { recurringLabel } from "../utils/recurring.js";
 
+import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks, onMoveTaskDate,
   onOpenInvest, onOpenKnowledge, onOpenVoiceDiary,
@@ -1113,10 +1114,12 @@ export default function Today({
                 <input
                   value={h.name || ''} maxLength={20} placeholder="습관 이름"
                   onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
-                  style={{ ...S.input, flex: 1, marginBottom: 0 }}
+                  style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
                 />
+                <StatSelect value={h.statTag} name={h.name}
+                  onChange={v => setHabits?.(prev => prev.map(x => x.id === h.id ? withStatTag(x, v) : x))} />
                 <button onClick={() => setHabits?.(prev => prev.filter(x => x.id !== h.id))}
-                  style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
+                  style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0, padding: '0 2px' }}>✕</button>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: visibleHabits.length > 0 ? 4 : 0, alignItems: 'center' }}>

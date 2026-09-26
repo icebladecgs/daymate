@@ -17,6 +17,7 @@ import GoalDetailSheet from "../components/GoalDetailSheet.jsx";
 import MemoTimeline from "../components/MemoTimeline.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import Toast from "../components/Toast.jsx";
+import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
 import { compressImage } from "../utils/image.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
@@ -77,11 +78,13 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
       <input style={{ ...S.input, width: 48, textAlign: 'center', marginBottom: 0, padding: '8px 4px' }}
         value={habit.icon} maxLength={2} placeholder="🎯"
         onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, icon: e.target.value } : x))} />
-      <input style={{ ...S.input, flex: 1, marginBottom: 0 }}
+      <input style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
         value={habit.name} maxLength={20} placeholder="습관 이름"
         onChange={e => setHabits(prev => prev.map(x => x.id === habit.id ? { ...x, name: e.target.value } : x))} />
+      <StatSelect value={habit.statTag} name={habit.name}
+        onChange={v => setHabits(prev => prev.map(x => x.id === habit.id ? withStatTag(x, v) : x))} />
       <button onClick={() => onRemove(habit.id)}
-        style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0 }}>✕</button>
+        style={{ background: 'transparent', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0, padding: '0 2px' }}>✕</button>
     </div>
   );
 }
