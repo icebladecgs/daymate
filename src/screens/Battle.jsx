@@ -37,19 +37,72 @@ function logLineStyle(entry) {
   return { color: sideColor };
 }
 
-function EnergyRow({ label, fighter, color }) {
+// ── 좌우 캐릭터 칸 (왼쪽 나, 오른쪽 상대) ──
+// 공격을 받으면 그 칸이 흔들리고 숫자가 튀어 오른다. 회복·보호막·버프는 행동한 쪽에 표시.
+const PLAYER_AVATAR = '😎';
+const NPC_AVATAR = '😈';
+
+function FighterPanel({ side, label, fighter, color, avatar, pops, onPopEnd, shakeKey }) {
   const pct = fighter.energyMax > 0 ? Math.max(0, Math.round((fighter.energy / fighter.energyMax) * 100)) : 0;
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>
-        <span>{label} · Lv.{fighter.level}</span>
-        <span>{fighter.energy.toLocaleString()} / {fighter.energyMax.toLocaleString()}</span>
+    <div key={shakeKey || 'still'} className={shakeKey ? 'dm-battle-shake' : ''}
+      style={{ position: 'relative', flex: 1, minWidth: 0, textAlign: 'center', padding: '10px 6px 8px', borderRadius: 14,
+        background: side === 'player' ? 'rgba(75,111,255,.08)' : 'rgba(248,113,113,.08)',
+        border: `1.5px solid ${side === 'player' ? 'rgba(75,111,255,.3)' : 'rgba(248,113,113,.3)'}` }}>
+      <div style={{ fontSize: 38, lineHeight: 1.1, opacity: fighter.energy <= 0 ? 0.35 : 1 }}>{fighter.energy <= 0 ? '😵' : avatar}</div>
+      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6 }}>
+        Lv.{fighter.level}{fighter.shield ? ' · 🛡️' : ''}{fighter.critGuaranteed ? ' · ⚡' : ''}
       </div>
-      <div style={{ height: 10, background: 'var(--dm-row)', borderRadius: 6, overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 6, background: color, width: `${pct}%`, transition: 'width 0.3s' }} />
+      <div style={{ height: 10, background: 'var(--dm-row)', borderRadius: 6, overflow: 'hidden', display: 'flex', justifyContent: side === 'npc' ? 'flex-end' : 'flex-start' }}>
+        <div style={{ height: '100%', borderRadius: 6, background: color, width: `${pct}%`, transition: 'width 0.35s' }} />
       </div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-sub)', marginTop: 4 }}>
+        {fighter.energy.toLocaleString()} / {fighter.energyMax.toLocaleString()}
+      </div>
+      {pops.map(p => (
+        <div key={p.key} className="dm-battle-pop" onAnimationEnd={() => onPopEnd(side, p.key)}
+          style={{ color: p.color, fontSize: p.big ? 26 : 20 }}>{p.text}</div>
+      ))}
     </div>
   );
+}
+
+// 라운드 기록의 짧은 표시 (아이콘+숫자) — 좁은 좌우 칸에서도 한 줄로
+function shortLabel(e) {
+  switch (e.kind) {
+    case 'attack':
+      if (e.crit) return `💥 ${e.amount}`;
+      return `${e.special ? '✨' : '⚔️'} ${e.amount}${e.awaken ? ' 🔥' : ''}`;
+    case 'miss': return '💨 빗나감';
+    case 'fumble': return '😵 실수';
+    case 'heal': return `💚 +${e.amount}`;
+    case 'regen': return `🌱 +${e.amount}`;
+    case 'shield': return '🛡️ 보호막';
+    case 'buff': return '⚡ 크리 준비';
+    default: return e.text;
+  }
+}
+
+// 방금 추가된 기록 한 줄이 화면에 만드는 효과: 어느 칸에 무엇을 띄우고, 어느 칸을 흔들지
+function effectOf(e) {
+  const other = e.side === 'player' ? 'npc' : 'player';
+  switch (e.kind) {
+    case 'attack':
+      return { popSide: other, shake: other, text: e.crit ? `💥 -${e.amount}` : `-${e.amount}`, color: e.crit ? '#FCD34D' : '#F87171', big: e.crit || e.special };
+    case 'miss': return { popSide: other, text: '회피!', color: '#94A3B8' };
+    case 'fumble': return { popSide: e.side, text: '실수!', color: '#94A3B8' };
+    case 'heal': return { popSide: e.side, text: `+${e.amount}`, color: '#4ADE80', big: true };
+    case 'regen': return { popSide: e.side, text: `+${e.amount}`, color: '#4ADE80' };
+    case 'shield': return { popSide: e.side, text: '🛡️', color: '#60A5FA', big: true };
+    case 'buff': return { popSide: e.side, text: '⚡', color: '#A78BFA', big: true };
+    default: return null;
+  }
+}
+
+// 새로 추가된 기록에 라운드 번호를 붙인다 (선공·후공 모두 같은 라운드)
+function tagRound(prevLog, nextLog, round) {
+  return [...prevLog, ...nextLog.slice(prevLog.length).map(e => ({ ...e, round }))];
 }
 
 export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd }) {
@@ -62,6 +115,10 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const [resolving, setResolving] = useState(false);
   const [flash, setFlash] = useState(null);
   const [showNpcStats, setShowNpcStats] = useState(true);
+  const [pops, setPops] = useState({ player: [], npc: [] }); // 칸마다 튀어 오르는 숫자
+  const [shake, setShake] = useState({ player: null, npc: null }); // 흔들 칸 (key가 바뀔 때마다 다시 흔들림)
+  const [openRound, setOpenRound] = useState(null); // 기록에서 눌러 펼친 라운드 (자세한 문장 보기)
+  const removePop = (side, key) => setPops(prev => ({ ...prev, [side]: prev[side].filter(p => p.key !== key) }));
 
   useEffect(() => {
     if (!npcDef) return;
@@ -80,12 +137,30 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   }
 
   const { player, npc, status, log } = state;
+  // 라운드별로 묶어서 최신 라운드가 위로 (각 칸 = 그 라운드에서 그쪽이 한 행동)
+  const rounds = [];
+  log.forEach(e => {
+    const n = e.round || 1;
+    let r = rounds.find(x => x.round === n);
+    if (!r) { r = { round: n, player: [], npc: [], result: null, all: [] }; rounds.push(r); }
+    r.all.push(e);
+    if (e.kind === 'result') r.result = e;
+    else if (e.side === 'player') r.player.push(e);
+    else if (e.side === 'npc') r.npc.push(e);
+  });
+  rounds.sort((a, b) => b.round - a.round);
   const availableSpecials = getAvailableSpecials(player);
   const playerFirstChance = Math.round(getTurnOrderChance(player, npc) * 100);
 
   // 방금 새로 추가된 로그 항목들에 대해 진동/색 효과를 판정
   const triggerEffects = (prevLog, newLog) => {
     newLog.slice(prevLog.length).forEach(entry => {
+      const fx = effectOf(entry);
+      if (fx) {
+        const key = Date.now() + Math.random();
+        setPops(prev => ({ ...prev, [fx.popSide]: [...prev[fx.popSide], { key, text: fx.text, color: fx.color, big: fx.big }] }));
+        if (fx.shake) setShake(prev => ({ ...prev, [fx.shake]: key }));
+      }
       if (entry.kind === 'attack' && entry.crit) {
         vibrate([40, 30, 40]);
         setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.crit });
@@ -102,14 +177,16 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const act = (action) => {
     if (status !== 'ongoing' || resolving) return;
     const prevLog = state.log;
-    const first = resolveRoundFirstTurn(state, action, playerLabel);
+    const firstRaw = resolveRoundFirstTurn(state, action, playerLabel);
+    const first = { ...firstRaw, log: tagRound(prevLog, firstRaw.log, state.round) };
     setState(first);
     triggerEffects(prevLog, first.log);
     if (first.status !== 'ongoing') return; // 선공만으로 승부가 났다면 후공 없이 종료
     setResolving(true);
     setTimeout(() => {
       setState(prev => {
-        const second = resolveRoundSecondTurn(prev, action, playerLabel);
+        const secondRaw = resolveRoundSecondTurn(prev, action, playerLabel);
+        const second = { ...secondRaw, log: tagRound(prev.log, secondRaw.log, prev.round) };
         triggerEffects(prev.log, second.log);
         return second;
       });
@@ -120,6 +197,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const retryBattle = () => {
     setResolving(false);
     setFlash(null);
+    setPops({ player: [], npc: [] });
+    setShake({ player: null, npc: null });
+    setOpenRound(null);
     setState(createBattleState(createPlayerFighter(totalScore, statXp), createNpcFighter(npcDef)));
   };
 
@@ -157,23 +237,45 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         )}
       </div>
 
+      {/* 좌우 캐릭터 칸 */}
       <div style={{ ...S.card, position: 'relative', overflow: 'hidden' }}>
         {flash && (
           <div key={flash.key} className="dm-battle-flash" style={{ background: flash.color }} onAnimationEnd={() => setFlash(null)} />
         )}
-        <EnergyRow label={playerLabel} fighter={player} color="#4B6FFF" />
-        <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', margin: '6px 0' }}>
-          VS {status === 'ongoing' && (
-            <span style={{ color: '#A78BFA' }}>· ⚡ {playerLabel} 선공 확률 {playerFirstChance}%</span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+          <FighterPanel side="player" label={playerLabel} fighter={player} color="#4B6FFF" avatar={PLAYER_AVATAR}
+            pops={pops.player} onPopEnd={removePop} shakeKey={shake.player} />
+          <div style={{ alignSelf: 'center', fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', flexShrink: 0 }}>VS</div>
+          <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={NPC_AVATAR}
+            pops={pops.npc} onPopEnd={removePop} shakeKey={shake.npc} />
         </div>
-        <EnergyRow label={npc.name} fighter={npc} color="#F87171" />
+        {status === 'ongoing' && (
+          <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#A78BFA', marginTop: 8 }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>
+        )}
       </div>
 
-      <div style={{ ...S.card, maxHeight: 190, overflowY: 'auto' }}>
-        {log.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>전투 기록이 여기 표시됩니다</div>}
-        {log.slice(-10).reverse().map((l, i) => (
-          <div key={log.length - i} style={{ fontSize: 12, padding: '5px 0', borderBottom: i < log.slice(-10).length - 1 ? '1px solid var(--dm-row)' : 'none', ...logLineStyle(l) }}>{l.text}</div>
+      {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동. 줄을 누르면 자세한 문장 */}
+      <div style={{ ...S.card, maxHeight: 220, overflowY: 'auto', padding: '8px 12px' }}>
+        {rounds.length === 0 && <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '6px 0' }}>공격하면 라운드별 기록이 여기 표시돼요</div>}
+        {rounds.map(r => (
+          <div key={r.round} onClick={() => setOpenRound(v => (v === r.round ? null : r.round))}
+            style={{ padding: '6px 0', borderBottom: '1px solid var(--dm-row)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', width: 26, flexShrink: 0, paddingTop: 1 }}>{r.round}R</span>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#6C8EFF' }}>
+                {r.player.map((e, i) => <div key={i} style={{ whiteSpace: 'nowrap', ...(e.crit ? { color: '#FCD34D' } : {}) }}>{shortLabel(e)}</div>)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: '#F87171', textAlign: 'right' }}>
+                {r.npc.map((e, i) => <div key={i} style={{ whiteSpace: 'nowrap', ...(e.crit ? { color: '#FCD34D' } : {}) }}>{shortLabel(e)}</div>)}
+              </div>
+            </div>
+            {r.result && <div style={{ fontSize: 13, textAlign: 'center', marginTop: 4, ...logLineStyle(r.result) }}>{r.result.text}</div>}
+            {openRound === r.round && (
+              <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 8, background: 'var(--dm-input)' }}>
+                {r.all.map((l, i) => <div key={i} style={{ fontSize: 12, padding: '2px 0', ...logLineStyle(l) }}>{l.text}</div>)}
+              </div>
+            )}
+          </div>
         ))}
       </div>
 

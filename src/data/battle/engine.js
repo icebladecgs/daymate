@@ -141,10 +141,11 @@ function resolveAttack(attacker, defender, { useStat, mult = 1, ignoreDefense = 
 }
 
 function formatAttackLog(actorLabel, moveName, r, side, isSpecial) {
-  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효`, side, kind: 'fumble' };
-  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!`, side, kind: 'miss' };
+  // move·amount는 배틀 화면의 좌우 액션 표시용 (계산에는 쓰지 않음)
+  if (r.fumble) return { text: `${actorLabel}: ${moveName} → 치명적 실수! 공격 무효`, side, kind: 'fumble', move: moveName };
+  if (r.miss) return { text: `${actorLabel}: ${moveName} → 상대가 회피했다!`, side, kind: 'miss', move: moveName };
   const tags = [r.crit && '크리티컬!', r.awaken && '각성!'].filter(Boolean).join(' ');
-  return { text: `${actorLabel}: ${moveName} → ${tags ? tags + ' ' : ''}${r.damage} 데미지`, side, kind: 'attack', crit: r.crit, special: !!isSpecial };
+  return { text: `${actorLabel}: ${moveName} → ${tags ? tags + ' ' : ''}${r.damage} 데미지`, side, kind: 'attack', crit: r.crit, special: !!isSpecial, awaken: !!r.awaken, amount: r.damage, move: moveName };
 }
 
 // 자산력 패시브 "복리" — 매 라운드 시작 시 자산력에 비례해 Energy 소량 회복(최대치 캡)
@@ -154,7 +155,7 @@ function applyWealthRegen(fighter, log, label, side) {
   const amount = Math.round(fighter.energyMax * pct);
   if (amount <= 0) return;
   fighter.energy = Math.min(fighter.energyMax, fighter.energy + amount);
-  log.push({ text: `${label}: 복리 효과로 Energy +${amount}`, side, kind: 'regen' });
+  log.push({ text: `${label}: 복리 효과로 Energy +${amount}`, side, kind: 'regen', amount });
 }
 
 function decrementCooldowns(f) {
@@ -207,15 +208,15 @@ function performAction(actor, target, action, log, actorLabel, side) {
   } else if (special.type === 'heal') {
     const amount = Math.round(actor.energyMax * special.healPct);
     actor.energy = Math.min(actor.energyMax, actor.energy + amount);
-    log.push({ text: `${actorLabel}: ${special.name}! Energy +${amount}`, side, kind: 'heal' });
+    log.push({ text: `${actorLabel}: ${special.name}! Energy +${amount}`, side, kind: 'heal', amount, move: special.name });
   } else if (special.type === 'shield') {
     actor.shield = special.shieldPct
       ? { type: 'pct', value: special.shieldPct }
       : { type: 'flat', value: Math.round(actor.energyMax * special.shieldFlatRatio) };
-    log.push({ text: `${actorLabel}: ${special.name}! 다음 피격에 보호막 준비`, side, kind: 'shield' });
+    log.push({ text: `${actorLabel}: ${special.name}! 다음 피격에 보호막 준비`, side, kind: 'shield', move: special.name });
   } else if (special.type === 'buff') {
     actor.critGuaranteed = true;
-    log.push({ text: `${actorLabel}: ${special.name}! 다음 공격 크리티컬 확정`, side, kind: 'buff' });
+    log.push({ text: `${actorLabel}: ${special.name}! 다음 공격 크리티컬 확정`, side, kind: 'buff', move: special.name });
   }
 }
 

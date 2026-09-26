@@ -246,6 +246,33 @@ button:focus-visible {
   z-index: 5;
 }
 
+/* 배틀 좌우 캐릭터 칸 — 맞은 쪽 흔들림, 숫자 튀어오름 */
+@keyframes dm-battle-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.dm-battle-shake { animation: dm-battle-shake 0.4s ease-out; }
+@keyframes dm-battle-pop {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.8); }
+  15%  { opacity: 1; transform: translate(-50%, -4px) scale(1.15); }
+  70%  { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
+}
+.dm-battle-pop {
+  position: absolute;
+  left: 50%;
+  top: 34px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-weight: 900;
+  text-shadow: 0 1px 3px rgba(0,0,0,.35);
+  animation: dm-battle-pop 1.1s ease-out forwards;
+  z-index: 6;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
