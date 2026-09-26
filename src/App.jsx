@@ -20,6 +20,7 @@ import S from "./styles.js";
 import Toast from "./components/Toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
+import { IOSInstallGuide } from "./components/InstallGuide.jsx";
 import { genMemoId, withMemoList } from "./components/MemoTimeline.jsx";
 import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
@@ -1966,7 +1967,7 @@ export default function App() {
                 {[
                   ["1", "하단의 ⋯ 버튼을 탭해요"],
                   ["2", "'Safari로 열기'를 선택해요"],
-                  ["3", "공유 버튼(□↑) → '홈 화면에 추가'"],
+                  ["3", "Safari에서 ⋯ 또는 공유 버튼(□↑) → '홈 화면에 추가'"],
                 ].map(([n, txt]) => (
                   <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
                     <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
@@ -2109,16 +2110,7 @@ export default function App() {
                 ) : isIOS ? (
                   <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "16px", marginBottom: 12 }}>
                     <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>iPhone / iPad 설치 방법</div>
-                    {[
-                      ["1", "Safari 하단의 공유 버튼(□↑)을 탭해요"],
-                      ["2", "스크롤해서 '홈 화면에 추가'를 탭해요"],
-                      ["3", "우측 상단 '추가'를 눌러 완료!"],
-                    ].map(([n, txt]) => (
-                      <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
-                        <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
-                      </div>
-                    ))}
+                    <IOSInstallGuide />
                   </div>
                 ) : (
                   <div style={{ background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.7 }}>
