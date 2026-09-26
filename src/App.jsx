@@ -1161,11 +1161,11 @@ export default function App() {
       });
   };
 
-  // id가 `t<생성시각ms>...` 형식(수동 추가 태스크의 통상적인 id 규칙)이고, 아주 최근(5분 이내)에
+  // id가 `t<생성시각ms>...` 또는 `t_<생성시각ms>...`(오늘 탭에서 추가) 형식이고, 아주 최근(5분 이내)에
   // 생성된 것으로 보이면 "아직 Firestore에 안 올라간 신규 로컬 태스크"로 간주한다.
   // 오래된 로컬 태스크까지 무조건 되살리면 다른 기기에서 지운 태스크가 부활할 수 있어 시간창을 좁게 둔다.
   const isRecentLocalOnlyTask = (task) => {
-    const match = String(task?.id || '').match(/^t(\d{10,})/);
+    const match = String(task?.id || '').match(/^t_?(\d{10,})/);
     if (!match) return false;
     const createdAt = Number(match[1]);
     return Number.isFinite(createdAt) && (Date.now() - createdAt) < 5 * 60 * 1000;
