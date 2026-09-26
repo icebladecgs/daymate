@@ -1,4 +1,4 @@
-const CACHE = 'daymate-2ac203f';
+const CACHE = 'daymate-3a77134';
 const PRECACHE = ['/', '/index.html', '/icon.svg'];
 // 휴대폰 공유로 받은 사진을 앱이 가져갈 때까지 잠깐 맡겨 두는 곳 — 버전이 바뀌어도 지우지 않는다
 const SHARE_CACHE = 'dm-share';

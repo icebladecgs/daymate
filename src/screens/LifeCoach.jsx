@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import { chatFetch } from "../api/chatFetch.js";
 
@@ -35,35 +36,39 @@ const QUESTIONS = [
   },
 ];
 
+// 쓰던 답은 이 기기에 임시 저장 — 나갔다 들어와도 이어서 쓰고, 플랜이 만들어지면 지운다
+const DRAFT_KEY = "dm_life_coach_draft";
+
 export default function LifeCoach({ user, onBack, onApplyPlan }) {
-  const [step, setStep] = useState(0); // 0=intro, 1-5=질문, 6=loading, 7=result
-  const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(""));
-  const [current, setCurrent] = useState("");
+  const draft = store.get(DRAFT_KEY, null);
+  const [step, setStep] = useState(() => (draft && draft.step >= 0 && draft.step <= QUESTIONS.length ? draft.step : 0)); // 0=intro, 1-5=질문, 6=loading, 7=result
+  const [answers, setAnswers] = useState(() => QUESTIONS.map((_, i) => (Array.isArray(draft?.answers) ? draft.answers[i] || "" : "")));
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
   const qIdx = step - 1; // 현재 질문 인덱스 (0~4)
   const totalQ = QUESTIONS.length;
+  const answeredCount = answers.filter(a => a.trim()).length;
 
+  useEffect(() => {
+    if (step <= totalQ) store.set(DRAFT_KEY, { step, answers });
+  }, [step, answers, totalQ]);
+
+  const setAnswer = (text) => setAnswers(prev => prev.map((a, i) => (i === qIdx ? text : a)));
+
+  // 비어 있어도 넘어갈 수 있다(건너뛰기). 마지막 질문에서는 답이 하나라도 있어야 플랜을 만든다
   const goNext = () => {
-    if (step >= 1 && step <= totalQ) {
-      const updated = [...answers];
-      updated[qIdx] = current.trim();
-      setAnswers(updated);
-      setCurrent("");
-      if (step < totalQ) {
-        setStep(step + 1);
-      } else {
-        analyze(updated);
-      }
-    }
+    if (step < 1 || step > totalQ) return;
+    if (step < totalQ) setStep(step + 1);
+    else if (answeredCount > 0) analyze(answers);
   };
+  const goPrev = () => setStep(Math.max(0, step - 1)); // 1번 질문에서 이전 → 소개 화면
 
   const analyze = async (ans) => {
     setStep(6);
     setError("");
     try {
-      const payload = QUESTIONS.map((q, i) => ({ question: q.text, answer: ans[i] }));
+      const payload = QUESTIONS.map((q, i) => ({ question: q.text, answer: ans[i].trim() || "(답하지 않음)" }));
       const res = await chatFetch("/api/chat?action=life-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,10 +78,10 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
       const data = await res.json();
       setResult(data);
       setStep(7);
+      store.remove(DRAFT_KEY);
     } catch (e) {
       setError(e.message || "오류가 발생했어요.");
-      setCurrent(ans[totalQ - 1] || ""); // 마지막 답변 복원
-      setStep(5); // 마지막 질문으로 돌아가기
+      setStep(totalQ); // 마지막 질문으로 돌아가기 (답은 그대로)
     }
   };
 
@@ -85,10 +90,14 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
     onApplyPlan?.(result);
   };
 
-  // 공통 래퍼
+  // 공통 래퍼 — 질문 도중에도 언제든 나갈 수 있게 위에 "나가기" (쓰던 답은 임시 저장돼 있음)
   const wrap = (children) => (
     <div style={S.content}>
-      <div style={{ padding: "44px 22px 32px", position: "relative", zIndex: 1 }}>
+      <div style={{ padding: "12px 22px 32px", position: "relative", zIndex: 1 }}>
+        <button onClick={onBack}
+          style={{ background: "none", border: "none", padding: "6px 0", marginBottom: 14, fontSize: 14, fontWeight: 700, color: "var(--dm-muted)", cursor: "pointer", fontFamily: "inherit" }}>
+          ← 나가기
+        </button>
         {children}
       </div>
     </div>
@@ -114,14 +123,14 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
                 <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-muted)" }}>질문 {i + 1}</div>
                 <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 2 }}>{q.label}</div>
               </div>
+              {answers[i].trim() && <span style={{ fontSize: 12, color: "#4ADE80", fontWeight: 800 }}>✓</span>}
             </div>
           ))}
         </div>
         <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "center", marginBottom: 16 }}>
-          솔직하게 답할수록 정확한 플랜이 나와요
+          솔직하게 답할수록 정확한 플랜이 나와요 · 모르는 질문은 건너뛰어도 돼요
         </div>
-        <button style={S.btn} onClick={() => setStep(1)}>시작하기 →</button>
-        <button style={S.btnGhost} onClick={onBack}>나중에 하기</button>
+        <button style={S.btn} onClick={() => setStep(1)}>{answeredCount > 0 ? "이어서 하기 →" : "시작하기 →"}</button>
       </>
     );
   }
@@ -129,17 +138,23 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
   // 질문 단계
   if (step >= 1 && step <= totalQ) {
     const q = QUESTIONS[qIdx];
-    const canSubmit = current.trim().length > 0;
+    const current = answers[qIdx];
+    const isLast = step === totalQ;
+    const empty = !current.trim();
+    const blocked = isLast && answeredCount === 0; // 답이 하나도 없으면 플랜을 만들 수 없음
     return wrap(
       <>
-        {/* 진행 바 */}
-        <div style={{ display: "flex", gap: 5, marginBottom: 28 }}>
+        {/* 진행 바 — 누르면 그 질문으로 이동 */}
+        <div style={{ display: "flex", gap: 5, marginBottom: 24 }}>
           {QUESTIONS.map((_, i) => (
-            <div key={i} style={{
-              flex: 1, height: 4, borderRadius: 2,
-              background: i < step ? "#6C8EFF" : "var(--dm-border)",
-              transition: "background .3s",
-            }} />
+            <button key={i} onClick={() => setStep(i + 1)} aria-label={`질문 ${i + 1}로 이동`}
+              style={{ flex: 1, height: 20, padding: 0, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <span style={{
+                display: "block", width: "100%", height: i === qIdx ? 6 : 4, borderRadius: 3,
+                background: i === qIdx ? "#6C8EFF" : answers[i].trim() ? "rgba(108,142,255,.55)" : "var(--dm-border)",
+                transition: "background .3s",
+              }} />
+            </button>
           ))}
         </div>
 
@@ -154,6 +169,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
         </div>
 
         <textarea
+          key={step}
           style={{
             ...S.input,
             minHeight: 120,
@@ -161,24 +177,20 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
             lineHeight: 1.7,
           }}
           value={current}
-          onChange={(e) => setCurrent(e.target.value)}
+          onChange={(e) => setAnswer(e.target.value)}
           placeholder={q.placeholder}
           autoFocus
           onKeyDown={(e) => {
-            if (e.key === "Enter" && e.metaKey && canSubmit) goNext();
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) goNext();
           }}
         />
         {error && <div style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>{error}</div>}
+        {blocked && <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 8 }}>한 가지 이상 답해야 플랜을 만들 수 있어요</div>}
 
-        <button style={{ ...S.btn, marginTop: 16, opacity: canSubmit ? 1 : 0.5 }} onClick={goNext} disabled={!canSubmit}>
-          {step < totalQ ? "다음 →" : "플랜 만들기 ✨"}
+        <button style={{ ...S.btn, marginTop: 16, opacity: blocked ? 0.5 : 1 }} onClick={goNext} disabled={blocked}>
+          {isLast ? "플랜 만들기 ✨" : empty ? "건너뛰기 →" : "다음 →"}
         </button>
-        {step > 1 && (
-          <button style={S.btnGhost} onClick={() => {
-            setStep(step - 1);
-            setCurrent(answers[qIdx - 1] || "");
-          }}>← 이전</button>
-        )}
+        <button style={S.btnGhost} onClick={goPrev}>← 이전</button>
       </>
     );
   }
