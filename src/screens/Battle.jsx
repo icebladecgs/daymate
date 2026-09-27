@@ -239,7 +239,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
       <div style={S.topbar}>
         <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, paddingLeft: 8 }}>
-          <div style={S.title}>⚔️ 일기토</div>
+          <div style={S.title}>⚔️ 배틀</div>
           <div style={S.sub}>Lv.{npc.level} {npc.name} · 「{npc.trait?.label}」</div>
         </div>
       </div>
@@ -284,7 +284,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           style={{ minHeight: 40, marginTop: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--dm-input)', textAlign: 'center',
             fontSize: 14, lineHeight: 1.45, display: 'flex', alignItems: 'center', justifyContent: 'center',
             ...(narration ? logLineStyle(narration.entry) : { color: 'var(--dm-muted)', fontSize: 13 }) }}>
-          {narration ? narration.entry.text : '공격 버튼을 눌러 일기토를 시작하세요'}
+          {narration ? narration.entry.text : '공격 버튼을 눌러 배틀을 시작하세요'}
         </div>
         {status === 'ongoing' && (
           <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#A78BFA', marginTop: 8 }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>

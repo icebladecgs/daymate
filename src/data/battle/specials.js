@@ -1,4 +1,4 @@
-// 일기토 배틀 SPECIAL 기술 — Phase 1: 각 스탯당 1단계(요구 점수 10)만 구현
+// 배틀 SPECIAL 기술 — Phase 1: 각 스탯당 1단계(요구 점수 10)만 구현
 // type: 'attack'(데미지) | 'heal'(회복) | 'shield'(다음 피격 경감) | 'buff'(다음 공격 크리 확정)
 // 내 기본공격 이름 — 가장 높은 능력치(primaryStat)에 따라. 화면·기록 표시용이며 계산에는 영향 없음
 export const PLAYER_BASIC_MOVES = {

@@ -1,4 +1,4 @@
-// 일기토 배틀 엔진 — 순수 함수 모음, React/UI에 의존하지 않음
+// 배틀 엔진 — 순수 함수 모음, React/UI에 의존하지 않음
 // 기존 XP/레벨/6대능력치 시스템은 전혀 수정하지 않고 "읽기"만 한다.
 import { GROWTH_STATS, calcStatScore } from "../growthStats.js";
 import { calcLevel } from "../stats.js";
@@ -81,7 +81,7 @@ export function createNpcFighter(npcDef) {
 }
 
 export function createBattleState(player, npc) {
-  return { player, npc, round: 1, status: 'ongoing', log: [{ text: `${npc.name}과(와)의 일기토 시작!` }] };
+  return { player, npc, round: 1, status: 'ongoing', log: [{ text: `${npc.name}과(와)의 배틀 시작!` }] };
 }
 
 export function getAvailableSpecials(fighter) {

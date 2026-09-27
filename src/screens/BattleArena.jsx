@@ -22,7 +22,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       <div style={S.topbar}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, paddingLeft: 8 }}>
-          <div style={S.title}>⚔️ 일기토</div>
+          <div style={S.title}>⚔️ 배틀</div>
           <div style={S.sub}>내 캐릭터로 NPC와 겨뤄보세요</div>
         </div>
       </div>
