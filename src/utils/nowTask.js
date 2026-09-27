@@ -7,12 +7,13 @@ const toMin = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number); re
 export function findNowTask(tasks, nowMin) {
   const timed = (tasks || [])
     .filter(t => t.title?.trim() && /^\d{1,2}:\d{2}$/.test(t.time || ""))
-    .map(t => ({ task: t, start: toMin(t.time) }))
+    .map(t => ({ task: t, start: toMin(t.time), endAt: /^\d{1,2}:\d{2}$/.test(t.endTime || "") ? toMin(t.endTime) : null }))
     .sort((a, b) => a.start - b.start);
   let current = null;
   timed.forEach((x, i) => {
     const nextStart = timed.slice(i + 1).find(y => y.start > x.start)?.start;
-    const end = Math.min(nextStart ?? Infinity, x.start + 60); // 끝 시각이 없어서 최대 1시간(다음 할일이 먼저면 거기까지)
+    // 끝 시간을 넣었으면 그대로, 없으면 최대 1시간(다음 할일이 먼저면 거기까지)
+    const end = x.endAt != null && x.endAt > x.start ? x.endAt : Math.min(nextStart ?? Infinity, x.start + 60);
     if (!x.task.done && x.start <= nowMin && nowMin < end) current = { ...x, end };
   });
   const next = timed.find(x => !x.task.done && x.start > nowMin && x.task.id !== current?.task.id) || null;

@@ -18,7 +18,10 @@ function buildEventTimeFields(dateStr, task, { clearOther = false } = {}) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (task.time) {
     const tzSuffix = getTzSuffix();
-    const { startStr, endStr } = buildTimedRange(dateStr, task.time);
+    // 끝 시간이 있으면 그 길이(끝이 시작보다 이르면 다음날로), 없으면 기본 30분
+    const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const duration = task.endTime ? ((toMin(task.endTime) - toMin(task.time) + 1440) % 1440 || 30) : 30;
+    const { startStr, endStr } = buildTimedRange(dateStr, task.time, duration);
     const extra = clearOther ? { date: null } : {};
     return {
       start: { dateTime: startStr + tzSuffix, timeZone, ...extra },

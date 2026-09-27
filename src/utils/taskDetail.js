@@ -5,6 +5,7 @@ export const pickTaskDetail = (x = {}) => ({
   ...(x.photos?.length ? { photos: x.photos } : {}),
   ...(x.files?.length ? { files: x.files } : {}),
   ...(x.time ? { time: x.time } : {}),
+  ...(x.endTime ? { endTime: x.endTime } : {}), // 끝 시간 (2026-09-27)
   ...(x.statTag ? { statTag: x.statTag } : {}),
   ...(x.goalRef ? { goalRef: x.goalRef } : {}), // 🎯 어느 목표에서 파생됐는지
 });

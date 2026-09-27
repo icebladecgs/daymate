@@ -1014,7 +1014,7 @@ export default function Today({
             >{task.done ? '✓' : ''}</button>
             <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '2px 0' }}>
               <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
-              {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}</span>}
+              {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime ? `~${task.endTime}` : ''}</span>}
               {task.id === nowTaskId && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900, flexShrink: 0, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
               <TaskStatIcon task={task} />
               <TaskDetailBadge task={task} />

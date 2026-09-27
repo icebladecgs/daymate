@@ -25,6 +25,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
   const [editingTime, setEditingTime] = useState(false);
+  const [editingEnd, setEditingEnd] = useState(false); // 끝 시간 (시작 시간이 있을 때만)
 
   const savedRef = useRef({ title: task.title || '', note: task.note || '' });
   const doneRef = useRef(false); // 삭제·이동 후에는 언마운트 저장을 건너뜀
@@ -131,8 +132,15 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
                 ⏰ {task.time || '시간 설정'}
               </button>
             )}
+            {task.time && !editingTime && (editingEnd ? (
+              <TimeSelect autoFocus value={task.endTime || task.time} onChange={v => onSave({ endTime: v && v !== task.time ? v : undefined })} onClose={() => setEditingEnd(false)} />
+            ) : (
+              <button onClick={() => setEditingEnd(true)} style={{ ...chip(!!task.endTime), color: task.endTime ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
+                ~ {task.endTime || '끝 시간'}
+              </button>
+            ))}
             {task.time && (
-              <button onClick={() => { setEditingTime(false); onSave({ time: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
+              <button onClick={() => { setEditingTime(false); setEditingEnd(false); onSave({ time: undefined, endTime: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
             )}
           </div>
           {importedGcal && onMoveDate && (

@@ -1187,6 +1187,9 @@ export default function App() {
         const timeStr = event.start?.dateTime
           ? new Date(event.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
           : undefined;
+        const endStr = event.end?.dateTime
+          ? new Date(event.end.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+          : undefined;
         return {
           id: `gcal_${event.id}`,
           title: event.summary.trim(),
@@ -1195,6 +1198,7 @@ export default function App() {
           priority: false,
           gcalEventId: event.id,
           ...(timeStr ? { time: timeStr } : {}),
+          ...(timeStr && endStr && endStr !== timeStr ? { endTime: endStr } : {}),
         };
       });
   };
@@ -1845,7 +1849,7 @@ export default function App() {
     // 수정: 제목 또는 시간이 바뀐 경우
     nextTasks.forEach(t => {
       const prev = prevTaskMap.get(t.id);
-      if (prev && prev.gcalEventId && t.title.trim() && (prev.title !== t.title || prev.time !== t.time)) {
+      if (prev && prev.gcalEventId && t.title.trim() && (prev.title !== t.title || prev.time !== t.time || prev.endTime !== t.endTime)) {
         gcalUpdateEvent(token, prev.gcalEventId, dateStr, t).catch(e => console.error('[App] gcal update failed:', e));
       }
     });
@@ -1869,7 +1873,7 @@ export default function App() {
       updates.forEach(u => {
         const original = toCreate.find(t => t.id === u.id);
         const latest = latestTasks.find(t => t.id === u.id);
-        if (latest && original && (latest.title !== original.title || latest.time !== original.time)) {
+        if (latest && original && (latest.title !== original.title || latest.time !== original.time || latest.endTime !== original.endTime)) {
           gcalUpdateEvent(token, u.gcalEventId, dateStr, latest).catch(e => console.error('[App] gcal reconcile failed:', e));
         }
       });
