@@ -4,6 +4,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  reauthenticateWithPopup,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -58,6 +59,14 @@ export const storage = getStorage(app);
 // ---------- Auth ----------
 export function googleSignIn() {
   return signInWithPopup(auth, new GoogleAuthProvider());
+}
+
+// 지금 로그인한 계정 본인인지 구글로 다시 확인(다른 계정을 고르면 실패) — 앱 잠금 비밀번호를 잊었을 때
+export async function googleReauth() {
+  await auth.authStateReady();
+  if (!auth.currentUser) throw new Error("no-user");
+  await reauthenticateWithPopup(auth.currentUser, new GoogleAuthProvider());
+  return auth.currentUser.uid;
 }
 
 export function googleSignOut() {

@@ -14,6 +14,7 @@ import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
 import { GROWTH_STAT_MAP } from "../data/growthStats.js";
+import AppLockSettings from "../components/AppLockSettings.jsx";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
   return (
@@ -1251,6 +1252,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <input ref={fileInputRef} type="file" accept="application/json" onChange={importData} style={{ display: "none" }} />
       </div>
 
+      <AppLockSettings authUser={authUser} setToast={setToast} />
+
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
       <div style={S.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1369,7 +1372,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       { icon: '🔔', title: '알림 설정', sub: '권한 · 소리 · 진동 · 시간', action: () => setSubPage('notifications') },
       { icon: '📨', title: '텔레그램 자동화', sub: '아침 브리핑 · 자산 선택 · 연결 관리', action: () => setSubPage('telegram') },
       { icon: '🔗', title: 'Google 연동', sub: '계정 · 캘린더 · 드라이브', action: () => setSubPage('integrations') },
-      { icon: '⚙️', title: '앱 관리', sub: '설치 · 백업 · 고급 설정', action: () => setSubPage('app') },
+      { icon: '⚙️', title: '앱 관리', sub: '설치 · 잠금 · 백업 · 고급 설정', action: () => setSubPage('app') },
     ]},
     { category: '공유 및 지원', items: [
       { icon: '👥', title: '친구 & 공유', sub: '초대 코드와 링크 공유', action: () => setSubPage('friends') },

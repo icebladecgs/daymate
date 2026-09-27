@@ -307,6 +307,13 @@ function createMemoWindow() {
     }
   });
 
+  // 앱 잠금용 — 숨긴 창도 웹에서는 visible로 보여서, 트레이로 숨김·최소화·다시 보임을 직접 알려 준다
+  const tellWeb = (name) => memoWindow.webContents.executeJavaScript(`window.dispatchEvent(new Event('${name}'))`).catch(() => {});
+  memoWindow.on('hide', () => tellWeb('dm:app-hidden'));
+  memoWindow.on('minimize', () => tellWeb('dm:app-hidden'));
+  memoWindow.on('show', () => tellWeb('dm:app-shown'));
+  memoWindow.on('restore', () => tellWeb('dm:app-shown'));
+
   memoWindow.on('close', (e) => {
     if (isQuitting) return;
     e.preventDefault();
