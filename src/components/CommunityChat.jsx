@@ -148,7 +148,7 @@ export default function CommunityChat({ communityId, communityName, authUser, my
           </button>
         )}
         <div style={{ fontSize: 11, color: "var(--dm-muted)", textAlign: "center", lineHeight: 1.6, margin: "4px 8px 12px" }}>
-          🔒 대화는 이 커뮤니티 멤버만 볼 수 있어요. 서버에 저장되며, 앱 운영자는 기술적으로 볼 수 있어요.
+          🔒 대화는 이 커뮤니티 멤버만 볼 수 있어요. 대화 내용은 서버에 안전하게 저장돼요.
         </div>
         {loading && <div style={{ textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: 20 }}>불러오는 중…</div>}
         {loadError && <div style={{ textAlign: "center", color: "#F87171", fontSize: 14, fontWeight: 700, padding: 30, lineHeight: 1.6 }}>채팅을 불러오지 못했어요.<br />이 커뮤니티 멤버만 볼 수 있어요.</div>}
