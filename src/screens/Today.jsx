@@ -18,6 +18,9 @@ import { getContactReminders } from "../data/contacts.js";
 import { chatFetch } from "../api/chatFetch.js";
 import { parseSchedule, describeSchedule } from "../utils/nlSchedule.js";
 import { recurringLabel } from "../utils/recurring.js";
+import NowTaskCard from "../components/NowTaskCard.jsx";
+import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
+import WeekStrip from "../components/WeekStrip.jsx";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
@@ -65,6 +68,7 @@ export default function Today({
   const [taskInput, setTaskInput] = useState('');
   const [nlOff, setNlOff] = useState(false); // 문장 해석 끄기 ("그냥 글자로") — 입력이 바뀌면 다시 켬
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
+  const nowMin = useNowMinutes(); // "지금 할 일" 카드·목록의 "지금" 표시용 (30초마다)
   const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
   const [somedayInput, setSomedayInput] = useState('');
@@ -451,6 +455,9 @@ export default function Today({
     window.addEventListener('dm:open-search', open);
     return () => window.removeEventListener('dm:open-search', open);
   }, []);
+
+  // 목록에서 "지금" 표시할 할일 (오늘을 볼 때만)
+  const nowTaskId = taskDayOffset === 0 ? findNowTask(tasks, nowMin).current?.task.id : null;
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
@@ -971,6 +978,9 @@ export default function Today({
           <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
+      {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
+      {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
+      {tasksOpen && taskDayOffset === 0 && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} />}
       {tasksOpen && taskDayOffset === 0 && !carryDismissed && carryTasks.length > 0 && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -1005,6 +1015,7 @@ export default function Today({
             <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '2px 0' }}>
               <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
               {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}</span>}
+              {task.id === nowTaskId && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900, flexShrink: 0, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
               <TaskStatIcon task={task} />
               <TaskDetailBadge task={task} />
             </div>
