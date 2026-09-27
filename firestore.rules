@@ -1,0 +1,165 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 앱 관리자 (admin/config의 uids)
+    function isAppAdmin() {
+      return request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/admin/config).data.uids;
+    }
+    // 커뮤니티 관리자 (커뮤니티를 만들었거나 승계받은 사람)
+    function isCommunityAdmin(communityId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/communities/$(communityId)).data.get('createdBy', null) == request.auth.uid;
+    }
+    // 글쓴이 본인 (기존 문서의 field 값이 내 uid)
+    function isOwner(field) {
+      return request.auth != null && resource.data.get(field, null) == request.auth.uid;
+    }
+    // 새로 만드는 문서의 field 값이 내 uid (남의 이름으로 작성 방지)
+    function isCreator(field) {
+      return request.auth != null && request.resource.data.get(field, null) == request.auth.uid;
+    }
+    // 이 커뮤니티 멤버 (멤버 문서 id = 내 uid)
+    function isMember(communityId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid));
+    }
+    // 이번 수정에서 바뀌는 필드가 keys 안에만 있음
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid} {
+      allow read: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/admin/config).data.uids;
+    }
+    match /admin/config {
+      allow read: if request.auth != null;
+    }
+    match /rankings/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == uid;
+    }
+    match /communities/{communityId} {
+      allow read: if request.auth != null;
+      // 만드는 사람이 곧 관리자(createdBy)여야 함 — 남을 관리자로 지정해서 만들 수 없음
+      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      // 일반 멤버는 인원수(memberCount)·최근활동(lastActivityAt)만 변경 가능.
+      // 관리자 승계(createdBy)·암호·이름 등 나머지는 현재 관리자 또는 앱 관리자만 변경 가능.
+      allow update: if request.auth != null && (
+        resource.data.get('createdBy', null) == request.auth.uid
+        || request.auth.uid in get(/databases/$(database)/documents/admin/config).data.uids
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount', 'lastActivityAt'])
+      );
+      allow delete: if request.auth.uid in
+        get(/databases/$(database)/documents/admin/config).data.uids;
+      // 멤버: 가입은 본인 것만. 수정·삭제(탈퇴)는 본인 또는 커뮤니티 관리자·앱 관리자
+      match /members/{userId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if (request.auth != null && request.auth.uid == userId)
+          || isCommunityAdmin(communityId) || isAppAdmin();
+      }
+      // 일정: 만든 사람(createdBy) 명의로만 생성. 수정·삭제는 만든 사람 또는 커뮤니티 관리자·앱 관리자
+      match /events/{eventId} {
+        allow read: if request.auth != null;
+        allow create: if isCreator('createdBy');
+        allow update, delete: if isOwner('createdBy') || isCommunityAdmin(communityId) || isAppAdmin();
+      }
+      // 출석: 본인 기록만 생성·수정. 삭제는 본인 또는 커뮤니티 관리자·앱 관리자
+      match /checkins/{userId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if (request.auth != null && request.auth.uid == userId)
+          || isCommunityAdmin(communityId) || isAppAdmin();
+      }
+      // 공지·게시글: 본인 명의(uid)로만 작성. 수정·삭제는 글쓴이 또는 커뮤니티 관리자·앱 관리자.
+      // 다른 사람은 댓글 수(commentCount)만 변경 가능(댓글 달기·지우기).
+      // 댓글: 본인 명의로만 작성. 수정·삭제는 글쓴이 또는 관리자, 다른 사람은 좋아요(likedBy)만 변경 가능.
+      match /notices/{noticeId} {
+        allow read: if request.auth != null;
+        allow create: if isCreator('uid');
+        allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
+          || (request.auth != null && onlyChanges(['commentCount']));
+        allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
+        match /comments/{commentId} {
+          allow read: if request.auth != null;
+          allow create: if isCreator('uid');
+          allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
+            || (request.auth != null && onlyChanges(['likedBy']));
+          allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
+        }
+      }
+      // 단체 채팅: 읽기·보내기는 멤버만(본인 명의로만). 삭제는 보낸 사람 또는 커뮤니티 관리자·앱 관리자. 수정 없음.
+      match /chat/{messageId} {
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if isCreator('uid') && isMember(communityId);
+        allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
+      }
+      match /board/{postId} {
+        allow read: if request.auth != null;
+        allow create: if isCreator('uid');
+        allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
+          || (request.auth != null && onlyChanges(['commentCount']));
+        allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
+        match /comments/{commentId} {
+          allow read: if request.auth != null;
+          allow create: if isCreator('uid');
+          allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
+            || (request.auth != null && onlyChanges(['likedBy']));
+          allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
+        }
+      }
+    }
+    // 자유게시판 (전체 공개, 커뮤니티 소속 무관) — 작성은 본인 명의로만.
+    // 수정·삭제는 글쓴이 또는 앱 관리자. 다른 사람은 댓글 수·좋아요만 변경 가능.
+    match /publicBoard/{postId} {
+      allow read: if request.auth != null;
+      allow create: if isCreator('uid');
+      allow update: if isOwner('uid') || isAppAdmin()
+        || (request.auth != null && onlyChanges(['commentCount']));
+      allow delete: if isOwner('uid') || isAppAdmin();
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if isCreator('uid');
+        allow update: if isOwner('uid') || isAppAdmin()
+          || (request.auth != null && onlyChanges(['likedBy']));
+        allow delete: if isOwner('uid') || isAppAdmin();
+      }
+    }
+    // 앱 오류 기록: 로그인한 사용자가 본인 명의로 정해진 칸만 짧게 남김. 읽기·지우기는 앱 관리자만.
+    match /errorLogs/{logId} {
+      allow create: if isCreator('uid')
+        && request.resource.data.keys().hasOnly(['uid', 'kind', 'msg', 'stack', 'where', 'version', 'platform', 'at'])
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 600
+        && request.resource.data.stack is string && request.resource.data.stack.size() <= 2000;
+      allow read, delete: if isAppAdmin();
+    }
+    match /suggestions/{suggestionId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/admin/config).data.uids;
+    }
+    match /challenges/{challengeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      match /members/{uid} {
+        allow read, write: if request.auth != null;
+      }
+      match /certs/{certId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    match /tg_connect/{code} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow delete: if true;
+    }
+    match /tg_users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

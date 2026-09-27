@@ -56,6 +56,20 @@
 
 프로덕션 배포는 반드시 다음 순서를 지킨다.
 
+### 3.0 배포 명령 (2026-09-27~, 맥·윈도우 공통)
+
+아래 3.1~3.7 절차는 두 명령이 순서대로 실행한다. 손으로 하나씩 하지 않고 이 명령을 쓴다.
+
+```bash
+npm run release:prepare   # 작업 커밋 후: 빌드(버전 갱신) → 기본 점검 → (규칙이 바뀌었으면) 규칙 테스트 → 버전 커밋 → push
+# → 사용자에게 보고하고 배포 승인을 받는다
+npm run release:deploy    # 승인 후: 배포 전 확인(.vercelignore·cron·커밋 상태) → vercel --prod → 실제 반영 확인 → 배포 태그
+```
+
+- `release:prepare`는 GitHub에 이 PC에 없는 커밋(맥 작업분)이 있으면 멈춘다 — `git pull` 후 다시 한다.
+- `release:deploy`는 운영 주소에서 새 버전·서비스워커가 확인되지 않으면 "배포 완료 아님"으로 멈춘다.
+- 스크립트가 멈추면 메시지대로 원인을 고치고, 우회하지 않는다.
+
 ### 3.1 버전 자동 갱신
 
 배포 전에 다음 명령어를 실행한다.
@@ -192,7 +206,7 @@ Hobby 플랜에서 하루 1회를 초과하는 cron 스케줄이 하나라도 �
 
 Firestore에 새로운 컬렉션이나 서브컬렉션을 추가할 때는 Firebase 보안 규칙에도 해당 경로의 `match` 블록을 반드시 추가한다.
 
-이 프로젝트에는 `firestore.rules` 파일이 로컬 저장소에 없다 — 보안 규칙은 Firebase 콘솔(Firestore Database → 규칙)에서만 관리된다. 상위 경로에 규칙이 있어도 하위 서브컬렉션에는 자동 상속되지 않으므로, 서브컬렉션마다 명시적으로 `match` 블록이 있어야 한다.
+**보안 규칙 원본은 저장소 루트의 `firestore.rules`다 (2026-09-27~).** Firebase 콘솔에서 직접 고치지 않는다 — 콘솔에서 바꾸면 다음 게시 때 덮어써진다. 규칙 변경은 이 파일을 고치고 테스트 → 사용자 승인 → `npm run rules:deploy`로 게시한다. 상위 경로에 규칙이 있어도 하위 서브컬렉션에는 자동 상속되지 않으므로, 서브컬렉션마다 명시적으로 `match` 블록이 있어야 한다.
 
 보안 규칙을 추가하지 않으면 코드와 화면은 정상적으로 보여도 실제 저장·조회 과정에서 `permission-denied` 오류가 발생할 수 있다. "저장/등록이 안 된다"는 제보를 받으면 먼저 브라우저 콘솔 에러부터 확인한다 — "Missing or insufficient permissions"가 보이면 규칙 문제로 바로 확정할 수 있다.
 
@@ -206,7 +220,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 - 데이터 삭제 또는 덮어쓰기 가능성
 - Firebase 콘솔에서 별도로 적용해야 할 내용
 
-규칙 수정 자체는 Claude Code가 로컬에서 할 수 없다 — 기존 비슷한 컬렉션(예: `notices/comments`)의 규칙 구조를 사용자에게 물어서, 그 패턴을 미러링한 전체 교체본을 만들어 사용자가 Firebase 콘솔에 붙여넣고 게시(Publish)하도록 안내한다.
+규칙은 `firestore.rules`에서 기존 비슷한 컬렉션(예: `notices/comments`)의 패턴을 미러링해 고친다. 게시는 실제 서비스 권한이 바뀌는 작업이라 **배포처럼 사용자 승인 후** `npm run rules:deploy`(테스트 통과해야 게시)로 한다. Firebase 로그인이 안 된 PC에서는 사용자가 한 번 `npm run rules:login`을 실행해야 한다. 로그인할 수 없는 상황이면 예전처럼 전체 교체본을 드려 콘솔에 붙여넣게 한다.
 
 보안 규칙 반영이 필요한 상태에서 코드만 배포하고 작업이 완전히 끝났다고 보고하지 않는다.
 
@@ -222,8 +236,9 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 
 ### 보안 규칙 변경 시 검증 방법
 
-- 규칙은 Firestore 에뮬레이터로 먼저 검증한다. 스크래치패드 같은 프로젝트 밖 임시 폴더에 `firebase-tools@13` + `@firebase/rules-unit-testing` + `firebase`를 설치하고, `npx firebase emulators:exec --only firestore --project demo-daymate "node test.mjs"`로 실행한다. `demo-` 프로젝트라 실제 Firebase에는 접속하지 않는다.
-- Java는 `C:\baduk\LizzieYZY\jre\java11\bin`의 Java 11을 PATH에 넣어서 쓴다. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
+- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-09-27 기준 141개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
+- 규칙을 바꾸면 **테스트도 같이 추가**한다 — 새 파일 `tools/rules-test/tests/0N-이름.mjs`(기존 파일 형식: `t(이름, assertSucceeds/assertFails(...))`, 끝에 합계와 `process.exitCode`).
+- Java는 윈도우에서 `C:\baduk\LizzieYZY\jre\java11\bin`을 스크립트가 자동으로 PATH에 넣는다. 맥은 설치된 Java를 쓴다. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
 - "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.
 - 게시 후 실제 확인은 **운영자 계정이 아닌 일반 계정**으로 한다. 운영자는 앱 관리자 조건으로 모든 규칙을 통과하므로 확인이 되지 않는다.
 
@@ -491,6 +506,7 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **Firestore는 `undefined` 값이 있으면 저장 전체를 거부한다.** `firebase.js`에서 `initializeFirestore(app, { ignoreUndefinedProperties: true })`로 그 칸만 빼고 저장하게 했다 (2026-09-26, "시간 지우기" 등 뒤 그날 기록이 다른 기기로 동기화되지 않던 문제). 이 설정을 지우지 않는다. `persistDayData`가 서버 저장 오류를 조용히 무시하므로, 저장 실패는 화면에 드러나지 않는다는 점도 기억한다.
 - **성장 능력치 지급은 `applyTaskXpGrants`(할일)를 거쳐야 한다.** 할일 완료를 저장하는 새 경로를 만들면 `setDayData`·`onSetTodayTasks`·`setDetailData` 중 하나를 쓴다 — `setTodayData`로 바로 저장하면 체크해도 능력치가 오르지 않는다(홈 화면에서 실제 발생, 2026-09-26). 지급(`grantStatXp`)은 setState 업데이터 밖에서 부른다(안에서 부르면 두 번 지급될 수 있다). 습관은 `statTag`로 능력치를 직접 고를 수 있고, 목표는 사용자가 고르지 않고 자동 분류를 쓴다(사용자 결정). 오르는 수치는 코드에 고정하고 사용자·운영자가 바꾸지 않는다. 분류 단어는 운영자 설정 대신 **사용자별 "내 단어"**(계정 설정 `statWords` 배열)로 한다 — 분류 안 된 할일을 완료하면 화면 위쪽 띠(`StatAskBar`)로 한 번 묻고, 같은 제목은 다시 묻지 않는다. 설정 → 앱 관리 → 성장 능력치에서 끄기·단어 삭제 (2026-09-26).
 - **커뮤니티 단체 채팅 (2026-09-27).** `CommunityChat.jsx`(포털 시트). 채팅방을 **연 동안만** `onSnapshot`(최근 50개), 이전 대화는 `loadOlderChat`로 50개씩. 안 읽은 수는 기기별 마지막 읽은 시각(`utils/chatRead.js`, localStorage)과 `countChatSince`(개수 세기 쿼리)로 목록·상세를 볼 때만 센다. 사진은 게시판과 같은 Storage 경로 `community_photos/{id}/chat_*.jpg`, 메시지 삭제 때 사진도 지운다. 새 메시지 휴대폰 알림은 아직 없다(2단계). 채팅 화면 테스트는 에뮬레이터(firestore·auth·storage)에 붙인 임시 하네스 페이지로 두 사용자를 띄워서 했다.
+- **기본 자동 점검 `npm run test:smoke` (2026-09-27).** 빌드된 앱을 로컬에서 띄워 주요 화면 12개와 포스트잇 화면이 오류 없이 열리는지 본다(로그인 없는 범위). 화면 오류는 `ScreenErrorBoundary`의 "⚠️ 화면 오류" 카드로 잡는다. 새 화면을 만들면 `scripts/smoke-test.mjs`의 `SCREENS`에 추가한다. `release:prepare`가 자동으로 실행한다.
 - **앱 오류 자동 수집 (2026-09-27).** `utils/errorReport.js`(main.jsx에서 `installErrorReporting`)가 잡히지 않은 오류·Promise 오류·`console.error`를 Firestore `errorLogs`에 남기고, 관리자 화면 → 🐞 오류 탭(`AdminErrorLogs.jsx`)에서 같은 오류끼리 묶어 본다(30일 지난 기록은 관리자 화면을 열 때 정리). 로그인 사용자만, 같은 오류는 한 번, 한 번 켤 때 최대 20건. **사용자 내용(메모·일기 등)은 넣지 않는다** — 보안 규칙도 정해진 칸(`uid, kind, msg, stack, where, version, platform, at`)과 길이만 허용한다. 조용히 삼키던 오류를 보이게 하려면 catch에서 `reportError(종류, e, 설명)`을 부른다(예: `persistDayData` 서버 저장 실패). 제보가 오면 관리자 화면 오류 탭부터 본다.
 - **알림(toast)은 화면마다 따로 그린다.** `setToast`만 부르고 그 화면에 `<Toast>`가 없으면 알림이 대기하다 다른 화면에서 늦게 뜬다(메모 화면에서 실제 발생, 2026-09-25). 새 화면을 만들면 알림 표시도 넣는다.
 - **코드 수정 스크립트(python 등)에 `

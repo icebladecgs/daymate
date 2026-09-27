@@ -1,0 +1,11 @@
+{
+  "name": "daymate-rules-test",
+  "private": true,
+  "type": "module",
+  "description": "Firestore 보안 규칙 테스트·게시 도구 (앱 빌드와 분리 — Vercel이 설치하지 않음)",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "13.35.1"
+  }
+}

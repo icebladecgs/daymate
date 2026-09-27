@@ -29,3 +29,7 @@ dist-ssr
 # Desktop app
 desktop/node_modules/
 desktop/dist/
+
+# Firebase 에뮬레이터 로그
+firestore-debug.log
+firebase-debug.log

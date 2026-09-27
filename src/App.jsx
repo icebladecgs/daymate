@@ -117,6 +117,7 @@ class ScreenErrorBoundary extends Component {
   static getDerivedStateFromError(error) { return { error }; }
   componentDidUpdate(prevProps) { if (prevProps.screen !== this.props.screen) this.setState({ error: null }); }
   componentDidCatch(error) {
+    reportError("화면", error, `${this.props.screen} 화면 오류`); // 관리자 화면 → 오류 탭
     if (!CHUNK_LOAD_ERROR_RE.test(error?.message || '')) return;
     // 배포 직후 옛 청크 해시가 남아있는 경우 자동 새로고침 (10초 내 재시도 방지)
     const key = 'dm_chunk_reload_at';
