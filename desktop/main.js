@@ -7,7 +7,7 @@ if (process.type === undefined) {
   process.exit(0);
 }
 
-const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen, dialog } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen } = require('electron');
 
 if (process.env.DAYMATE_USER_DATA) app.setPath('userData', process.env.DAYMATE_USER_DATA);
 
@@ -160,14 +160,62 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
 
 const stickyOf = (event) => BrowserWindow.fromWebContents(event.sender);
 
-// 웹의 confirm/alert → 그 창에 붙은 확인창 (preload.js). 창을 부모로 주면 모니터 가운데가 아니라 앱 창 위에 뜬다
+// 웹의 confirm/alert → DayMate 창 한가운데에 직접 그린 작은 확인창 (preload.js가 가로채 보냄)
+// 윈도우 기본 확인창(dialog.showMessageBox)은 창을 부모로 줘도 모니터 가운데에 떠서, 위치를 직접 계산한 창을 쓴다(2026-09-27)
+const DIALOG_W = 380, DIALOG_H = 190;
+function dialogHtml(kind, message) {
+  // 메시지는 textContent로만 넣는다(메모 내용 등이 HTML로 해석되지 않게). '<'는 스크립트 밖으로 새지 않게 이스케이프
+  const msg = JSON.stringify(String(message)).replace(/</g, '\\u003c');
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>
+    :root { color-scheme: light dark; --bg:#ffffff; --fg:#111827; --sub:#6b7280; --line:#e5e7eb; --btn:#f3f4f6; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#1c2130; --fg:#e5e7eb; --sub:#9ca3af; --line:#2f3649; --btn:#2a3142; } }
+    html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:'Segoe UI','Malgun Gothic',sans-serif; user-select:none; }
+    body { display:flex; flex-direction:column; border:1px solid var(--line); box-sizing:border-box; }
+    .t { font-size:12px; color:var(--sub); padding:12px 16px 0; font-weight:600; -webkit-app-region:drag; }
+    .m { flex:1; padding:8px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; word-break:keep-all; overflow:auto; }
+    .b { display:flex; gap:8px; justify-content:flex-end; padding:0 16px 14px; }
+    button { min-width:80px; height:36px; border-radius:8px; border:1px solid var(--line); background:var(--btn); color:var(--fg); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+    button.ok { background:#6C8EFF; border-color:#6C8EFF; color:#fff; }
+    button:focus-visible { outline:2px solid #6C8EFF; outline-offset:2px; }
+  </style></head><body>
+    <div class="t">DayMate</div><div class="m" id="m"></div>
+    <div class="b">${kind === 'confirm' ? '<button id="no">취소</button>' : ''}<button class="ok" id="ok">확인</button></div>
+    <script>
+      document.getElementById('m').textContent = ${msg};
+      const go = (r) => { location.href = 'https://dm-dialog.invalid/' + r; };
+      document.getElementById('ok').onclick = () => go('ok');
+      const no = document.getElementById('no'); if (no) no.onclick = () => go('no');
+      document.getElementById('ok').focus();
+      addEventListener('keydown', (e) => { if (e.key === 'Enter') go('ok'); if (e.key === 'Escape') go('no'); });
+    </script></body></html>`;
+}
+
+function showWindowDialog(parent, kind, message) {
+  return new Promise((resolve) => {
+    const pb = parent.getBounds();
+    const wa = screen.getDisplayMatching(pb).workArea;
+    // DayMate 창 한가운데, 화면 밖으로 나가지 않게
+    const x = Math.round(Math.min(Math.max(pb.x + (pb.width - DIALOG_W) / 2, wa.x), wa.x + wa.width - DIALOG_W));
+    const y = Math.round(Math.min(Math.max(pb.y + (pb.height - DIALOG_H) / 2, wa.y), wa.y + wa.height - DIALOG_H));
+    const dlg = new BrowserWindow({
+      parent, modal: true, x, y, width: DIALOG_W, height: DIALOG_H, frame: false, resizable: false,
+      minimizable: false, maximizable: false, skipTaskbar: true, show: false, alwaysOnTop: parent.isAlwaysOnTop(),
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    });
+    let done = false;
+    const finish = (ok) => { if (done) return; done = true; resolve(ok); if (!dlg.isDestroyed()) dlg.close(); };
+    dlg.webContents.on('will-navigate', (e, url) => { e.preventDefault(); finish(url.endsWith('/ok')); });
+    dlg.on('closed', () => finish(false));
+    dlg.once('ready-to-show', () => { dlg.show(); dlg.focus(); });
+    dlg.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(dialogHtml(kind, message)));
+  });
+}
+
 ipcMain.on('dm-dialog', (event, { kind, message }) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  const opts = kind === 'confirm'
-    ? { type: 'question', buttons: ['확인', '취소'], defaultId: 0, cancelId: 1, title: 'DayMate', message, noLink: true }
-    : { type: 'info', buttons: ['확인'], defaultId: 0, title: 'DayMate', message, noLink: true };
-  const choice = win && !win.isDestroyed() ? dialog.showMessageBoxSync(win, opts) : dialog.showMessageBoxSync(opts);
-  event.returnValue = kind === 'confirm' ? choice === 0 : true;
+  if (!win || win.isDestroyed()) { event.returnValue = kind !== 'confirm'; return; }
+  // 웹 화면은 답(event.returnValue)이 올 때까지 기다린다 — confirm은 true/false
+  showWindowDialog(win, kind, message).then((ok) => { event.returnValue = kind === 'confirm' ? ok : true; });
 });
 
 ipcMain.on('sticky-new', () => createSticky());
