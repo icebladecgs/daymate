@@ -1119,8 +1119,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </div>
         )}
         <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
-          💡 연동하면 매일 자동으로 구글 드라이브에 백업돼요.<br/>
-          📝 메모/일기는 <b>Daymate 메모/YYYY-MM.md</b> 파일로 따로 저장돼서 나중에 찾아보기 편해요.<br/>
+          💡 연동하면 매일 자동으로 구글 드라이브 <b>DayMate</b> 폴더에 백업돼요.<br/>
+          📁 전체 백업은 <b>DayMate/백업</b>, 메모·일기는 <b>DayMate/메모/YYYY-MM.md</b>, 첨부 파일은 <b>DayMate/첨부파일</b>에 저장돼요.<br/>
           ⚠️ 1시간마다 재연동이 필요해요.
         </div>
       </div>

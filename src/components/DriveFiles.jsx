@@ -3,7 +3,7 @@ import { googleSignInWithDriveScope } from "../firebase.js";
 import { uploadFileToDrive, DRIVE_ATTACH_MAX_BYTES, DRIVE_ATTACH_FOLDER } from "../api/drive.js";
 import { store } from "../utils/storage.js";
 
-// 구글 드라이브 첨부 — 파일은 사용자 드라이브("DayMate 첨부파일" 폴더)에, 앱에는 {id,name,link,mimeType,size}만 저장.
+// 구글 드라이브 첨부 — 파일은 사용자 드라이브("DayMate/첨부파일" 폴더)에, 앱에는 {id,name,link,mimeType,size}만 저장.
 // 목록에서 빼도 드라이브 파일은 지우지 않음 (사용자 결정: 실수 방지).
 
 const validToken = () => {

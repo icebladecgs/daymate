@@ -4,7 +4,7 @@ import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { reportError } from "./utils/errorReport.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
-import { driveBackup, findOrCreateFolder, uploadMarkdownFile } from "./api/drive.js";
+import { driveBackup, getDriveFolders, uploadMarkdownFile } from "./api/drive.js";
 import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
 import { sendTelegramMessage } from "./api/telegram.js";
 import { scheduler } from "./api/scheduler.js";
@@ -1083,18 +1083,18 @@ export default function App() {
     }
   };
 
-  // 전체 백업(daymate-backup.json)과 이번 달 메모 정리본을 모두 "Daymate 메모" 폴더에 둔다
+  // 전체 백업(daymate-backup.json) → DayMate/백업, 이번 달 메모 정리본 → DayMate/메모
   const performDriveBackup = (token) => {
     if (driveBackupRunRef.current) return driveBackupRunRef.current;
     const run = (async () => {
       const data = {};
       try { Object.keys(localStorage).filter(k => k.startsWith('dm_')).forEach(k => { data[k] = store.get(k); }); } catch {}
-      const folderId = await findOrCreateFolder(token, 'Daymate 메모');
-      await driveBackup(token, data, folderId);
+      await driveBackup(token, data);
       const now = new Date().toISOString();
       store.set('dm_last_drive_backup', now);
       setLastDriveBackup(now);
       try {
+        const { memo: folderId } = await getDriveFolders(token);
         const monthKey = toDateStr().slice(0, 7);
         await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
       } catch (e) { console.error('[App] memo markdown backup failed:', e); }
@@ -1104,7 +1104,7 @@ export default function App() {
   };
 
   const performMemoHistoryBackup = async (token) => {
-    const folderId = await findOrCreateFolder(token, 'Daymate 메모');
+    const { memo: folderId } = await getDriveFolders(token);
     const monthKeys = listMonthKeys(plans);
     for (const monthKey of monthKeys) {
       await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
