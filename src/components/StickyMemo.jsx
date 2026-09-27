@@ -222,8 +222,9 @@ export default function StickyMemo() {
         {!folded && <button onClick={() => setShowColors(v => !v)} title="색 바꾸기" style={iconBtn}>🎨</button>}
         {!folded && <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>}
         {!folded && <button onClick={copyAll} title="전체 복사" style={iconBtn}>📋</button>}
-        {desktop()?.fold && <button onClick={toggleFold} title={folded ? "펼치기" : "접기 (제목줄 더블클릭도 가능)"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
         {!folded && <button onClick={remove} title="삭제" style={iconBtn}>🗑</button>}
+        {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
+        {desktop()?.fold && <button onClick={toggleFold} title={folded ? "펼치기" : "접기 (제목줄 더블클릭도 가능)"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
         <button onClick={close} title="닫기 (메모는 남아요)" style={iconBtn}>✕</button>
       </div>
       {showColors && !folded && (
