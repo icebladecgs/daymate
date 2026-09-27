@@ -7,6 +7,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: #e0e0f0; padding: 24px; user-select: none; }
   h2 { font-size: 16px; margin-bottom: 20px; color: #fff; }
+  h3 { font-size: 14px; margin-top: 28px; padding-top: 16px; border-top: 1px solid #333; color: #fff; }
   label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; margin-top: 16px; }
   input {
     width: 100%; padding: 10px 12px; border-radius: 8px;
@@ -57,6 +58,24 @@
 <label>최근 편집한 메모 열기</label>
 <div class="row"><input id="recentMemo" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="recentMemo" title="단축키 지우기">지우기</button></div>
 
+<h3>포스트잇 창 안에서</h3>
+<div class="hint">포스트잇 창을 누른 상태에서만 동작해요. Esc·F키는 한 개로도 쓸 수 있어요.</div>
+
+<label>접기 / 펼치기</label>
+<div class="row"><input id="stickyFold" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="stickyFold" title="단축키 지우기">지우기</button></div>
+
+<label>새 포스트잇</label>
+<div class="row"><input id="stickyNew" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="stickyNew" title="단축키 지우기">지우기</button></div>
+
+<label>닫기 (메모는 남아요)</label>
+<div class="row"><input id="stickyClose" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="stickyClose" title="단축키 지우기">지우기</button></div>
+
+<label>항상 위에 고정 켜기/끄기</label>
+<div class="row"><input id="stickyPin" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="stickyPin" title="단축키 지우기">지우기</button></div>
+
+<label>전체 복사</label>
+<div class="row"><input id="stickyCopy" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="stickyCopy" title="단축키 지우기">지우기</button></div>
+
 <div class="btns">
   <button class="cancel" onclick="window.close()">취소</button>
   <button class="save" onclick="save()">저장</button>
@@ -66,7 +85,14 @@
 <script>
   const { ipcRenderer } = require('electron');
 
-  ipcRenderer.invoke('get-shortcuts').then(({ memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }) => {
+  const GLOBAL_IDS = ['memo', 'calendar', 'search', 'quickMemo', 'memoSearch', 'toggleStickies', 'recentMemo'];
+  const STICKY_IDS = ['stickyFold', 'stickyNew', 'stickyClose', 'stickyPin', 'stickyCopy'];
+  // 메모 칸 편집 도우미(editorAssist.js)가 쓰는 키 — 포스트잇 키로 쓰면 그 기능이 막힌다
+  const EDITOR_KEYS = { 'Ctrl+D': '줄 복제', 'Ctrl+;': '날짜 넣기', 'Ctrl+Shift+;': '시각 넣기', 'Ctrl+Shift+:': '시각 넣기', 'Ctrl+/': '계산', 'F12': '계산', 'Ctrl+C': '복사', 'Ctrl+V': '붙여넣기', 'Ctrl+X': '잘라내기', 'Ctrl+Z': '되돌리기', 'Ctrl+A': '전체 선택' };
+
+  ipcRenderer.invoke('get-shortcuts').then((all) => {
+    const { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo } = all;
+    STICKY_IDS.forEach(id => { document.getElementById(id).value = all[id] ?? ''; });
     document.getElementById('memo').value = memo;
     document.getElementById('calendar').value = calendar;
     // 지운 단축키('')는 그대로 비워 두고, 설정한 적 없는 항목만 기본값
@@ -77,18 +103,26 @@
     document.getElementById('recentMemo').value = recentMemo ?? 'Ctrl+Alt+R';
   });
 
-  function toElectronKey(e) {
+  // 한글 입력 상태에서도 되게 글자·숫자는 자판 위치(code)로 읽는다 (main.js comboOf와 같은 표기)
+  function toElectronKey(e, allowSingle) {
     const parts = [];
     if (e.ctrlKey) parts.push('Ctrl');
     if (e.shiftKey) parts.push('Shift');
     if (e.altKey) parts.push('Alt');
     if (e.metaKey) parts.push('Meta');
     const ignore = ['Control', 'Shift', 'Alt', 'Meta'];
+    let key = null;
     if (!ignore.includes(e.key)) {
-      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      if (/^Key[A-Z]$/.test(e.code)) key = e.code.slice(3);
+      else if (/^Digit\d$/.test(e.code)) key = e.code.slice(5);
+      else if (e.key === 'Escape') key = 'Esc';
+      else key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
       parts.push(key);
     }
-    return parts.length > 1 ? parts.join('+') : null;
+    if (parts.length > 1) return parts.join('+');
+    // 포스트잇 창 안 키는 Esc·F키 한 개도 허용 (글자 한 개는 입력을 막으므로 안 됨)
+    if (allowSingle && key && (key === 'Esc' || /^F\d{1,2}$/.test(key))) return key;
+    return null;
   }
 
   document.querySelectorAll('input[type=text]').forEach(input => {
@@ -103,7 +137,7 @@
     input.addEventListener('keydown', e => {
       e.preventDefault();
       if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.shiftKey && !e.altKey) { input.value = ''; return; }
-      const combo = toElectronKey(e);
+      const combo = toElectronKey(e, STICKY_IDS.includes(input.id));
       if (combo) input.value = combo;
     });
   });
@@ -120,9 +154,12 @@
     const memoSearch = document.getElementById('memoSearch').value.trim();
     const toggleStickies = document.getElementById('toggleStickies').value.trim();
     const recentMemo = document.getElementById('recentMemo').value.trim();
-    const used = [memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo].filter(Boolean);
+    const sticky = Object.fromEntries(STICKY_IDS.map(id => [id, document.getElementById(id).value.trim()]));
+    const used = [memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, ...Object.values(sticky)].filter(Boolean);
     if (new Set(used).size < used.length) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
-    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }).then(ok => {
+    const clash = Object.values(sticky).find(k => EDITOR_KEYS[k]);
+    if (clash) { alert(`${clash}는 메모 칸의 '${EDITOR_KEYS[clash]}' 키라서 포스트잇 단축키로 쓸 수 없어요.`); return; }
+    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, ...sticky }).then(ok => {
       if (ok) {
         document.getElementById('msg').style.display = 'block';
         setTimeout(() => window.close(), 800);

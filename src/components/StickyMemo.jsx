@@ -183,6 +183,21 @@ export default function StickyMemo() {
     if (typeof next === "boolean") setPinned(next);
   };
 
+  // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
+  const actionsRef = useRef({});
+  actionsRef.current = { fold: toggleFold, close, pin: togglePin, copy: copyAll };
+  const [keys, setKeys] = useState({});
+  useEffect(() => {
+    const d = desktop();
+    if (!d?.onStickyKey) return;
+    const loadKeys = () => d.getStickyKeys?.().then(setKeys).catch(() => {});
+    loadKeys();
+    const offKey = d.onStickyKey(a => actionsRef.current[a]?.());
+    const offChanged = d.onStickyKeysChanged?.(loadKeys);
+    return () => { offKey(); offChanged?.(); };
+  }, []);
+  const withKey = (label, k) => (keys[k] ? `${label} (${keys[k]})` : label);
+
   const c = STICKY_COLORS[memo?.color] || STICKY_COLORS.yellow;
   const iconBtn = { width: 24, height: 24, padding: 0, border: "none", background: "transparent", cursor: "pointer", fontSize: 13, lineHeight: 1, borderRadius: 4, WebkitAppRegion: "no-drag", color: "#333", flexShrink: 0 };
   const photos = memo?.photos || [];
@@ -217,15 +232,15 @@ export default function StickyMemo() {
         <span style={{ flex: 1, minWidth: 0, fontSize: folded ? 12 : 11, fontWeight: folded ? 700 : 400, color: folded ? "#000" : c.sub, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
           {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}`}
         </span>
-        {!folded && desktop() && <button onClick={() => desktop().newSticky()} title="새 메모" style={iconBtn}>＋</button>}
-        {!folded && desktop() && <button onClick={togglePin} title={pinned ? "항상 위 해제" : "항상 위에 고정"} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
+        {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} style={iconBtn}>＋</button>}
+        {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
         {!folded && <button onClick={() => setShowColors(v => !v)} title="색 바꾸기" style={iconBtn}>🎨</button>}
         {!folded && <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>}
-        {!folded && <button onClick={copyAll} title="전체 복사" style={iconBtn}>📋</button>}
+        {!folded && <button onClick={copyAll} title={withKey("전체 복사", "copy")} style={iconBtn}>📋</button>}
         {!folded && <button onClick={remove} title="삭제" style={iconBtn}>🗑</button>}
         {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
-        {desktop()?.fold && <button onClick={toggleFold} title={folded ? "펼치기" : "접기 (제목줄 더블클릭도 가능)"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
-        <button onClick={close} title="닫기 (메모는 남아요)" style={iconBtn}>✕</button>
+        {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
+        <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} style={iconBtn}>✕</button>
       </div>
       {showColors && !folded && (
         <div style={{ display: "flex", gap: 6, padding: "6px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap" }}>

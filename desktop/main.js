@@ -7,7 +7,7 @@ if (process.type === undefined) {
   process.exit(0);
 }
 
-const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen } = require('electron');
 
 if (process.env.DAYMATE_USER_DATA) app.setPath('userData', process.env.DAYMATE_USER_DATA);
 
@@ -30,9 +30,12 @@ const DAYMATE_URL = process.env.DAYMATE_URL || 'https://daymate-beta.vercel.app'
 const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
 // 5가지 기능(새 메모·간편 메모·메모 관리자·달력 보기·메모 검색). 메모 검색은 VS Code의 Ctrl+Shift+F와 겹치지 않게 Ctrl+Alt+F
 const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F', toggleStickies: 'Ctrl+Alt+H', recentMemo: 'Ctrl+Alt+R' };
+// 포스트잇 창 안에서만 쓰는 키(전역 등록 안 함) — 같은 설정 파일·설정 창에서 바꾸거나 지움
+const STICKY_KEY_DEFAULTS = { stickyFold: 'Esc', stickyNew: 'Ctrl+N', stickyClose: 'Ctrl+W', stickyPin: 'Ctrl+T', stickyCopy: 'Ctrl+Alt+C' };
+const STICKY_KEY_ACTIONS = { stickyFold: 'fold', stickyNew: 'new', stickyClose: 'close', stickyPin: 'pin', stickyCopy: 'copy' };
 
 function loadShortcuts() {
-  try { return Object.assign({}, DEFAULT_SHORTCUTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); } catch { return DEFAULT_SHORTCUTS; }
+  try { return Object.assign({}, DEFAULT_SHORTCUTS, STICKY_KEY_DEFAULTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); } catch { return { ...DEFAULT_SHORTCUTS, ...STICKY_KEY_DEFAULTS }; }
 }
 
 function saveShortcuts(sc) {
@@ -71,15 +74,66 @@ function saveStickyList() {
 }
 
 const FOLD_HEIGHT = 30; // 접힌 포스트잇 = 제목줄 높이
+const STICKY_W = 280, STICKY_H = 240;
+let lastFocusedSticky = null;
+
+// 새 포스트잇 자리 — 지금 쓰던(마지막으로 누른) 포스트잇에서 대각선 아래로 살짝 겹치게.
+// 아래로 내리는 폭은 제목줄 높이만큼이라 뒤 메모의 제목줄이 보인다. 화면 밖으로 나가면 화면 왼쪽 위부터 다시.
+function cascadeBounds() {
+  const alive = [...stickyWindows.keys()].filter(w => !w.isDestroyed() && w.isVisible() && !w.isMinimized());
+  const ref = (lastFocusedSticky && alive.includes(lastFocusedSticky)) ? lastFocusedSticky : alive[alive.length - 1];
+  if (!ref) return {};
+  const r = ref.getBounds();
+  const wa = screen.getDisplayMatching(r).workArea;
+  const taken = new Set(alive.map(w => { const b = w.getBounds(); return `${b.x},${b.y}`; }));
+  let x = r.x + 20, y = r.y + FOLD_HEIGHT;
+  for (let i = 0; i < 30; i++) {
+    if (x + STICKY_W > wa.x + wa.width || y + STICKY_H > wa.y + wa.height) { x = wa.x + 40 + i * 20; y = wa.y + 40; }
+    if (!taken.has(`${x},${y}`)) break;
+    x += 20; y += FOLD_HEIGHT;
+  }
+  return { x, y };
+}
+
+// 포스트잇 창 안의 키 → 설정한 동작. 설정 창과 같은 표기('Ctrl+Shift+N', 'Esc')로 만들어 비교한다.
+// 한글 입력 상태에서도 되게 글자·숫자는 key 대신 자판 위치(code)로 읽는다.
+function comboOf(input) {
+  const ignore = ['Control', 'Shift', 'Alt', 'Meta'];
+  if (ignore.includes(input.key)) return null;
+  let key = input.key;
+  if (/^Key[A-Z]$/.test(input.code)) key = input.code.slice(3);
+  else if (/^Digit\d$/.test(input.code)) key = input.code.slice(5);
+  else if (key === 'Escape') key = 'Esc';
+  else if (key.length === 1) key = key.toUpperCase();
+  const parts = [];
+  if (input.control) parts.push('Ctrl');
+  if (input.shift) parts.push('Shift');
+  if (input.alt) parts.push('Alt');
+  if (input.meta) parts.push('Meta');
+  parts.push(key);
+  return parts.join('+');
+}
+
+function onStickyKey(win, event, input) {
+  if (input.type !== 'keyDown' || input.isAutoRepeat) return;
+  const combo = comboOf(input);
+  if (!combo) return;
+  const name = Object.keys(STICKY_KEY_ACTIONS).find(k => shortcuts[k] && shortcuts[k] === combo);
+  if (!name) return;
+  event.preventDefault();
+  const action = STICKY_KEY_ACTIONS[name];
+  if (action === 'new') { createSticky(); return; }
+  win.webContents.send('sticky-key', action); // 접기·닫기·고정·복사는 화면 쪽 버튼과 같은 동작으로
+}
 
 function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHeight } = {}) {
   // 이미 떠 있는 메모면 그 창을 앞으로
   for (const [w, info] of stickyWindows) {
     if (!w.isDestroyed() && id && info.id === id && info.ds === ds) { w.show(); w.focus(); return w; }
   }
-  const b = bounds || {};
+  const b = bounds || cascadeBounds();
   const win = new BrowserWindow({
-    width: b.width || 280, height: folded ? FOLD_HEIGHT : (b.height || 240),
+    width: b.width || STICKY_W, height: folded ? FOLD_HEIGHT : (b.height || STICKY_H),
     ...(b.x !== undefined ? { x: b.x, y: b.y } : {}),
     minWidth: 180, minHeight: folded ? FOLD_HEIGHT : 120,
     frame: false, resizable: true, skipTaskbar: true,
@@ -92,10 +146,13 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
   win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}`);
   let t = null;
   const saveLater = () => { clearTimeout(t); t = setTimeout(saveStickyList, 500); };
+  win.on('focus', () => { lastFocusedSticky = win; });
+  win.webContents.on('before-input-event', (event, input) => onStickyKey(win, event, input));
   win.on('move', saveLater);
   win.on('resize', saveLater);
   win.on('closed', () => {
     stickyWindows.delete(win);
+    if (lastFocusedSticky === win) lastFocusedSticky = null;
     if (!isQuitting) saveStickyList(); // 앱 종료 때는 목록을 남겨 다음 실행에 다시 띄움
   });
   return win;
@@ -263,7 +320,7 @@ function openSettings() {
   }
   globalShortcut.unregisterAll(); // 설정 중 단축키 발동 방지
   settingsWindow = new BrowserWindow({
-    width: 400, height: 800,
+    width: 400, height: 900,
     resizable: false, frame: true,
     alwaysOnTop: true,
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -284,7 +341,8 @@ function createTray() {
 
 // IPC: 설정 창 ↔ main
 ipcMain.handle('get-shortcuts', () => shortcuts);
-ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo }) => {
+ipcMain.handle('set-shortcuts', (_, all) => {
+  const { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo } = all;
   globalShortcut.unregisterAll();
   // 비운 칸('')은 단축키 없음 — 등록하지 않고 성공으로 친다
   const reg = (key, fn) => !key || globalShortcut.register(key, fn);
@@ -298,7 +356,9 @@ ipcMain.handle('set-shortcuts', (_, { memo, calendar, search, quickMemo, memoSea
     reg(recentMemo, () => openRecentMemo()),
   ].every(Boolean);
   if (ok) {
-    shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo };
+    const stickyKeys = Object.fromEntries(Object.keys(STICKY_KEY_DEFAULTS).map(k => [k, all[k] ?? shortcuts[k] ?? '']));
+    shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, ...stickyKeys };
+    for (const w of stickyWindows.keys()) if (!w.isDestroyed()) w.webContents.send('sticky-keys-changed');
     saveShortcuts(shortcuts);
     updateTray();
     return true;
