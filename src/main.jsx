@@ -4,6 +4,10 @@ import './index.css'
 import App from './App.jsx'
 import StickyMemo from './components/StickyMemo.jsx'
 import AppLockGate from './components/AppLockGate.jsx'
+import { installErrorReporting } from './utils/errorReport.js'
+
+// 앱 오류 자동 수집(관리자 화면 → 오류 탭에서 확인)
+installErrorReporting()
 
 // 데스크탑 앱의 바탕화면 포스트잇 창은 앱 전체 대신 가벼운 메모 화면만 띄운다
 // (StrictMode 이중 실행 시 새 메모가 두 번 만들어지지 않도록 포스트잇은 StrictMode 밖에서)

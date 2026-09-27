@@ -2,6 +2,7 @@ import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto } from "./firebase.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
+import { reportError } from "./utils/errorReport.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
 import { driveBackup, findOrCreateFolder, uploadMarkdownFile } from "./api/drive.js";
 import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
@@ -156,7 +157,7 @@ export default function App() {
     return "today";
   });
   const screenRef = useRef(null);
-  useEffect(() => { screenRef.current = screen; }, [screen]);
+  useEffect(() => { screenRef.current = screen; window.__dmScreen = screen; }, [screen]); // __dmScreen: 오류 기록에 어느 화면이었는지 남김
 
   // 안드로이드 뒤로가기 처리
   useEffect(() => {
@@ -1230,7 +1231,7 @@ export default function App() {
       daySaveSeqRef.current[dateStr] = seq;
       fsaveDay(uidOverride, dateStr, normalizedDay)
         .then(() => { if (daySaveSeqRef.current[dateStr] === seq) markDayUnsynced(dateStr, false); })
-        .catch(() => {});
+        .catch((e) => reportError("저장", e, "날짜 기록 서버 저장 실패"));
     }
     return normalizedDay;
   };

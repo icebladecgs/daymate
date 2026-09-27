@@ -3,6 +3,7 @@ import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestio
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
+import AdminErrorLogs from "../components/AdminErrorLogs.jsx";
 
 function maskEmail(email) {
   if (!email) return '익명';
@@ -244,16 +245,17 @@ export default function Admin({ authUser, onBack }) {
         {(() => {
           const pendingCount = suggestions.filter(s => s.status === 'pending').length;
           return (
-            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
               {[
                 { key: 'users', label: `유저 (${totalUsers})` },
                 { key: 'rankings', label: `랭킹 (${rankings.length})` },
                 { key: 'suggestions', label: '제안', badge: pendingCount },
                 { key: 'communities', label: `커뮤니티 (${communities.length})` },
                 { key: 'challenges', label: `챌린지 (${challenges.length})` },
+                { key: 'errors', label: '🐞 오류' },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-                  flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  flex: '1 1 30%', padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
                   border: 'none',
                   background: activeTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
                   color: activeTab === t.key ? '#fff' : 'var(--dm-sub)',
@@ -268,6 +270,9 @@ export default function Admin({ authUser, onBack }) {
             </div>
           );
         })()}
+
+        {/* 오류 탭 — 앱 오류 자동 수집 결과 */}
+        {activeTab === 'errors' && <AdminErrorLogs />}
 
         {/* 랭킹 탭 */}
         {activeTab === 'rankings' && (

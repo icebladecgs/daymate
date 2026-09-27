@@ -149,6 +149,27 @@ vercel deploy --prod --yes --token "$TOKEN"
 
 배포 명령이 성공했더라도 실제 서비스 확인이 끝나기 전까지 배포 완료로 판단하지 않는다.
 
+### 3.7 배포 태그
+
+실제 반영 확인까지 끝나면 다음 명령으로 배포한 커밋에 `deploy-v버전` 태그를 붙이고 GitHub에 올린다 (맥·윈도우 어디서 배포하든 동일).
+
+```bash
+npm run tag:deploy
+```
+
+커밋 안 된 변경이 있거나 같은 버전 태그가 다른 커밋에 있으면 스크립트가 멈춘다 — 버전 갱신 없이 배포한 것이므로 원인을 확인한다.
+
+### 3.8 원복(롤백)
+
+사용자가 "v635로 되돌려줘"처럼 요청하면:
+
+1. `git tag -l "deploy-*"`로 대상 태그를 확인하고, 그 뒤에 바뀐 내용(`git log deploy-v635..HEAD --oneline`)을 사용자에게 요약한다. 되돌리면 사라지는 기능, Firestore 데이터·보안 규칙은 되돌아가지 않는다는 점, 데스크탑 앱은 별도라는 점을 함께 알린다.
+2. 사용자 승인 후, 작업 폴더를 건드리지 않도록 `git worktree add ../daymate-rollback deploy-v635`로 그 코드를 따로 꺼내 `npm ci && npm run build` 확인 뒤 그 폴더에서 `vercel deploy --prod --yes --token "$TOKEN"`로 배포한다 (`.vercel` 폴더 복사 필요). 버전 파일은 새로 만들지 않는다 — 운영 버전이 v635로 보이는 게 맞다.
+3. 3.6과 같이 curl로 실제 반영(버전·sw.js 커밋 해시)을 확인하고, 끝나면 worktree를 지운다.
+4. main 브랜치는 그대로 두고, 문제를 고친 새 버전을 다시 배포하면 원복이 끝난다.
+
+급할 때 사용자가 직접: Vercel 대시보드 → daymate → Deployments → 되돌릴 배포의 ⋯ → Promote(또는 Instant Rollback). Hobby 요금제는 바로 이전 배포로만 즉시 되돌릴 수 있을 수 있다.
+
 ---
 
 ## 4. Vercel cron 주의사항
@@ -470,6 +491,7 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **Firestore는 `undefined` 값이 있으면 저장 전체를 거부한다.** `firebase.js`에서 `initializeFirestore(app, { ignoreUndefinedProperties: true })`로 그 칸만 빼고 저장하게 했다 (2026-09-26, "시간 지우기" 등 뒤 그날 기록이 다른 기기로 동기화되지 않던 문제). 이 설정을 지우지 않는다. `persistDayData`가 서버 저장 오류를 조용히 무시하므로, 저장 실패는 화면에 드러나지 않는다는 점도 기억한다.
 - **성장 능력치 지급은 `applyTaskXpGrants`(할일)를 거쳐야 한다.** 할일 완료를 저장하는 새 경로를 만들면 `setDayData`·`onSetTodayTasks`·`setDetailData` 중 하나를 쓴다 — `setTodayData`로 바로 저장하면 체크해도 능력치가 오르지 않는다(홈 화면에서 실제 발생, 2026-09-26). 지급(`grantStatXp`)은 setState 업데이터 밖에서 부른다(안에서 부르면 두 번 지급될 수 있다). 습관은 `statTag`로 능력치를 직접 고를 수 있고, 목표는 사용자가 고르지 않고 자동 분류를 쓴다(사용자 결정). 오르는 수치는 코드에 고정하고 사용자·운영자가 바꾸지 않는다. 분류 단어는 운영자 설정 대신 **사용자별 "내 단어"**(계정 설정 `statWords` 배열)로 한다 — 분류 안 된 할일을 완료하면 화면 위쪽 띠(`StatAskBar`)로 한 번 묻고, 같은 제목은 다시 묻지 않는다. 설정 → 앱 관리 → 성장 능력치에서 끄기·단어 삭제 (2026-09-26).
 - **커뮤니티 단체 채팅 (2026-09-27).** `CommunityChat.jsx`(포털 시트). 채팅방을 **연 동안만** `onSnapshot`(최근 50개), 이전 대화는 `loadOlderChat`로 50개씩. 안 읽은 수는 기기별 마지막 읽은 시각(`utils/chatRead.js`, localStorage)과 `countChatSince`(개수 세기 쿼리)로 목록·상세를 볼 때만 센다. 사진은 게시판과 같은 Storage 경로 `community_photos/{id}/chat_*.jpg`, 메시지 삭제 때 사진도 지운다. 새 메시지 휴대폰 알림은 아직 없다(2단계). 채팅 화면 테스트는 에뮬레이터(firestore·auth·storage)에 붙인 임시 하네스 페이지로 두 사용자를 띄워서 했다.
+- **앱 오류 자동 수집 (2026-09-27).** `utils/errorReport.js`(main.jsx에서 `installErrorReporting`)가 잡히지 않은 오류·Promise 오류·`console.error`를 Firestore `errorLogs`에 남기고, 관리자 화면 → 🐞 오류 탭(`AdminErrorLogs.jsx`)에서 같은 오류끼리 묶어 본다(30일 지난 기록은 관리자 화면을 열 때 정리). 로그인 사용자만, 같은 오류는 한 번, 한 번 켤 때 최대 20건. **사용자 내용(메모·일기 등)은 넣지 않는다** — 보안 규칙도 정해진 칸(`uid, kind, msg, stack, where, version, platform, at`)과 길이만 허용한다. 조용히 삼키던 오류를 보이게 하려면 catch에서 `reportError(종류, e, 설명)`을 부른다(예: `persistDayData` 서버 저장 실패). 제보가 오면 관리자 화면 오류 탭부터 본다.
 - **알림(toast)은 화면마다 따로 그린다.** `setToast`만 부르고 그 화면에 `<Toast>`가 없으면 알림이 대기하다 다른 화면에서 늦게 뜬다(메모 화면에서 실제 발생, 2026-09-25). 새 화면을 만들면 알림 표시도 넣는다.
 - **코드 수정 스크립트(python 등)에 `
 `이 든 JS 문자열을 넣을 때 조심한다.** 줄바꿈으로 바뀌어 "Unterminated string" 오류가 반복됐다. 짧은 수정은 Edit 도구로, 긴 수정은 스크래치패드에 스크립트 파일을 써서 실행한다.

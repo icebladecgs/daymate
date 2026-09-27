@@ -417,6 +417,25 @@ export async function deleteCommunityFull(communityId) {
   await deleteDoc(doc(db, 'communities', communityId));
 }
 
+// ---------- 오류 기록 (관리자 화면 → 오류 탭) ----------
+// errorLogs/{id} = { uid, kind, msg, stack, where, version, platform, at(ISO) } — 쓰기는 utils/errorReport.js
+export async function loadErrorLogs(max = 300) {
+  const snap = await getDocs(query(collection(db, 'errorLogs'), orderBy('at', 'desc'), limit(max)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteErrorLogs(ids) {
+  await Promise.all(ids.map(id => deleteDoc(doc(db, 'errorLogs', id))));
+}
+
+// 30일 지난 기록 정리 (관리자 화면을 열 때)
+export async function purgeOldErrorLogs(days = 30) {
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const snap = await getDocs(query(collection(db, 'errorLogs'), where('at', '<', cutoff), limit(300)));
+  await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  return snap.size;
+}
+
 // ---------- 커뮤니티 단체 채팅 ----------
 // communities/{id}/chat/{msgId} = { uid, nickname, text, photos: [{url, path}], createdAt(ISO) }
 // 읽기·쓰기는 멤버만, 삭제는 보낸 사람·커뮤니티 관리자·앱 관리자 (보안 규칙). 수정은 없다.

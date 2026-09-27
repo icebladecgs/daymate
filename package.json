@@ -1,10 +1,11 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.641.0",
+  "version": "0.642.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
+    "tag:deploy": "node scripts/tag-deploy.mjs",
     "predev": "npm run generate:version",
     "prebuild": "npm run generate:version",
     "dev": "vite",
