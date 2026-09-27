@@ -28,6 +28,7 @@ import {
   orderBy,
   addDoc,
   onSnapshot,
+  limit,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -402,7 +403,7 @@ export async function leaveCommunity(communityId, uid) {
 }
 
 export async function deleteCommunityFull(communityId) {
-  const subcollections = ['members', 'events', 'checkins', 'notices', 'board'];
+  const subcollections = ['members', 'events', 'checkins', 'notices', 'board', 'chat'];
   for (const sub of subcollections) {
     const snap = await getDocs(collection(db, 'communities', communityId, sub));
     for (const d of snap.docs) {
@@ -414,6 +415,38 @@ export async function deleteCommunityFull(communityId) {
     }
   }
   await deleteDoc(doc(db, 'communities', communityId));
+}
+
+// ---------- 커뮤니티 단체 채팅 ----------
+// communities/{id}/chat/{msgId} = { uid, nickname, text, photos: [{url, path}], createdAt(ISO) }
+// 읽기·쓰기는 멤버만, 삭제는 보낸 사람·커뮤니티 관리자·앱 관리자 (보안 규칙). 수정은 없다.
+export const chatQuery = (communityId, n = 50) =>
+  query(collection(db, 'communities', communityId, 'chat'), orderBy('createdAt', 'desc'), limit(n));
+
+export async function addChatMessage(communityId, msg) {
+  const createdAt = new Date().toISOString();
+  const ref = await addDoc(collection(db, 'communities', communityId, 'chat'), { ...msg, createdAt });
+  updateDoc(doc(db, 'communities', communityId), { lastActivityAt: createdAt }).catch(() => {});
+  return { id: ref.id, createdAt };
+}
+
+export async function deleteChatMessage(communityId, msgId) {
+  await deleteDoc(doc(db, 'communities', communityId, 'chat', msgId));
+}
+
+// 화면 위쪽 "이전 대화 더 보기" — before(ISO)보다 앞선 메시지 n개 (최신순)
+export async function loadOlderChat(communityId, before, n = 50) {
+  const q = query(collection(db, 'communities', communityId, 'chat'), where('createdAt', '<', before), orderBy('createdAt', 'desc'), limit(n));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// 안 읽은 메시지 수 — since(ISO) 뒤에 온 메시지 (개수만 세서 읽기 비용이 적다)
+export async function countChatSince(communityId, since) {
+  const base = collection(db, 'communities', communityId, 'chat');
+  const q = since ? query(base, where('createdAt', '>', since)) : base;
+  const snap = await getCountFromServer(q);
+  return snap.data().count;
 }
 
 // ---------- 커뮤니티 자유게시판 ----------

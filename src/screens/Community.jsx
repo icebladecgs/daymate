@@ -4,13 +4,15 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 import Linkify from "../utils/linkify.jsx";
 import FreeBoard from "./FreeBoard.jsx";
+import CommunityChat from "../components/CommunityChat.jsx";
+import { getChatRead } from "../utils/chatRead.js";
 import S from "../styles.js";
 
 function vibrateIfAvailable(pattern) {
@@ -19,7 +21,7 @@ function vibrateIfAvailable(pattern) {
   } catch {}
 }
 
-function SortableCommunityCard({ communityId, meta, communityName, editingCommunityOrder, onOpen, isOverlay = false }) {
+function SortableCommunityCard({ communityId, meta, communityName, editingCommunityOrder, onOpen, isOverlay = false, unread = 0 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: communityId });
   const dragging = isDragging || isOverlay;
   const label = meta?.name || communityName || '커뮤니티';
@@ -48,7 +50,10 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
     >
       <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }} title={meta ? (meta.isPublic ? '공개 커뮤니티' : '비공개 커뮤니티') : undefined}>{!meta ? '👥' : meta.isPublic ? '🌐' : '🔒'}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityName || '...'}</div>
+        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta?.name || communityName || '...'}</span>
+          {unread > 0 && <span title="안 읽은 채팅" style={{ flexShrink: 0, background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 7px', fontSize: 11, fontWeight: 900 }}>💬 {unread > 99 ? '99+' : unread}</span>}
+        </div>
         <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
         {meta?.lastActivityAt && (
           <div style={{ fontSize: 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
@@ -269,6 +274,20 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       }).catch(() => {});
     });
   }, [communityIds]); // eslint-disable-line
+  // 단체 채팅 — 창을 연 동안만 실시간. 안 읽은 수는 목록·상세를 볼 때 개수만 센다
+  const [showChat, setShowChat] = useState(false);
+  const [unreadChat, setUnreadChat] = useState({}); // id -> 개수
+  const refreshUnread = (ids) => {
+    if (!authUser) return;
+    (ids || []).forEach(id => {
+      countChatSince(id, getChatRead(id)).then(n => setUnreadChat(prev => ({ ...prev, [id]: n }))).catch(() => {});
+    });
+  };
+  // 목록을 볼 때는 내 커뮤니티 전부, 상세를 볼 때는 그 커뮤니티만 센다
+  useEffect(() => {
+    if (showHome) refreshUnread(communityIds);
+    else if (communityId && !showChat) refreshUnread([communityId]);
+  }, [showHome, communityId, communityIds, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
   // 내 커뮤니티 중 지금 칸(전체·공개·비공개)에 보일 것 — 정보를 아직 못 불러온 곳은 '전체'에만
   const shownMyIds = myFilter === 'all' ? communityIds
     : communityIds.filter(id => communityMeta[id] && !!communityMeta[id].isPublic === (myFilter === 'public'));
@@ -944,6 +963,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                           meta={meta}
                           communityName={communityNames[id]}
                           editingCommunityOrder={editingCommunityOrder}
+                          unread={unreadChat[id] || 0}
                           onOpen={() => { requestCommunityAccess(id); }}
                         />
                       );
@@ -1296,6 +1316,18 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
           }}>+ 다른 커뮤니티 추가</button>
         </div>
+      )}
+
+      {/* 단체 채팅 */}
+      <div style={{ padding: '8px 16px 2px' }}>
+        <button onClick={() => setShowChat(true)} style={{ ...S.btnGhost, marginTop: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 14, fontWeight: 900 }}>
+          💬 단체 채팅
+          {(unreadChat[communityId] || 0) > 0 && <span style={{ background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 8px', fontSize: 12 }}>{unreadChat[communityId] > 99 ? '99+' : unreadChat[communityId]}</span>}
+        </button>
+      </div>
+      {showChat && (
+        <CommunityChat communityId={communityId} communityName={community?.name} authUser={authUser} myNickname={myNickname} isAdmin={isAdmin}
+          onClose={() => { setShowChat(false); setUnreadChat(prev => ({ ...prev, [communityId]: 0 })); }} />
       )}
 
       {/* 내 닉네임 */}

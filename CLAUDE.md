@@ -197,6 +197,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 - 커뮤니티 자체 삭제는 앱 관리자만 가능하다(관리자 화면). 사용자가 이 상태를 유지하기로 했다.
 - 새 기능이 남의 문서를 수정해야 하면(예: 조회수, 반응) 규칙의 허용 필드 목록(`onlyChanges([...])`)에 추가해야 한다. 안 하면 조용히 permission-denied가 난다.
 - 챌린지(`challenges`)에는 이 원칙이 아직 적용되지 않았다.
+- **단체 채팅(`communities/{id}/chat`, 2026-09-27)**은 게시판보다 좁다: **읽기·보내기 모두 멤버만**(`isMember` — `members/{내 uid}` 문서 존재), 본인 명의로만, **수정 없음**, 삭제는 보낸 사람·커뮤니티 관리자·앱 관리자.
 
 ### 보안 규칙 변경 시 검증 방법
 
@@ -468,6 +469,7 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **서버 API 인증.** `api/chat.js`는 Firebase ID 토큰 확인(클라이언트는 `src/api/chatFetch.js` 사용), `api/widget.js`는 `WIDGET_ACCESS_TOKEN` 미설정 시 거절. 새 서버 API를 만들면 로그인 확인 없이 개인 데이터나 유료 API를 열지 않는다.
 - **Firestore는 `undefined` 값이 있으면 저장 전체를 거부한다.** `firebase.js`에서 `initializeFirestore(app, { ignoreUndefinedProperties: true })`로 그 칸만 빼고 저장하게 했다 (2026-09-26, "시간 지우기" 등 뒤 그날 기록이 다른 기기로 동기화되지 않던 문제). 이 설정을 지우지 않는다. `persistDayData`가 서버 저장 오류를 조용히 무시하므로, 저장 실패는 화면에 드러나지 않는다는 점도 기억한다.
 - **성장 능력치 지급은 `applyTaskXpGrants`(할일)를 거쳐야 한다.** 할일 완료를 저장하는 새 경로를 만들면 `setDayData`·`onSetTodayTasks`·`setDetailData` 중 하나를 쓴다 — `setTodayData`로 바로 저장하면 체크해도 능력치가 오르지 않는다(홈 화면에서 실제 발생, 2026-09-26). 지급(`grantStatXp`)은 setState 업데이터 밖에서 부른다(안에서 부르면 두 번 지급될 수 있다). 습관은 `statTag`로 능력치를 직접 고를 수 있고, 목표는 사용자가 고르지 않고 자동 분류를 쓴다(사용자 결정). 오르는 수치는 코드에 고정하고 사용자·운영자가 바꾸지 않는다. 분류 단어는 운영자 설정 대신 **사용자별 "내 단어"**(계정 설정 `statWords` 배열)로 한다 — 분류 안 된 할일을 완료하면 화면 위쪽 띠(`StatAskBar`)로 한 번 묻고, 같은 제목은 다시 묻지 않는다. 설정 → 앱 관리 → 성장 능력치에서 끄기·단어 삭제 (2026-09-26).
+- **커뮤니티 단체 채팅 (2026-09-27).** `CommunityChat.jsx`(포털 시트). 채팅방을 **연 동안만** `onSnapshot`(최근 50개), 이전 대화는 `loadOlderChat`로 50개씩. 안 읽은 수는 기기별 마지막 읽은 시각(`utils/chatRead.js`, localStorage)과 `countChatSince`(개수 세기 쿼리)로 목록·상세를 볼 때만 센다. 사진은 게시판과 같은 Storage 경로 `community_photos/{id}/chat_*.jpg`, 메시지 삭제 때 사진도 지운다. 새 메시지 휴대폰 알림은 아직 없다(2단계). 채팅 화면 테스트는 에뮬레이터(firestore·auth·storage)에 붙인 임시 하네스 페이지로 두 사용자를 띄워서 했다.
 - **알림(toast)은 화면마다 따로 그린다.** `setToast`만 부르고 그 화면에 `<Toast>`가 없으면 알림이 대기하다 다른 화면에서 늦게 뜬다(메모 화면에서 실제 발생, 2026-09-25). 새 화면을 만들면 알림 표시도 넣는다.
 - **코드 수정 스크립트(python 등)에 `
 `이 든 JS 문자열을 넣을 때 조심한다.** 줄바꿈으로 바뀌어 "Unterminated string" 오류가 반복됐다. 짧은 수정은 Edit 도구로, 긴 수정은 스크래치패드에 스크립트 파일을 써서 실행한다.
