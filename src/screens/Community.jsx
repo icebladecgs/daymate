@@ -166,7 +166,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null, onGoogleSignIn }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge | freeboard
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -345,6 +345,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     }
     return completeCommunityAccess(id, options);
   };
+
+  // 채팅 알림을 눌러 들어오면 그 커뮤니티의 채팅방을 바로 연다 (내 커뮤니티 목록을 불러온 뒤)
+  useEffect(() => {
+    if (!openChatId || !authUser || !communityIds.includes(openChatId)) return;
+    onOpenChatHandled?.();
+    setMainTab('community');
+    requestCommunityAccess(openChatId, { openDetail: true }).then(ok => { if (ok) setShowChat(true); });
+  }, [openChatId, authUser, communityIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeAccessPasswordModal = () => {
     setAccessPasswordModal(null);

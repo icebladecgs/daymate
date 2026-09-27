@@ -3,6 +3,8 @@ import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay a
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { reportError } from "./utils/errorReport.js";
+import { ensurePushSubscription } from "./utils/pushSubscription.js";
+import { playChatSound } from "./utils/chatNotify.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
 import { driveBackup, getDriveFolders, uploadMarkdownFile } from "./api/drive.js";
 import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
@@ -361,23 +363,36 @@ export default function App() {
   const [gcalToken, setGcalToken] = useState(() => store.get('dm_gcal_token', null));
   const [gcalTokenExp, setGcalTokenExp] = useState(() => store.get('dm_gcal_token_exp', 0));
 
-  // FCM Web Push
-  const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  // FCM Web Push — 알림 권한이 있으면 이 기기를 알림 받을 기기로 등록
   useEffect(() => {
-    if (!VAPID_PUBLIC || !authUser) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    navigator.serviceWorker.ready.then(async reg => {
-      try {
-        const existing = await reg.pushManager.getSubscription();
-        const sub = existing || await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: VAPID_PUBLIC,
-        });
-        await saveSettings(authUser.uid, { pushSubscription: JSON.parse(JSON.stringify(sub)) });
-      } catch {}
-    });
-  }, [authUser, VAPID_PUBLIC]);
+    if (!authUser) return;
+    ensurePushSubscription(authUser.uid).catch(() => {});
+  }, [authUser]);
+
+  // 커뮤니티 채팅 알림: 알림을 눌렀거나(?community=…&chat=1, 서비스워커 dm-open-chat) → 그 채팅방 열기
+  // 앱을 보고 있을 때 온 채팅 알림(dm-chat-push)은 알림 대신 고른 소리만 (그 방을 보고 있으면 소리도 안 냄)
+  const [pendingChatId, setPendingChatId] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      return q.get('chat') === '1' ? q.get('community') : null;
+    } catch { return null; }
+  });
+  useEffect(() => {
+    if (pendingChatId) {
+      setScreen('community');
+      try { const u = new URL(window.location.href); u.searchParams.delete('community'); u.searchParams.delete('chat'); history.replaceState(history.state, '', u.toString()); } catch {}
+    }
+  }, [pendingChatId]);
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onMsg = (e) => {
+      const d = e.data || {};
+      if (d.type === 'dm-chat-push' && window.__dmOpenChat !== d.cid) playChatSound();
+      if (d.type === 'dm-open-chat' && d.cid) setPendingChatId(d.cid);
+    };
+    navigator.serviceWorker.addEventListener('message', onMsg);
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg);
+  }, []);
 
   const [isDark, setIsDark] = useState(() => {
     const stored = store.get('dm_theme', null);
@@ -2465,6 +2480,7 @@ export default function App() {
           onUnreadChange={setCommunityUnread}
           initialMainTab={communityInitialTab}
           initialChallengeId={communityInitialChallengeId}
+          openChatId={pendingChatId} onOpenChatHandled={() => setPendingChatId(null)}
           onGoogleSignIn={googleSignIn}
         />
       );

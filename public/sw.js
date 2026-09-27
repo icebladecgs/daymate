@@ -1,4 +1,4 @@
-const CACHE = 'daymate-aee42eb';
+const CACHE = 'daymate-a4053db';
 const PRECACHE = ['/', '/index.html', '/icon.svg'];
 // 휴대폰 공유로 받은 사진을 앱이 가져갈 때까지 잠깐 맡겨 두는 곳 — 버전이 바뀌어도 지우지 않는다
 const SHARE_CACHE = 'dm-share';
@@ -66,6 +66,22 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data?.json() || {}; } catch { data = { title: 'DayMate', body: e.data?.text() || '' }; }
+  // 커뮤니티 채팅: 앱을 보고 있으면 알림 대신 앱에 알려 소리만(앱에서 고른 소리), 아니면 커뮤니티별로 묶어 알림
+  if (data.kind === 'chat') {
+    e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const visible = list.find(c => c.visibilityState === 'visible' && c.focused);
+      if (visible) { visible.postMessage({ type: 'dm-chat-push', cid: data.cid }); return; }
+      return self.registration.showNotification(data.title || 'DayMate', {
+        body: data.body || '',
+        icon: '/icon.svg',
+        badge: '/icon.svg',
+        tag: data.tag || 'daymate-chat',
+        renotify: true,
+        data: { url: data.url || '/', cid: data.cid },
+      });
+    }));
+    return;
+  }
   e.waitUntil(
     self.registration.showNotification(data.title || 'DayMate', {
       body: data.body || '',
@@ -80,5 +96,15 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = e.notification.data?.url || '/';
+  // 채팅 알림: 열려 있는 앱이 있으면 그 창에서 채팅방을 열고, 없으면 채팅방 주소로 새로 연다
+  const cid = e.notification.data?.cid;
+  if (cid) {
+    e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const c = list[0];
+      if (c) { c.postMessage({ type: 'dm-open-chat', cid }); return c.focus(); }
+      return clients.openWindow(url);
+    }));
+    return;
+  }
   e.waitUntil(clients.openWindow(url));
 });

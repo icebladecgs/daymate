@@ -8,6 +8,8 @@ import { formatKoreanDate } from "../utils/date.js";
 import Linkify from "../utils/linkify.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
 import Toast from "./Toast.jsx";
+import ChatNotifySettings from "./ChatNotifySettings.jsx";
+import { requestChatPush } from "../utils/chatNotify.js";
 
 const MAX_PHOTOS = 10;
 const hhmm = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
@@ -34,6 +36,13 @@ export default function CommunityChat({ communityId, communityName, authUser, my
   const inputRef = useRef(null);
   const stickBottom = useRef(true);   // 맨 아래를 보고 있으면 새 메시지에 따라 내려감
   const keepOffset = useRef(null);    // 이전 대화를 붙일 때 보던 위치 유지
+
+  // 지금 이 채팅방을 보고 있음 — 앱이 켜진 채 같은 방 알림이 오면 소리를 내지 않는다(App.jsx)
+  useEffect(() => {
+    window.__dmOpenChat = communityId;
+    return () => { if (window.__dmOpenChat === communityId) window.__dmOpenChat = null; };
+  }, [communityId]);
+  const [showNotify, setShowNotify] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(chatQuery(communityId), (snap) => {
@@ -82,7 +91,8 @@ export default function CommunityChat({ communityId, communityName, authUser, my
     if (!body && !photos.length) return;
     setSending(true);
     try {
-      const { createdAt } = await addChatMessage(communityId, { uid: authUser.uid, nickname: myNickname, text: body, photos });
+      const { id: messageId, createdAt } = await addChatMessage(communityId, { uid: authUser.uid, nickname: myNickname, text: body, photos });
+      requestChatPush(communityId, messageId); // 다른 멤버들에게 알림 (기다리지 않음)
       markChatRead(communityId, createdAt);
       if (!photos.length) setText("");
       stickBottom.current = true;
@@ -138,7 +148,20 @@ export default function CommunityChat({ communityId, communityName, authUser, my
           <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {communityName || "단체 채팅"}</div>
           <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>멤버만 볼 수 있어요</div>
         </div>
+        <button onClick={() => setShowNotify(true)} aria-label="채팅 알림 설정" title="채팅 알림 설정"
+          style={{ width: 36, height: 36, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-card)", fontSize: 17, cursor: "pointer", flexShrink: 0 }}>🔔</button>
       </div>
+      {showNotify && (
+        <div onClick={() => setShowNotify(false)} style={{ position: "absolute", inset: 0, zIndex: 20, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "flex-end" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxHeight: "85%", overflowY: "auto", background: "var(--dm-bg)", borderRadius: "18px 18px 0 0", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))", boxSizing: "border-box" }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ flex: 1, fontSize: 16, fontWeight: 900, color: "var(--dm-text)" }}>🔔 채팅 알림</div>
+              <button onClick={() => setShowNotify(false)} aria-label="닫기" style={{ width: 32, height: 32, padding: 0, border: "none", background: "transparent", color: "var(--dm-muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <ChatNotifySettings authUser={authUser} communityId={communityId} communityName={communityName} />
+          </div>
+        </div>
+      )}
 
       {/* 메시지 목록 */}
       <div ref={listRef} onScroll={onScroll} onClick={() => { setSelected(null); if (touchDevice()) inputRef.current?.blur(); }} style={{ flex: 1, overflowY: "auto", padding: "10px 12px 16px" }}>

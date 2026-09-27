@@ -3,7 +3,7 @@
 //                            (작업 내용은 먼저 커밋해 둔다. 끝나면 사용자에게 보고하고 배포 승인을 받는다)
 //   npm run release:deploy   (승인 뒤) 배포 전 확인 → vercel 프로덕션 배포 → 실제 반영 확인 → 배포 태그
 import { execSync, spawnSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
 const SITE = 'https://daymate-beta.vercel.app';
 const isWin = process.platform === 'win32';
@@ -68,8 +68,11 @@ function preflight() {
   const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons || [];
   const bad = crons.filter(c => !/^\d+ \d+ \S+ \S+ \S+$/.test(c.schedule));
   if (bad.length) die(`하루 1회를 넘을 수 있는 cron이 있어요 (Hobby 요금제는 배포가 조용히 실패): ${bad.map(c => `${c.path} ${c.schedule}`).join(', ')}`);
+  // Vercel Hobby는 서버 함수(api/*.js) 12개까지 — 넘으면 배포가 실패한다
+  const fnCount = readdirSync('api').filter(f => /\.(js|mjs|ts)$/.test(f)).length;
+  if (fnCount > 12) die(`api 폴더 서버 함수가 ${fnCount}개예요 (Hobby 요금제 최대 12개) — 새 파일 대신 기존 파일에 기능을 합치세요`);
   if (!existsSync('.env.local')) die('.env.local이 없어요 (VERCEL_TOKEN)');
-  console.log(`  브랜치·커밋·.vercelignore·cron ${crons.length}개 모두 정상`);
+  console.log(`  브랜치·커밋·.vercelignore·cron ${crons.length}개·서버 함수 ${fnCount}/12개 모두 정상`);
 }
 
 // .env.local 전체를 불러오지 않고 토큰 한 줄만 읽는다 (VERCEL_PROJECT_ID만 있으면 배포가 실패하기 때문)

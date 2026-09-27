@@ -15,6 +15,7 @@ import { androidInstallText } from "../utils/installGuideText.jsx";
 import { APP_VERSION, APP_BUILD } from "../version.js";
 import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
+import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
   return (
@@ -694,6 +695,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         >
           📱 잠금화면 푸시 테스트
         </button>
+      </div>
+
+      <div style={S.sectionTitle}>💬 커뮤니티 채팅 알림</div>
+      <div style={S.card}>
+        <ChatNotifySettings authUser={authUser} />
       </div>
 
       <div style={S.sectionTitle}>소리 / 진동</div>
