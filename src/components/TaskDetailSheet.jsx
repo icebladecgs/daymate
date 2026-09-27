@@ -26,6 +26,14 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   const [photos, setPhotos] = useState(task.photos || []);
   const [editingTime, setEditingTime] = useState(false);
   const [editingEnd, setEditingEnd] = useState(false); // 끝 시간 (시작 시간이 있을 때만)
+  const [endError, setEndError] = useState('');
+  // 끝 시간은 시작보다 늦을 때만 저장 (이른 시간이면 구글 캘린더에 다음날까지 이어지는 일정이 됐다)
+  const saveEndTime = (v) => {
+    if (!v || v === task.time) { setEndError(''); onSave({ endTime: undefined }); return; }
+    if (v < task.time) { setEndError('끝 시간은 시작 시간보다 늦어야 해요'); return; }
+    setEndError('');
+    onSave({ endTime: v });
+  };
 
   const savedRef = useRef({ title: task.title || '', note: task.note || '' });
   const doneRef = useRef(false); // 삭제·이동 후에는 언마운트 저장을 건너뜀
@@ -133,16 +141,17 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               </button>
             )}
             {task.time && !editingTime && (editingEnd ? (
-              <TimeSelect autoFocus value={task.endTime || task.time} onChange={v => onSave({ endTime: v && v !== task.time ? v : undefined })} onClose={() => setEditingEnd(false)} />
+              <TimeSelect autoFocus value={task.endTime || task.time} onChange={saveEndTime} onClose={() => setEditingEnd(false)} />
             ) : (
-              <button onClick={() => setEditingEnd(true)} style={{ ...chip(!!task.endTime), color: task.endTime ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
-                ~ {task.endTime || '끝 시간'}
+              <button onClick={() => setEditingEnd(true)} style={{ ...chip(!!task.endTime && task.endTime > task.time), color: task.endTime && task.endTime > task.time ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
+                ~ {task.endTime && task.endTime > task.time ? task.endTime : '끝 시간'}
               </button>
             ))}
             {task.time && (
               <button onClick={() => { setEditingTime(false); setEditingEnd(false); onSave({ time: undefined, endTime: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
             )}
           </div>
+          {endError && <div style={{ fontSize: 12, color: '#F87171', fontWeight: 700, margin: '-8px 0 12px' }}>{endError}</div>}
           {importedGcal && onMoveDate && (
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 14 }}>구글 캘린더에서 가져온 일정은 구글 캘린더에서 날짜를 바꿔주세요</div>
           )}

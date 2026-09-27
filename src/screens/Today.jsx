@@ -1012,12 +1012,19 @@ export default function Today({
               aria-label={task.done ? '완료 취소' : '완료'}
               style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
-            <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '2px 0' }}>
-              <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
-              {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime ? `~${task.endTime}` : ''}</span>}
-              {task.id === nowTaskId && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900, flexShrink: 0, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
-              <TaskStatIcon task={task} />
-              <TaskDetailBadge task={task} />
+            {/* 제목 줄(제목+아이콘) 아래에 시간·"지금"을 작은 줄로 — 한 줄에 다 넣으면 제목이 두 줄로 쪼개졌다 */}
+            <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer', padding: '2px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
+                <TaskStatIcon task={task} />
+                <TaskDetailBadge task={task} />
+              </div>
+              {(task.time || task.id === nowTaskId) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                  {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime && task.endTime > task.time ? ` ~ ${task.endTime}` : ''}</span>}
+                  {task.id === nowTaskId && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
+                </div>
+              )}
             </div>
             {/* 자주 쓰는 "언젠가로 미루기"(미완료만)와 삭제(확인창)만 목록에 바로 노출. 나머지 편집은 상세에서 */}
             {!task.done && (
