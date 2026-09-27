@@ -38,6 +38,7 @@ export default function Today({
   statFeedback,
   onClearStatFeedback,
   contacts,
+  onOpenPeople,
 }) {
   const tasks = data.tasks || [];
   const contactReminders = useMemo(() => getContactReminders(contacts, plans, 7, dateStr), [contacts, plans, dateStr]);
@@ -546,17 +547,23 @@ export default function Today({
       </div>
       )}
 
-      {/* 💌 오늘 챙길 사람 — 표시할 내용 없으면 영역째로 숨김 */}
-      {contactReminders.length > 0 && (
-        <div style={{ margin: '0 16px 10px' }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>💌 오늘 챙길 사람</div>
+      {/* 💌 오늘 챙길 사람 — 내 사람들의 생일·기념일(7일 안)과 사람에게 연결된 할일. 없는 날도 한 줄로 보여서
+          기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다) */}
+      <div style={{ margin: '0 16px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: 4 }}>
+          <span onClick={onOpenPeople} style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
+            💌 오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0 }}> · 다가오는 생일·기념일이 없어요</span>}
+          </span>
+          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
+        </div>
+        {contactReminders.length > 0 && (
           <div style={{ ...S.card, margin: 0, padding: '10px 14px' }}>
             {contactReminders.map((it, i) => (
               <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 💪 오늘습관 */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>

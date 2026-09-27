@@ -2406,7 +2406,7 @@ export default function App() {
           hiddenTags={hiddenTags}
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
-          contacts={contacts} />
+          contacts={contacts} onOpenPeople={() => changeScreen('people')} />
       );
     }
     if (screen === "memo") {
