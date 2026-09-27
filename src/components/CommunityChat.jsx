@@ -88,7 +88,9 @@ export default function CommunityChat({ communityId, communityName, authUser, my
       stickBottom.current = true;
     } catch { setToast("보내지 못했어요. 다시 시도해 주세요"); }
     setSending(false);
-    if (!photos.length) inputRef.current?.focus();
+    // 휴대폰은 보낸 뒤 키보드를 내려서 대화를 읽게 한다(카톡처럼). PC는 이어서 칠 수 있게 입력칸 유지
+    if (touchDevice()) inputRef.current?.blur();
+    else if (!photos.length) inputRef.current?.focus();
   };
 
   // 사진은 고르면 바로 한 메시지로 보낸다
@@ -139,7 +141,7 @@ export default function CommunityChat({ communityId, communityName, authUser, my
       </div>
 
       {/* 메시지 목록 */}
-      <div ref={listRef} onScroll={onScroll} onClick={() => setSelected(null)} style={{ flex: 1, overflowY: "auto", padding: "10px 12px 16px" }}>
+      <div ref={listRef} onScroll={onScroll} onClick={() => { setSelected(null); if (touchDevice()) inputRef.current?.blur(); }} style={{ flex: 1, overflowY: "auto", padding: "10px 12px 16px" }}>
         {hasMore && (
           <button onClick={loadMore} disabled={loadingOlder} style={{ display: "block", margin: "0 auto 10px", padding: "6px 14px", borderRadius: 999, border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
             {loadingOlder ? "불러오는 중…" : "이전 대화 더 보기"}
