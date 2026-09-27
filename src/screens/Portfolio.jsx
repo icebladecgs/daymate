@@ -564,6 +564,18 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
         </div>
       )}
 
+      {/* 제작자가 만든 코인 시장 분석 앱 — 새 창(외부 브라우저)으로 연다 */}
+      <a href="https://altseason-lab.vercel.app/" target="_blank" rel="noopener noreferrer"
+        style={{ ...S.card, marginTop: 6, marginBottom: 10, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "var(--dm-text)" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(108,142,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📡</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 900 }}>알트 시즌 레이더</div>
+          <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>알트코인 사이클·상대 강도 분석</div>
+          <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 3 }}>투자 참고용 분석이에요</div>
+        </div>
+        <span style={{ fontSize: 16, color: "var(--dm-muted)", flexShrink: 0 }}>↗</span>
+      </a>
+
       <div style={{ height: 40 }} />
     </div>
   );
