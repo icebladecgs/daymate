@@ -1,19 +1,24 @@
 const BACKUP_FILE_NAME = 'daymate-backup.json';
 const boundary = 'daymate_multipart_boundary';
 
+// 백업 파일이 여러 개면 가장 먼저 만든 것을 쓴다(늘 같은 파일을 덮어쓰도록)
 async function findBackupFile(token) {
   const q = encodeURIComponent(`name='${BACKUP_FILE_NAME}' and trashed=false`);
   const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,modifiedTime)`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=createdTime&fields=files(id,modifiedTime,parents)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const d = await r.json();
   return d.files?.[0] || null;
 }
 
-export async function driveBackup(token, data) {
+// 전체 데이터 백업(daymate-backup.json) — folderId를 주면 그 폴더에 두고, 예전처럼 드라이브 맨 위에 있던 파일은 그 폴더로 옮긴다
+export async function driveBackup(token, data, folderId) {
   const json = JSON.stringify(data, null, 2);
-  const meta = JSON.stringify({ name: BACKUP_FILE_NAME, mimeType: 'application/json' });
+  const existing = await findBackupFile(token);
+  const metaObj = { name: BACKUP_FILE_NAME, mimeType: 'application/json' };
+  if (!existing && folderId) metaObj.parents = [folderId];
+  const meta = JSON.stringify(metaObj);
 
   const body = [
     `--${boundary}`,
@@ -27,9 +32,12 @@ export async function driveBackup(token, data) {
     `--${boundary}--`,
   ].join('\r\n');
 
-  const existing = await findBackupFile(token);
+  // 폴더 옮기기: 수정(PATCH) 때 addParents/removeParents를 함께 보낸다
+  const move = existing && folderId && !(existing.parents || []).includes(folderId)
+    ? `&addParents=${folderId}${existing.parents?.length ? `&removeParents=${existing.parents.join(',')}` : ''}`
+    : '';
   const url = existing
-    ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart${move}`
     : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
 
   const resp = await fetch(url, {
@@ -48,10 +56,20 @@ export async function driveBackup(token, data) {
   return await resp.json();
 }
 
-export async function findOrCreateFolder(token, name) {
+// 같은 이름 폴더를 동시에 두 번 찾으면 둘 다 "없음"으로 보고 두 개를 만들던 문제(Daymate 메모 폴더 중복) —
+// 이름별로 진행 중인 찾기·만들기를 하나로 합친다. 이미 여러 개면 가장 먼저 만든 폴더를 쓴다.
+const folderRequests = new Map();
+export function findOrCreateFolder(token, name) {
+  if (!folderRequests.has(name)) {
+    folderRequests.set(name, lookupOrCreateFolder(token, name).catch((e) => { folderRequests.delete(name); throw e; }));
+  }
+  return folderRequests.get(name);
+}
+
+async function lookupOrCreateFolder(token, name) {
   const q = encodeURIComponent(`name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
   const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id)`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=createdTime&fields=files(id)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const d = await r.json();

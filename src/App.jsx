@@ -497,6 +497,7 @@ export default function App() {
     return () => window.removeEventListener('dm-drive-token', onToken);
   }, []);
   const [lastDriveBackup, setLastDriveBackup] = useState(() => store.get("dm_last_drive_backup", null));
+  const driveBackupRunRef = useRef(null); // 드라이브 백업이 동시에 두 번 돌지 않게(앱 시작 + 연결 갱신이 겹칠 때)
   const [inviteBonus, setInviteBonus] = useState(() => store.get("dm_invite_bonus", 0));
   const [levelUpInfo, setLevelUpInfo] = useState(null); // { level, title, icon, badge }
   const [myRank, setMyRank] = useState(null);
@@ -1082,18 +1083,24 @@ export default function App() {
     }
   };
 
-  const performDriveBackup = async (token) => {
-    const data = {};
-    try { Object.keys(localStorage).filter(k => k.startsWith('dm_')).forEach(k => { data[k] = store.get(k); }); } catch {}
-    await driveBackup(token, data);
-    const now = new Date().toISOString();
-    store.set('dm_last_drive_backup', now);
-    setLastDriveBackup(now);
-    try {
+  // 전체 백업(daymate-backup.json)과 이번 달 메모 정리본을 모두 "Daymate 메모" 폴더에 둔다
+  const performDriveBackup = (token) => {
+    if (driveBackupRunRef.current) return driveBackupRunRef.current;
+    const run = (async () => {
+      const data = {};
+      try { Object.keys(localStorage).filter(k => k.startsWith('dm_')).forEach(k => { data[k] = store.get(k); }); } catch {}
       const folderId = await findOrCreateFolder(token, 'Daymate 메모');
-      const monthKey = toDateStr().slice(0, 7);
-      await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
-    } catch (e) { console.error('[App] memo markdown backup failed:', e); }
+      await driveBackup(token, data, folderId);
+      const now = new Date().toISOString();
+      store.set('dm_last_drive_backup', now);
+      setLastDriveBackup(now);
+      try {
+        const monthKey = toDateStr().slice(0, 7);
+        await uploadMarkdownFile(token, folderId, `${monthKey}.md`, buildMemoMarkdown(plans, monthKey));
+      } catch (e) { console.error('[App] memo markdown backup failed:', e); }
+    })().finally(() => { driveBackupRunRef.current = null; });
+    driveBackupRunRef.current = run;
+    return run;
   };
 
   const performMemoHistoryBackup = async (token) => {
