@@ -1,5 +1,16 @@
 // 웹 화면(daymate-beta.vercel.app)에서 데스크탑 기능을 부를 수 있게 하는 다리 — window.daymateDesktop
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
+
+// 확인창·알림창(window.confirm/alert)을 윈도우 기본 방식 대신 DayMate 창에 붙여서 띄운다 —
+// 기본 방식은 앱 창 위치와 상관없이 모니터 가운데에 떴다(2026-09-27). 웹 코드는 그대로 confirm/alert를 쓰면 된다.
+contextBridge.exposeInMainWorld('__dmDialog', {
+  confirm: (msg) => ipcRenderer.sendSync('dm-dialog', { kind: 'confirm', message: String(msg ?? '') }),
+  alert: (msg) => ipcRenderer.sendSync('dm-dialog', { kind: 'alert', message: String(msg ?? '') }),
+});
+webFrame.executeJavaScript(`
+  window.confirm = (m) => window.__dmDialog.confirm(m);
+  window.alert = (m) => { window.__dmDialog.alert(m); };
+`);
 
 contextBridge.exposeInMainWorld('daymateDesktop', {
   // 포스트잇(바탕화면 메모)

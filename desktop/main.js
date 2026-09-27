@@ -7,7 +7,7 @@ if (process.type === undefined) {
   process.exit(0);
 }
 
-const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen, dialog } = require('electron');
 
 if (process.env.DAYMATE_USER_DATA) app.setPath('userData', process.env.DAYMATE_USER_DATA);
 
@@ -159,6 +159,16 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
 }
 
 const stickyOf = (event) => BrowserWindow.fromWebContents(event.sender);
+
+// 웹의 confirm/alert → 그 창에 붙은 확인창 (preload.js). 창을 부모로 주면 모니터 가운데가 아니라 앱 창 위에 뜬다
+ipcMain.on('dm-dialog', (event, { kind, message }) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const opts = kind === 'confirm'
+    ? { type: 'question', buttons: ['확인', '취소'], defaultId: 0, cancelId: 1, title: 'DayMate', message, noLink: true }
+    : { type: 'info', buttons: ['확인'], defaultId: 0, title: 'DayMate', message, noLink: true };
+  const choice = win && !win.isDestroyed() ? dialog.showMessageBoxSync(win, opts) : dialog.showMessageBoxSync(opts);
+  event.returnValue = kind === 'confirm' ? choice === 0 : true;
+});
 
 ipcMain.on('sticky-new', () => createSticky());
 ipcMain.on('sticky-open', (_, { ds, id }) => { createSticky({ ds, id }); saveStickyList(); });
