@@ -123,7 +123,16 @@ export default async function handler(req, res) {
     const sub = snap.data()?.pushSubscription;
     if (!sub) return res.status(404).json({ ok: false, reason: 'no subscription' });
 
-    await webpush.sendNotification(sub, JSON.stringify({ title, body }));
+    try {
+      await webpush.sendNotification(sub, JSON.stringify({ title, body }));
+    } catch (e) {
+      // 만료된 등록(앱 재설치·권한 해제 등) — 지우고 알려 주면 앱이 새로 등록해서 다시 보낸다
+      if (e.statusCode === 404 || e.statusCode === 410) {
+        await db.doc(`users/${uid}/data/settings`).update({ pushSubscription: FieldValue.delete() }).catch(() => {});
+        return res.status(200).json({ ok: false, reason: 'expired' });
+      }
+      throw e;
+    }
     res.status(200).json({ ok: true });
   } catch (e) {
     console.error('[push] notification send failed:', e);

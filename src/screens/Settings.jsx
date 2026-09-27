@@ -16,6 +16,7 @@ import { APP_VERSION, APP_BUILD } from "../version.js";
 import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
+import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
   return (
@@ -680,16 +681,29 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           style={{ ...S.btnGhost, marginTop: 8 }}
           onClick={async () => {
             if (!authUser) { setToast('로그인이 필요해요'); return; }
+            if (!pushSupported()) { setToast('이 기기는 푸시 알림을 받을 수 없어요 (휴대폰 설치 앱에서 해 주세요)'); return; }
+            if (Notification.permission !== 'granted') { setToast('먼저 위의 "알림 권한 허용"을 눌러 주세요'); return; }
             try {
               setToast('📱 잠금화면 알림 전송 중...');
-              const idToken = await authUser.getIdToken();
-              const res = await fetch('/api/push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-                body: JSON.stringify({ uid: authUser.uid, title: '☀️ 아침 할일 알림 테스트', body: '⬜ 이렇게 잠금화면에 표시돼요!\n⬜ 탭하면 앱이 열립니다' }),
-              });
-              const json = await res.json();
-              setToast(json.ok ? '📱 잠금화면 알림 전송 ✅ (폰 확인해보세요)' : `전송 실패: ${json.reason || json.error || '구독 없음'}`);
+              // 이 기기를 알림 받을 기기로 먼저 등록하고 보낸다. 등록이 만료됐다고 하면 새로 등록해서 한 번 더
+              await ensurePushSubscription(authUser.uid);
+              const send = async () => {
+                const idToken = await authUser.getIdToken();
+                const res = await fetch('/api/push', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                  body: JSON.stringify({ uid: authUser.uid, title: '☀️ 아침 할일 알림 테스트', body: '⬜ 이렇게 잠금화면에 표시돼요!\n⬜ 탭하면 앱이 열립니다' }),
+                });
+                return res.json();
+              };
+              let json = await send();
+              if (!json.ok && (json.reason === 'expired' || json.reason === 'no subscription')) {
+                await ensurePushSubscription(authUser.uid, { force: true });
+                json = await send();
+              }
+              setToast(json.ok ? '📱 잠금화면 알림 전송 ✅ (화면을 끄고 확인해 보세요)'
+                : json.reason === 'expired' ? '전송 실패: 이 기기 알림 등록이 만료됐어요. 앱을 완전히 닫았다 열고 다시 해 주세요'
+                : `전송 실패: ${json.error || json.reason || '알 수 없는 오류'}`);
             } catch { setToast('전송 실패 🚫'); }
           }}
         >
