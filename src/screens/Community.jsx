@@ -46,7 +46,7 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
         backgroundColor: dragging ? 'rgba(108,142,255,.05)' : undefined,
       }}
     >
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>👥</div>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }} title={meta ? (meta.isPublic ? '공개 커뮤니티' : '비공개 커뮤니티') : undefined}>{!meta ? '👥' : meta.isPublic ? '🌐' : '🔒'}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{meta?.name || communityName || '...'}</div>
         <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
@@ -247,6 +247,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   // 커뮤니티 홈 (목록) vs 상세
   const [showHome, setShowHome] = useState(true);
   const [editingCommunityOrder, setEditingCommunityOrder] = useState(false);
+  // 내 커뮤니티 보기: 전체 · 공개 · 비공개 (마지막 선택 기억)
+  const [myFilter, setMyFilterState] = useState(() => store.get('dm_community_filter', 'all'));
+  const setMyFilter = (v) => { setMyFilterState(v); store.set('dm_community_filter', v); };
 
   const announce = (message) => {
     setSrAnnouncement('');
@@ -266,6 +269,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       }).catch(() => {});
     });
   }, [communityIds]); // eslint-disable-line
+  // 내 커뮤니티 중 지금 칸(전체·공개·비공개)에 보일 것 — 정보를 아직 못 불러온 곳은 '전체'에만
+  const shownMyIds = myFilter === 'all' ? communityIds
+    : communityIds.filter(id => communityMeta[id] && !!communityMeta[id].isPublic === (myFilter === 'public'));
 
   // 생성/가입 UI
   const [mode, setMode] = useState(null);
@@ -887,6 +893,22 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   </button>
                 )}
               </div>
+              {(() => {
+                const pubCount = communityIds.filter(id => communityMeta[id]?.isPublic).length;
+                const privCount = communityIds.filter(id => communityMeta[id] && !communityMeta[id].isPublic).length;
+                return (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    {[{ k: 'all', label: `전체 ${communityIds.length}` }, { k: 'public', label: `🌐 공개 ${pubCount}` }, { k: 'private', label: `🔒 비공개 ${privCount}` }].map(f => (
+                      <button key={f.k} onClick={() => setMyFilter(f.k)} style={{
+                        flex: 1, padding: '7px 0', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                        border: `1.5px solid ${myFilter === f.k ? '#6C8EFF' : 'var(--dm-border)'}`,
+                        background: myFilter === f.k ? 'rgba(108,142,255,.12)' : 'transparent',
+                        color: myFilter === f.k ? '#6C8EFF' : 'var(--dm-sub)',
+                      }}>{f.label}</button>
+                    ))}
+                  </div>
+                );
+              })()}
               {editingCommunityOrder && communityIds.length > 1 && (
                 <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>오른쪽 핸들을 잡고 끌어서 내 커뮤니티 순서를 바꿀 수 있어요.</div>
               )}
@@ -908,9 +930,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   announce(`${communityMeta[active.id]?.name || communityNames[active.id] || '커뮤니티'} 순서를 변경했습니다.`);
                 }}
               >
-                <SortableContext items={communityIds} strategy={verticalListSortingStrategy}>
+                <SortableContext items={shownMyIds} strategy={verticalListSortingStrategy}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {communityIds.map((id) => {
+                    {shownMyIds.length === 0 && (
+                      <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 16 }}>{myFilter === 'public' ? '가입한 공개 커뮤니티가 없어요' : '가입한 비공개 커뮤니티가 없어요'}</div>
+                    )}
+                    {shownMyIds.map((id) => {
                       const meta = communityMeta[id];
                       return (
                         <SortableCommunityCard
@@ -946,10 +971,21 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>공개 커뮤니티</div>
             {publicLoading ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>불러오는 중...</div>
-            ) : publicList.filter(c => !communityIds.includes(c.id)).length === 0 ? (
+            ) : publicList.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>공개 커뮤니티가 없어요</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* 가입한 공개 커뮤니티는 위쪽에 '가입됨' — 누르면 바로 들어감 */}
+                {publicList.filter(c => communityIds.includes(c.id)).map(c => (
+                  <div key={c.id} onClick={() => requestCommunityAccess(c.id)} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(74,222,128,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🌐</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {c.memberCount}명 {c.hasPassword ? '· 🔑 비밀번호' : '· 자유 입장'}</div>
+                    </div>
+                    <span style={{ background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.3)', borderRadius: 8, padding: '5px 10px', color: '#22A55A', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>가입됨</span>
+                  </div>
+                ))}
                 {publicList.filter(c => !communityIds.includes(c.id)).map(c => (
                   <div key={c.id} onClick={() => { setSelectedPublic(c); setMode('join'); setJoinTab('public'); }} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(74,222,128,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🌐</div>
