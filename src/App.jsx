@@ -3,6 +3,7 @@ import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay a
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { reportError } from "./utils/errorReport.js";
+import GrowthFortunePanel from "./components/GrowthFortunePanel.jsx";
 import { ensurePushSubscription } from "./utils/pushSubscription.js";
 import { playChatSound } from "./utils/chatNotify.js";
 import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
@@ -2258,6 +2259,14 @@ export default function App() {
       // My 탭 — 대시보드만 (DailyPage 없음)
       return (
         <Home
+          growthPanel={
+            <GrowthFortunePanel
+              dateStr={todayStr} data={todayData} habits={habits} plans={plans} scores={scores} inviteBonus={inviteBonus}
+              statXp={statXp} myRank={myRank} onOpenStats={() => changeScreen("stats")} onOpenBattle={() => changeScreen("battle-arena")}
+              battleNickname={battleNickname} onSetBattleNickname={setBattleNickname} user={user} setToast={setToast}
+              onOpenSettings={() => changeScreen("settings")} birthDate={birthDate} birthTime={birthTime}
+            />
+          }
           onMoveTaskDate={moveTaskToDate}
           user={user} goals={goals} setGoals={setGoals} lifeGoals={lifeGoals} setLifeGoals={setLifeGoals} isMyTab={true}
           lifeGoalActions={lifeGoalActions} setLifeGoalActions={setLifeGoalActions}
@@ -2395,21 +2404,9 @@ export default function App() {
           myTags={myMemoTags}
           onHideTag={hideMemoTag}
           hiddenTags={hiddenTags}
-          statXp={statXp}
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
-          scores={scores}
-          inviteBonus={inviteBonus}
-          myRank={myRank}
-          onOpenStats={() => changeScreen("stats")}
-          onOpenBattle={() => changeScreen("battle-arena")}
-          user={user}
-          onOpenSettings={() => changeScreen("settings")}
-          battleNickname={battleNickname}
-          onSetBattleNickname={setBattleNickname}
-          contacts={contacts}
-          birthDate={birthDate}
-          birthTime={birthTime} />
+          contacts={contacts} />
       );
     }
     if (screen === "memo") {
