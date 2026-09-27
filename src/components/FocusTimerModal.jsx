@@ -9,7 +9,8 @@ const TIMER_OPTIONS = [
   { label: '50분', sec: 50 * 60, xp: 70 },
 ];
 
-export default function FocusTimerModal({ task, onClose, onToggleTask, onXp }) {
+// onFocusTime(분): 실제 집중한 시간을 할일에 기록할 때 (선택) — 끝까지 하면 설정 시간, 중간에 닫으면 1분 이상일 때 그만큼
+export default function FocusTimerModal({ task, onClose: closeModal, onToggleTask, onXp, onFocusTime }) {
   const [timerIdx, setTimerIdx] = useState(2);
   const [sec, setSec] = useState(TIMER_OPTIONS[2].sec);
   const [running, setRunning] = useState(false);
@@ -18,6 +19,15 @@ export default function FocusTimerModal({ task, onClose, onToggleTask, onXp }) {
   const interval = useRef(null);
 
   const opt = TIMER_OPTIONS[timerIdx];
+  const reported = useRef(false);
+  const onClose = () => {
+    const elapsed = opt.sec - sec;
+    if (!reported.current && !done && elapsed >= 60) { reported.current = true; onFocusTime?.(Math.floor(elapsed / 60)); }
+    closeModal();
+  };
+  useEffect(() => {
+    if (done && !reported.current) { reported.current = true; onFocusTime?.(Math.round(opt.sec / 60)); }
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   const pct = ((opt.sec - sec) / opt.sec) * 100;
   const min = String(Math.floor(sec / 60)).padStart(2, '0');
   const ss  = String(sec % 60).padStart(2, '0');

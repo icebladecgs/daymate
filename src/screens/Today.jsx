@@ -19,6 +19,7 @@ import { recurringLabel } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
+import FocusTimerModal from "../components/FocusTimerModal.jsx";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
@@ -39,6 +40,7 @@ export default function Today({
   onClearStatFeedback,
   contacts,
   onOpenPeople,
+  onBonusXp,
 }) {
   const tasks = data.tasks || [];
   const contactReminders = useMemo(() => getContactReminders(contacts, plans, 7, dateStr), [contacts, plans, dateStr]);
@@ -56,6 +58,7 @@ export default function Today({
   const [nlOff, setNlOff] = useState(false); // 문장 해석 끄기 ("그냥 글자로") — 입력이 바뀌면 다시 켬
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const nowMin = useNowMinutes(); // "지금 할 일" 카드·목록의 "지금" 표시용 (30초마다)
+  const [focus, setFocus] = useState(null); // 집중 타이머 { ds, task } — 지금 할 일 카드·할일 상세에서 시작
   const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
   const [somedayInput, setSomedayInput] = useState('');
@@ -379,6 +382,15 @@ export default function Today({
   return (
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {focus && (
+        <FocusTimerModal
+          task={focus.task}
+          onClose={() => setFocus(null)}
+          onToggleTask={(id) => { if (focus.ds === targetDs) toggleTargetTask(id); }}
+          onXp={(xp) => { onBonusXp?.(xp); setToast(`⏱ 집중 완료 · +${xp} XP`); }}
+          onFocusTime={(m) => onUpdateDayData?.(focus.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === focus.task.id ? { ...t, focusMin: (t.focusMin || 0) + m } : t) }))}
+        />
+      )}
       {detailTask && (
         <TaskDetailSheet
           key={detailTask.id}
@@ -390,6 +402,7 @@ export default function Today({
           onDelete={confirmDeleteTargetTask}
           dateStr={targetDs}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, targetDs, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
+          onFocus={(t) => { setDetailTaskId(null); setFocus({ ds: targetDs, task: t }); }}
         />
       )}
       {detailSomeday && (
@@ -461,7 +474,7 @@ export default function Today({
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
       {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
-      {tasksOpen && taskDayOffset === 0 && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} />}
+      {tasksOpen && taskDayOffset === 0 && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
       {tasksOpen && taskDayOffset === 0 && !carryDismissed && carryTasks.length > 0 && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>

@@ -6,7 +6,7 @@ import { findNowTask } from "../utils/nowTask.js";
 const fmt = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const untilText = (min) => (min < 60 ? `${min}분 뒤` : `${Math.floor(min / 60)}시간${min % 60 ? ` ${min % 60}분` : ""} 뒤`);
 
-export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen }) {
+export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen, onFocus }) {
   const { current, next } = findNowTask(tasks, nowMin);
   if (!current && !next) return null;
 
@@ -49,13 +49,17 @@ export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
         <button onClick={() => onToggle(current.task.id)}
           style={{ flex: 1, height: 44, padding: 0, borderRadius: 12, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>✓ 완료</button>
-        {next && (
-          <div style={{ flex: 1.3, minWidth: 0, fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.4 }}>
-            다음 <b style={{ color: "#6C8EFF" }}>{fmt(next.start)}</b>
-            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--dm-text)", fontWeight: 700 }}>{next.task.title}</div>
-          </div>
+        {onFocus && (
+          <button onClick={() => onFocus(current.task)}
+            style={{ flex: 1, height: 44, padding: 0, borderRadius: 12, border: "1.5px solid rgba(167,139,250,.55)", background: "rgba(167,139,250,.14)", color: "#A78BFA", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>▶ 집중</button>
         )}
       </div>
+      {next && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-sub)", display: "flex", gap: 6, minWidth: 0 }}>
+          <span style={{ flexShrink: 0 }}>다음 <b style={{ color: "#6C8EFF" }}>{fmt(next.start)}</b></span>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--dm-text)", fontWeight: 700 }}>{next.task.title}</span>
+        </div>
+      )}
     </div>
   );
 }

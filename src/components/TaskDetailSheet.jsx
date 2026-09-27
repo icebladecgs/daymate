@@ -20,7 +20,7 @@ const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, 
 // - 할일·언젠가할일 모두 같은 화면 사용 (언젠가로 옮기기는 목록의 버튼으로)
 // - onDelete를 넘긴 화면에서만 삭제 버튼 표시
 // - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate }) {
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -152,6 +152,15 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             )}
           </div>
           {endError && <div style={{ fontSize: 12, color: '#F87171', fontWeight: 700, margin: '-8px 0 12px' }}>{endError}</div>}
+          {/* 집중 타이머 — 시간을 정하지 않은 할일도 바로 시작. 집중한 시간은 할일에 쌓인다(focusMin) */}
+          {(onFocus && !task.done || task.focusMin > 0) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              {onFocus && !task.done && (
+                <button onClick={() => onFocus(task)} style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid rgba(167,139,250,.55)', background: 'rgba(167,139,250,.14)', color: '#A78BFA', fontSize: 14, fontWeight: 900, cursor: 'pointer' }}>▶ 집중 시작</button>
+              )}
+              {task.focusMin > 0 && <span style={{ fontSize: 13, color: 'var(--dm-sub)', fontWeight: 700 }}>⏱ 집중 {task.focusMin >= 60 ? `${Math.floor(task.focusMin / 60)}시간 ${task.focusMin % 60 ? `${task.focusMin % 60}분` : ''}` : `${task.focusMin}분`}</span>}
+            </div>
+          )}
           {importedGcal && onMoveDate && (
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 14 }}>구글 캘린더에서 가져온 일정은 구글 캘린더에서 날짜를 바꿔주세요</div>
           )}

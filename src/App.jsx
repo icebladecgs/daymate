@@ -2406,7 +2406,7 @@ export default function App() {
           hiddenTags={hiddenTags}
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
-          contacts={contacts} onOpenPeople={() => changeScreen('people')} />
+          contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus} />
       );
     }
     if (screen === "memo") {
