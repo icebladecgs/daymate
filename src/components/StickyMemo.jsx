@@ -68,6 +68,7 @@ export default function StickyMemo() {
   const [pinned, setPinned] = useState(() => new URLSearchParams(window.location.search).get("pin") === "1");
   const [folded, setFolded] = useState(() => new URLSearchParams(window.location.search).get("fold") === "1");
   const [showColors, setShowColors] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false); // 삭제 확인 — 윈도우 기본 확인창은 메모와 먼 곳에 떠서 창 안에 직접 그린다
   const [status, setStatus] = useState("");
   const [viewer, setViewer] = useState(null);
   const [uid, setUid] = useState(null);
@@ -166,7 +167,7 @@ export default function StickyMemo() {
     try { await navigator.clipboard.writeText(text); flash("복사했어요"); } catch { flash("복사하지 못했어요"); }
   };
   const remove = () => {
-    if (!window.confirm("이 메모를 삭제할까요?")) return;
+    setConfirmDel(false);
     writeMemo(ds, id, null);
     isNewRef.current = false;
     closeWindow({ deleted: true });
@@ -185,7 +186,8 @@ export default function StickyMemo() {
 
   // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
   const actionsRef = useRef({});
-  actionsRef.current = { fold: toggleFold, close, pin: togglePin, copy: copyAll };
+  // 삭제 확인 중에는 접기 키(기본 Esc)가 확인창 닫기로 동작
+  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : toggleFold, close, pin: togglePin, copy: copyAll };
   const [keys, setKeys] = useState({});
   useEffect(() => {
     const d = desktop();
@@ -237,7 +239,7 @@ export default function StickyMemo() {
         {!folded && <button onClick={() => setShowColors(v => !v)} title="색 바꾸기" style={iconBtn}>🎨</button>}
         {!folded && <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>}
         {!folded && <button onClick={copyAll} title={withKey("전체 복사", "copy")} style={iconBtn}>📋</button>}
-        {!folded && <button onClick={remove} title="삭제" style={iconBtn}>🗑</button>}
+        {!folded && <button onClick={() => setConfirmDel(true)} title="삭제" style={iconBtn}>🗑</button>}
         {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
         {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
         <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} style={iconBtn}>✕</button>
@@ -271,6 +273,20 @@ export default function StickyMemo() {
         </div>
       )}
       {viewer !== null && <PhotoViewer photos={photos} index={viewer} onClose={() => setViewer(null)} />}
+      {confirmDel && !folded && (
+        <div onClick={() => setConfirmDel(false)} onKeyDown={e => { if (e.key === "Escape") setConfirmDel(false); }}
+          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
+          <div role="alertdialog" aria-label="메모 삭제 확인" onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", color: "#000", borderRadius: 8, padding: "14px 16px", boxShadow: "0 6px 20px rgba(0,0,0,.25)", textAlign: "center", maxWidth: "85%" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>이 메모를 삭제할까요?</div>
+            <div style={{ fontSize: 11, color: "#666", marginBottom: 12 }}>휴지통에서 30일 동안 되살릴 수 있어요</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button autoFocus onClick={() => setConfirmDel(false)} style={{ ...iconBtn, width: "auto", padding: "6px 14px", fontSize: 13, background: "#eee" }}>취소</button>
+              <button onClick={remove} style={{ ...iconBtn, width: "auto", padding: "6px 14px", fontSize: 13, background: "#E5484D", color: "#fff", fontWeight: 700 }}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
