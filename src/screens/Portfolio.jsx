@@ -25,7 +25,7 @@ const PRESET_ASSETS = [
 const fmtNum = (n, decimals = 2) =>
   Number(n).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 const fmtUSD = (n) => "$" + fmtNum(n);
-const fmtKRW = (n) => Number(n).toLocaleString("ko-KR") + "원";
+const fmtKRW = (n) => Math.round(Number(n)).toLocaleString("ko-KR") + "원"; // 원화는 소수점 없이
 const fmtPrice = (n, currency) => currency === "KRW" ? fmtKRW(n) : fmtUSD(n);
 const fmtPct = (n) => (n >= 0 ? "+" : "") + fmtNum(n) + "%";
 const pnlColor = (n) => n > 0 ? "#4ADE80" : n < 0 ? "#F87171" : "var(--dm-muted)";

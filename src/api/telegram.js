@@ -38,7 +38,7 @@ export function buildBriefingText(marketData, userName, weather = null) {
 
   const fmtPrice = (n, currency = 'USD') => {
     if (n == null) return 'N/A';
-    if (currency === 'KRW') return Number(n).toLocaleString('ko-KR') + '원';
+    if (currency === 'KRW') return Math.round(Number(n)).toLocaleString('ko-KR') + '원'; // 원화는 소수점 없이
     return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   const fmtChg = (chgPct, change, currency = 'USD') => {
@@ -49,7 +49,7 @@ export function buildBriefingText(marketData, userName, weather = null) {
       const sign = change >= 0 ? '+' : '-';
       const absChange = Math.abs(Number(change));
       const chgStr = currency === 'KRW'
-        ? ` (${sign}${absChange.toLocaleString('ko-KR')}원)`
+        ? ` (${sign}${Math.round(absChange).toLocaleString('ko-KR')}원)`
         : ` (${sign}$${absChange.toFixed(2)})`;
       return ` ${arrow} ${pct}${chgStr}`;
     }
