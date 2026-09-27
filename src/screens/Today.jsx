@@ -679,6 +679,24 @@ export default function Today({
       </div>
       )}
 
+      {/* 📅 주간 일정 */}
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>주간 일정</span>
+        <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
+        </button>
+      </div>
+      {scheduleOpen && (
+        <div style={S.card}>
+          <WeeklySchedule
+            plans={plans}
+            habits={habits || []}
+            onOpenDate={onOpenDate}
+            gcalEvents={gcalWeekEvents}
+          />
+        </div>
+      )}
+
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
@@ -759,24 +777,6 @@ export default function Today({
           </div>
         </div>
       </div>
-
-      {/* 📅 주간 일정 */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>주간 일정</span>
-        <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
-          {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
-        </button>
-      </div>
-      {scheduleOpen && (
-        <div style={S.card}>
-          <WeeklySchedule
-            plans={plans}
-            habits={habits || []}
-            onOpenDate={onOpenDate}
-            gcalEvents={gcalWeekEvents}
-          />
-        </div>
-      )}
 
       <div style={{ height: 12 }} />
     </div>
