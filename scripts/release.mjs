@@ -24,7 +24,8 @@ function onMainAndSynced() {
 
 function prepare() {
   onMainAndSynced();
-  const dirty = sh('git status --porcelain').split('\n').filter(Boolean).filter(l => !VERSION_FILES.includes(l.slice(3)));
+  // 앞 공백(' M')도 형식의 일부라 trim하지 않고 파일 이름만 뽑는다
+  const dirty = execSync('git status --porcelain', { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean).filter(l => !VERSION_FILES.includes(l.slice(3)));
   if (dirty.length) die(`커밋 안 된 작업이 있어요. 작업 내용을 먼저 커밋하세요:\n${dirty.join('\n')}`);
 
   step('빌드 (버전 자동 갱신 포함)');
