@@ -2678,6 +2678,12 @@ export default function App() {
           uid={authUser?.uid}
           onClose={() => history.back()}
           onOpenDate={(ds) => openDetail(ds)}
+          onOpenSearch={() => {
+            // 오늘 화면의 통합 검색을 연다(데스크탑 "메모 검색" 단축키와 같은 방식, Today.jsx)
+            window.__dmOpenSearchPending = true;
+            changeScreen("today");
+            window.dispatchEvent(new Event("dm:open-search"));
+          }}
           onError={setToast}
         />
       );

@@ -4,7 +4,6 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
-import SearchViewer from "./SearchViewer.jsx";
 
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
 // 메모 화면은 검색·메모 열기·새 메모 쓰기로 모습이 바뀌므로, 알림(toast)은 바깥에서 한 번 그린다.
@@ -22,14 +21,15 @@ export default function MemoHome(props) {
 function MemoHomeInner({
   todayStr, plans, onUpdateDayData,
   onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday, onUpdateFilesToday,
-  onOpenDate, onOpenKnowledge, onRequireLogin,
+  onOpenKnowledge, onRequireLogin,
   uid, toast, setToast,
-  frequentTags, myTags, hiddenTags, onHideTag,
+  frequentTags, myTags, onHideTag,
 }) {
   const [dayOffset, setDayOffset] = useState(0);
   const [longMemo, setLongMemo] = useState(null); // 목록에서 특정 메모를 열어 편집할 때만 사용
-  const [showSearch, setShowSearch] = useState(false);
   const [recording, setRecording] = useState(false);
+  // 🔍는 메모 관리자(검색창 포함)를 연다. 사진 모아보기·찾은 단어 이동은 메모 관리자의 상세검색에서
+  const openMemoManager = () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }));
   const recognitionRef = useRef(null);
 
   const targetDs = dayOffset === 0 ? todayStr : addDays(todayStr, dayOffset);
@@ -88,7 +88,6 @@ function MemoHomeInner({
     setRecording(true);
   };
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
   if (longMemo) return (
     <LongMemoEditor
@@ -105,7 +104,7 @@ function MemoHomeInner({
       onUpdateFiles={updateMemoFilesAt}
       onUpdateStarred={updateMemoStarredAt}
       onClose={() => setLongMemo(null)}
-      onSearch={() => { setLongMemo(null); setShowSearch(true); }}
+      onSearch={() => { setLongMemo(null); openMemoManager(); }}
       onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
@@ -155,7 +154,7 @@ function MemoHomeInner({
       onUpdateFiles={onUpdateFilesToday}
       onUpdateStarred={onUpdateStarredToday}
       onClose={() => window.history.back()}
-      onSearch={() => setShowSearch(true)}
+      onSearch={openMemoManager}
       onOpenKnowledge={onOpenKnowledge}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}

@@ -48,6 +48,8 @@ export default function Today({
   const filledCount = tasks.filter((t) => t.title.trim()).length;
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
   const [showSearch, setShowSearch] = useState(false);
+  // 🔍는 메모 관리자(검색창 포함)를 연다. 사진 모아보기·찾은 단어 이동은 메모 관리자의 상세검색에서
+  const openMemoManager = () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }));
   const [carryDismissed, setCarryDismissed] = useState(() => store.get('dm_carry_dismissed', '') === dateStr); // "어제 못 한 할일" 카드를 오늘 닫았는지
   const [longMemo, setLongMemo] = useState(null); // null | { id: string|null, text: string }
 
@@ -328,7 +330,7 @@ export default function Today({
       onUpdateFiles={updateMemoFiles}
       onUpdateStarred={updateMemoStarred}
       onClose={() => setLongMemo(null)}
-      onSearch={() => { setLongMemo(null); setShowSearch(true); }}
+      onSearch={() => { setLongMemo(null); openMemoManager(); }}
       onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
@@ -434,7 +436,7 @@ export default function Today({
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {filledCount ? `완료 ${doneCount}/${filledCount}` : '할일 없음'}</div>
         </div>
-        <button onClick={() => setShowSearch(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
+        <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
       {isPerfect && (
