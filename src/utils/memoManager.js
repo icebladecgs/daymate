@@ -5,6 +5,12 @@ import { toDateStr, addDays } from "./date.js";
 const norm = (s) => (s || "").normalize("NFC").toLowerCase();
 const validTime = (t) => (/^\d{1,2}:\d{2}$/.test(t || "") ? t : ""); // 예전 앱이 넣은 "편집됨" 같은 값은 시각이 아님
 const firstLine = (s) => (s || "").split("\n").map(l => l.trim()).find(Boolean) || "";
+// 제목은 #태그를 빼고 읽는다 — 태그부터 쓰는 메모는 첫 줄이 태그뿐이라 제목이 다 태그명이 됐다.
+// [[키워드]]는 문장 속에 쓰므로 괄호만 뺀다. 태그만 있는 메모는 원래 첫 줄 그대로
+const TAG_RE = /#[\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*/g;
+const titleLine = (s) => (s || "").split("\n")
+  .map(l => l.replace(TAG_RE, " ").replace(/\[\[([^\]]+)\]\]/g, "$1").replace(/\s+/g, " ").trim())
+  .find(Boolean) || firstLine(s);
 
 // 메모 관리자에 보여줄 항목 — 메모·일정(할일)·일기를 한 목록으로
 // key: 종류|날짜|id (선택 유지용), date: 기록 날짜, time: 작성 시각(메모)·일정 시각(할일)
@@ -21,7 +27,7 @@ export function buildManagerItems(plans) {
       const text = m.text || "";
       items.push({
         key: `memo|${ds}|${m.id}`, kind: "memo", ds, id: m.id,
-        title: firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
+        title: titleLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
         text, time: validTime(m.createdAt), updatedAt: m.updatedAt || "",
         starred: !!m.starred, photos: m.photos || [], tags: parseWikiLinks(text),
       });
@@ -38,7 +44,7 @@ export function buildManagerItems(plans) {
       const text = m.text || "";
       items.push({
         key: `trash|${ds}|${m.id}`, kind: "trash", ds, id: m.id,
-        title: m.locked ? "🔒 잠긴 메모" : (firstLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)")),
+        title: m.locked ? "🔒 잠긴 메모" : (titleLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)")),
         text, time: validTime(m.createdAt), updatedAt: m.deletedAt || "",
         starred: false, photos: m.photos || [], tags: [],
       });
@@ -48,7 +54,7 @@ export function buildManagerItems(plans) {
     if (journalText.trim()) {
       items.push({
         key: `journal|${ds}`, kind: "journal", ds, id: "journal",
-        title: firstLine(j.body) || firstLine(journalText), text: journalText, time: "", updatedAt: j.savedAt || "",
+        title: titleLine(j.body) || titleLine(journalText), text: journalText, time: "", updatedAt: j.savedAt || "",
         starred: false, photos: [], tags: parseWikiLinks(journalText),
       });
     }

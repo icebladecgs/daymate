@@ -222,6 +222,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
                 <td style={{ padding: "6px 8px", fontSize: 13 }} title={KIND[it.kind].label}>{KIND[it.kind].icon}</td>
                 <td style={{ padding: "6px 8px", fontSize: 13, ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.starred && "⭐ "}{it.title}
+                  {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
+                  {!wide && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: 11, color: "#6C8EFF", opacity: 0.75 }}>#{t}</span>)}
                 </td>
                 <td style={{ padding: "6px 8px", fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{wide ? it.ds : it.ds.slice(2)}{wide && it.time ? ` ${it.time}` : ""}</td>
                 {wide && <td style={{ padding: "6px 8px", fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
