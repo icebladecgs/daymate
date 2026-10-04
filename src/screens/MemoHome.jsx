@@ -21,7 +21,7 @@ export default function MemoHome(props) {
 function MemoHomeInner({
   todayStr, plans, onUpdateDayData,
   onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday, onUpdateFilesToday,
-  onOpenKnowledge, onRequireLogin,
+  onRequireLogin,
   uid, toast, setToast,
   frequentTags, myTags, onHideTag,
 }) {
@@ -105,7 +105,6 @@ function MemoHomeInner({
       onUpdateStarred={updateMemoStarredAt}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); openMemoManager(); }}
-      onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
       onPhotoError={setToast}
@@ -155,7 +154,6 @@ function MemoHomeInner({
       onUpdateStarred={onUpdateStarredToday}
       onClose={() => window.history.back()}
       onSearch={openMemoManager}
-      onOpenKnowledge={onOpenKnowledge}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
       onPhotoError={setToast}

@@ -4,7 +4,7 @@ import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
 import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
-import { buildManagerItems, BASE_FILTERS, topTags, filterItems, sortItems } from "../utils/memoManager.js";
+import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
@@ -39,6 +39,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const [sort, setSort] = useState({ key: "date", dir: "desc" });
   const [selectedKey, setSelectedKey] = useState(null);
   const [limit, setLimit] = useState(PAGE);
+  const [tagsOpen, setTagsOpen] = useState(false); // 좁은 화면: 태그 칩 묶음 펼침
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
@@ -47,7 +48,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   }, []);
 
   const items = useMemo(() => buildManagerItems(plans), [plans]);
-  const tags = useMemo(() => topTags(items), [items]);
+  const tags = useMemo(() => tagTree(items), [items]);
+  const related = useMemo(() => relatedTags(items, filter), [items, filter]);
+  const tagFilter = filter.startsWith("#") || filter.startsWith("@");
   const list = useMemo(() => sortItems(filterItems(items, filter, query), sort), [items, filter, query, sort]);
   const selected = items.find(it => it.key === selectedKey) || null;
   const selIndex = list.findIndex(it => it.key === selectedKey);
@@ -142,23 +145,54 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const muted = { color: "var(--dm-muted)" };
   const border = "1px solid var(--dm-border)";
 
-  const filterButton = (id, label, icon) => {
+  const filterButton = (id, label, icon, indent = false) => {
     const active = filter === id;
     return (
-      <button key={id} onClick={() => changeFilter(id)}
+      <button key={id} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
         style={wide
-          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 10px", borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? "#6C8EFF" : "var(--dm-text)", fontWeight: active ? 800 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }
+          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? "5px 10px 5px 28px" : "6px 10px", borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? "#6C8EFF" : "var(--dm-text)", fontWeight: active ? 800 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }
           : { flexShrink: 0, padding: "5px 10px", borderRadius: 14, border: active ? "1.5px solid #6C8EFF" : border, background: active ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: active ? "#6C8EFF" : "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         <span>{icon}</span> {label}
       </button>
     );
   };
-  const filters = (
+  // 태그 영역 — #부모/자식은 📂 카테고리로 묶는다(지식 화면에서 옮겨 옴). 좁은 화면에서는 "🏷 태그" 칩 하나로 접어 둔다
+  const tagGuide = (
+    <div style={{ ...muted, fontSize: 12, lineHeight: 1.6, padding: wide ? "2px 10px" : "2px 2px" }}>
+      메모에 <b>#태그</b>나 <b>[[키워드]]</b>를 쓰면 여기에 모여요. <b>#투자/주식</b>처럼 쓰면 📂 투자 묶음으로 보여요.
+    </div>
+  );
+  const tagButtons = tags.length === 0 ? tagGuide : tags.map(e => (e.type === "group"
+    ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂"), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true))]
+    : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#")));
+  const tagChipLabel = tagFilter ? `${filter.startsWith("@") ? "📂" : "#"} ${filter.slice(1)}` : "🏷 태그";
+  const filters = wide ? (
     <>
       {BASE_FILTERS.map(f => filterButton(f.id, f.label, f.icon))}
-      {tags.length > 0 && wide && <div style={{ ...muted, fontSize: 11, fontWeight: 700, padding: "12px 10px 4px" }}>태그</div>}
-      {tags.map(t => filterButton(`#${t.name}`, `${t.name} (${t.n})`, "#"))}
+      <div style={{ ...muted, fontSize: 11, fontWeight: 700, padding: "12px 10px 4px" }}>태그</div>
+      {tagButtons}
     </>
+  ) : (
+    <>
+      {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
+      <button onClick={() => setTagsOpen(o => !o)}
+        style={{ flexShrink: 0, padding: "5px 10px", borderRadius: 14, border: tagFilter ? "1.5px solid #6C8EFF" : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? "#6C8EFF" : "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+        {tagChipLabel} {tagsOpen ? "▴" : "▾"}
+      </button>
+      {BASE_FILTERS.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
+    </>
+  );
+  // 태그·카테고리를 고르면 목록 위에 관련 태그(같은 날 함께 나온 태그) 한 줄
+  const relatedRow = tagFilter && related.length > 0 && (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 12px", flexShrink: 0, borderBottom: border }}>
+      <span style={{ ...muted, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>관련</span>
+      {related.map(r => (
+        <button key={r.name} onClick={() => changeFilter(`#${r.name}`)}
+          style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 12, border: "1px solid rgba(108,142,255,.35)", background: "rgba(108,142,255,.08)", color: "#6C8EFF", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+          #{r.name}
+        </button>
+      ))}
+    </div>
   );
 
   const th = (key, label, style) => (
@@ -234,7 +268,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <div style={{ width: 200, flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{table}</div>
+            <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{table}</div>
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
               <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
             </div>
@@ -243,7 +277,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>
-          <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{table}</div>
+          {tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: 132, overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{table}</div>
           <div style={{ flex: "1 1 60%", minHeight: 0, display: "flex", flexDirection: "column" }}>
             <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
           </div>

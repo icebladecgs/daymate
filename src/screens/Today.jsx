@@ -24,7 +24,7 @@ import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks, onMoveTaskDate,
-  onOpenInvest, onOpenKnowledge, onOpenVoiceDiary,
+  onOpenInvest, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,
@@ -331,7 +331,6 @@ export default function Today({
       onUpdateStarred={updateMemoStarred}
       onClose={() => setLongMemo(null)}
       onSearch={() => { setLongMemo(null); openMemoManager(); }}
-      onOpenKnowledge={onOpenKnowledge ? () => { setLongMemo(null); onOpenKnowledge(); } : undefined}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}
       onPhotoError={setToast}

@@ -2392,7 +2392,6 @@ export default function App() {
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
-          onOpenKnowledge={() => changeScreen("knowledge")}
           onOpenVoiceDiary={() => changeScreen("voice-diary")}
           habits={habits} onToggleHabit={onToggleHabit} setHabits={setHabits}
           someday={someday} setSomeday={setSomeday}
@@ -2419,7 +2418,6 @@ export default function App() {
           onUpdateFilesToday={updateFabMemoFiles}
           onUpdateStarredToday={updateFabMemoStarred}
           onOpenDate={openDetail}
-          onOpenKnowledge={() => changeScreen("knowledge")}
           onRequireLogin={() => googleSignIn().catch(() => {})}
           uid={authUser?.uid}
           toast={toast} setToast={setToast}

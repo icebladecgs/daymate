@@ -72,10 +72,57 @@ export const BASE_FILTERS = [
   { id: "trash", label: "휴지통 (30일 보관)", icon: "🗑" },
 ];
 
-export function topTags(items, limit = 30) {
+// 태그 필터 id — "#이름"(태그 하나), "@부모"(#부모/자식 카테고리 전체: #부모 자체와 #부모/… 모두)
+const parentOf = (t) => { const i = t.indexOf("/"); return i > 0 ? t.slice(0, i) : null; };
+const inGroup = (t, parent) => t === parent || t.startsWith(`${parent}/`);
+export const tagMatcher = (filter) => {
+  if (filter.startsWith("@")) { const p = filter.slice(1); return (it) => it.tags.some(t => inGroup(t, p)); }
+  if (filter.startsWith("#")) { const name = filter.slice(1); return (it) => it.tags.includes(name); }
+  return null;
+};
+
+// 분류 목록의 태그 영역 (지식 화면의 "내가 만든 태그"·"카테고리별 모아보기"를 옮겨 옴)
+// #부모/자식 태그가 하나라도 있으면 부모를 카테고리로 묶고 자식을 아래에 둔다. 개수는 그 태그가 붙은 기록 수
+// 반환: [{ type: "group", name, n, children: [{ name, label, n }] } | { type: "tag", name, n }]
+export function tagTree(items, limit = 30) {
+  const live = items.filter(it => it.kind !== "trash");
   const count = new Map();
-  items.forEach(it => it.tags.forEach(t => count.set(t, (count.get(t) || 0) + 1)));
-  return [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([name, n]) => ({ name, n }));
+  live.forEach(it => it.tags.forEach(t => count.set(t, (count.get(t) || 0) + 1)));
+  const parents = new Set([...count.keys()].map(parentOf).filter(Boolean));
+  const groups = new Map();
+  const entries = [];
+  count.forEach((n, name) => {
+    const p = parents.has(name) ? name : parentOf(name);
+    if (!p) { entries.push({ type: "tag", name, n }); return; }
+    if (!groups.has(p)) {
+      const g = { type: "group", name: p, n: live.filter(it => it.tags.some(t => inGroup(t, p))).length, children: [] };
+      groups.set(p, g);
+      entries.push(g);
+    }
+    if (name !== p) groups.get(p).children.push({ name, label: name.slice(p.length + 1), n });
+  });
+  groups.forEach(g => g.children.sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, "ko")));
+  return entries.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko")).slice(0, limit);
+}
+
+// 관련 태그 — 고른 태그(카테고리)가 나온 날에 함께 나온 다른 태그, 많이 겹친 순 (지식 화면의 "관련 키워드"와 같은 기준)
+export function relatedTags(items, filter, limit = 8) {
+  const match = tagMatcher(filter);
+  if (!match) return [];
+  const live = items.filter(it => it.kind !== "trash");
+  const days = new Set(live.filter(match).map(it => it.ds));
+  const own = filter.startsWith("@") ? (t) => inGroup(t, filter.slice(1)) : (t) => t === filter.slice(1);
+  const overlap = new Map(); // 태그 -> 겹친 날짜들
+  live.forEach(it => {
+    if (!days.has(it.ds)) return;
+    it.tags.forEach(t => {
+      if (own(t)) return;
+      if (!overlap.has(t)) overlap.set(t, new Set());
+      overlap.get(t).add(it.ds);
+    });
+  });
+  return [...overlap.entries()].map(([name, ds]) => ({ name, n: ds.size }))
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko")).slice(0, limit);
 }
 
 export function filterItems(items, filter, query, today = toDateStr()) {
@@ -96,7 +143,7 @@ export function filterItems(items, filter, query, today = toDateStr()) {
     d15: recent(15),
     d30: recent(30),
     trash: () => true,
-  }[filter] || ((it) => it.tags.includes(filter.replace(/^#/, "")));
+  }[filter] || tagMatcher(filter) || (() => true);
   const q = norm(query.trim());
   // 휴지통 항목은 휴지통 보기에서만, 다른 보기에서는 제외
   const inView = (it) => (filter === "trash" ? it.kind === "trash" : it.kind !== "trash");
