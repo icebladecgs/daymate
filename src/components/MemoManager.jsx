@@ -251,7 +251,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ fontSize: 15, fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
         <button onClick={addMemo} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
         {/* 통합 검색 화면 — 사진 모아보기·찾은 단어 하나씩 이동은 그쪽에만 있다 */}
-        {onOpenSearch && <button onClick={onOpenSearch} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>📷 상세검색</button>}
+        {onOpenSearch && <button onClick={onOpenSearch} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>🔎 본문·사진</button>}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); move(1); } else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); } }}

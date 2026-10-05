@@ -90,7 +90,7 @@ export const tagMatcher = (filter) => {
 // 분류 목록의 태그 영역 (지식 화면의 "내가 만든 태그"·"카테고리별 모아보기"를 옮겨 옴)
 // #부모/자식 태그가 하나라도 있으면 부모를 카테고리로 묶고 자식을 아래에 둔다. 개수는 그 태그가 붙은 기록 수
 // 반환: [{ type: "group", name, n, children: [{ name, label, n }] } | { type: "tag", name, n }]
-export function tagTree(items, limit = 30) {
+export function tagTree(items) {
   const live = items.filter(it => it.kind !== "trash");
   const count = new Map();
   live.forEach(it => it.tags.forEach(t => count.set(t, (count.get(t) || 0) + 1)));
@@ -108,7 +108,7 @@ export function tagTree(items, limit = 30) {
     if (name !== p) groups.get(p).children.push({ name, label: name.slice(p.length + 1), n });
   });
   groups.forEach(g => g.children.sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, "ko")));
-  return entries.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko")).slice(0, limit);
+  return entries.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko"));
 }
 
 // 관련 태그 — 고른 태그(카테고리)가 나온 날에 함께 나온 다른 태그, 많이 겹친 순 (지식 화면의 "관련 키워드"와 같은 기준)
