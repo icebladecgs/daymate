@@ -1783,7 +1783,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         </div>
       )}
 
-      {isSectionVisible('portfolio') && (telegramCfg?.holdings?.length > 0 || pfSummary) && (
+      {isSectionVisible('portfolio') && (isMyTab || telegramCfg?.holdings?.length > 0 || pfSummary) && (
         <div style={{ order: getSectionOrder('portfolio') }}>
           <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1818,7 +1818,17 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 </div>
               </div>
             )}
-            {!pfLoading && !pfSummary && (
+            {!pfLoading && !pfSummary && !(telegramCfg?.holdings?.length > 0) && (
+              <div style={{ textAlign: "center", padding: "6px 0" }}>
+                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>
+                  보유자산을 등록하면 평가금액·오늘 손익을 볼 수 있어요
+                </div>
+                <button onClick={onOpenPortfolio} style={{ ...S.btn, marginTop: 0 }}>
+                  자산 등록하기 →
+                </button>
+              </div>
+            )}
+            {!pfLoading && !pfSummary && telegramCfg?.holdings?.length > 0 && (
               <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "center", padding: "8px 0" }}>
                 시세 데이터를 불러올 수 없어요
               </div>
