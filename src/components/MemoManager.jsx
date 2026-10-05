@@ -7,6 +7,7 @@ import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
+import LoginNotice from "./LoginNotice.jsx";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
@@ -35,7 +36,7 @@ const updateMemoIn = (day, id, patch) => {
 
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
-export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onOpenSearch, onError }) {
+export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onOpenSearch, onRequireLogin, onError }) {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState({ key: "date", dir: "desc" });
@@ -257,6 +258,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           )}
         </div>
       </div>
+      {!uid && onRequireLogin && <div style={{ paddingTop: 8 }}><LoginNotice onLogin={onRequireLogin} /></div>}
 
       {wide ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>

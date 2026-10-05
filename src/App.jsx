@@ -2600,6 +2600,7 @@ export default function App() {
             changeScreen("today");
             window.dispatchEvent(new Event("dm:open-search"));
           }}
+          onRequireLogin={() => googleSignIn().catch(() => {})}
           onError={setToast}
         />
       );

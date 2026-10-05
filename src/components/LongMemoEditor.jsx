@@ -8,6 +8,7 @@ import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
+import LoginNotice from "./LoginNotice.jsx";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -396,6 +397,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
         >저장</button>
       </div>
+      {!uid && onRequireLogin && <LoginNotice onLogin={onRequireLogin} />}
       {extraContent ? (
         // extraContent가 있는 경우(메모 탭 전용): textarea/태그/사진/하단정보/추가콘텐츠를
         // 하나의 스크롤 영역으로 이어붙여서 쭉 내리면 아래 콘텐츠가 보이게 한다.
