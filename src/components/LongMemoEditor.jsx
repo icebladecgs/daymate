@@ -7,6 +7,7 @@ import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
+import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -26,6 +27,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const fileInputRef = useRef(null);
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
+  const [sentTask, setSentTask] = useState(''); // 방금 언젠가로 보낸 제목 (버튼에 잠깐 표시)
 
   // 아직 저장 전(id 없음)인데 사진·파일을 먼저 추가하면, 지금까지 쓴 텍스트(없으면 플레이스홀더)로 즉시 메모를 생성
   const ensureId = (emptyLabel = '📷 사진') => {
@@ -243,6 +245,24 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >🧮 계산</button>
+        {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — 메모 원본은 그대로 */}
+        <button
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => {
+            const el = textareaRef.current;
+            const title = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+            if (!title) { onPhotoError?.('언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요'); return; }
+            sendMemoToSomeday(title, ensureId());
+            setSentTask(title);
+            setTimeout(() => setSentTask(''), 2000);
+          }}
+          title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
+          style={{
+            flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: sentTask ? 'rgba(74,222,128,.12)' : 'var(--dm-input)',
+            border: `1.5px dashed ${sentTask ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, color: sentTask ? '#4ADE80' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
       </div>
 
       <div style={{ marginBottom: 8 }}>

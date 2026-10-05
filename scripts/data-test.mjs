@@ -21,7 +21,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 {
   const full = {
     note: '메모', photos: [{ path: 'p1', url: 'u1' }], files: [{ id: 'f1', name: 'a.pdf' }],
-    time: '09:00', endTime: '10:00', focusMin: 25, statTag: 'int', goalRef: { kind: 'year', title: '건강' },
+    time: '09:00', endTime: '10:00', focusMin: 25, statTag: 'int', goalRef: { kind: 'year', title: '건강' }, memoRef: { ds: '2026-10-05', id: 'm1' },
   };
   const task = { id: 't1', title: '운동', done: false, ...full };
   const someday = { id: 'sd1', title: task.title, done: false, ...pickTaskDetail(task) }; // 할일 → 언젠가

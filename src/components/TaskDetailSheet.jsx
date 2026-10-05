@@ -107,6 +107,11 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               🎯 {task.goalRef.kind === 'life' ? '인생목표' : '올해 목표'} "{task.goalRef.title}"에서 나온 할일
             </div>
           )}
+          {task.memoRef && (
+            <div style={{ fontSize: 12, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14, lineHeight: 1.5 }}>
+              📝 {task.memoRef.ds ? `${formatShortKoreanDate(task.memoRef.ds)} ` : ''}메모에서 나온 할일
+            </div>
+          )}
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 4 }}>제목</div>
           <input
             value={title}

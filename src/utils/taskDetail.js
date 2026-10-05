@@ -9,4 +9,5 @@ export const pickTaskDetail = (x = {}) => ({
   ...(x.focusMin ? { focusMin: x.focusMin } : {}), // 집중 타이머로 쌓인 시간(분)
   ...(x.statTag ? { statTag: x.statTag } : {}),
   ...(x.goalRef ? { goalRef: x.goalRef } : {}), // 🎯 어느 목표에서 파생됐는지
+  ...(x.memoRef ? { memoRef: x.memoRef } : {}), // 📝 어느 메모에서 보냈는지 {ds, id} (2026-10-05)
 });

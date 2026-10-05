@@ -6,6 +6,7 @@ import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
+import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
@@ -291,6 +292,8 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
   const [text, setText] = useState(initial);
   const [title, setTitle] = useState(task?.title || "");
   const [viewer, setViewer] = useState(null);
+  const [sentTask, setSentTask] = useState(false);
+  const textRef = useRef(null);
 
   const saved = useRef({ text: initial, title: task?.title || "" });
   const save = (t, ti) => {
@@ -357,6 +360,17 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
         {item.kind === "memo" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
         )}
+        {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js */}
+        {item.kind === "memo" && (
+          <button onMouseDown={e => e.preventDefault()} onClick={() => {
+            const el = textRef.current;
+            const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+            if (!t) { onError?.("언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
+            sendMemoToSomeday(t, item.id);
+            setSentTask(true);
+            setTimeout(() => setSentTask(false), 2000);
+          }} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로" style={sentTask ? { ...small, color: "#4ADE80", borderColor: "rgba(74,222,128,.5)" } : small}>{sentTask ? "보냄 ✓" : "📋 언젠가로"}</button>
+        )}
         {item.kind === "task" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
         )}
@@ -371,7 +385,7 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
           style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
-      <textarea value={text} onChange={e => setText(e.target.value)}
+      <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
         onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
         placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
         style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />

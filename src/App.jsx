@@ -1327,6 +1327,23 @@ export default function App() {
     window.addEventListener('dm:navigate', onNavigate);
     return () => window.removeEventListener('dm:navigate', onNavigate);
   }, []);
+  // 메모 → 언젠가할일 (utils/memoToTask.js). 출처 메모의 날짜를 찾아 memoRef로 붙인다 — 메모 원본은 그대로
+  useEffect(() => {
+    const onAdd = (e) => {
+      const { title, memoId } = e.detail || {};
+      if (!title) return;
+      const id = `sd${Date.now()}`;
+      setSomeday(prev => [...(prev || []), { id, title, done: false, ...(memoId ? { memoRef: { id: memoId } } : {}) }]);
+      if (!memoId) return;
+      // 방금 만든 메모는 아직 날짜 기록에 반영 전일 수 있어, 화면이 갱신된 뒤 날짜를 찾아 붙인다
+      setTimeout(() => {
+        const ds = Object.keys(plansRef.current || {}).find(d => (plansRef.current[d]?.memos || []).some(m => m.id === memoId));
+        if (ds) setSomeday(prev => (prev || []).map(x => (x.id === id ? { ...x, memoRef: { ds, id: memoId } } : x)));
+      }, 500);
+    };
+    window.addEventListener('dm:add-someday', onAdd);
+    return () => window.removeEventListener('dm:add-someday', onAdd);
+  }, []);
   const refreshDaysRef = useRef(refreshFromServer);
   useEffect(() => { refreshDaysRef.current = refreshFromServer; });
   useEffect(() => {
