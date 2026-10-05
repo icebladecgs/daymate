@@ -18,6 +18,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import StatAskBar from "./components/StatAskBar.jsx";
+import UnsyncedBar from "./components/UnsyncedBar.jsx";
 import { triggerVibration } from "./utils/notification.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
@@ -1327,6 +1328,40 @@ export default function App() {
     window.addEventListener('dm:navigate', onNavigate);
     return () => window.removeEventListener('dm:navigate', onNavigate);
   }, []);
+  // 계정에 1분 넘게 못 올라간 날짜 기록 알림(UnsyncedBar) — 로그인 상태에서만, 평소엔 안 보임.
+  // 인터넷이 다시 연결되면 자동으로 다시 저장한다. 닫으면 개수가 바뀌기 전까지 다시 띄우지 않는다
+  const [unsynced, setUnsynced] = useState(null); // { n, offline } | null
+  const [unsyncedHidden, setUnsyncedHidden] = useState(0); // 닫았을 때의 개수
+  const unsyncedSinceRef = useRef({});
+  const retryUnsyncedRef = useRef(null);
+  retryUnsyncedRef.current = () => {
+    const uid = authUser?.uid;
+    if (!uid) return;
+    store.get(UNSYNCED_DAYS_KEY, []).forEach(ds => {
+      const day = plansRef.current[ds] || loadDay(ds);
+      if (day) persistDayData(ds, day, uid, true);
+    });
+  };
+  useEffect(() => {
+    if (!authUser?.uid) { setUnsynced(null); return; }
+    const check = () => {
+      if (!syncReadyRef.current) return; // 로그인 직후 병합 중에는 판단하지 않음
+      const days = store.get(UNSYNCED_DAYS_KEY, []);
+      const now = Date.now();
+      const since = {};
+      days.forEach(d => { since[d] = unsyncedSinceRef.current[d] || now; });
+      unsyncedSinceRef.current = since;
+      const stale = days.filter(d => now - since[d] >= 60000).length;
+      setUnsynced(stale ? { n: stale, offline: navigator.onLine === false } : null);
+    };
+    const onOnline = () => { retryUnsyncedRef.current?.(); check(); };
+    check();
+    const iv = setInterval(check, 15000);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', check);
+    return () => { clearInterval(iv); window.removeEventListener('online', onOnline); window.removeEventListener('offline', check); };
+  }, [authUser?.uid]);
+
   // 메모 → 언젠가할일 (utils/memoToTask.js). 출처 메모의 날짜를 찾아 memoRef로 붙인다 — 메모 원본은 그대로
   useEffect(() => {
     const onAdd = (e) => {
@@ -2659,6 +2694,9 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
+        {unsynced && unsynced.n !== unsyncedHidden && !statAsk && (
+          <UnsyncedBar count={unsynced.n} offline={unsynced.offline} onRetry={() => retryUnsyncedRef.current?.()} onClose={() => setUnsyncedHidden(unsynced.n)} />
+        )}
         {statAsk && (
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
