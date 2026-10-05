@@ -34,6 +34,9 @@ function prepare() {
   step('기본 점검');
   if (run('npm', ['run', 'test:smoke']) !== 0) die('기본 점검 실패 — 배포하지 마세요');
 
+  step('기록 보존 점검');
+  if (run('npm', ['run', 'test:data']) !== 0) die('기록 보존 점검 실패 — 기록이 사라질 수 있어요. 배포하지 마세요');
+
   const tag = lastDeployTag();
   const rulesChanged = !tag || sh(`git diff --name-only ${tag} HEAD -- firestore.rules`);
   if (rulesChanged) {

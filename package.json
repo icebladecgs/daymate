@@ -1,7 +1,7 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.685.0",
+  "version": "0.687.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
@@ -9,6 +9,7 @@
     "release:prepare": "node scripts/release.mjs prepare",
     "release:deploy": "node scripts/release.mjs deploy",
     "test:smoke": "node scripts/smoke-test.mjs",
+    "test:data": "node scripts/data-test.mjs",
     "test:rules": "node tools/rules-test/rules.mjs test",
     "rules:deploy": "node tools/rules-test/rules.mjs deploy",
     "rules:login": "node tools/rules-test/rules.mjs login",

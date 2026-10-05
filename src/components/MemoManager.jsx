@@ -5,6 +5,7 @@ import PhotoViewer from "./PhotoViewer.jsx";
 import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
+import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
@@ -97,17 +98,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   };
   // 휴지통: 되살리기(원래 날짜 메모로) · 영구 삭제(사진 파일도 정리) · 비우기
   const restoreTrash = (it) => {
-    onUpdateDayData(it.ds, prev => {
-      const t = (prev.memoTrash || []).find(m => m.id === it.id);
-      if (!t) return prev;
-      const { deletedAt, ...memo } = t; // eslint-disable-line no-unused-vars
-      const memos = withMemoList(prev);
-      return {
-        ...prev,
-        memos: memos.some(m => m.id === memo.id) ? memos : [...memos, memo],
-        memoTrash: (prev.memoTrash || []).filter(m => m.id !== it.id),
-      };
-    });
+    onUpdateDayData(it.ds, prev => restoreMemoFromTrash(prev, it.id));
     setSelectedKey(`memo|${it.ds}|${it.id}`);
     setFilter("all");
     onError?.("메모를 되살렸어요");
