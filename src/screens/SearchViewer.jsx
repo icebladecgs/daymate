@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { canAutoFocus } from "../utils/device.js";
 import { formatKoreanDate } from "../utils/date.js";
 import S from "../styles.js";
 import JournalViewer from "./JournalViewer.jsx";
@@ -221,7 +222,7 @@ export default function SearchViewer({ plans, onClose, onOpenDate, onUpdateDayDa
             placeholder="검색어 입력..."
             value={query}
             onChange={e => setQuery(e.target.value)}
-            autoFocus
+            autoFocus={canAutoFocus()}
           />
         </div>
       </div>

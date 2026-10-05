@@ -8,6 +8,7 @@ import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sor
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
+import { canAutoFocus } from "../utils/device.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
@@ -248,7 +249,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); move(1); } else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); } }}
-            placeholder="검색 (메모·일정·일기)" autoFocus
+            placeholder="검색 (메모·일정·일기)" autoFocus={canAutoFocus()}
             style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
           <button onClick={() => move(1)} aria-label="다음" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▼</button>
           <button onClick={() => move(-1)} aria-label="이전" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▲</button>

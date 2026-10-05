@@ -9,6 +9,7 @@ import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
+import { canAutoFocus } from "../utils/device.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -137,6 +138,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   };
 
   useEffect(() => {
+    if (!canAutoFocus()) return; // 휴대폰은 키보드가 버튼을 가려서 열 때 커서를 두지 않음
     const t = setTimeout(() => textareaRef.current?.focus(), 150);
     return () => clearTimeout(t);
   }, []);
@@ -184,7 +186,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
     savedTextRef.current = '';
     setSavedAt(null);
     onPhotoError?.('저장됨 ✅ 이어서 새 메모를 써보세요');
-    requestAnimationFrame(() => textareaRef.current?.focus());
+    if (canAutoFocus()) requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
   const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
