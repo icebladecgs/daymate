@@ -74,16 +74,21 @@ function preflight() {
   // Vercel Hobby는 서버 함수(api/*.js) 12개까지 — 넘으면 배포가 실패한다
   const fnCount = readdirSync('api').filter(f => /\.(js|mjs|ts)$/.test(f)).length;
   if (fnCount > 12) die(`api 폴더 서버 함수가 ${fnCount}개예요 (Hobby 요금제 최대 12개) — 새 파일 대신 기존 파일에 기능을 합치세요`);
-  if (!existsSync('.env.local')) die('.env.local이 없어요 (VERCEL_TOKEN)');
+  if (!vercelToken()) {
+    // 토큰이 없으면 이 PC의 Vercel CLI 로그인으로 배포한다(윈도우 PC는 이 방식 — 2026-10-06)
+    const who = spawnSync('vercel', ['whoami'], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', shell: isWin });
+    if (who.status !== 0) die('.env.local에 VERCEL_TOKEN이 없고 Vercel CLI 로그인도 안 돼 있어요 — vercel login 먼저');
+    console.log(`  Vercel CLI 로그인으로 배포 (${(who.stdout || '').trim().split(/\r?\n/).pop()})`);
+  }
   console.log(`  브랜치·커밋·.vercelignore·cron ${crons.length}개·서버 함수 ${fnCount}/12개 모두 정상`);
 }
 
 // .env.local 전체를 불러오지 않고 토큰 한 줄만 읽는다 (VERCEL_PROJECT_ID만 있으면 배포가 실패하기 때문)
+// 토큰이 없으면 null — Vercel CLI 로그인으로 배포한다
 function vercelToken() {
+  if (!existsSync('.env.local')) return null;
   const line = readFileSync('.env.local', 'utf8').split(/\r?\n/).find(l => /^\s*VERCEL_TOKEN\s*=/.test(l));
-  const token = line?.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '');
-  if (!token) die('.env.local에 VERCEL_TOKEN이 없어요');
-  return token;
+  return line?.split('=').slice(1).join('=').trim().replace(/^["']|["']$/g, '') || null;
 }
 
 async function verify(version, commit) {
@@ -110,7 +115,8 @@ async function deploy() {
   const version = versionNow();
   const commit = sh('git rev-parse --short=7 HEAD');
   step(`Vercel 프로덕션 배포 (${version}, ${commit})`);
-  const r = spawnSync('vercel', ['deploy', '--prod', '--yes', '--token', vercelToken()], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', shell: isWin });
+  const token = vercelToken();
+  const r = spawnSync('vercel', ['deploy', '--prod', '--yes', ...(token ? ['--token', token] : [])], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', shell: isWin });
   const out = `${r.stdout || ''}${r.stderr || ''}`;
   const url = out.match(/https:\/\/[^\s]+\.vercel\.app/g)?.pop();
   if (r.status !== 0) die(`vercel 배포 실패:\n${out.split('\n').slice(-15).join('\n')}`);

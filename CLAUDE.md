@@ -68,6 +68,7 @@ npm run release:deploy    # 승인 후: 배포 전 확인(.vercelignore·cron·�
 
 - `release:prepare`는 GitHub에 이 PC에 없는 커밋(맥 작업분)이 있으면 멈춘다 — `git pull` 후 다시 한다.
 - `release:deploy`는 운영 주소에서 새 버전·서비스워커가 확인되지 않으면 "배포 완료 아님"으로 멈춘다.
+- `release:deploy`는 `.env.local`의 `VERCEL_TOKEN`을 쓰고, 없으면 **이 PC의 Vercel CLI 로그인**으로 배포한다(윈도우 PC는 로그인 방식, 2026-10-06). 둘 다 없으면 멈춘다 — 사용자가 `vercel login`(브라우저 승인)을 하면 된다. 윈도우 PC에 `.env.local`이 없으면 로그인 후 `vercel env pull .env.local --environment=production --yes`로 받는다(Firebase 설정값이 있어야 기본 점검이 통과한다). 이 명령이 `.gitignore`에 줄을 덧붙이면 되돌린다(이미 제외 대상).
 - 스크립트가 멈추면 메시지대로 원인을 고치고, 우회하지 않는다.
 
 ### 3.1 버전 자동 갱신
