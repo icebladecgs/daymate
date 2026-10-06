@@ -236,7 +236,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 
 ### 보안 규칙 변경 시 검증 방법
 
-- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-09-27 기준 141개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
+- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-10-06 기준 157개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
 - 규칙을 바꾸면 **테스트도 같이 추가**한다 — 새 파일 `tools/rules-test/tests/0N-이름.mjs`(기존 파일 형식: `t(이름, assertSucceeds/assertFails(...))`, 끝에 합계와 `process.exitCode`).
 - Java는 윈도우에서 `C:\baduk\LizzieYZY\jre\java11\bin`을 스크립트가 자동으로 PATH에 넣는다. 맥은 설치된 Java를 쓴다. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
 - "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.
@@ -483,7 +483,7 @@ DayMate에서는 카메라 강제 실행보다 사용자가 사진 앨범에서 
 - **어제 못 한 할일 넘기기는 "어제"만** 대상으로 한다.
 - **휴대폰 홈 화면 위젯은 만들지 않는다** — 구글 캘린더 위젯으로 대신한다.
 - **다른 기기 변경 반영은 "앱으로 돌아올 때"로 충분**하다(실시간 리스너는 도입하지 않음).
-- **앱 잠금(비밀번호 4자리) (2026-09-27 사용자 확정).** 원하는 사람만 설정 → 앱 관리에서 켠다. 앱을 켤 때 + 앱을 벗어났다가 정한 시간(즉시·1분·5분·30분, 기본 5분) 넘게 지나 돌아올 때 묻는다. **기기마다 따로**(localStorage `dm_app_lock`, PBKDF2 해시만 저장, 계정 동기화 안 함). 켜려면 로그인 필요 — 잊으면 잠금 화면에서 **같은 구글 계정으로 재인증**(`googleReauth`)하면 풀린다. 5번 틀리면 30초 대기. **포스트잇 창은 잠그지 않는다.** 화면 가리기이지 암호화가 아니다(숨길 메모는 메모 잠금). 구현: `AppLockGate`(main.jsx에서 App 위에 덮음), `AppLockSettings`, `utils/appLock.js`. 데스크탑은 트레이로 숨긴 창도 `visibilityState`가 visible로 남아서, `desktop/main.js`가 창 hide/minimize/show/restore 때 `dm:app-hidden`·`dm:app-shown` 이벤트를 웹에 보낸다.
+- **앱 잠금(비밀번호 4자리) (2026-09-27 사용자 확정).** 원하는 사람만 설정 → 앱 관리에서 켠다. 앱을 켤 때 + 앱을 벗어났다가 정한 시간(즉시·1분·5분·30분, 기본 5분) 넘게 지나 돌아올 때 묻는다. **기기마다 따로**(localStorage `dm_app_lock`, PBKDF2 해시만 저장, 계정 동기화 안 함). 켜려면 로그인 필요. 5번 틀리면 30초 대기. **비밀번호를 잊었을 때 (2026-10-06 사용자 확정):** ① **지문·얼굴로 풀기**(WebAuthn, 설정에서 켬, 이 기기 안에서만 확인 — 키 id만 저장, 비밀번호 바꾸기·끄기도 지문으로 확인 가능) ② **관리자에게 해제 요청** — 잠금 화면에서 보내면 제안 게시판(`suggestions`, `kind: 'appLock'`, 기기 잠금 id `lockId`)으로 오고, 관리자 화면(문의·제안 탭, 유저 목록)의 "🔓 이 기기 잠금 풀기"가 `appLockResets/{lockId}`에 표시를 남긴다 → 그 기기가 1시간 안에 확인하면 잠금이 꺼진다(표시는 사용 후 삭제). **구글 계정 재인증으로 푸는 방식은 없앴다** — 휴대폰엔 구글 계정이 이미 로그인돼 있어 주운 사람도 한 번 눌러 풀 수 있었다. 다시 넣지 않는다. 관리자는 해제 전에 가입 이메일·아는 연락처로 **본인 확인**을 한다(주운 사람도 요청은 보낼 수 있다). **포스트잇 창은 잠그지 않는다.** 화면 가리기이지 암호화가 아니다(숨길 메모는 메모 잠금). 구현: `AppLockGate`(main.jsx에서 App 위에 덮음), `AppLockSettings`, `utils/appLock.js`. 데스크탑은 트레이로 숨긴 창도 `visibilityState`가 visible로 남아서, `desktop/main.js`가 창 hide/minimize/show/restore 때 `dm:app-hidden`·`dm:app-shown` 이벤트를 웹에 보낸다.
 - 메모 서식(굵게)과 포스트잇 자석 기능은 넣지 않는다. 알람은 추후 "구글 캘린더 알림(PC는 데스크탑 앱)" 방식이 후보다. 음력·공휴일은 나중에 따로.
 
 ### 14.7 오늘 탭·My 탭 구성과 제품 방향 (2026-09-27 사용자 확정)

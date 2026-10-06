@@ -19,7 +19,7 @@ function toText(err) {
   try { return { msg: JSON.stringify(err), stack: "" }; } catch { return { msg: String(err), stack: "" }; }
 }
 
-function platformOf() {
+export function platformOf() {
   const tags = [];
   if (window.daymateDesktop) tags.push("데스크탑");
   else if (window.matchMedia?.("(display-mode: standalone)").matches) tags.push("설치앱");

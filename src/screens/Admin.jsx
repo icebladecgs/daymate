@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
@@ -71,6 +71,7 @@ export default function Admin({ authUser, onBack }) {
   const [suggestions, setSuggestions] = useState([]);
   const [replyTexts, setReplyTexts] = useState({});
   const [replyingId, setReplyingId] = useState(null);
+  const markUnlocked = (id) => setSuggestions(prev => prev.map(x => x.id === id ? { ...x, status: 'answered', unlockedAt: new Date().toISOString() } : x));
   const [communities, setCommunities] = useState([]);
   const [commLoading, setCommLoading] = useState(false);
   const [challenges, setChallenges] = useState([]);
@@ -249,7 +250,7 @@ export default function Admin({ authUser, onBack }) {
               {[
                 { key: 'users', label: `유저 (${totalUsers})` },
                 { key: 'rankings', label: `랭킹 (${rankings.length})` },
-                { key: 'suggestions', label: '제안', badge: pendingCount },
+                { key: 'suggestions', label: '문의·제안', badge: pendingCount },
                 { key: 'communities', label: `커뮤니티 (${communities.length})` },
                 { key: 'challenges', label: `챌린지 (${challenges.length})` },
                 { key: 'errors', label: '🐞 오류' },
@@ -334,6 +335,8 @@ export default function Admin({ authUser, onBack }) {
                   daysCount={daysMap[u.uid]}
                   expanded={expandedUid === u.uid}
                   onToggle={() => setExpandedUid(expandedUid === u.uid ? null : u.uid)}
+                  lockRequests={suggestions.filter(s => s.kind === 'appLock' && s.uid === u.uid && !s.unlockedAt)}
+                  onUnlocked={markUnlocked}
                 />
               ))}
               {users.length === 0 && (
@@ -442,7 +445,11 @@ export default function Admin({ authUser, onBack }) {
                     <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{new Date(s.createdAt).toLocaleDateString('ko-KR')}</span>
                   </div>
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.7, marginBottom: 10 }}>{s.text}</div>
+                <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.7, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{s.text}</div>
+                {s.kind === 'appLock' && (
+                  <AppLockRequest s={s} user={users.find(u => u.uid === s.uid)}
+                    onDone={() => markUnlocked(s.id)} />
+                )}
                 {s.adminReply && (
                   <div style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 3 }}>관리자 답변</div>
@@ -486,6 +493,36 @@ export default function Admin({ authUser, onBack }) {
   );
 }
 
+// 앱 잠금 해제 요청 — 관리자가 본인 확인 후 "잠금 풀기"를 누르면 그 기기(lockId)의 잠금이 1시간 안에 풀린다.
+// 휴대폰을 주운 사람도 요청은 보낼 수 있으므로, 반드시 가입 이메일·아는 연락처로 본인인지 확인한 뒤 푼다.
+function AppLockRequest({ s, user, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const done = !!s.unlockedAt;
+  const unlock = async () => {
+    if (!window.confirm(`${user?.email || s.maskedEmail}의 앱 잠금을 풀까요?\n\n본인인지 확인했나요? 휴대폰을 주운 사람도 이 요청을 보낼 수 있어요.`)) return;
+    setBusy(true);
+    try {
+      await approveAppUnlock(s.id, s.uid, s.lockId);
+      onDone();
+    } catch { alert('해제 실패 — Firestore 보안 규칙(appLockResets)을 확인하세요'); }
+    setBusy(false);
+  };
+  return (
+    <div style={{ background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12, lineHeight: 1.6 }}>
+      <div style={{ color: 'var(--dm-text)' }}>계정: <b>{user?.email || s.maskedEmail}</b>{user?.name ? ` (${user.name})` : ''}</div>
+      <div style={{ color: 'var(--dm-muted)', marginBottom: 8 }}>⚠️ 가입 이메일이나 아는 연락처로 본인인지 확인한 뒤 풀어 주세요. 풀면 그 기기가 1시간 안에 앱을 열 때 잠금이 꺼져요.</div>
+      {done ? (
+        <div style={{ color: '#4ADE80', fontWeight: 800 }}>✅ 잠금을 풀었어요</div>
+      ) : (
+        <button disabled={busy || !s.lockId} onClick={unlock}
+          style={{ background: 'rgba(248,113,113,.15)', border: '1px solid rgba(248,113,113,.4)', borderRadius: 8, color: '#F87171', fontSize: 13, fontWeight: 800, cursor: 'pointer', padding: '8px 14px' }}>
+          {busy ? '처리 중...' : '🔓 이 기기 잠금 풀기'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function StatCard({ label, value, color }) {
   return (
     <div style={{ background: "var(--dm-card)", border: "1.5px solid var(--dm-border)", borderRadius: 14, padding: "12px 14px" }}>
@@ -495,7 +532,7 @@ function StatCard({ label, value, color }) {
   );
 }
 
-function UserRow({ u, daysCount, expanded, onToggle }) {
+function UserRow({ u, daysCount, expanded, onToggle, lockRequests = [], onUnlocked }) {
   const displayName = u.name || u.email?.split("@")[0] || "이름 없음";
   const today = isToday(u.lastSeen);
   const recentWeek = isWithinDays(u.lastSeen, 7);
@@ -516,7 +553,7 @@ function UserRow({ u, daysCount, expanded, onToggle }) {
         {/* 이름/이메일 */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {displayName}
+            {displayName}{lockRequests.length > 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 900, color: "#F87171" }}>🔒 잠금 해제 요청</span>}
           </div>
           <div style={{ fontSize: 11, color: "var(--dm-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {u.email || "-"}
@@ -545,6 +582,12 @@ function UserRow({ u, daysCount, expanded, onToggle }) {
           <DetailRow label="가입일" value={fmtDate(u.createdAt)} />
           <DetailRow label="마지막 접속" value={u.lastSeen ? new Date(u.lastSeen).toLocaleString("ko-KR") : "-"} />
           <DetailRow label="기록 일수" value={daysCount === undefined ? "로딩 중..." : `${daysCount}일`} />
+          {lockRequests.map(s => (
+            <div key={s.id} style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: "var(--dm-text)", whiteSpace: "pre-wrap", marginBottom: 6 }}>{s.text} · {new Date(s.createdAt).toLocaleString("ko-KR")}</div>
+              <AppLockRequest s={s} user={u} onDone={() => onUnlocked(s.id)} />
+            </div>
+          ))}
         </div>
       )}
     </div>

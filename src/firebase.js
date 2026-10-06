@@ -4,7 +4,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  reauthenticateWithPopup,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -62,13 +61,6 @@ export function googleSignIn() {
   return signInWithPopup(auth, new GoogleAuthProvider());
 }
 
-// 지금 로그인한 계정 본인인지 구글로 다시 확인(다른 계정을 고르면 실패) — 앱 잠금 비밀번호를 잊었을 때
-export async function googleReauth() {
-  await auth.authStateReady();
-  if (!auth.currentUser) throw new Error("no-user");
-  await reauthenticateWithPopup(auth.currentUser, new GoogleAuthProvider());
-  return auth.currentUser.uid;
-}
 
 export function googleSignOut() {
   return signOut(auth);
@@ -656,6 +648,45 @@ export async function replySuggestion(id, reply) {
 export async function getPendingSuggestionsCount() {
   const snap = await getCountFromServer(query(collection(db, 'suggestions'), where('status', '==', 'pending')));
   return snap.data().count;
+}
+
+// ---------- 앱 잠금 해제 요청 (비밀번호를 잊었을 때 관리자에게) ----------
+// 요청은 제안 게시판(suggestions)에 kind: 'appLock'으로 들어가고, 관리자가 풀어 주면
+// appLockResets/{기기 잠금 id}에 표시가 생긴다. 잠긴 기기는 이 표시를 확인하고 잠금을 푼 뒤 표시를 지운다.
+
+export async function requestAppUnlock(uid, maskedEmail, lockId, platform, note) {
+  await addDoc(collection(db, 'suggestions'), {
+    uid,
+    maskedEmail,
+    kind: 'appLock',
+    lockId,
+    platform,
+    text: `🔒 앱 잠금 해제 요청 (${platform})${note ? `\n${note}` : ''}`,
+    status: 'pending',
+    adminReply: null,
+    createdAt: new Date().toISOString(),
+    repliedAt: null,
+  });
+}
+
+export async function approveAppUnlock(suggestionId, uid, lockId) {
+  await setDoc(doc(db, 'appLockResets', lockId), { uid, at: new Date().toISOString() });
+  await setDoc(doc(db, 'suggestions', suggestionId), {
+    adminReply: '잠금을 풀었어요. 1시간 안에 앱을 열면 풀려요. 설정 → 앱 관리에서 새 비밀번호를 정해 주세요.',
+    status: 'answered',
+    repliedAt: new Date().toISOString(),
+    unlockedAt: new Date().toISOString(),
+  }, { merge: true });
+}
+
+// 이 기기의 해제 표시가 있고 1시간 안이면 true (확인 후 표시는 지운다)
+export async function consumeAppUnlock(lockId, validMs) {
+  const ref = doc(db, 'appLockResets', lockId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return false;
+  const fresh = Date.now() - new Date(snap.data().at).getTime() < validMs;
+  await deleteDoc(ref).catch(() => {});
+  return fresh;
 }
 
 // ---------- 챌린지 ----------
