@@ -19,7 +19,7 @@ import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 
 // 데스크탑 앱 설치 파일 — 새 버전을 GitHub 릴리스에 올리면 여기도 바꾼다
-const DESKTOP_DOWNLOAD_URL = 'https://github.com/icebladecgs/daymate/releases/download/Desktop-v1.2.8/Daymate.Setup.1.2.8.exe';
+const DESKTOP_DOWNLOAD_URL = 'https://github.com/icebladecgs/daymate/releases/download/desktop-v1.1.9/Daymate.Setup.1.2.9.exe'; // 태그 이름은 1.1.9 오타지만 내용은 1.2.9 — 태그를 고치면 이 주소도 바꿀 것
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
