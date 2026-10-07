@@ -139,14 +139,19 @@ export const todayText = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMont
 export const nowTimeText = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 // textarea 일부를 바꿔 넣기 — execCommand로 넣어 Ctrl+Z(되돌리기)가 되게 하고, 안 되면 직접 넣고 input 이벤트로 알린다
+// 결과가 예상과 다르면(한글 입력기가 켜진 데스크탑 앱에서 전체가 지워진 적 있음, 2026-10-07) 예상한 내용으로 바로잡는다
 function replaceRange(ta, start, end, text, caret) {
+  const expected = ta.value.slice(0, start) + text + ta.value.slice(end);
   ta.focus();
   ta.setSelectionRange(start, end);
   let ok = false;
-  try { ok = document.execCommand("insertText", false, text); } catch { ok = false; }
-  if (!ok) {
+  try {
+    // 지우기만 할 때는 빈 글자 넣기 대신 delete 명령 (둘 다 Ctrl+Z 가능)
+    ok = text ? document.execCommand("insertText", false, text) : (start === end || document.execCommand("delete"));
+  } catch { ok = false; }
+  if (!ok || ta.value !== expected) {
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-    setter.call(ta, ta.value.slice(0, start) + text + ta.value.slice(end));
+    setter.call(ta, expected);
     ta.dispatchEvent(new Event("input", { bubbles: true }));
   }
   const pos = caret ?? start + text.length;
@@ -176,7 +181,7 @@ export function calcAtCursor(ta) {
 // textarea onKeyDown에 연결 — 처리했으면 true (이벤트 기본 동작도 막음)
 export function handleEditorKey(e, onCalcFail) {
   const ta = e.currentTarget;
-  if (!ta || e.nativeEvent?.isComposing) return false; // 한글 조합 중에는 건드리지 않음
+  if (!ta || e.nativeEvent?.isComposing || e.keyCode === 229) return false; // 한글 조합 중(입력기가 처리 중인 키)에는 건드리지 않음
   const ctrl = e.ctrlKey || e.metaKey;
   const done = () => { e.preventDefault(); return true; };
 
