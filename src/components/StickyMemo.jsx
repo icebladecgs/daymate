@@ -6,6 +6,7 @@ import { markDayUnsynced } from "../utils/daySync.js";
 import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
+import { APP_VERSION } from "../version.js";
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -259,6 +260,7 @@ export default function StickyMemo() {
                 <span style={{ width: 18, textAlign: "center" }}>{icon}</span>{label}
               </button>
             ))}
+            <div style={{ fontSize: 10, color: "#999", padding: "4px 10px 2px", borderTop: "1px solid #eee", marginTop: 2 }}>DayMate {APP_VERSION}</div>
           </div>
         </>
       )}

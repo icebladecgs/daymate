@@ -200,39 +200,89 @@ export function handleEditorKey(e, onCalcFail) {
     return done();
   }
   if ((e.key === "Tab" || e.key === "Enter" || e.key === "Backspace") && !memoAutoListOn()) return false;
+  // 목록 키는 "지금 처리할지"만 정하고, 한글 조합 중이면 실제로 바꾸는 건 조합이 끝난 뒤에 한다(afterIme).
+  // 데스크탑 앱에서 마지막 글자(예: "라")가 조합 중일 때 바로 바꾸면, 입력기가 예전 위치 기준으로 글자를 확정하면서
+  // 내용이 뒤엉키거나 전체가 지워졌다(2026-10-07). 바꿀 때는 그 순간의 내용으로 다시 계산한다.
+  // 조합 중이 아니면 바로 처리 (기다리면 빠르게 칠 때 다음 글자가 먼저 들어간다)
+  const later = (fn) => { e.preventDefault(); if (imeComposing) afterIme(ta, fn); else fn(); return true; };
   // Tab은 메모장·워드처럼 입력칸 안에서 처리 (다음 칸으로 넘어가지 않음)
   if (e.key === "Tab" && !ctrl && !e.altKey) {
-    if (e.shiftKey) { indentLines(ta, -1); return done(); }
-    const multi = ta.value.slice(ta.selectionStart, ta.selectionEnd).includes("\n");
-    if (!indentLines(ta, 1, multi)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, INDENT); // 목록 아닌 줄 → 공백 4칸
-    return done();
+    const shift = e.shiftKey;
+    return later(() => doTab(ta, shift));
   }
   // 목록 기호 바로 뒤에서 Backspace → 들여쓴 항목이면 한 단계 위로, 맨 위면 기호만 지우기 (노션·구글 문서와 같게)
-  if (e.key === "Backspace" && !ctrl && !e.shiftKey && !e.altKey && ta.selectionStart === ta.selectionEnd) {
-    const cl = currentLine(ta);
-    const before = ta.value.slice(cl.start, ta.selectionStart);
-    const m = LIST_RE.exec(before);
-    if (!m || m[0] !== before) return false;
-    if (m[1]) indentLines(ta, -1);
-    else replaceRange(ta, cl.start, cl.start + m[0].length, "", cl.start);
-    return done();
+  if (e.key === "Backspace" && !ctrl && !e.shiftKey && !e.altKey && backspacePlan(ta)) {
+    return later(() => { if (!doBackspace(ta)) replaceRange(ta, Math.max(0, ta.selectionStart - 1), ta.selectionEnd, ""); });
   }
-  if (e.key === "Enter" && !ctrl && !e.shiftKey && !e.altKey && ta.selectionStart === ta.selectionEnd) {
-    const cl = currentLine(ta);
-    const before = ta.value.slice(cl.start, ta.selectionStart);
-    const m = LIST_RE.exec(before);
-    if (!m || !m[0].trim()) return false;
-    if (!cl.text.slice(m[0].length).trim()) { // 빈 항목에서 Enter → 들여쓴 항목이면 한 단계 위로, 아니면 기호 지우고 목록 끝
-      if (m[1]) indentLines(ta, -1);
-      else replaceRange(ta, cl.start, cl.end, "");
-      return done();
-    }
-    const marker = m[2] && /^\d+/.test(m[2]) ? `${parseInt(m[2], 10) + 1}${m[2].slice(-1)}` : m[2];
-    const box = m[3] || m[4] ? "[ ] " : "";
-    replaceRange(ta, ta.selectionStart, ta.selectionStart, `\n${m[1]}${marker ? `${marker} ` : ""}${box}`);
-    return done();
+  if (e.key === "Enter" && !ctrl && !e.shiftKey && !e.altKey && enterPlan(ta)) {
+    return later(() => { if (!doEnter(ta)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, "\n"); });
   }
   return false;
+}
+
+// 한글 조합 상태 — 입력기 조합이 시작되고 끝날 때까지
+let imeComposing = false;
+if (typeof document !== "undefined") {
+  document.addEventListener("compositionstart", () => { imeComposing = true; }, true);
+  document.addEventListener("compositionend", () => { imeComposing = false; }, true);
+}
+// 입력기가 조합 중인 글자를 확정한 뒤에 fn 실행. 다음 틱에도 조합 중이면 포커스를 잠깐 뺐다가 돌려 강제로 확정한다
+function afterIme(ta, fn) {
+  setTimeout(() => {
+    if (imeComposing) {
+      ta.blur();
+      ta.focus();
+      imeComposing = false;
+      setTimeout(fn, 0);
+      return;
+    }
+    fn();
+  }, 0);
+}
+
+function doTab(ta, shift) {
+  if (shift) { indentLines(ta, -1); return; }
+  const multi = ta.value.slice(ta.selectionStart, ta.selectionEnd).includes("\n");
+  if (!indentLines(ta, 1, multi)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, INDENT); // 목록 아닌 줄 → 공백 4칸
+}
+
+// 커서가 목록 기호 바로 뒤인가 → 그 줄의 목록 정보
+function backspacePlan(ta) {
+  if (ta.selectionStart !== ta.selectionEnd) return null;
+  const cl = currentLine(ta);
+  const before = ta.value.slice(cl.start, ta.selectionStart);
+  const m = LIST_RE.exec(before);
+  return m && m[0] === before ? { cl, m } : null;
+}
+function doBackspace(ta) {
+  const p = backspacePlan(ta);
+  if (!p) return false;
+  if (p.m[1]) indentLines(ta, -1);
+  else replaceRange(ta, p.cl.start, p.cl.start + p.m[0].length, "", p.cl.start);
+  return true;
+}
+
+// 커서가 목록 줄 안인가 → 그 줄의 목록 정보
+function enterPlan(ta) {
+  if (ta.selectionStart !== ta.selectionEnd) return null;
+  const cl = currentLine(ta);
+  const before = ta.value.slice(cl.start, ta.selectionStart);
+  const m = LIST_RE.exec(before);
+  return m && m[0].trim() ? { cl, m } : null;
+}
+function doEnter(ta) {
+  const p = enterPlan(ta);
+  if (!p) return false;
+  const { cl, m } = p;
+  if (!cl.text.slice(m[0].length).trim()) { // 빈 항목에서 Enter → 들여쓴 항목이면 한 단계 위로, 아니면 기호 지우고 목록 끝
+    if (m[1]) indentLines(ta, -1);
+    else replaceRange(ta, cl.start, cl.end, "");
+    return true;
+  }
+  const marker = m[2] && /^\d+/.test(m[2]) ? `${parseInt(m[2], 10) + 1}${m[2].slice(-1)}` : m[2];
+  const box = m[3] || m[4] ? "[ ] " : "";
+  replaceRange(ta, ta.selectionStart, ta.selectionStart, `\n${m[1]}${marker ? `${marker} ` : ""}${box}`);
+  return true;
 }
 
 // 목록 자동완성(Enter 이어쓰기·Tab 들여쓰기) 켜기/끄기 — 기기마다(설정 → 앱 관리). 계산·날짜 키는 직접 누르는 것이라 항상 켬
