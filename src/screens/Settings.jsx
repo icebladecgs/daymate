@@ -1317,7 +1317,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>목록 자동완성</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
-              "- ", "1. ", "[ ] " 줄에서 Enter를 치면 다음 줄에 이어 붙이고, Tab·Shift+Tab으로 단계를 들이고 내요. 기호 바로 뒤 Backspace는 한 단계 위로 · 끄면 Tab은 다음 칸 이동 · 이 기기에만 적용
+              "- ", "1. ", "[ ] " 줄에서 Enter를 치면 다음 줄에 이어 붙이고, Tab·Shift+Tab으로 단계를 들이고 내요. 기호 바로 뒤 Backspace는 한 단계 위로, 번호 목록은 넣고·지우고·옮기면 다시 매겨요 · 끄면 Tab은 다음 칸 이동 · 이 기기에만 적용 (메모 창의 ⚙️에서도 바꿀 수 있어요)
             </div>
           </div>
           <div onClick={() => { const v = !memoAutoList; setMemoAutoListState(v); setMemoAutoList(v); }} role="switch" aria-checked={memoAutoList} style={{

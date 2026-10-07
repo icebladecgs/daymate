@@ -7,6 +7,7 @@ import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { APP_VERSION } from "../version.js";
+import MemoSettings from "./MemoSettings.jsx";
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -70,6 +71,7 @@ export default function StickyMemo() {
   const [folded, setFolded] = useState(() => new URLSearchParams(window.location.search).get("fold") === "1");
   const [showColors, setShowColors] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false); // 삭제 확인 — 윈도우 기본 확인창은 메모와 먼 곳에 떠서 창 안에 직접 그린다
   const [status, setStatus] = useState("");
   const [viewer, setViewer] = useState(null);
@@ -189,7 +191,7 @@ export default function StickyMemo() {
   // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
   const actionsRef = useRef({});
   // 삭제 확인 중에는 접기 키(기본 Esc)가 확인창 닫기로 동작
-  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
+  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : showSettings ? () => setShowSettings(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
   const [keys, setKeys] = useState({});
   useEffect(() => {
     const d = desktop();
@@ -253,6 +255,7 @@ export default function StickyMemo() {
               [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
               ["📋", withKey("전체 복사", "copy"), copyAll],
               ["🗑", "삭제", () => setConfirmDel(true)],
+              ["⚙️", "메모 설정", () => setShowSettings(true)],
             ].map(([icon, label, fn]) => (
               <button key={icon + label} role="menuitem" onClick={() => { setShowMenu(false); fn(); }}
                 style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "7px 10px", border: "none", background: "transparent", color: "#000", fontSize: 13, textAlign: "left", cursor: "pointer", borderRadius: 6, fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -293,6 +296,7 @@ export default function StickyMemo() {
         </div>
       )}
       {viewer !== null && <PhotoViewer photos={photos} index={viewer} onClose={() => setViewer(null)} />}
+      {showSettings && !folded && <MemoSettings inline onClose={() => setShowSettings(false)} />}
       {confirmDel && !folded && (
         <div onClick={() => setConfirmDel(false)} onKeyDown={e => { if (e.key === "Escape") setConfirmDel(false); }}
           style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>

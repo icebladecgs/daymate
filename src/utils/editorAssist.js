@@ -7,7 +7,10 @@
 //                   (체크박스는 빈 칸 "[ ]"으로, 빈 항목에서 Enter면 한 단계 위로 · 맨 위 단계면 목록 끝)
 //  · Tab / Shift+Tab : 한 단계 들여쓰기 / 내어쓰기 (여러 줄을 고르면 한꺼번에). 목록 아닌 줄의 Tab은 공백 4칸
 //  · Backspace    : 목록 기호 바로 뒤에서 누르면 한 단계 위로 (맨 위면 기호만 지움)
-//  (Enter·Tab·Backspace 자동 처리는 설정 → 앱 관리 → 메모 입력에서 끌 수 있음)
+//  · Ctrl+Shift+X : 체크박스 [ ] ↔ [x] (없으면 [ ] 붙이기)
+//  · Alt+↑ / Alt+↓ : 줄(고른 여러 줄) 위아래로 옮기기
+//  · 번호 목록은 항목을 넣고·지우고·옮기면 1부터 다시 매김 (커서가 있는 목록만)
+//  (Enter·Tab·Backspace 자동 처리와 번호 다시 매기기는 설정 → 앱 관리 → 메모 입력, 또는 메모 창의 ⚙️에서 끌 수 있음)
 
 const UNIT = { 천: 1e3, 만: 1e4, 억: 1e8, 조: 1e12, k: 1e3, K: 1e3, m: 1e6, M: 1e6, b: 1e9, B: 1e9 };
 
@@ -184,6 +187,11 @@ export function handleEditorKey(e, onCalcFail) {
   if (!ta || e.nativeEvent?.isComposing || e.keyCode === 229) return false; // 한글 조합 중(입력기가 처리 중인 키)에는 건드리지 않음
   const ctrl = e.ctrlKey || e.metaKey;
   const done = () => { e.preventDefault(); return true; };
+  // 목록 키는 "지금 처리할지"만 정하고, 한글 조합 중이면 실제로 바꾸는 건 조합이 끝난 뒤에 한다(afterIme).
+  // 데스크탑 앱에서 마지막 글자(예: "라")가 조합 중일 때 바로 바꾸면, 입력기가 예전 위치 기준으로 글자를 확정하면서
+  // 내용이 뒤엉키거나 전체가 지워졌다(2026-10-07). 바꿀 때는 그 순간의 내용으로 다시 계산한다.
+  // 조합 중이 아니면 바로 처리 (기다리면 빠르게 칠 때 다음 글자가 먼저 들어간다)
+  const later = (fn) => { e.preventDefault(); if (imeComposing) afterIme(ta, fn); else fn(); return true; };
 
   if (e.key === "F12" || (ctrl && (e.key === "/" || e.code === "Slash"))) {
     if (!calcAtCursor(ta)) onCalcFail?.();
@@ -197,27 +205,166 @@ export function handleEditorKey(e, onCalcFail) {
     const cl = currentLine(ta);
     const col = ta.selectionStart - cl.start;
     replaceRange(ta, cl.end, cl.end, `\n${cl.text}`, cl.end + 1 + col);
+    autoRenumber(ta);
     return done();
   }
+  // Ctrl+Shift+X: 체크박스 켜기/끄기 (없으면 [ ] 붙이기). 한글 자판에서도 되게 자판 위치(code)로
+  if (ctrl && e.shiftKey && !e.altKey && e.code === "KeyX") {
+    return later(() => { toggleCheckbox(ta); autoRenumber(ta); });
+  }
+  // Alt+↑/↓: 줄(고른 여러 줄) 위아래로 옮기기
+  if (e.altKey && !ctrl && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+    const dir = e.key === "ArrowUp" ? -1 : 1;
+    return later(() => { moveLines(ta, dir); autoRenumber(ta); });
+  }
   if ((e.key === "Tab" || e.key === "Enter" || e.key === "Backspace") && !memoAutoListOn()) return false;
-  // 목록 키는 "지금 처리할지"만 정하고, 한글 조합 중이면 실제로 바꾸는 건 조합이 끝난 뒤에 한다(afterIme).
-  // 데스크탑 앱에서 마지막 글자(예: "라")가 조합 중일 때 바로 바꾸면, 입력기가 예전 위치 기준으로 글자를 확정하면서
-  // 내용이 뒤엉키거나 전체가 지워졌다(2026-10-07). 바꿀 때는 그 순간의 내용으로 다시 계산한다.
-  // 조합 중이 아니면 바로 처리 (기다리면 빠르게 칠 때 다음 글자가 먼저 들어간다)
-  const later = (fn) => { e.preventDefault(); if (imeComposing) afterIme(ta, fn); else fn(); return true; };
   // Tab은 메모장·워드처럼 입력칸 안에서 처리 (다음 칸으로 넘어가지 않음)
   if (e.key === "Tab" && !ctrl && !e.altKey) {
     const shift = e.shiftKey;
-    return later(() => doTab(ta, shift));
+    return later(() => { doTab(ta, shift); autoRenumber(ta); });
   }
   // 목록 기호 바로 뒤에서 Backspace → 들여쓴 항목이면 한 단계 위로, 맨 위면 기호만 지우기 (노션·구글 문서와 같게)
   if (e.key === "Backspace" && !ctrl && !e.shiftKey && !e.altKey && backspacePlan(ta)) {
-    return later(() => { if (!doBackspace(ta)) replaceRange(ta, Math.max(0, ta.selectionStart - 1), ta.selectionEnd, ""); });
+    return later(() => { if (!doBackspace(ta)) replaceRange(ta, Math.max(0, ta.selectionStart - 1), ta.selectionEnd, ""); autoRenumber(ta); });
   }
   if (e.key === "Enter" && !ctrl && !e.shiftKey && !e.altKey && enterPlan(ta)) {
-    return later(() => { if (!doEnter(ta)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, "\n"); });
+    return later(() => { if (!doEnter(ta)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, "\n"); autoRenumber(ta); });
+  }
+  // 그냥 지우기·잘라내기(줄을 지웠을 수 있음) → 기본 동작이 끝난 뒤 번호 다시 매기기
+  if (e.key === "Backspace" || e.key === "Delete" || (ctrl && e.code === "KeyX")) {
+    setTimeout(() => { if (!imeComposing) autoRenumber(ta); }, 0);
   }
   return false;
+}
+
+// ---------- 체크박스 · 줄 옮기기 · 번호 다시 매기기 (2026-10-07) ----------
+
+// 고른 줄(커서 줄)의 범위와 줄 목록
+function selectedLines(ta) {
+  const v = ta.value;
+  const selS = ta.selectionStart, selE = ta.selectionEnd;
+  const start = v.lastIndexOf("\n", selS - 1) + 1;
+  const endPos = selE > selS && v[selE - 1] === "\n" ? selE - 1 : selE;
+  let end = v.indexOf("\n", endPos);
+  if (end < 0) end = v.length;
+  return { start, end, lines: v.slice(start, end).split("\n") };
+}
+
+// [ ] ↔ [x], 체크박스 없는 줄은 기호 뒤(없으면 맨 앞)에 "[ ] " 붙이기
+function toggleCheckbox(ta) {
+  const { start, end, lines } = selectedLines(ta);
+  const selS = ta.selectionStart, selE = ta.selectionEnd;
+  let firstDelta = 0, total = 0;
+  const out = lines.map((l, i) => {
+    if (!l.trim() && lines.length > 1) return l;
+    const m = /^([ \t]*)((?:[-•*]|\d+[.)])[ \t]+)?(\[([ xX])\])?/.exec(l);
+    let next;
+    if (m[3]) next = l.slice(0, m[1].length + (m[2] || "").length) + (m[4] === " " ? "[x]" : "[ ]") + l.slice(m[0].length);
+    else next = m[1] + (m[2] || "") + "[ ] " + l.slice(m[1].length + (m[2] || "").length);
+    if (i === 0) firstDelta = next.length - l.length;
+    total += next.length - l.length;
+    return next;
+  });
+  replaceRange(ta, start, end, out.join("\n"));
+  if (selS === selE) { const p = selS + firstDelta; ta.setSelectionRange(p, p); }
+  else ta.setSelectionRange(selS + firstDelta, selE + total);
+}
+
+// 고른 줄 묶음을 한 줄 위(-1)/아래(1)로. 고른 범위는 따라 움직인다
+function moveLines(ta, dir) {
+  const v = ta.value;
+  const { start, end } = selectedLines(ta);
+  const selS = ta.selectionStart, selE = ta.selectionEnd;
+  const block = v.slice(start, end);
+  if (dir < 0) {
+    if (start === 0) return;
+    const prevStart = v.lastIndexOf("\n", start - 2) + 1;
+    const prev = v.slice(prevStart, start - 1);
+    replaceRange(ta, prevStart, end, `${block}\n${prev}`);
+    const shift = prev.length + 1;
+    ta.setSelectionRange(selS - shift, selE - shift);
+  } else {
+    if (end >= v.length) return;
+    let nextEnd = v.indexOf("\n", end + 1);
+    if (nextEnd < 0) nextEnd = v.length;
+    const next = v.slice(end + 1, nextEnd);
+    replaceRange(ta, start, nextEnd, `${next}\n${block}`);
+    const shift = next.length + 1;
+    ta.setSelectionRange(selS + shift, selE + shift);
+  }
+}
+
+// 번호 목록 다시 매기기 — 커서가 있는 목록 덩어리 안에서만(빈 줄·들여쓰지 않은 일반 글에서 끊김),
+// 같은 단계에 번호 항목이 2개 이상일 때만 1부터. 3자리까지만 번호로 본다("2026. 10. 7." 같은 날짜는 그대로)
+const NUM_RE = /^([ \t]*)(\d{1,3})([.)])(?=[ \t]|$)/;
+const BULLET_RE = /^([ \t]*)(?:[-•*]|\[[ xX]\])(?=[ \t]|$)/;
+const indentWidth = (s) => s.replace(/\t/g, INDENT).length;
+const inListBlock = (l) => l.trim() && (NUM_RE.test(l) || BULLET_RE.test(l) || /^[ \t]/.test(l));
+
+export function renumberLines(lines) {
+  // 같은 단계 번호 항목들을 묶는다: [{ indent, idx: [줄 번호...] }]
+  const groups = [];
+  let stack = []; // 열린 묶음들 (바깥 → 안쪽)
+  lines.forEach((l, i) => {
+    const m = NUM_RE.exec(l);
+    if (m) {
+      const L = indentWidth(m[1]);
+      while (stack.length && stack[stack.length - 1].indent > L) stack.pop();
+      const top = stack[stack.length - 1];
+      if (top && top.indent === L) top.idx.push(i);
+      else { const g = { indent: L, idx: [i] }; groups.push(g); stack.push(g); }
+      return;
+    }
+    const b = BULLET_RE.exec(l);
+    if (b) { const L = indentWidth(b[1]); while (stack.length && stack[stack.length - 1].indent >= L) stack.pop(); }
+  });
+  const out = [...lines];
+  for (const g of groups) {
+    if (g.idx.length < 2) continue;
+    g.idx.forEach((i, k) => { out[i] = out[i].replace(NUM_RE, (_, sp, _n, dot) => `${sp}${k + 1}${dot}`); });
+  }
+  return out;
+}
+
+function autoRenumber(ta) {
+  if (!ta || !memoAutoListOn()) return;
+  const v = ta.value;
+  const all = v.split("\n");
+  const caretLine = v.slice(0, ta.selectionStart).split("\n").length - 1;
+  // 커서 줄이 속한 목록 덩어리 (커서 줄이 비었으면 바로 위·아래 덩어리도 본다 — 줄을 지운 직후)
+  let a = caretLine, b = caretLine;
+  if (!inListBlock(all[caretLine] ?? "")) {
+    if (caretLine > 0 && inListBlock(all[caretLine - 1])) a = b = caretLine - 1;
+    else if (inListBlock(all[caretLine + 1] ?? "")) a = b = caretLine + 1;
+    else return;
+  }
+  while (a > 0 && inListBlock(all[a - 1])) a--;
+  while (b < all.length - 1 && inListBlock(all[b + 1])) b++;
+  const block = all.slice(a, b + 1);
+  const next = renumberLines(block);
+  if (next.every((l, i) => l === block[i])) return;
+  // 바뀐 줄만 바꿔 넣고, 커서·고른 범위는 같은 글자 자리에 두기
+  let first = 0; while (next[first] === block[first]) first++;
+  let last = block.length - 1; while (next[last] === block[last]) last--;
+  const lineStart = (k) => all.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
+  const from = lineStart(a + first);
+  const to = lineStart(a + last) + block[last].length;
+  const mapPos = (pos) => {
+    let p = from, delta = 0;
+    for (let k = first; k <= last; k++) {
+      const oldL = block[k], newL = next[k];
+      const numEnd = (NUM_RE.exec(oldL)?.[0].length) ?? 0;
+      if (pos >= p + oldL.length + 1 || (k === last && pos > p + oldL.length)) { delta += newL.length - oldL.length; p += oldL.length + 1; continue; }
+      if (pos >= p + numEnd) delta += newL.length - oldL.length;
+      return pos + delta;
+    }
+    return pos + delta;
+  };
+  const selS = ta.selectionStart, selE = ta.selectionEnd;
+  const ns = selS < from ? selS : mapPos(selS);
+  const ne = selE < from ? selE : mapPos(selE);
+  replaceRange(ta, from, to, next.slice(first, last + 1).join("\n"));
+  ta.setSelectionRange(ns, ne);
 }
 
 // 한글 조합 상태 — 입력기 조합이 시작되고 끝날 때까지

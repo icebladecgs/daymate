@@ -12,6 +12,7 @@ import { canAutoFocus } from "../utils/device.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
+import MemoSettings from "./MemoSettings.jsx";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -44,6 +45,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const [selectedKey, setSelectedKey] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [tagsOpen, setTagsOpen] = useState(false); // 좁은 화면: 태그 칩 묶음 펼침
+  const [showSettings, setShowSettings] = useState(false); // ⚙️ 메모 설정
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
@@ -253,6 +255,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
           <button onClick={() => move(1)} aria-label="다음" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▼</button>
           <button onClick={() => move(-1)} aria-label="이전" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▲</button>
+          <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>⚙️</button>
           <span style={{ fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{list.length}개</span>
           {filter === "trash" && list.length > 0 && (
             <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
@@ -281,6 +284,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           </div>
         </div>
       )}
+      {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
     </div>,
     document.body
   );

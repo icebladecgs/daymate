@@ -37,4 +37,6 @@ contextBridge.exposeInMainWorld('daymateDesktop', {
   },
   // 메모 관리자일 때 메인 창을 넓게
   setWideMode: (on) => ipcRenderer.send('set-wide-mode', !!on),
+  // 메모 설정 창(웹)의 "단축키 바꾸기" → 트레이 메뉴의 단축키 설정 창과 같은 창 (1.3.0~)
+  openShortcutSettings: () => ipcRenderer.send('open-shortcut-settings'),
 });

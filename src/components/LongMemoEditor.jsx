@@ -10,6 +10,7 @@ import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
+import MemoSettings from "./MemoSettings.jsx";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -30,6 +31,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
   const [sentTask, setSentTask] = useState(''); // 방금 언젠가로 보낸 제목 (버튼에 잠깐 표시)
+  const [showSettings, setShowSettings] = useState(false);
 
   // 아직 저장 전(id 없음)인데 사진·파일을 먼저 추가하면, 지금까지 쓴 텍스트(없으면 플레이스홀더)로 즉시 메모를 생성
   const ensureId = (emptyLabel = '📷 사진') => {
@@ -392,6 +394,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           handleClose();
           setTimeout(() => requestMemoLock(id, 'lock'), 50);
         }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔒</button>
+        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>⚙️</button>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
         {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button
@@ -420,6 +423,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           <div style={{ flexShrink: 0 }}>{footerBlock}</div>
         </>
       )}
+      {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

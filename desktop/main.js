@@ -218,6 +218,7 @@ ipcMain.on('dm-dialog', (event, { kind, message }) => {
   showWindowDialog(win, kind, message).then((ok) => { event.returnValue = kind === 'confirm' ? ok : true; });
 });
 
+ipcMain.on('open-shortcut-settings', () => openSettings());
 ipcMain.on('sticky-new', () => createSticky());
 ipcMain.on('sticky-open', (_, { ds, id }) => { createSticky({ ds, id }); saveStickyList(); });
 ipcMain.on('sticky-created', (event, { ds, id }) => {
