@@ -68,6 +68,7 @@ export default function StickyMemo() {
   const [pinned, setPinned] = useState(() => new URLSearchParams(window.location.search).get("pin") === "1");
   const [folded, setFolded] = useState(() => new URLSearchParams(window.location.search).get("fold") === "1");
   const [showColors, setShowColors] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false); // 삭제 확인 — 윈도우 기본 확인창은 메모와 먼 곳에 떠서 창 안에 직접 그린다
   const [status, setStatus] = useState("");
   const [viewer, setViewer] = useState(null);
@@ -187,7 +188,7 @@ export default function StickyMemo() {
   // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
   const actionsRef = useRef({});
   // 삭제 확인 중에는 접기 키(기본 Esc)가 확인창 닫기로 동작
-  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : toggleFold, close, pin: togglePin, copy: copyAll };
+  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
   const [keys, setKeys] = useState({});
   useEffect(() => {
     const d = desktop();
@@ -236,14 +237,31 @@ export default function StickyMemo() {
         </span>
         {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} style={iconBtn}>＋</button>}
         {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
-        {!folded && <button onClick={() => setShowColors(v => !v)} title="색 바꾸기" style={iconBtn}>🎨</button>}
-        {!folded && <button onClick={() => patch({ starred: !memo.starred })} title="즐겨찾기" style={iconBtn}>{memo.starred ? "⭐" : "☆"}</button>}
-        {!folded && <button onClick={copyAll} title={withKey("전체 복사", "copy")} style={iconBtn}>📋</button>}
-        {!folded && <button onClick={() => setConfirmDel(true)} title="삭제" style={iconBtn}>🗑</button>}
+        {/* 색·즐겨찾기·복사·삭제는 ⋯ 메뉴로 — 제목줄 빈 자리(끌어서 옮기는 곳)를 넓게 남긴다 */}
+        {!folded && <button onClick={() => setShowMenu(v => !v)} title="더 보기 (색·즐겨찾기·복사·삭제)" style={{ ...iconBtn, fontWeight: 900, background: showMenu ? c.line : "transparent" }}>⋯</button>}
         {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
         {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
         <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} style={iconBtn}>✕</button>
       </div>
+      {showMenu && !folded && (
+        <>
+          <div onClick={() => setShowMenu(false)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />
+          <div role="menu" style={{ position: "absolute", top: 30, right: 4, zIndex: 10, background: "#fff", color: "#000", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,.25)", padding: 4, minWidth: 150 }}>
+            {[
+              ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
+              [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
+              ["📋", withKey("전체 복사", "copy"), copyAll],
+              ["🗑", "삭제", () => setConfirmDel(true)],
+            ].map(([icon, label, fn]) => (
+              <button key={icon + label} role="menuitem" onClick={() => { setShowMenu(false); fn(); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "7px 10px", border: "none", background: "transparent", color: "#000", fontSize: 13, textAlign: "left", cursor: "pointer", borderRadius: 6, fontFamily: "inherit", whiteSpace: "nowrap" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f1f1f1"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                <span style={{ width: 18, textAlign: "center" }}>{icon}</span>{label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {showColors && !folded && (
         <div style={{ display: "flex", gap: 6, padding: "6px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap" }}>
           {Object.entries(STICKY_COLORS).map(([key, col]) => (

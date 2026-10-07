@@ -3,7 +3,9 @@
 //                   빈 줄에서 누르면 바로 위에 이어진 숫자 줄들을 합산
 //  · Ctrl+;       : 오늘 날짜 넣기 (엑셀과 같은 키)   Ctrl+Shift+; : 지금 시각 넣기
 //  · Ctrl+D       : 현재 줄 복제
-//  · Enter        : "- ", "• ", "1. " 로 시작하는 줄이면 다음 줄에도 이어 붙임 (빈 항목에서 Enter면 목록 끝)
+//  · Enter        : "- ", "• ", "1. ", "[ ] " 로 시작하는 줄이면 다음 줄에도 이어 붙임
+//                   (체크박스는 빈 칸 "[ ]"으로, 빈 항목에서 Enter면 한 단계 위로 · 맨 위 단계면 목록 끝)
+//  · Tab / Shift+Tab : 목록 줄을 한 단계 들여쓰기 / 내어쓰기 (여러 줄을 고르면 한꺼번에). 목록이 아닌 줄의 Tab은 그대로
 
 const UNIT = { 천: 1e3, 만: 1e4, 억: 1e8, 조: 1e12, k: 1e3, K: 1e3, m: 1e6, M: 1e6, b: 1e9, B: 1e9 };
 
@@ -190,18 +192,77 @@ export function handleEditorKey(e, onCalcFail) {
     replaceRange(ta, cl.end, cl.end, `\n${cl.text}`, cl.end + 1 + col);
     return done();
   }
+  if ((e.key === "Tab" || e.key === "Enter") && !memoAutoListOn()) return false;
+  if (e.key === "Tab" && !ctrl && !e.altKey) {
+    return indentLines(ta, e.shiftKey ? -1 : 1) ? done() : false;
+  }
   if (e.key === "Enter" && !ctrl && !e.shiftKey && !e.altKey && ta.selectionStart === ta.selectionEnd) {
     const cl = currentLine(ta);
     const before = ta.value.slice(cl.start, ta.selectionStart);
-    const m = /^(\s*)([-•*]|\d+[.)])\s+/.exec(before);
-    if (!m) return false;
-    if (!cl.text.slice(m[0].length).trim()) { // 빈 항목에서 Enter → 기호 지우고 목록 끝
-      replaceRange(ta, cl.start, cl.end, "");
+    const m = LIST_RE.exec(before);
+    if (!m || !m[0].trim()) return false;
+    if (!cl.text.slice(m[0].length).trim()) { // 빈 항목에서 Enter → 들여쓴 항목이면 한 단계 위로, 아니면 기호 지우고 목록 끝
+      if (m[1]) indentLines(ta, -1);
+      else replaceRange(ta, cl.start, cl.end, "");
       return done();
     }
-    const marker = /^\d+/.test(m[2]) ? `${parseInt(m[2], 10) + 1}${m[2].slice(-1)}` : m[2];
-    replaceRange(ta, ta.selectionStart, ta.selectionStart, `\n${m[1]}${marker} `);
+    const marker = m[2] && /^\d+/.test(m[2]) ? `${parseInt(m[2], 10) + 1}${m[2].slice(-1)}` : m[2];
+    const box = m[3] || m[4] ? "[ ] " : "";
+    replaceRange(ta, ta.selectionStart, ta.selectionStart, `\n${m[1]}${marker ? `${marker} ` : ""}${box}`);
     return done();
   }
   return false;
+}
+
+// 목록 자동완성(Enter 이어쓰기·Tab 들여쓰기) 켜기/끄기 — 기기마다(설정 → 앱 관리). 계산·날짜 키는 직접 누르는 것이라 항상 켬
+const AUTO_LIST_KEY = "dm_memo_autolist";
+export function memoAutoListOn() {
+  try { return localStorage.getItem(AUTO_LIST_KEY) !== "false"; } catch { return true; }
+}
+export function setMemoAutoList(on) {
+  try { localStorage.setItem(AUTO_LIST_KEY, on ? "true" : "false"); } catch { /* 저장 못 하면 이번만 */ }
+}
+
+// 목록 줄: 들여쓰기 + 기호(- • * 1. 1)) + 선택 체크박스 [ ] [x]  /  체크박스만 있는 줄 "[ ] 할일"
+const LIST_RE = /^([ \t]*)(?:([-•*]|\d+[.)])[ \t]+(\[[ xX]\][ \t]+)?|(\[[ xX]\])[ \t]+)/;
+const LIST_LINE_RE = /^[ \t]*(?:[-•*]|\d+[.)]|\[[ xX]\])(?:[ \t]|$)/;
+const INDENT = "    "; // 한 단계 = 공백 4칸 (메모 글꼴에서 2칸은 거의 안 보임)
+
+// 고른 줄(커서가 있는 줄)을 한 단계 들여쓰기(dir 1) / 내어쓰기(dir -1). 처리했으면 true
+// 들여쓰기는 목록 줄이 있을 때만(아니면 Tab 기본 동작 유지), 내어쓰기는 앞 공백이 있으면 언제나
+function indentLines(ta, dir) {
+  const v = ta.value;
+  const selS = ta.selectionStart, selE = ta.selectionEnd;
+  const start = v.lastIndexOf("\n", selS - 1) + 1;
+  // 여러 줄을 골랐는데 끝이 다음 줄 맨 앞이면 그 줄은 빼기
+  const endPos = selE > selS && v[selE - 1] === "\n" ? selE - 1 : selE;
+  let end = v.indexOf("\n", endPos);
+  if (end < 0) end = v.length;
+  const lines = v.slice(start, end).split("\n");
+  if (dir > 0 && !lines.some(l => LIST_LINE_RE.test(l))) return false;
+  let firstDelta = 0, total = 0;
+  const out = lines.map((l, i) => {
+    let next = l;
+    if (dir > 0) {
+      if (!l.trim()) return l;
+      next = INDENT + l;
+      // 번호 목록을 한 단계 내리면 1부터 다시
+      if (LIST_LINE_RE.test(l)) next = next.replace(/^([ \t]*)\d+([.)])/, "$11$2");
+    } else {
+      const lead = /^( {1,4}|\t)/.exec(l);
+      if (lead) next = l.slice(lead[0].length);
+    }
+    if (i === 0) firstDelta = next.length - l.length;
+    total += next.length - l.length;
+    return next;
+  });
+  if (!total) return dir < 0 && lines.some(l => LIST_LINE_RE.test(l)); // 더 내어쓸 게 없는 목록 줄 → Tab 이동만 막음
+  replaceRange(ta, start, end, out.join("\n"));
+  if (selS === selE) {
+    const pos = Math.max(start, selS + firstDelta);
+    ta.setSelectionRange(pos, pos);
+  } else {
+    ta.setSelectionRange(Math.max(start, selS + firstDelta), selE + total);
+  }
+  return true;
 }

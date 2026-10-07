@@ -16,6 +16,10 @@ import { APP_VERSION, APP_BUILD } from "../version.js";
 import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
+import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
+
+// 데스크탑 앱 설치 파일 — 새 버전을 GitHub 릴리스에 올리면 여기도 바꾼다
+const DESKTOP_DOWNLOAD_URL = 'https://github.com/icebladecgs/daymate/releases/download/Desktop-v1.2.8/Daymate.Setup.1.2.8.exe';
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
@@ -270,6 +274,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searchMode, setSearchMode] = useState('stock');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [memoAutoList, setMemoAutoListState] = useState(memoAutoListOn);
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
@@ -1306,6 +1311,24 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
+      <div style={S.sectionTitle}>📝 메모 입력</div>
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 13 }}>목록 자동완성</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
+              "- ", "1. ", "[ ] " 줄에서 Enter를 치면 다음 줄에 이어 붙이고, Tab·Shift+Tab으로 단계를 들이고 내어요 · 이 기기에만 적용
+            </div>
+          </div>
+          <div onClick={() => { const v = !memoAutoList; setMemoAutoListState(v); setMemoAutoList(v); }} role="switch" aria-checked={memoAutoList} style={{
+            width: 52, height: 28, borderRadius: 999, background: memoAutoList ? "#6C8EFF" : "var(--dm-border)",
+            cursor: "pointer", position: "relative", flexShrink: 0,
+          }}>
+            <div style={{ position: "absolute", top: 4, left: memoAutoList ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+          </div>
+        </div>
+      </div>
+
       <div style={S.sectionTitle}>고급 설정</div>
       <div style={S.card}>
         <button onClick={() => setShowEventAdvanced(v => !v)}
@@ -1542,7 +1565,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           icon="💻"
           title="Windows 앱 다운로드"
           sub="단축키(Ctrl+Shift+M/C/S)로 메모·달력·검색을 빠르게 열 수 있어요"
-          onClick={() => window.open('https://github.com/icebladecgs/daymate/releases/download/Desktop-v1.1.1/Daymate.Setup.1.1.1.exe', '_blank')}
+          onClick={() => window.open(DESKTOP_DOWNLOAD_URL, '_blank')}
         />
       </MenuGroup>
 

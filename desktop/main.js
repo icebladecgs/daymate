@@ -74,7 +74,7 @@ function saveStickyList() {
 }
 
 const FOLD_HEIGHT = 30; // 접힌 포스트잇 = 제목줄 높이
-const STICKY_W = 280, STICKY_H = 240;
+const STICKY_W = 340, STICKY_H = 300;
 let lastFocusedSticky = null;
 
 // 새 포스트잇 자리 — 지금 쓰던(마지막으로 누른) 포스트잇에서 대각선 아래로 살짝 겹치게.
@@ -141,7 +141,7 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
   });
-  stickyWindows.set(win, { ds, id, pinned, folded, unfoldHeight: unfoldHeight || (folded ? 240 : undefined) });
+  stickyWindows.set(win, { ds, id, pinned, folded, unfoldHeight: unfoldHeight || (folded ? STICKY_H : undefined) });
   const q = id ? `ds=${encodeURIComponent(ds)}&id=${encodeURIComponent(id)}` : 'new=1';
   win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}`);
   let t = null;
@@ -237,7 +237,7 @@ ipcMain.handle('sticky-fold', (event, fold) => {
     win.setSize(w, FOLD_HEIGHT);
   } else if (!fold && info.folded) {
     win.setMinimumSize(180, 120);
-    win.setSize(w, info.unfoldHeight || 240);
+    win.setSize(w, info.unfoldHeight || STICKY_H);
   }
   info.folded = !!fold;
   saveStickyList();
