@@ -7,7 +7,7 @@ if (process.type === undefined) {
   process.exit(0);
 }
 
-const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen, powerMonitor } = require('electron');
 
 if (process.env.DAYMATE_USER_DATA) app.setPath('userData', process.env.DAYMATE_USER_DATA);
 
@@ -146,7 +146,7 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
   win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}`);
   let t = null;
   const saveLater = () => { clearTimeout(t); t = setTimeout(saveStickyList, 500); };
-  win.on('focus', () => { lastFocusedSticky = win; });
+  win.on('focus', () => { lastFocusedSticky = win; checkRemote(); });
   win.webContents.on('before-input-event', (event, input) => onStickyKey(win, event, input));
   win.on('move', saveLater);
   win.on('resize', saveLater);
@@ -159,6 +159,44 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
 }
 
 const stickyOf = (event) => BrowserWindow.fromWebContents(event.sender);
+
+// ---------- 화면 밖으로 나간 포스트잇 되찾기 (메모잇 v2.00 참고, 2026-10-08) ----------
+// 모니터를 빼거나 해상도가 바뀌면 저장해 둔 자리가 화면 밖일 수 있다. 제목줄이 어느 화면에든
+// 가로 40px 이상 보이면 그대로 두고(끌어 옮길 수 있으니), 아니면 주 화면 왼쪽 위로 계단식으로 옮긴다.
+const VISIBLE_MIN = 40;
+function isOnScreen(b) {
+  const titleY = b.y + FOLD_HEIGHT / 2;
+  return screen.getAllDisplays().some(({ workArea: wa }) => {
+    const visibleW = Math.min(b.x + b.width, wa.x + wa.width) - Math.max(b.x, wa.x);
+    return visibleW >= VISIBLE_MIN && titleY >= wa.y && titleY < wa.y + wa.height;
+  });
+}
+
+function rescueOffscreenStickies() {
+  const wa = screen.getPrimaryDisplay().workArea;
+  let i = 0, moved = 0;
+  for (const [w, info] of stickyWindows) {
+    if (w.isDestroyed()) continue;
+    const b = w.getBounds();
+    if (isOnScreen(b)) continue;
+    const width = Math.min(b.width, wa.width - 80);
+    const height = info.folded ? FOLD_HEIGHT : Math.min(b.height, wa.height - 80);
+    w.setBounds({ x: wa.x + 40 + i * 20, y: wa.y + 40 + i * FOLD_HEIGHT, width, height });
+    i = (i + 1) % 10;
+    moved++;
+  }
+  if (moved) saveStickyList();
+  return moved;
+}
+
+// ---------- 다른 기기 변경 받기 ----------
+// 포스트잇은 메인 창이 서버에서 받아 저장한 내용을 storage 이벤트로 넘겨받는다. 메인 창은 자기 창이 다시 보일 때만
+// 받아 오므로, 절전·화면 잠금에서 돌아올 때와 포스트잇을 누를 때도 받게 알린다(웹 쪽 15초 간격 제한이 그대로 걸린다).
+function tellWeb(name) {
+  if (!memoWindow || memoWindow.isDestroyed()) return;
+  memoWindow.webContents.executeJavaScript(`window.dispatchEvent(new Event('${name}'))`).catch(() => {});
+}
+const checkRemote = () => tellWeb('dm:check-remote');
 
 // 웹의 confirm/alert → DayMate 창 한가운데에 직접 그린 작은 확인창 (preload.js가 가로채 보냄)
 // 윈도우 기본 확인창(dialog.showMessageBox)은 창을 부모로 줘도 모니터 가운데에 떠서, 위치를 직접 계산한 창을 쓴다(2026-09-27)
@@ -334,6 +372,7 @@ function updateTray() {
     { type: 'separator' },
     { label: menuLabel('포스트잇 모두 보이기/감추기', shortcuts.toggleStickies), click: () => toggleAllStickies() },
     { label: menuLabel('최근 편집한 메모 열기', shortcuts.recentMemo), click: () => openRecentMemo() },
+    { label: '화면 밖 포스트잇 불러오기', click: () => { rescueOffscreenStickies(); showAllStickies(); } },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
     { type: 'separator' },
@@ -367,7 +406,6 @@ function createMemoWindow() {
   });
 
   // 앱 잠금용 — 숨긴 창도 웹에서는 visible로 보여서, 트레이로 숨김·최소화·다시 보임을 직접 알려 준다
-  const tellWeb = (name) => memoWindow.webContents.executeJavaScript(`window.dispatchEvent(new Event('${name}'))`).catch(() => {});
   memoWindow.on('hide', () => tellWeb('dm:app-hidden'));
   memoWindow.on('minimize', () => tellWeb('dm:app-hidden'));
   memoWindow.on('show', () => tellWeb('dm:app-shown'));
@@ -474,7 +512,7 @@ function showMemoSearch() {
 }
 
 // 자동 테스트(Playwright _electron)에서만 이동 함수를 부를 수 있게 — 설치된 앱에는 노출 안 됨
-if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky };
+if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky, rescueOffscreenStickies, checkRemote, stickyWindows };
 
 function toggleMemo() {
   if (!memoWindow) return;
@@ -486,6 +524,16 @@ app.whenReady().then(() => {
   createTray();
   registerShortcuts();
   (prefs.stickies || []).forEach(st => createSticky(st)); // 지난번에 붙여 둔 포스트잇 다시 띄우기
+  rescueOffscreenStickies();
+  // 모니터를 빼거나 해상도를 바꾼 순간에도 — 윈도우가 창을 먼저 옮기는 경우가 있어 잠깐 뒤에 본다
+  let t = null;
+  const rescueLater = () => { clearTimeout(t); t = setTimeout(rescueOffscreenStickies, 1500); };
+  screen.on('display-removed', rescueLater);
+  screen.on('display-metrics-changed', rescueLater);
+  // 절전·화면 잠금에서 돌아오면 다른 기기 변경 받기 — 깬 직후엔 인터넷이 아직 안 붙어 있을 수 있어 몇 초 뒤에
+  const checkLater = () => setTimeout(checkRemote, 5000);
+  powerMonitor.on('resume', checkLater);
+  powerMonitor.on('unlock-screen', checkLater);
 });
 
 app.on('before-quit', () => { isQuitting = true; saveStickyList(); });

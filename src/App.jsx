@@ -1383,11 +1383,15 @@ export default function App() {
   useEffect(() => { refreshDaysRef.current = refreshFromServer; });
   useEffect(() => {
     const onReturn = () => { if (document.visibilityState === 'visible') refreshDaysRef.current(); };
+    // 데스크탑 앱: 절전·화면 잠금 복귀, 포스트잇을 눌렀을 때 — 메인 창은 숨어 있어도 받는다(포스트잇이 이 내용을 넘겨받음)
+    const onDesktopCheck = () => refreshDaysRef.current();
     document.addEventListener('visibilitychange', onReturn);
     window.addEventListener('focus', onReturn);
+    window.addEventListener('dm:check-remote', onDesktopCheck);
     return () => {
       document.removeEventListener('visibilitychange', onReturn);
       window.removeEventListener('focus', onReturn);
+      window.removeEventListener('dm:check-remote', onDesktopCheck);
     };
   }, []);
 
