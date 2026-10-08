@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import S from "../styles.js";
 import { requestMemoLock } from "../utils/memoLock.js";
+import Linkify from "../utils/linkify.jsx";
 
 function getMemoTime() {
   const now = new Date();
@@ -66,7 +67,8 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
     return (
       <div>
         <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
-          {item.text}
+          {/* 글 속 링크는 눌러서 열기 (한 줄로 접힌 상태는 누르면 펼쳐지므로 펼친 뒤에만) */}
+          <Linkify text={item.text} />
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={handleCopy} style={chipBtn('#6C8EFF')}>복사</button>

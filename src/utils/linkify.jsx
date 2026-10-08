@@ -1,3 +1,5 @@
+import { externalLinkClick } from "./links.js";
+
 const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
 
 // 게시글/댓글 텍스트에서 http(s) URL을 클릭 가능한 링크로 변환
@@ -11,7 +13,7 @@ export default function Linkify({ text, linkColor = '#6C8EFF' }) {
         href={part}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={e => e.stopPropagation()}
+        onClick={externalLinkClick(part)}
         style={{ color: linkColor, wordBreak: 'break-all', textDecoration: 'underline' }}
       >
         {part}

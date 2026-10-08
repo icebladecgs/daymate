@@ -15,6 +15,8 @@ import { requestMemoLock } from "../utils/memoLock.js";
 import MemoSettings from "./MemoSettings.jsx";
 import MemoView from "./MemoView.jsx";
 import { toggleCheckAt } from "../utils/memoView.js";
+import { openLinkOnCtrlClick } from "../utils/links.js";
+import { MemoLinks } from "./DriveFiles.jsx";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -440,10 +442,13 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
           onEdit={onToggleView} placeholder={item.kind === "task" ? "일정 메모가 없어요" : "내용이 없어요"} />
       ) : (
       <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
+        onClick={openLinkOnCtrlClick}
         onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
         placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
         style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
       )}
+      {/* 편집 칸의 링크를 누를 수 있게 (보기 모드에선 글 속 링크를 바로 누르면 돼서 생략). 휴대폰은 Ctrl+클릭이 없어 이 버튼으로 연다 */}
+      {!viewMode && <MemoLinks text={text} hint={canAutoFocus() ? "Ctrl+클릭으로도 열려요" : ""} style={{ marginTop: 0, marginBottom: 0, flexShrink: 0 }} />}
       {item.kind === "journal" && (journal?.good || journal?.regret || journal?.tomorrow) && (
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.6, flexShrink: 0, maxHeight: 90, overflowY: "auto" }}>
           {journal.good && <div>😊 잘한 일: {journal.good}</div>}

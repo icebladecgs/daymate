@@ -20,6 +20,24 @@ export function openLink(url) {
   else window.open(url, "_blank", "noopener");
 }
 
+// <a target="_blank">의 onClick — 데스크탑 앱이면 앱 안의 작은 창 대신 기본 브라우저로. 웹은 그대로 새 탭.
+// 부모의 클릭(펼치기 등)으로 번지지 않게 막는다.
+export const externalLinkClick = (url) => (e) => {
+  e.stopPropagation();
+  if (window.daymateDesktop?.openExternal) { e.preventDefault(); window.daymateDesktop.openExternal(url); }
+};
+
+// 입력칸(textarea)에서 Ctrl+클릭한 곳이 링크면 연다 — 열었으면 true
+export function openLinkOnCtrlClick(e) {
+  const ta = e.currentTarget;
+  if (!(e.ctrlKey || e.metaKey)) return false;
+  const url = urlAt(ta.value, ta.selectionStart);
+  if (!url) return false;
+  e.preventDefault();
+  openLink(url);
+  return true;
+}
+
 // 찾기 — 대소문자를 무시하고 찾은 시작 위치 목록. 위치가 본문과 어긋나지 않게 본문은 정규화하지 않는다
 export function findAll(text, query) {
   const q = (query || "").normalize("NFC").toLowerCase();

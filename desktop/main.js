@@ -202,6 +202,23 @@ ipcMain.on('open-external', (_, url) => {
   if (/^(https?:\/\/|mailto:)/i.test(String(url || ''))) shell.openExternal(String(url)).catch(() => {});
 });
 
+// 웹이 새 창으로 여는 링크(target=_blank·window.open)는 앱 안의 작은 창 대신 기본 브라우저로 (1.3.2~).
+// 단, 구글 로그인(Firebase 팝업)과 드라이브·캘린더 권한 창은 앱 안에서 떠야 로그인 결과가 앱으로 돌아오므로 그대로 연다.
+function isAuthPopup(url) {
+  if (!url || url === 'about:blank') return true;
+  try {
+    const u = new URL(url);
+    return u.hostname === 'accounts.google.com' || u.hostname.endsWith('.firebaseapp.com') || u.pathname.startsWith('/__/auth/');
+  } catch { return false; }
+}
+app.on('web-contents-created', (_, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isAuthPopup(url)) return { action: 'allow' };
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(url)) shell.openExternal(url).catch(() => {});
+    return { action: 'deny' };
+  });
+});
+
 // 웹이 데스크탑 앱 버전을 보고 "새 버전 있어요"를 띄운다 (1.3.1~, 이전 버전은 이 함수가 없음)
 ipcMain.handle('app-version', () => app.getVersion());
 
