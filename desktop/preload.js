@@ -39,4 +39,9 @@ contextBridge.exposeInMainWorld('daymateDesktop', {
   setWideMode: (on) => ipcRenderer.send('set-wide-mode', !!on),
   // 메모 설정 창(웹)의 "단축키 바꾸기" → 트레이 메뉴의 단축키 설정 창과 같은 창 (1.3.0~)
   openShortcutSettings: () => ipcRenderer.send('open-shortcut-settings'),
+  // 1.3.1~: 앱 버전(새 버전 알림), 링크를 기본 브라우저로, 포스트잇 투명도(0.5~1, 바뀐 값을 돌려줌), 띄운 포스트잇 목록
+  getVersion: () => ipcRenderer.invoke('app-version'),
+  openExternal: (url) => ipcRenderer.send('open-external', String(url || '')),
+  setStickyOpacity: (v) => ipcRenderer.invoke('sticky-opacity', v),
+  getOpenStickies: () => ipcRenderer.invoke('sticky-list'),
 });

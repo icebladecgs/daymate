@@ -6,6 +6,7 @@ import { markDayUnsynced } from "../utils/daySync.js";
 import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
+import { urlAt, openLink, findAll } from "../utils/links.js";
 import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
 
@@ -76,6 +77,15 @@ export default function StickyMemo() {
   const [status, setStatus] = useState("");
   const [viewer, setViewer] = useState(null);
   const [uid, setUid] = useState(null);
+  // 투명도(데스크탑 1.3.1~) — 앱이 기억해 둔 값을 주소(op)로 넘겨준다
+  const [opacity, setOpacityState] = useState(() => Number(new URLSearchParams(window.location.search).get("op")) || 1);
+  const [showOpacity, setShowOpacity] = useState(false);
+  // 포스트잇 안 찾기 (Ctrl+F) — 찾은 곳은 글 뒤에 깐 같은 모양의 층(backdrop)에 형광펜으로 표시
+  const [find, setFind] = useState(null); // null = 닫힘, { q, i }
+  const taRef = useRef(null);
+  const backRef = useRef(null);
+  const findInputRef = useRef(null);
+  const [taBox, setTaBox] = useState({ w: 0, h: 0 });
 
   // 작은 창이라 앱 공통 스타일(body 최소 너비 320px 등) 때문에 스크롤바가 생기지 않게
   useEffect(() => {
@@ -188,10 +198,67 @@ export default function StickyMemo() {
     if (typeof next === "boolean") setPinned(next);
   };
 
+  const changeOpacity = async (v) => {
+    const next = await desktop()?.setStickyOpacity?.(v);
+    if (typeof next === "number") setOpacityState(next);
+  };
+
+  // ---- 찾기 ----
+  const matches = find ? findAll(text, find.q) : [];
+  const cur = matches.length ? Math.min(find.i, matches.length - 1) : -1;
+  const openFind = () => {
+    const ta = taRef.current;
+    const sel = ta && ta.selectionEnd > ta.selectionStart ? ta.value.slice(ta.selectionStart, ta.selectionEnd) : "";
+    setFind(f => ({ q: sel && !sel.includes("\n") ? sel : (f?.q || ""), i: 0 }));
+    setTimeout(() => { findInputRef.current?.focus(); findInputRef.current?.select(); }, 0);
+  };
+  // 닫을 때 지금 찾은 곳을 선택한 채로 글 칸으로 돌아간다
+  const closeFind = () => {
+    const ta = taRef.current;
+    if (ta && cur >= 0) { ta.focus(); ta.setSelectionRange(matches[cur], matches[cur] + find.q.length); }
+    else ta?.focus();
+    setFind(null);
+  };
+  const stepFind = (d) => setFind(f => (f && matches.length ? { ...f, i: (Math.min(f.i, matches.length - 1) + d + matches.length) % matches.length } : f));
+  // 찾은 곳이 보이게 글 칸을 스크롤 (표시 층의 형광펜 위치로 계산)
+  useEffect(() => {
+    if (cur < 0) return;
+    const mark = backRef.current?.querySelector("mark[data-cur]");
+    const ta = taRef.current;
+    if (!mark || !ta) return;
+    const top = mark.offsetTop, h = mark.offsetHeight;
+    if (top < ta.scrollTop + 8 || top + h > ta.scrollTop + ta.clientHeight - 8) ta.scrollTop = Math.max(0, top - ta.clientHeight / 3);
+    if (backRef.current) backRef.current.scrollTop = ta.scrollTop;
+  }, [cur, find?.q, text]);
+  // 표시 층 크기는 글 칸의 실제 글 영역(스크롤바 제외)에 맞춘다 — 줄바꿈 위치가 같아야 형광펜이 제자리에 온다
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!find || !ta) return;
+    const measure = () => setTaBox({ w: ta.clientWidth, h: ta.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, [find !== null, text]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyF") { e.preventDefault(); openFind(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }); // 매번 최신 openFind로
+
+  // 링크: Ctrl+클릭으로 열기, 그냥 누르면 방법을 알려 준다
+  const onTextClick = (e) => {
+    const ta = e.currentTarget;
+    const url = urlAt(ta.value, ta.selectionStart);
+    if (!url) return;
+    if (e.ctrlKey || e.metaKey) { e.preventDefault(); openLink(url); flash("링크를 열었어요"); }
+    else flash("Ctrl+클릭하면 링크가 열려요");
+  };
+
   // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
   const actionsRef = useRef({});
-  // 삭제 확인 중에는 접기 키(기본 Esc)가 확인창 닫기로 동작
-  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : showSettings ? () => setShowSettings(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
+  // 삭제 확인·찾기 등이 열려 있으면 접기 키(기본 Esc)가 그것을 닫는다
+  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : find ? closeFind : showSettings ? () => setShowSettings(false) : showOpacity ? () => setShowOpacity(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
   const [keys, setKeys] = useState({});
   useEffect(() => {
     const d = desktop();
@@ -254,6 +321,8 @@ export default function StickyMemo() {
               ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
               [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
               ["📋", withKey("전체 복사", "copy"), copyAll],
+              ["🔍", "찾기 (Ctrl+F)", openFind],
+              ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v)]] : []),
               ["🗑", "삭제", () => setConfirmDel(true)],
               ["⚙️", "메모 설정", () => setShowSettings(true)],
             ].map(([icon, label, fn]) => (
@@ -276,16 +345,71 @@ export default function StickyMemo() {
           ))}
         </div>
       )}
+      {showOpacity && !folded && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap", fontSize: 11, color: c.sub }}>
+          투명도
+          {[1, 0.9, 0.8, 0.7, 0.6, 0.5].map(v => (
+            <button key={v} onClick={() => changeOpacity(v)}
+              style={{ ...iconBtn, width: "auto", height: 22, padding: "0 6px", fontSize: 11, color: "#000", background: Math.abs(opacity - v) < 0.01 ? c.line : "transparent", fontWeight: Math.abs(opacity - v) < 0.01 ? 800 : 400 }}>
+              {Math.round(v * 100)}%
+            </button>
+          ))}
+          <button onClick={() => setShowOpacity(false)} aria-label="닫기" style={{ ...iconBtn, marginLeft: "auto" }}>✕</button>
+        </div>
+      )}
+      {find && !folded && (
+        <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 6px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0 }}>
+          <input ref={findInputRef} value={find.q} placeholder="찾기"
+            onChange={e => setFind({ q: e.target.value, i: 0 })}
+            onKeyDown={e => {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === "Enter") { e.preventDefault(); stepFind(e.shiftKey ? -1 : 1); }
+              else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+              else if (e.key === "F3") { e.preventDefault(); stepFind(e.shiftKey ? -1 : 1); }
+            }}
+            style={{ flex: 1, minWidth: 0, height: 22, padding: "0 6px", fontSize: 12, border: `1px solid ${c.line}`, borderRadius: 4, outline: "none", background: "#fff", color: "#000", fontFamily: "inherit" }} />
+          <span style={{ fontSize: 11, color: c.sub, whiteSpace: "nowrap", minWidth: 34, textAlign: "center" }}>
+            {find.q ? (matches.length ? `${cur + 1}/${matches.length}` : "없음") : ""}
+          </span>
+          <button onClick={() => stepFind(-1)} title="이전 (Shift+Enter)" style={iconBtn}>▲</button>
+          <button onClick={() => stepFind(1)} title="다음 (Enter)" style={iconBtn}>▼</button>
+          <button onClick={closeFind} title="닫기 (Esc)" style={iconBtn}>✕</button>
+        </div>
+      )}
       {!folded && (
-        <textarea
-          autoFocus
-          value={text}
-          onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
-          onKeyDown={e => handleEditorKey(e, () => flash("계산할 수식이 없어요"))}
-          onPaste={onPaste}
-          placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
-          style={{ flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit" }}
-        />
+        <div style={{ flex: 1, minHeight: 0, position: "relative", display: "flex" }}>
+          {/* 찾기 표시 층 — 글 칸과 같은 글꼴·여백·줄바꿈. 글자는 투명, 찾은 곳만 형광펜 */}
+          {find && matches.length > 0 && (
+            <div ref={backRef} aria-hidden
+              style={{ position: "absolute", left: 0, top: 0, width: taBox.w, height: taBox.h, overflow: "hidden", pointerEvents: "none",
+                whiteSpace: "pre-wrap", overflowWrap: "break-word", wordBreak: "normal", color: "transparent", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", boxSizing: "border-box", fontFamily: "inherit" }}>
+              {(() => {
+                const parts = [];
+                let at = 0;
+                matches.forEach((s, k) => {
+                  parts.push(text.slice(at, s));
+                  parts.push(<mark key={s} data-cur={k === cur ? "" : undefined}
+                    style={{ color: "transparent", background: k === cur ? "rgba(255,140,0,.55)" : "rgba(255,200,0,.45)", borderRadius: 2 }}>{text.slice(s, s + find.q.length)}</mark>);
+                  at = s + find.q.length;
+                });
+                parts.push(text.slice(at) + "\n");
+                return parts;
+              })()}
+            </div>
+          )}
+          <textarea
+            ref={taRef}
+            autoFocus
+            value={text}
+            onChange={e => { typedAt.current = Date.now(); setText(e.target.value); }}
+            onKeyDown={e => handleEditorKey(e, () => flash("계산할 수식이 없어요"))}
+            onPaste={onPaste}
+            onClick={onTextClick}
+            onScroll={e => { if (backRef.current) backRef.current.scrollTop = e.currentTarget.scrollTop; }}
+            placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
+            style={{ position: "relative", flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit", boxSizing: "border-box", whiteSpace: "pre-wrap", overflowWrap: "break-word" }}
+          />
+        </div>
       )}
       {!folded && photos.length > 0 && (
         <div style={{ display: "flex", gap: 4, padding: "4px 6px 6px", overflowX: "auto", flexShrink: 0 }}>

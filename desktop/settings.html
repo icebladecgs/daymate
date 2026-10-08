@@ -88,7 +88,7 @@
   const GLOBAL_IDS = ['memo', 'calendar', 'search', 'quickMemo', 'memoSearch', 'toggleStickies', 'recentMemo'];
   const STICKY_IDS = ['stickyFold', 'stickyNew', 'stickyClose', 'stickyPin', 'stickyCopy'];
   // 메모 칸 편집 도우미(editorAssist.js)가 쓰는 키 — 포스트잇 키로 쓰면 그 기능이 막힌다
-  const EDITOR_KEYS = { 'Ctrl+D': '줄 복제', 'Ctrl+;': '날짜 넣기', 'Ctrl+Shift+;': '시각 넣기', 'Ctrl+Shift+:': '시각 넣기', 'Ctrl+/': '계산', 'F12': '계산', 'Ctrl+C': '복사', 'Ctrl+V': '붙여넣기', 'Ctrl+X': '잘라내기', 'Ctrl+Z': '되돌리기', 'Ctrl+A': '전체 선택' };
+  const EDITOR_KEYS = { 'Ctrl+D': '줄 복제', 'Ctrl+;': '날짜 넣기', 'Ctrl+Shift+;': '시각 넣기', 'Ctrl+Shift+:': '시각 넣기', 'Ctrl+/': '계산', 'F12': '계산', 'Ctrl+C': '복사', 'Ctrl+V': '붙여넣기', 'Ctrl+X': '잘라내기', 'Ctrl+Z': '되돌리기', 'Ctrl+A': '전체 선택', 'Ctrl+F': '찾기' };
 
   ipcRenderer.invoke('get-shortcuts').then((all) => {
     const { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo } = all;

@@ -7,7 +7,7 @@ if (process.type === undefined) {
   process.exit(0);
 }
 
-const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen, powerMonitor } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, nativeImage, ipcMain, screen, powerMonitor, shell } = require('electron');
 
 if (process.env.DAYMATE_USER_DATA) app.setPath('userData', process.env.DAYMATE_USER_DATA);
 
@@ -54,6 +54,20 @@ function savePrefs(prefs) {
 
 let prefs = loadPrefs();
 let alwaysOnTop = prefs.alwaysOnTop || false;
+// 윈도우 켤 때 자동 실행 — 기본 켜기(2026-10-08 사용자 결정, 메모잇처럼 재부팅 뒤에도 포스트잇·단축키가 바로 되게).
+// 트레이 메뉴에서 끌 수 있다. 설치된 앱에서만 등록한다(테스트로 띄운 electron.exe가 등록되지 않게).
+let autoStart = prefs.autoStart !== false;
+function applyAutoStart() {
+  if (!app.isPackaged) return;
+  app.setLoginItemSettings({ openAtLogin: autoStart, path: process.execPath });
+}
+function toggleAutoStart() {
+  autoStart = !autoStart;
+  prefs.autoStart = autoStart;
+  savePrefs(prefs);
+  applyAutoStart();
+  updateTray();
+}
 
 let shortcuts = loadShortcuts();
 let memoWindow = null;
@@ -69,7 +83,7 @@ const stickyWindows = new Map(); // BrowserWindow → { ds, id, pinned }
 function saveStickyList() {
   prefs.stickies = [...stickyWindows.entries()]
     .filter(([w, info]) => !w.isDestroyed() && info.id)
-    .map(([w, info]) => ({ ds: info.ds, id: info.id, pinned: !!info.pinned, folded: !!info.folded, unfoldHeight: info.unfoldHeight, bounds: w.getBounds() }));
+    .map(([w, info]) => ({ ds: info.ds, id: info.id, pinned: !!info.pinned, folded: !!info.folded, unfoldHeight: info.unfoldHeight, opacity: info.opacity, bounds: w.getBounds() }));
   savePrefs(prefs);
 }
 
@@ -126,7 +140,7 @@ function onStickyKey(win, event, input) {
   win.webContents.send('sticky-key', action); // 접기·닫기·고정·복사는 화면 쪽 버튼과 같은 동작으로
 }
 
-function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHeight } = {}) {
+function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHeight, opacity } = {}) {
   // 이미 떠 있는 메모면 그 창을 앞으로
   for (const [w, info] of stickyWindows) {
     if (!w.isDestroyed() && id && info.id === id && info.ds === ds) { w.show(); w.focus(); return w; }
@@ -141,9 +155,11 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
   });
-  stickyWindows.set(win, { ds, id, pinned, folded, unfoldHeight: unfoldHeight || (folded ? STICKY_H : undefined) });
+  const op = clampOpacity(opacity);
+  if (op < 1) win.setOpacity(op);
+  stickyWindows.set(win, { ds, id, pinned, folded, unfoldHeight: unfoldHeight || (folded ? STICKY_H : undefined), opacity: op < 1 ? op : undefined });
   const q = id ? `ds=${encodeURIComponent(ds)}&id=${encodeURIComponent(id)}` : 'new=1';
-  win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}`);
+  win.loadURL(`${DAYMATE_URL}/?view=sticky&${q}&pin=${pinned ? 1 : 0}${folded ? '&fold=1' : ''}${op < 1 ? `&op=${op}` : ''}`);
   let t = null;
   const saveLater = () => { clearTimeout(t); t = setTimeout(saveStickyList, 500); };
   win.on('focus', () => { lastFocusedSticky = win; checkRemote(); });
@@ -159,6 +175,60 @@ function createSticky({ ds, id, pinned = true, bounds, folded = false, unfoldHei
 }
 
 const stickyOf = (event) => BrowserWindow.fromWebContents(event.sender);
+
+// 포스트잇 투명도 (메모잇 "메모 투명효과") — 50~100%, 포스트잇마다 따로 기억
+function clampOpacity(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.min(1, Math.max(0.5, n)) : 1;
+}
+ipcMain.handle('sticky-opacity', (event, v) => {
+  const win = stickyOf(event);
+  const info = win && stickyWindows.get(win);
+  if (!info) return 1;
+  const op = clampOpacity(v);
+  win.setOpacity(op);
+  info.opacity = op < 1 ? op : undefined;
+  saveStickyList();
+  return op;
+});
+
+// 메모 관리자 "📌 포스트잇" 분류 — 지금 띄워 둔(숨긴 것 포함) 포스트잇 메모 목록
+ipcMain.handle('sticky-list', () => [...stickyWindows.entries()]
+  .filter(([w, info]) => !w.isDestroyed() && info.id)
+  .map(([, info]) => ({ ds: info.ds, id: info.id })));
+
+// 메모 속 링크 열기 — 기본 브라우저로. http(s)·mailto만 연다(파일·프로그램 실행 주소는 막음)
+ipcMain.on('open-external', (_, url) => {
+  if (/^(https?:\/\/|mailto:)/i.test(String(url || ''))) shell.openExternal(String(url)).catch(() => {});
+});
+
+// 웹이 데스크탑 앱 버전을 보고 "새 버전 있어요"를 띄운다 (1.3.1~, 이전 버전은 이 함수가 없음)
+ipcMain.handle('app-version', () => app.getVersion());
+
+// 보이는 포스트잇 가지런히 정렬 (메모잇 "보이는 메모 정렬") — 포스트잇이 있는 화면마다 왼쪽 위부터 줄 맞춰 놓는다.
+// 순서는 띄운 순서. 한 화면에 다 안 들어가면 다시 위에서부터 조금씩 비켜서 겹친다.
+function arrangeStickies() {
+  const GAP = 10;
+  const groups = new Map(); // display id → { wa, wins }
+  for (const w of stickyWindows.keys()) {
+    if (w.isDestroyed() || !w.isVisible() || w.isMinimized()) continue;
+    const d = screen.getDisplayMatching(w.getBounds());
+    if (!groups.has(d.id)) groups.set(d.id, { wa: d.workArea, wins: [] });
+    groups.get(d.id).wins.push(w);
+  }
+  for (const { wa, wins } of groups.values()) {
+    let x = wa.x + GAP, y = wa.y + GAP, rowH = 0, pass = 0;
+    for (const w of wins) {
+      const b = w.getBounds();
+      if (x + b.width > wa.x + wa.width && x > wa.x + GAP) { x = wa.x + GAP + pass * 20; y += rowH + GAP; rowH = 0; }
+      if (y + Math.min(b.height, FOLD_HEIGHT * 2) > wa.y + wa.height) { pass++; x = wa.x + GAP + pass * 20; y = wa.y + GAP + pass * FOLD_HEIGHT; rowH = 0; }
+      w.setBounds({ x, y, width: b.width, height: b.height });
+      x += b.width + GAP;
+      rowH = Math.max(rowH, b.height);
+    }
+  }
+  saveStickyList();
+}
 
 // ---------- 화면 밖으로 나간 포스트잇 되찾기 (메모잇 v2.00 참고, 2026-10-08) ----------
 // 모니터를 빼거나 해상도가 바뀌면 저장해 둔 자리가 화면 밖일 수 있다. 제목줄이 어느 화면에든
@@ -372,9 +442,11 @@ function updateTray() {
     { type: 'separator' },
     { label: menuLabel('포스트잇 모두 보이기/감추기', shortcuts.toggleStickies), click: () => toggleAllStickies() },
     { label: menuLabel('최근 편집한 메모 열기', shortcuts.recentMemo), click: () => openRecentMemo() },
+    { label: '포스트잇 가지런히 정렬', click: () => arrangeStickies() },
     { label: '화면 밖 포스트잇 불러오기', click: () => { rescueOffscreenStickies(); showAllStickies(); } },
     { type: 'separator' },
     { label: '항상 위에 고정', type: 'checkbox', checked: alwaysOnTop, click: () => toggleAlwaysOnTop() },
+    { label: '윈도우 시작 시 자동 실행', type: 'checkbox', checked: autoStart, click: () => toggleAutoStart() },
     { type: 'separator' },
     { label: '단축키 설정', click: () => openSettings() },
     { type: 'separator' },
@@ -512,7 +584,7 @@ function showMemoSearch() {
 }
 
 // 자동 테스트(Playwright _electron)에서만 이동 함수를 부를 수 있게 — 설치된 앱에는 노출 안 됨
-if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky, rescueOffscreenStickies, checkRemote, stickyWindows };
+if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky, rescueOffscreenStickies, checkRemote, stickyWindows, arrangeStickies, toggleAutoStart, getAutoStart: () => autoStart };
 
 function toggleMemo() {
   if (!memoWindow) return;
@@ -520,6 +592,7 @@ function toggleMemo() {
 }
 
 app.whenReady().then(() => {
+  applyAutoStart();
   createMemoWindow();
   createTray();
   registerShortcuts();

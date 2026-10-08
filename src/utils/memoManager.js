@@ -70,6 +70,7 @@ export const BASE_FILTERS = [
   { id: "journal", label: "일기", icon: "📖" },
   { id: "starred", label: "즐겨찾기", icon: "⭐" },
   { id: "photo", label: "사진 있음", icon: "📷" },
+  { id: "locked", label: "잠긴 메모", icon: "🔒" },
   { id: "today", label: "오늘", icon: "🕐" },
   { id: "yesterday", label: "어제", icon: "🕐" },
   { id: "d7", label: "최근 일주일", icon: "🕐" },
@@ -131,7 +132,8 @@ export function relatedTags(items, filter, limit = 8) {
     .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko")).slice(0, limit);
 }
 
-export function filterItems(items, filter, query, today = toDateStr()) {
+// stickyKeys: 데스크탑 앱에서 지금 포스트잇으로 띄워 둔 메모("날짜|id")
+export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null) {
   const recent = (days) => {
     const from = addDays(today, -(days - 1));
     return (it) => it.ds >= from && it.ds <= today;
@@ -143,6 +145,8 @@ export function filterItems(items, filter, query, today = toDateStr()) {
     journal: (it) => it.kind === "journal",
     starred: (it) => it.starred,
     photo: (it) => it.photos.length > 0,
+    locked: (it) => !!it.locked,
+    sticky: (it) => it.kind === "memo" && !!stickyKeys?.has(`${it.ds}|${it.id}`),
     today: (it) => it.ds === today,
     yesterday: (it) => it.ds === addDays(today, -1),
     d7: recent(7),

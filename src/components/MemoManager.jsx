@@ -57,7 +57,33 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const tags = useMemo(() => tagTree(items), [items]);
   const related = useMemo(() => relatedTags(items, filter), [items, filter]);
   const tagFilter = filter.startsWith("#") || filter.startsWith("@");
-  const list = useMemo(() => sortItems(filterItems(items, filter, query), sort), [items, filter, query, sort]);
+  // 📌 포스트잇 분류 — 데스크탑 앱(1.3.1~)에서만. 지금 띄워 둔 포스트잇 목록을 앱에서 받아 온다(창으로 돌아올 때 다시)
+  const canSticky = !!window.daymateDesktop?.getOpenStickies;
+  const [stickyKeys, setStickyKeys] = useState(null);
+  useEffect(() => {
+    if (!canSticky) return;
+    const load = () => window.daymateDesktop.getOpenStickies().then(l => setStickyKeys(new Set((l || []).map(s => `${s.ds}|${s.id}`)))).catch(() => {});
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, [canSticky, filter]);
+  const baseFilters = useMemo(() => {
+    if (!canSticky) return BASE_FILTERS;
+    const i = BASE_FILTERS.findIndex(f => f.id === "locked") + 1;
+    return [...BASE_FILTERS.slice(0, i), { id: "sticky", label: "포스트잇", icon: "📌" }, ...BASE_FILTERS.slice(i)];
+  }, [canSticky]);
+  // 최근 검색어 (메모잇 "이전 검색단어목록") — 검색 칸을 누르면 아래에 목록이 뜬다. 이 기기에만 10개
+  const [recentQs, setRecentQs] = useState(() => { try { return JSON.parse(localStorage.getItem("dm_memo_recent_q") || "[]"); } catch { return []; } });
+  const rememberQuery = () => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    setRecentQs(prev => {
+      const next = [q, ...prev.filter(x => x !== q)].slice(0, 10);
+      try { localStorage.setItem("dm_memo_recent_q", JSON.stringify(next)); } catch { /* 저장 못 해도 이번엔 보임 */ }
+      return next;
+    });
+  };
+  const list = useMemo(() => sortItems(filterItems(items, filter, query, undefined, stickyKeys), sort), [items, filter, query, sort, stickyKeys]);
   const selected = items.find(it => it.key === selectedKey) || null;
   const selIndex = list.findIndex(it => it.key === selectedKey);
 
@@ -164,7 +190,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const tagChipLabel = tagFilter ? `${filter.startsWith("@") ? "📂" : "#"} ${filter.slice(1)}` : "🏷 태그";
   const filters = wide ? (
     <>
-      {BASE_FILTERS.map(f => filterButton(f.id, f.label, f.icon))}
+      {baseFilters.map(f => filterButton(f.id, f.label, f.icon))}
       <div style={{ ...muted, fontSize: 11, fontWeight: 700, padding: "12px 10px 4px" }}>태그</div>
       {tagButtons}
     </>
@@ -175,7 +201,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         style={{ flexShrink: 0, padding: "5px 10px", borderRadius: 14, border: tagFilter ? "1.5px solid #6C8EFF" : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? "#6C8EFF" : "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         {tagChipLabel} {tagsOpen ? "▴" : "▾"}
       </button>
-      {BASE_FILTERS.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
+      {baseFilters.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
     </>
   );
   // 태그·카테고리를 고르면 목록 위에 관련 태그(같은 날 함께 나온 태그) 한 줄
@@ -250,9 +276,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         {onOpenSearch && <button onClick={onOpenSearch} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>🔎 본문·사진</button>}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
-            onKeyDown={e => { if (e.key === "Enter" || e.key === "ArrowDown") { e.preventDefault(); move(1); } else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); } }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); rememberQuery(); move(1); } else if (e.key === "ArrowDown" && (query || !recentQs.length)) { e.preventDefault(); move(1); } else if (e.key === "ArrowUp" && (query || !recentQs.length)) { e.preventDefault(); move(-1); } }}
+            onBlur={rememberQuery} list="dm-memo-recent-q"
             placeholder="검색 (메모·일정·일기)" autoFocus={canAutoFocus()}
             style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+          <datalist id="dm-memo-recent-q">{recentQs.map(q => <option key={q} value={q} />)}</datalist>
           <button onClick={() => move(1)} aria-label="다음" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▼</button>
           <button onClick={() => move(-1)} aria-label="이전" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▲</button>
           <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>⚙️</button>

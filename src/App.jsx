@@ -19,6 +19,7 @@ import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/sta
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
+import DesktopUpdateBar from "./components/DesktopUpdateBar.jsx";
 import { triggerVibration } from "./utils/notification.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
@@ -2702,6 +2703,7 @@ export default function App() {
         {unsynced && unsynced.n !== unsyncedHidden && !statAsk && (
           <UnsyncedBar count={unsynced.n} offline={unsynced.offline} onRetry={() => retryUnsyncedRef.current?.()} onClose={() => setUnsyncedHidden(unsynced.n)} />
         )}
+        {!statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <DesktopUpdateBar />}
         {statAsk && (
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />

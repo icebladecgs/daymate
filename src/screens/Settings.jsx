@@ -18,8 +18,8 @@ import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 
-// 데스크탑 앱 설치 파일 — 새 버전을 GitHub 릴리스에 올리면 여기도 바꾼다
-const DESKTOP_DOWNLOAD_URL = 'https://github.com/icebladecgs/daymate/releases/download/desktop-v1.3.0/Daymate.Setup.1.3.0.exe';
+// 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
+import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
