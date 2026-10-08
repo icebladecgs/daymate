@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { googleSignInWithDriveScope } from "../firebase.js";
 import { uploadFileToDrive, DRIVE_ATTACH_MAX_BYTES, DRIVE_ATTACH_FOLDER } from "../api/drive.js";
 import { store } from "../utils/storage.js";
-import { externalLinkClick, trimUrl } from "../utils/links.js";
+import { externalLinkClick, trimUrl, linkLabels } from "../utils/links.js";
 
 // 구글 드라이브 첨부 — 파일은 사용자 드라이브("DayMate/첨부파일" 폴더)에, 앱에는 {id,name,link,mimeType,size}만 저장.
 // 목록에서 빼도 드라이브 파일은 지우지 않음 (사용자 결정: 실수 방지).
@@ -109,19 +109,13 @@ const URL_RE = /https?:\/\/[^\s<>"']+/g;
 export function MemoLinks({ text = '', style, hint = '' }) {
   const urls = [...new Set((text.match(URL_RE) || []).map(trimUrl))].slice(0, 10); // 끝 문장부호·짝 없는 ")" 제외
   if (!urls.length) return null;
-  const label = (u) => {
-    try {
-      const { hostname } = new URL(u);
-      if (/drive\.google|docs\.google/.test(hostname)) return '구글 드라이브';
-      return hostname.replace(/^www\./, '');
-    } catch { return u; }
-  };
+  const labels = linkLabels(text, urls); // 같은 사이트가 여럿이면 줄 글·번호로 구분
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: -6, marginBottom: 14, ...style }}>
-      {urls.map(u => (
+      {urls.map((u, k) => (
         <a key={u} href={u} target="_blank" rel="noopener noreferrer" onClick={externalLinkClick(u)} title={u}
           style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.3)', color: '#6C8EFF', textDecoration: 'none', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          🔗 {label(u)}
+          🔗 {labels[k]}
         </a>
       ))}
       {hint && <span style={{ alignSelf: 'center', fontSize: 11, color: 'var(--dm-muted)' }}>{hint}</span>}

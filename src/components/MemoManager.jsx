@@ -18,6 +18,7 @@ import MemoView from "./MemoView.jsx";
 import { toggleCheckAt } from "../utils/memoView.js";
 import { openLinkOnCtrlClick } from "../utils/links.js";
 import { MemoLinks } from "./DriveFiles.jsx";
+import LinkOverlay from "./LinkOverlay.jsx";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -445,11 +446,15 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
         <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
           onEdit={onToggleView} placeholder={item.kind === "task" ? "일정 메모가 없어요" : "내용이 없어요"} />
       ) : (
-      <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
-        onClick={openLinkOnCtrlClick}
-        onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
-        placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
-        style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
+      <div style={{ position: "relative", flex: 1, minHeight: 80, display: "flex" }}>
+        <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
+          onClick={openLinkOnCtrlClick}
+          onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
+          placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
+          style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
+        {/* 링크 자리에 연한 파란 바탕·밑줄 (입력칸 위에 겹친 표시 층) */}
+        <LinkOverlay taRef={textRef} text={text} />
+      </div>
       )}
       {/* 편집 칸의 링크를 누를 수 있게 (보기 모드에선 글 속 링크를 바로 누르면 돼서 생략). 휴대폰은 Ctrl+클릭이 없어 이 버튼으로 연다 */}
       {!viewMode && <MemoLinks text={text} hint={canAutoFocus() ? "Ctrl+클릭으로도 열려요" : ""} style={{ marginTop: 0, marginBottom: 0, flexShrink: 0 }} />}

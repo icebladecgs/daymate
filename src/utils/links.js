@@ -13,6 +13,45 @@ export function trimUrl(url) {
   }
 }
 
+// 글 속 모든 주소의 위치 [{ start, end, url }] — 입력칸 위 링크 표시(LinkOverlay)용
+export function linkRanges(text) {
+  const out = [];
+  if (typeof text !== "string") return out;
+  for (const m of text.matchAll(URL_RE)) {
+    const t = trimUrl(m[0]);
+    out.push({ start: m.index, end: m.index + t.length, url: /^www\./i.test(t) ? `https://${t}` : t });
+  }
+  return out;
+}
+
+// 🔗 링크 버튼 이름 — 보통은 사이트 이름. 같은 사이트 링크가 여럿이면 구분이 안 되므로
+// 그 링크가 있는 줄의 글(앞쪽, 없으면 뒤쪽)을 이름으로 쓰고, 그래도 없거나 겹치면 ①② 번호를 붙인다.
+const siteName = (u) => {
+  try {
+    const { hostname } = new URL(u);
+    if (/drive\.google|docs\.google/.test(hostname)) return "구글 드라이브";
+    return hostname.replace(/^www\./, "");
+  } catch { return u; }
+};
+const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩";
+const shorten = (s, n = 14) => (s.length > n ? `${s.slice(0, n)}…` : s);
+export function linkLabels(text, urls) {
+  const sites = urls.map(siteName);
+  const lines = String(text || "").split("\n");
+  const lineWords = (u) => {
+    const line = lines.find(l => l.includes(u)) || "";
+    const i = line.indexOf(u);
+    const clean = (s) => s.replace(/https?:\/\/\S+/g, "").replace(/^[\s\-•*]*(\d+[.)]\s*)?(\[[ xX]\]\s*)?/, "").replace(/[\s:：\-–—(（[]+$/, "").replace(/^[\s:：\-–—)）\]]+/, "").trim();
+    return clean(line.slice(0, i)) || clean(line.slice(i + u.length));
+  };
+  const labels = urls.map((u, k) => (sites.filter(s => s === sites[k]).length > 1 ? (shorten(lineWords(u)) || sites[k]) : sites[k]));
+  // 이름이 겹치면 순서대로 번호
+  return labels.map((l, k) => {
+    const same = labels.map((x, j) => (x === l ? j : -1)).filter(j => j >= 0);
+    return same.length > 1 ? `${l} ${CIRCLED[same.indexOf(k)] || same.indexOf(k) + 1}` : l;
+  });
+}
+
 // pos 위치를 덮는 주소 (없으면 null)
 export function urlAt(text, pos) {
   if (typeof text !== "string" || pos == null) return null;

@@ -7,6 +7,7 @@ import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { urlAt, openLink, findAll } from "../utils/links.js";
+import LinkOverlay from "./LinkOverlay.jsx";
 import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
 
@@ -409,6 +410,7 @@ export default function StickyMemo() {
             placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
             style={{ position: "relative", flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit", boxSizing: "border-box", whiteSpace: "pre-wrap", overflowWrap: "break-word" }}
           />
+          <LinkOverlay taRef={taRef} text={text} />
         </div>
       )}
       {!folded && photos.length > 0 && (
