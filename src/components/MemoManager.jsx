@@ -13,6 +13,7 @@ import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import MemoSettings from "./MemoSettings.jsx";
+import Toast from "./Toast.jsx";
 import MemoView from "./MemoView.jsx";
 import { toggleCheckAt } from "../utils/memoView.js";
 import { openLinkOnCtrlClick } from "../utils/links.js";
@@ -42,7 +43,9 @@ const updateMemoIn = (day, id, patch) => {
 
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
-export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onOpenSearch, onRequireLogin, onError }) {
+// 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
+export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onOpenSearch, onRequireLogin }) {
+  const [toast, setToast] = useState("");
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState({ key: "date", dir: "desc" });
@@ -139,7 +142,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     onUpdateDayData(it.ds, prev => restoreMemoFromTrash(prev, it.id));
     setSelectedKey(`memo|${it.ds}|${it.id}`);
     setFilter("all");
-    onError?.("메모를 되살렸어요");
+    setToast("메모를 되살렸어요");
   };
   const purgeTrash = (targets) => {
     const byDay = new Map();
@@ -276,7 +279,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever}
+    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -328,6 +331,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         </div>
       )}
       {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
     </div>,
     document.body
   );

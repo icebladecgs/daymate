@@ -2606,7 +2606,6 @@ export default function App() {
             window.dispatchEvent(new Event("dm:open-search"));
           }}
           onRequireLogin={() => googleSignIn().catch(() => {})}
-          onError={setToast}
         />
       );
     }
