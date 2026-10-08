@@ -13,6 +13,8 @@ import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import MemoSettings from "./MemoSettings.jsx";
+import MemoView from "./MemoView.jsx";
+import { toggleCheckAt } from "../utils/memoView.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -46,6 +48,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const [limit, setLimit] = useState(PAGE);
   const [tagsOpen, setTagsOpen] = useState(false); // 좁은 화면: 태그 칩 묶음 펼침
   const [showSettings, setShowSettings] = useState(false); // ⚙️ 메모 설정
+  // ⤢ 크게: 목록을 접고 편집 칸을 넓게 / 👁 보기: 읽기 좋게 그린 화면 (둘 다 기본 꺼짐 — 지금처럼 바로 고치는 방식이 기본)
+  const [big, setBig] = useState(false);
+  const [viewMode, setViewMode] = useState(false);
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
@@ -265,6 +270,14 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     </div>
   );
 
+  // [[키워드]]·#태그를 누르면 그 태그 목록으로 (크게 보던 중이면 목록이 보이게 돌아온다)
+  const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
+  const isBig = big && !!selected;
+  const detail = (
+    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever}
+      big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
+  );
+
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit" }}>
       {/* 상단: 닫기 · 새 메모 · 검색 */}
@@ -296,19 +309,19 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <div style={{ width: 200, flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{table}</div>
+            {!isBig && <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{table}</div>}
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
+              {detail}
             </div>
           </div>
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>
-          {tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: 132, overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
-          <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{table}</div>
+          {!isBig && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>}
+          {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: 132, overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          {!isBig && <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{table}</div>}
           <div style={{ flex: "1 1 60%", minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={onError} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} />
+            {detail}
           </div>
         </div>
       )}
@@ -319,7 +332,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever }) {
+function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -391,12 +404,14 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: 12, fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: 12, color: "var(--dm-muted)" }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
+        <button onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: "#6C8EFF", borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
+        <button onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: "#6C8EFF", borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
         {item.kind === "memo" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
         )}
-        {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js */}
-        {item.kind === "memo" && (
+        {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js. 보기 모드엔 커서가 없어 숨김 */}
+        {item.kind === "memo" && !viewMode && (
           <button onMouseDown={e => e.preventDefault()} onClick={() => {
             const el = textRef.current;
             const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
@@ -420,10 +435,15 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
           style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
+      {viewMode ? (
+        <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
+          onEdit={onToggleView} placeholder={item.kind === "task" ? "일정 메모가 없어요" : "내용이 없어요"} />
+      ) : (
       <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
         onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
         placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
         style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
+      )}
       {item.kind === "journal" && (journal?.good || journal?.regret || journal?.tomorrow) && (
         <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.6, flexShrink: 0, maxHeight: 90, overflowY: "auto" }}>
           {journal.good && <div>😊 잘한 일: {journal.good}</div>}
