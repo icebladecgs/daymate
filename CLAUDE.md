@@ -239,7 +239,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 
 - 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-10-06 기준 157개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
 - 규칙을 바꾸면 **테스트도 같이 추가**한다 — 새 파일 `tools/rules-test/tests/0N-이름.mjs`(기존 파일 형식: `t(이름, assertSucceeds/assertFails(...))`, 끝에 합계와 `process.exitCode`).
-- Java는 윈도우에서 `C:\baduk\LizzieYZY\jre\java11\bin`을 스크립트가 자동으로 PATH에 넣는다. 맥은 설치된 Java를 쓴다. **그 경로가 없는 윈도우 PC**는 Java가 없으면 `Could not spawn java -version`으로 멈춘다 — `winget install --id EclipseAdoptium.Temurin.17.JRE -e`로 설치한다(관리자 확인 창에서 "예"). `C:\Dev\Projects\daymate` PC는 2026-10-08 이렇게 설치해 157개 통과를 확인했다. 설치 직후 이미 열려 있던 터미널은 PATH가 갱신되지 않으니 새로 연다. 같은 PC에서 기본 점검이 브라우저 없음으로 멈추면 `npx playwright install chromium`. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
+- Java는 `tools/rules-test/rules.mjs`가 알아서 찾는다(2026-10-08~): 윈도우는 `C:\baduk\LizzieYZY\jre\java11\bin` → 설치된 Temurin(`Program Files\Eclipse Adoptium`, 설치 직후 PATH가 안 바뀐 터미널에서도 찾음) → PATH 순서, 하나도 없으면 **winget으로 Temurin 17을 자동 설치**한다(관리자 확인 창에서 "예"). 맥은 PATH의 Java를 쓰고, 없으면 `brew install --cask temurin@17` 안내 후 멈춘다. `C:\Dev\Projects\daymate` PC에는 2026-10-08 Temurin 17을 설치했다. 스크립트에서 환경변수를 고칠 때 윈도우는 이름이 `Path`라 `env.PATH`로 쓰면 원래 경로를 잃는다(`node` 못 찾음) — 실제 키 이름을 찾아 쓴다. 같은 PC에서 기본 점검이 브라우저 없음으로 멈추면 `npx playwright install chromium`. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
 - "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.
 - 게시 후 실제 확인은 **운영자 계정이 아닌 일반 계정**으로 한다. 운영자는 앱 관리자 조건으로 모든 규칙을 통과하므로 확인이 되지 않는다.
 
