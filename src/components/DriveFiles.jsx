@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { googleSignInWithDriveScope } from "../firebase.js";
 import { uploadFileToDrive, DRIVE_ATTACH_MAX_BYTES, DRIVE_ATTACH_FOLDER } from "../api/drive.js";
 import { store } from "../utils/storage.js";
-import { externalLinkClick } from "../utils/links.js";
+import { externalLinkClick, trimUrl } from "../utils/links.js";
 
 // 구글 드라이브 첨부 — 파일은 사용자 드라이브("DayMate/첨부파일" 폴더)에, 앱에는 {id,name,link,mimeType,size}만 저장.
 // 목록에서 빼도 드라이브 파일은 지우지 않음 (사용자 결정: 실수 방지).
@@ -105,9 +105,9 @@ export function useDriveUpload({ files = [], onChange, onError }) {
 }
 
 // 메모에 붙여넣은 링크(모바일 청첩장, 드라이브 공유 링크 등)를 입력칸 아래에 누를 수 있게 보여줌
-const URL_RE = /https?:\/\/[^\s<>"')]+/g;
+const URL_RE = /https?:\/\/[^\s<>"']+/g;
 export function MemoLinks({ text = '', style, hint = '' }) {
-  const urls = [...new Set(text.match(URL_RE) || [])].slice(0, 10);
+  const urls = [...new Set((text.match(URL_RE) || []).map(trimUrl))].slice(0, 10); // 끝 문장부호·짝 없는 ")" 제외
   if (!urls.length) return null;
   const label = (u) => {
     try {

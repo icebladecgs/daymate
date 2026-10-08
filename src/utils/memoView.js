@@ -1,3 +1,5 @@
+import { trimUrl } from "./links.js";
+
 // 메모 "👁 보기" — 저장된 글은 그대로 두고 읽을 때만 마크다운처럼 보여 준다 (노션·옵시디언 참고, 2026-10-08).
 // 목록·체크박스 규칙은 편집 도우미(editorAssist.js)와 같다: 들여쓰기 한 단계 = 공백 4칸(탭 1개), "- [ ] "·"[ ] " 체크박스.
 
@@ -47,7 +49,7 @@ export function parseInline(s) {
     if (m.index > at) out.push({ type: "text", value: s.slice(at, m.index) });
     let tail = "";
     if (/^(https?:|www\.)/i.test(tok)) {
-      const t = tok.replace(/[).,\]}>;:!?'"]+$/, "");
+      const t = trimUrl(tok);
       tail = tok.slice(t.length);
       tok = t;
       out.push({ type: "link", value: tok, href: /^www\./i.test(tok) ? `https://${tok}` : tok });

@@ -1,11 +1,23 @@
 // 메모 글 속 링크 — 글자 위치(커서)에 있는 주소를 찾아 기본 브라우저로 연다 (메모잇 "인터넷주소 자동인식" 참고, 2026-10-08)
 const URL_RE = /(https?:\/\/[^\s<>"'`]+|www\.[^\s<>"'`]+\.[^\s<>"'`]+)/gi;
 
-// pos 위치를 덮는 주소 (없으면 null). 끝에 붙은 문장부호 ). , ] 등은 뺀다
+// 주소 끝에 붙은 문장부호(. , ! ? 등)를 뗀다. ")"는 주소 안에 "("가 없어 짝이 안 맞을 때만 뗀다
+// — "(https://a.com)"은 a.com, 위키백과 ".../Foo_(bar)"는 그대로.
+export function trimUrl(url) {
+  let u = url;
+  for (;;) {
+    const last = u.slice(-1);
+    if (/[.,;:!?'"\]}>]/.test(last)) { u = u.slice(0, -1); continue; }
+    if (last === ")" && (u.match(/\)/g) || []).length > (u.match(/\(/g) || []).length) { u = u.slice(0, -1); continue; }
+    return u;
+  }
+}
+
+// pos 위치를 덮는 주소 (없으면 null)
 export function urlAt(text, pos) {
   if (typeof text !== "string" || pos == null) return null;
   for (const m of text.matchAll(URL_RE)) {
-    const url = m[0].replace(/[).,\]}>;:!?'"]+$/, "");
+    const url = trimUrl(m[0]);
     const start = m.index, end = m.index + url.length;
     if (pos >= start && pos <= end) return /^www\./i.test(url) ? `https://${url}` : url;
     if (start > pos) break;
