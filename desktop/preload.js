@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('daymateDesktop', {
     ipcRenderer.on('sticky-keys-changed', h);
     return () => ipcRenderer.removeListener('sticky-keys-changed', h);
   },
+  // 1.3.3~: 전체 단축키(전역 7개 + 포스트잇 5개) — 메모 설정의 안내에 실제 값을 보여 준다. 바뀌면 onStickyKeysChanged로 알림
+  getShortcuts: () => ipcRenderer.invoke('get-shortcuts'),
   // 메모 관리자일 때 메인 창을 넓게
   setWideMode: (on) => ipcRenderer.send('set-wide-mode', !!on),
   // 메모 설정 창(웹)의 "단축키 바꾸기" → 트레이 메뉴의 단축키 설정 창과 같은 창 (1.3.0~)

@@ -552,6 +552,8 @@ ipcMain.handle('set-shortcuts', (_, all) => {
     const stickyKeys = Object.fromEntries(Object.keys(STICKY_KEY_DEFAULTS).map(k => [k, all[k] ?? shortcuts[k] ?? '']));
     shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, ...stickyKeys };
     for (const w of stickyWindows.keys()) if (!w.isDestroyed()) w.webContents.send('sticky-keys-changed');
+    // 메인 창의 메모 설정도 바로 새 키를 보이게 (1.3.3~)
+    if (memoWindow && !memoWindow.isDestroyed()) memoWindow.webContents.send('sticky-keys-changed');
     saveShortcuts(shortcuts);
     updateTray();
     return true;

@@ -16,15 +16,28 @@ const EDIT_KEYS = [
   ["Ctrl+;", "오늘 날짜 넣기 (Ctrl+Shift+; 지금 시각)"],
   ["Ctrl+D", "현재 줄 복제"],
 ];
-const STICKY_KEY_NAMES = [["fold", "접기/펼치기"], ["new", "새 포스트잇"], ["close", "닫기"], ["pin", "항상 위"], ["copy", "전체 복사"]];
+// 데스크탑 단축키 — 이름은 desktop/main.js의 shortcuts.json 키와 같다
+const GLOBAL_KEY_NAMES = [["memo", "새 메모"], ["quickMemo", "간편 메모(새 포스트잇)"], ["search", "메모 관리자"], ["calendar", "달력 보기"], ["memoSearch", "메모 검색"], ["toggleStickies", "포스트잇 모두 보이기/감추기"], ["recentMemo", "최근 편집한 메모 열기"]];
+const STICKY_KEY_NAMES = [["stickyFold", "접기/펼치기"], ["stickyNew", "새 포스트잇"], ["stickyClose", "닫기"], ["stickyPin", "항상 위"], ["stickyCopy", "전체 복사"]];
 
 export default function MemoSettings({ onClose, inline = false }) {
   const [autoList, setAutoList] = useState(memoAutoListOn);
-  const [stickyKeys, setStickyKeys] = useState(null);
+  const [keys, setKeys] = useState(null);
   const desktop = typeof window !== "undefined" ? window.daymateDesktop : null;
 
+  // 실제 설정 값을 읽는다. 단축키 설정 창에서 바꾸고 돌아오면(알림·창 포커스) 다시 읽는다.
+  // 전체 단축키는 데스크탑 1.3.3부터(getShortcuts), 그 전에는 포스트잇 키 5개만 알 수 있다
   useEffect(() => {
-    desktop?.getStickyKeys?.().then(setStickyKeys).catch(() => {});
+    if (!desktop) return;
+    const load = () => {
+      const p = desktop.getShortcuts ? desktop.getShortcuts()
+        : desktop.getStickyKeys?.().then(s => ({ stickyFold: s.fold, stickyNew: s.new, stickyClose: s.close, stickyPin: s.pin, stickyCopy: s.copy }));
+      p?.then(setKeys).catch(() => {});
+    };
+    load();
+    const off = desktop.onStickyKeysChanged?.(load);
+    window.addEventListener("focus", load);
+    return () => { off?.(); window.removeEventListener("focus", load); };
   }, [desktop]);
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
@@ -75,13 +88,23 @@ export default function MemoSettings({ onClose, inline = false }) {
 
       {desktop && (
         <>
-          {title("데스크탑 단축키")}
-          {stickyKeys && STICKY_KEY_NAMES.map(([id, name]) => (
-            <div key={id} style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "4px 0", borderTop: `1px solid ${line}`, fontSize: 12 }}>
-              <span style={{ flexShrink: 0, width: inline ? 100 : 120 }}>{stickyKeys[id] ? <span style={keyCap}>{stickyKeys[id]}</span> : <span style={{ color: sub }}>없음</span>}</span>
-              <span style={{ color: inline ? "#333" : "var(--dm-sub)" }}>포스트잇 {name}</span>
+          {keys && [
+            ...(keys.memo !== undefined ? [["데스크탑 단축키 (어디서나)", GLOBAL_KEY_NAMES, ""]] : []),
+            ["포스트잇 창 안 단축키", STICKY_KEY_NAMES, "포스트잇 "],
+          ].map(([head, names, prefix]) => (
+            <div key={head}>
+              {title(head)}
+              {names.map(([id, name]) => (
+                <div key={id} style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "4px 0", borderTop: `1px solid ${line}`, fontSize: 12 }}>
+                  <span style={{ flexShrink: 0, width: inline ? 100 : 120 }}>{keys[id] ? <span style={keyCap}>{keys[id]}</span> : <span style={{ color: sub }}>없음</span>}</span>
+                  <span style={{ color: inline ? "#333" : "var(--dm-sub)" }}>{prefix}{name}</span>
+                </div>
+              ))}
             </div>
           ))}
+          {keys && keys.memo === undefined && (
+            <div style={{ marginTop: 6, fontSize: 11, color: sub, lineHeight: 1.6 }}>새 메모·메모 관리자 등 전체 단축키는 데스크탑 앱 1.3.3부터 여기에 보여요</div>
+          )}
           {desktop.openShortcutSettings ? (
             <button onClick={() => desktop.openShortcutSettings()}
               style={{ marginTop: 10, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
