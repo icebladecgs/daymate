@@ -2,7 +2,7 @@
 // 설정의 "Windows 앱 다운로드"와 데스크탑 앱 위쪽의 "새 버전이 있어요" 알림이 이 값을 쓴다.
 // 릴리스를 올리기 전에 이 값을 바꿔 배포하면 알림의 받기 주소가 없는 파일을 가리키니 순서를 지킨다.
 // 태그는 대소문자를 구분한다 — 'Desktop-v버전'(대문자 D)으로 만든다(소문자로 바꾸면 404).
-export const DESKTOP_LATEST = '1.3.2';
+export const DESKTOP_LATEST = '1.3.3';
 export const DESKTOP_DOWNLOAD_URL = `https://github.com/icebladecgs/daymate/releases/download/Desktop-v${DESKTOP_LATEST}/Daymate.Setup.${DESKTOP_LATEST}.exe`;
 
 // '1.2.10' > '1.2.9' 처럼 숫자로 비교. a가 b보다 낮으면 음수
