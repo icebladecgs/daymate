@@ -3,7 +3,7 @@ import { trimUrl } from "./links.js";
 // 메모 "👁 보기" — 저장된 글은 그대로 두고 읽을 때만 마크다운처럼 보여 준다 (노션·옵시디언 참고, 2026-10-08).
 // 목록·체크박스 규칙은 편집 도우미(editorAssist.js)와 같다: 들여쓰기 한 단계 = 공백 4칸(탭 1개), "- [ ] "·"[ ] " 체크박스.
 
-const LINE_RE = /^([ \t]*)(?:([-•*]|\d+[.)])[ \t]+)?(?:\[([ xX])\][ \t]+)?(.*)$/;
+const LINE_RE = /^([ \t]*)(?:([-•*]|\d+[.)]|(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)])[ \t]+)?(?:\[([ xX])\][ \t]+)?(.*)$/;
 
 const levelOf = (indent) => {
   let n = 0;
@@ -22,6 +22,8 @@ export function parseMemoLines(text) {
     if (q) return { line, type: "quote", content: q[1] };
     const m = LINE_RE.exec(raw);
     const [, indent, marker, check, content] = m;
+    // 한글 번호(가. 가))는 들여 쓴 줄에서만 번호 — 맨 앞의 "가. 나는…"은 일반 글
+    if (marker && /^[가-힣]/.test(marker) && !indent) return { line, type: "text", level: 0, content: raw.trim() };
     const level = levelOf(indent);
     if (check !== undefined) return { line, type: "check", level, marker: marker || "", checked: check !== " ", content };
     if (marker) return { line, type: "item", level, marker, content };
@@ -34,7 +36,7 @@ export function toggleCheckAt(text, lineIndex) {
   const lines = String(text || "").split("\n");
   const cur = lines[lineIndex];
   if (cur === undefined) return text;
-  lines[lineIndex] = cur.replace(/^([ \t]*(?:(?:[-•*]|\d+[.)])[ \t]+)?)\[([ xX])\]/, (_, pre, c) => `${pre}[${c === " " ? "x" : " "}]`);
+  lines[lineIndex] = cur.replace(/^([ \t]*(?:(?:[-•*]|\d+[.)]|(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)])[ \t]+)?)\[([ xX])\]/, (_, pre, c) => `${pre}[${c === " " ? "x" : " "}]`);
   return lines.join("\n");
 }
 

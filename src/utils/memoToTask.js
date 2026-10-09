@@ -3,6 +3,7 @@
 
 const TAG_RE = /#[\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*/g;
 const LIST_MARK = /^\s*(?:[-*•·]|\d+[.)]|\[[ xX]?\]|☐|☑|✓|✔)\s*/;
+const HANGUL_MARK = /^\s+(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)]\s+/; // 들여 쓴 공문서 번호(가. 가)) — 편집 도우미와 같은 규칙
 export const TASK_TITLE_MAX = 60; // 할일 상세 창 제목 칸과 같은 길이
 
 // 고른 글자가 있으면 그 부분, 없으면 커서가 있는 줄을 할일 제목으로 — 목록 기호·#태그는 빼고 [[ ]]는 괄호만 뺀다
@@ -15,7 +16,7 @@ export function pickTaskTitle(text, start = 0, end = start) {
     const to = s.indexOf('\n', start);
     raw = s.slice(from, to < 0 ? s.length : to);
   }
-  return raw.split('\n').map(l => l.replace(LIST_MARK, '')).join(' ')
+  return raw.split('\n').map(l => l.replace(HANGUL_MARK, '').replace(LIST_MARK, '')).join(' ')
     .replace(TAG_RE, ' ').replace(/\[\[([^\]]+)\]\]/g, '$1')
     .replace(/\s+/g, ' ').trim().slice(0, TASK_TITLE_MAX);
 }

@@ -57,7 +57,7 @@ export default function MemoSettings({ onClose, inline = false }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 13 }}>목록 자동완성</div>
-          <div style={{ fontSize: 11, color: sub, marginTop: 2, lineHeight: 1.5 }}>Enter 이어쓰기 · Tab 들여쓰기 · Backspace · 번호 다시 매기기 · 이 기기에만 적용</div>
+          <div style={{ fontSize: 11, color: sub, marginTop: 2, lineHeight: 1.5 }}>Enter 이어쓰기 · Tab 들여쓰기 · Backspace · 번호 다시 매기기(단계마다 1. 가. 1) 가)) · 이 기기에만 적용</div>
         </div>
         <div onClick={() => { const v = !autoList; setAutoList(v); setMemoAutoList(v); }} role="switch" aria-checked={autoList} aria-label="목록 자동완성"
           style={{ width: 46, height: 26, borderRadius: 999, background: autoList ? "#6C8EFF" : (inline ? "#ccc" : "var(--dm-border)"), cursor: "pointer", position: "relative", flexShrink: 0 }}>

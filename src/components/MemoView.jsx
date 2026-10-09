@@ -47,10 +47,11 @@ export default function MemoView({ text, onToggle, onTag, onEdit, placeholder = 
           );
         }
         if (r.type === "item") {
-          const bullet = /^\d/.test(r.marker) ? r.marker : ["•", "◦", "▪"][r.level % 3];
+          const ordered = /^[\d가-힣]/.test(r.marker); // 1. 가. 1) 가) 번호는 그대로, 글머리는 단계별 모양
+          const bullet = ordered ? r.marker : ["•", "◦", "▪"][r.level % 3];
           return (
             <div key={r.line} style={{ display: "flex", gap: 8, ...indent(r.level) }}>
-              <span style={{ flexShrink: 0, minWidth: /^\d/.test(r.marker) ? 20 : 10, color: "var(--dm-sub)", textAlign: "right" }}>{bullet}</span>
+              <span style={{ flexShrink: 0, minWidth: ordered ? 20 : 10, color: "var(--dm-sub)", textAlign: "right" }}>{bullet}</span>
               <span>{inline(r.content)}</span>
             </div>
           );

@@ -257,7 +257,7 @@ function toggleCheckbox(ta) {
   let firstDelta = 0, total = 0;
   const out = lines.map((l, i) => {
     if (!l.trim() && lines.length > 1) return l;
-    const m = /^([ \t]*)((?:[-•*]|\d+[.)])[ \t]+)?(\[([ xX])\])?/.exec(l);
+    const m = /^([ \t]*)((?:[-•*]|\d+[.)]|(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)])[ \t]+)?(\[([ xX])\])?/.exec(l);
     let next;
     if (m[3]) next = l.slice(0, m[1].length + (m[2] || "").length) + (m[4] === " " ? "[x]" : "[ ]") + l.slice(m[0].length);
     else next = m[1] + (m[2] || "") + "[ ] " + l.slice(m[1].length + (m[2] || "").length);
@@ -296,17 +296,26 @@ function moveLines(ta, dir) {
 
 // 번호 목록 다시 매기기 — 커서가 있는 목록 덩어리 안에서만(빈 줄·들여쓰지 않은 일반 글에서 끊김),
 // 같은 단계에 번호 항목이 2개 이상일 때만 1부터. 3자리까지만 번호로 본다("2026. 10. 7." 같은 날짜는 그대로)
-const NUM_RE = /^([ \t]*)(\d{1,3})([.)])(?=[ \t]|$)/;
+const NUM_RE = /^([ \t]*)(\d{1,3}|하\d{1,2}|[가나다라마바사아자차카타파하])([.)])(?=[ \t]|$)/;
 const BULLET_RE = /^([ \t]*)(?:[-•*]|\[[ xX]\])(?=[ \t]|$)/;
 const indentWidth = (s) => s.replace(/\t/g, INDENT).length;
-const inListBlock = (l) => l.trim() && (NUM_RE.test(l) || BULLET_RE.test(l) || /^[ \t]/.test(l));
+// 번호 기호는 한국 공문서 방식: 단계마다 1. → 가. → 1) → 가), 그 아래는 다시 반복 (2026-10-09 사용자 확정).
+// "가."·"가)"는 들여 쓴 줄에서만 번호로 본다("가. 나는…" 같은 일반 문장 보호). 하 다음은 하1, 하2…
+const HANGUL_NUM = "가나다라마바사아자차카타파하";
+const isHangulMark = (mark) => /^[가-힣]/.test(mark);
+const markNumber = (mark) => (isHangulMark(mark) ? (mark.length > 1 ? 14 + parseInt(mark.slice(1), 10) : HANGUL_NUM.indexOf(mark) + 1) : parseInt(mark, 10));
+const hangulMark = (n) => (n <= 14 ? HANGUL_NUM[n - 1] : `하${n - 14}`);
+const sameKindMark = (n, mark) => (isHangulMark(mark) ? hangulMark(n) : String(n)); // 같은 종류(숫자/한글)로 n번째
+const levelMark = (n, level) => `${level % 2 ? hangulMark(n) : n}${level % 4 >= 2 ? ")" : "."}`; // 단계(0부터)의 n번째: 1. 가. 1) 가)
+const numExec = (l) => { const m = NUM_RE.exec(l); return m && (!isHangulMark(m[2]) || m[1]) ? m : null; };
+const inListBlock = (l) => l.trim() && (numExec(l) || BULLET_RE.test(l) || /^[ \t]/.test(l));
 
 export function renumberLines(lines) {
   // 같은 단계 번호 항목들을 묶는다: [{ indent, idx: [줄 번호...] }]
   const groups = [];
   let stack = []; // 열린 묶음들 (바깥 → 안쪽)
   lines.forEach((l, i) => {
-    const m = NUM_RE.exec(l);
+    const m = numExec(l);
     if (m) {
       const L = indentWidth(m[1]);
       while (stack.length && stack[stack.length - 1].indent > L) stack.pop();
@@ -321,7 +330,7 @@ export function renumberLines(lines) {
   const out = [...lines];
   for (const g of groups) {
     if (g.idx.length < 2) continue;
-    g.idx.forEach((i, k) => { out[i] = out[i].replace(NUM_RE, (_, sp, _n, dot) => `${sp}${k + 1}${dot}`); });
+    g.idx.forEach((i, k) => { out[i] = out[i].replace(NUM_RE, (_, sp, mark, dot) => `${sp}${sameKindMark(k + 1, mark)}${dot}`); });
   }
   return out;
 }
@@ -426,7 +435,7 @@ function doEnter(ta) {
     else replaceRange(ta, cl.start, cl.end, "");
     return true;
   }
-  const marker = m[2] && /^\d+/.test(m[2]) ? `${parseInt(m[2], 10) + 1}${m[2].slice(-1)}` : m[2];
+  const marker = m[2] && /[.)]$/.test(m[2]) ? `${sameKindMark(markNumber(m[2].slice(0, -1)) + 1, m[2])}${m[2].slice(-1)}` : m[2];
   const box = m[3] || m[4] ? "[ ] " : "";
   replaceRange(ta, ta.selectionStart, ta.selectionStart, `\n${m[1]}${marker ? `${marker} ` : ""}${box}`);
   return true;
@@ -442,9 +451,19 @@ export function setMemoAutoList(on) {
 }
 
 // 목록 줄: 들여쓰기 + 기호(- • * 1. 1)) + 선택 체크박스 [ ] [x]  /  체크박스만 있는 줄 "[ ] 할일"
-const LIST_RE = /^([ \t]*)(?:([-•*]|\d+[.)])[ \t]+(\[[ xX]\][ \t]+)?|(\[[ xX]\])[ \t]+)/;
-const LIST_LINE_RE = /^[ \t]*(?:[-•*]|\d+[.)]|\[[ xX]\])(?:[ \t]|$)/;
+// 한글 번호(가. 가))는 들여 쓴 줄에서만 목록
+const LIST_RE_RAW = /^([ \t]*)(?:([-•*]|\d+[.)]|(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)])[ \t]+(\[[ xX]\][ \t]+)?|(\[[ xX]\])[ \t]+)/;
+const LIST_RE = { exec: (s) => { const m = LIST_RE_RAW.exec(s); return m && m[2] && isHangulMark(m[2]) && !m[1] ? null : m; } };
+const LIST_LINE_RE_RAW = /^([ \t]*)(?:[-•*]|\d+[.)]|(하\d{1,2}|[가나다라마바사아자차카타파하])[.)]|\[[ xX]\])(?:[ \t]|$)/;
+const LIST_LINE_RE = { test: (l) => { const m = LIST_LINE_RE_RAW.exec(l); return !!m && !(m[2] && !m[1]); } };
 const INDENT = "    "; // 한 단계 = 공백 4칸 (메모 글꼴에서 2칸은 거의 안 보임)
+
+// 번호 줄의 기호를 들여쓰기 단계에 맞게 바꾸기 (n을 주면 그 번호로)
+function restyleOrdered(line, n) {
+  const m = /^([ \t]*)(\d+|하\d{1,2}|[가나다라마바사아자차카타파하])[.)](?=[ \t]|$)/.exec(line);
+  if (!m) return line;
+  return m[1] + levelMark(n ?? markNumber(m[2]), Math.floor(indentWidth(m[1]) / 4)) + line.slice(m[0].length);
+}
 
 // 고른 줄(커서가 있는 줄)을 한 단계 들여쓰기(dir 1) / 내어쓰기(dir -1). 처리했으면 true
 // 들여쓰기는 목록 줄이 있거나 여러 줄을 골랐을 때(any)만, 내어쓰기는 앞 공백이 있으면 언제나
@@ -464,11 +483,13 @@ function indentLines(ta, dir, any = false) {
     if (dir > 0) {
       if (!l.trim()) return l;
       next = INDENT + l;
-      // 번호 목록을 한 단계 내리면 1부터 다시
-      if (LIST_LINE_RE.test(l)) next = next.replace(/^([ \t]*)\d+([.)])/, "$11$2");
+      // 번호 목록을 한 단계 내리면 그 단계 기호로 1부터 다시 (1. → 가. → 1) → 가))
+      if (LIST_LINE_RE.test(l)) next = restyleOrdered(next, 1);
     } else {
       const lead = /^( {1,4}|\t)/.exec(l);
       if (lead) next = l.slice(lead[0].length);
+      // 한 단계 올리면 번호는 두고 그 단계 기호로 (순서는 번호 다시 매기기가 맞춘다)
+      if (lead && LIST_LINE_RE.test(l)) next = restyleOrdered(next);
     }
     if (i === 0) firstDelta = next.length - l.length;
     total += next.length - l.length;
