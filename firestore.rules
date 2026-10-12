@@ -152,15 +152,27 @@ service cloud.firestore {
       allow get: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
       allow delete: if isOwner('uid') || isAppAdmin();
     }
+    // 챌린지: 만든 사람(hostUid)·앱 관리자만 수정. 다른 사람은 참여 인원수(memberCount)만.
+    // 삭제는 앱 관리자만(관리자 화면 — 커뮤니티와 같음).
     match /challenges/{challengeId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      match /members/{uid} {
-        allow read, write: if request.auth != null;
+      allow create: if isCreator('hostUid');
+      allow update: if isOwner('hostUid') || isAppAdmin()
+        || (request.auth != null && onlyChanges(['memberCount']));
+      allow delete: if isAppAdmin();
+      // 참여자: 문서 id = 본인 uid. 참여·습관 연결·연속 기록은 본인만, 정리(삭제)는 본인 또는 앱 관리자
+      match /members/{userId} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && (request.auth.uid == userId || isAppAdmin());
       }
+      // 인증: 본인 명의로만 작성. 수정·삭제는 본인·앱 관리자, 다른 사람은 응원 수(cheerCount)만
       match /certs/{certId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null;
+        allow create: if isCreator('uid');
+        allow update: if isOwner('uid') || isAppAdmin()
+          || (request.auth != null && onlyChanges(['cheerCount']));
+        allow delete: if isOwner('uid') || isAppAdmin();
       }
     }
     match /tg_connect/{code} {
