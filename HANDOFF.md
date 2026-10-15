@@ -223,6 +223,7 @@
 ## Suggested Next Steps
 - Mac helper script를 `launchd`에 연결하면 부팅 후 자동 복구가 쉬워진다.
 - 필요하면 이 파일 대신 `AI_NOTES.md`를 추가로 만들어 더 자유로운 작업 로그를 분리해도 된다.
+- **고려해볼 작업 (2026-10-15 보류): 멀티 AI 협업(서브에이전트).** 설계·검수·테스트 3개 에이전트 구성안을 검토했고, 결론은 "꼭 필요하진 않음, 한다면 `.claude/agents/daymate-reviewer.md`(읽기 전용, 과거 사고 기반 점검표) 하나 + CLAUDE.md에 사용 기준(사소한 건 단독, Firestore·인증·규칙·서비스워커·동기화는 필수 검수)". 효과는 기존 테스트 위의 보험 한 겹 수준이고 큰 작업마다 몇 분 느려진다. 설계·테스트 에이전트는 메인 작업과 중복이라 비추천. 주의: `npm run build`/`dev`는 prebuild/predev로 버전 파일을 바꾸므로 에이전트 검사 빌드는 `npx vite build`만 쓴다. 다시 꺼내면 이 결론에서 시작한다.
 
 ## Update Template
 작업 후 아래 형식으로 짧게 갱신:
