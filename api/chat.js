@@ -358,6 +358,63 @@ ${habitLines}
     }
   }
 
+  // ?action=holdings-scan → 잔고 캡처(키움·업비트·빗썸) 한 장에서 보유 종목 읽기 (2026-10-19)
+  // 사진은 읽기만 하고 저장·기록하지 않는다(로그에도 남기지 않음). 반영은 앱 확인 화면에서 사용자가 고른 것만.
+  if (req.query.action === 'holdings-scan') {
+    const { image, mediaType = 'image/jpeg' } = req.body || {};
+    if (typeof image !== 'string' || !image) return res.status(400).json({ error: '사진이 없어요' });
+    if (image.length > 4_000_000) return res.status(413).json({ error: '사진이 너무 커요' });
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mediaType)) return res.status(400).json({ error: '지원하지 않는 사진 형식이에요' });
+
+    const prompt = `이 사진은 증권사 또는 코인 거래소 앱(키움증권·업비트·빗썸 등)의 잔고/보유자산 화면 캡처야.
+화면에 보이는 보유 종목만 아래 JSON으로 뽑아줘. JSON만 출력하고 다른 글은 쓰지 마.
+
+{"broker":"키움|업비트|빗썸|기타","items":[{"name":"종목명(화면 그대로)","code":"종목코드나 티커(보이면, 없으면 빈 문자열)","kind":"kr_stock|us_stock|coin","qty":0,"avgPrice":0,"currency":"KRW|USD"}],"notes":"읽기 어려웠던 점(없으면 빈 문자열)"}
+
+규칙:
+- broker: 화면 모양·로고·문구로 판단. "영웅문"이나 "키움" 글자가 보이면 반드시 "키움", 업비트는 "업비트", 빗썸은 "빗썸". 정말 모를 때만 "기타".
+- qty: 보유 수량. 쉼표 없는 숫자, 코인 소수점은 화면 그대로.
+- avgPrice: 1주(1개)당 평균 매수가(매수평균가·평균단가·매입단가). 매입금액·평가금액·현재가가 아니다. 평균단가가 안 보이고 매입금액과 수량만 보이면 매입금액÷수량.
+- currency: avgPrice의 화폐 단위. 업비트·빗썸 원화 마켓은 KRW, 미국 주식이 달러로 보이면 USD.
+- kind: 한국 주식/ETF는 kr_stock, 미국 등 해외 주식은 us_stock, 코인은 coin.
+- code: 화면에 글자로 보이는 코드만 옮겨 써. 한국 주식은 6자리 숫자, 코인은 BTC 같은 영문 티커, 미국 주식은 TSLA 같은 티커. 화면에 코드가 안 보이면 알고 있는 종목이라도 빈 문자열로 둬(앱이 이름으로 찾는다).
+- 현금·예수금·원화(KRW) 잔고·주문가능금액·총평가 합계 줄은 넣지 마.
+- 화면에 없는 종목을 지어내지 마. 화면 끝에 잘려서 수량이나 평균단가가 안 보이는 줄은 빼.
+- 읽을 수 없는 숫자는 null.`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      });
+      const text = response.content.find(b => b.type === 'text')?.text || '{}';
+      const m = text.match(/\{[\s\S]*\}/);
+      let data = {};
+      try { data = m ? JSON.parse(m[0]) : {}; } catch { data = {}; }
+      const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+      const items = (Array.isArray(data.items) ? data.items : []).slice(0, 60).map(it => ({
+        name: String(it?.name || '').slice(0, 40),
+        code: String(it?.code || '').slice(0, 20),
+        kind: ['kr_stock', 'us_stock', 'coin'].includes(it?.kind) ? it.kind : 'kr_stock',
+        qty: toNum(it?.qty),
+        avgPrice: toNum(it?.avgPrice),
+        currency: it?.currency === 'USD' ? 'USD' : 'KRW',
+      })).filter(it => it.name || it.code);
+      const broker = ['키움', '업비트', '빗썸'].includes(data.broker) ? data.broker : '기타';
+      return res.status(200).json({ broker, items, notes: String(data.notes || '').slice(0, 200) });
+    } catch (e) {
+      console.error('[chat] holdings-scan failed:', e?.message); // 사진 내용은 남기지 않는다
+      return res.status(500).json({ error: '사진을 읽지 못했어요' });
+    }
+  }
+
   // ?action=invest-content → 투자 기록 인사이트 생성
   if (req.query.action === 'invest-content') {
     const { log } = req.body || {};

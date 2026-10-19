@@ -6,6 +6,7 @@ import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
+import HoldingsScanSheet from "../components/HoldingsScanSheet.jsx";
 
 const PRESET_ASSETS = [
   { sym: "BTC",  label: "비트코인",       src: "coingecko", coinId: "bitcoin",     currency: "USD" },
@@ -56,6 +57,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const [editingId, setEditingId] = useState(null);
   const [memoOpenId, setMemoOpenId] = useState(null);
   const [memoDraft, setMemoDraft] = useState("");
+  const [showScan, setShowScan] = useState(false);
 
   // 입력 폼 상태
   const [fSym, setFSym] = useState("");
@@ -191,6 +193,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       qty, avgPrice,
       currency: src === 'yahoo' ? fCurrency : 'USD',
       ...(existing?.memos ? { memos: existing.memos } : {}),
+      ...(existing?.broker ? { broker: existing.broker } : {}), // 캡처로 반영한 종목의 앱 표시(업비트·빗썸 등) 유지
     };
 
     const next = editingId
@@ -210,6 +213,16 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     setFAvgPrice(String(h.avgPrice)); setFCurrency(h.currency || "USD"); setFSrc(h.src || "finnhub");
     setFCoinId(h.coinId || ""); setShowNameResults(false);
     setShowForm(true);
+  };
+
+  // 잔고 캡처로 업데이트 — 확인 화면에서 고른 것만 들어온다
+  const handleScanApply = (next, { count, deleted }) => {
+    setHoldings(next);
+    saveHoldings(next);
+    setShowScan(false);
+    setToast(`${count}개 반영${deleted ? ` · ${deleted}개 삭제` : ""} ✅`);
+    localStorage.removeItem(cacheKey);
+    fetchPrices(next);
   };
 
   const handleDelete = (id) => {
@@ -355,7 +368,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{h.label || h.sym}</span>
-                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{h.sym}</span>
+                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{h.sym}{h.broker ? ` · ${h.broker}` : ""}</span>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
                       {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
@@ -436,9 +449,20 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
       {/* 추가 버튼 */}
       {!showForm && (
-        <button onClick={() => { resetForm(); setShowForm(true); }} style={{ ...S.btn, marginBottom: 10 }}>
-          ＋ 종목 추가
-        </button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <button onClick={() => { resetForm(); setShowForm(true); }} style={{ ...S.btn, flex: 1, marginTop: 0 }}>
+            ＋ 종목 추가
+          </button>
+          <button onClick={() => authUser ? setShowScan(true) : setToast("로그인 후 쓸 수 있어요")}
+            style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>
+            📷 캡처로 업데이트
+          </button>
+        </div>
+      )}
+
+      {showScan && (
+        <HoldingsScanSheet holdings={holdings} usdKrwRate={usdKrwRate}
+          onApply={handleScanApply} onClose={() => setShowScan(false)} />
       )}
 
       {/* 입력 폼 */}

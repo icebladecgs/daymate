@@ -98,6 +98,60 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
 }
 
+// ── 보유자산 캡처 반영: 기존 종목의 메모·설정 유지, 캡처에 없는 종목은 지우지 않음 (2026-10-19) ──
+{
+  const { mergeScanResults, planHoldingsUpdate, applyHoldingsPlan, resolveScanSymbol } = await load('/src/utils/holdingsScan.js');
+  const memos = [{ id: 'm1', text: '장기 보유', createdAt: '2026-10-01T00:00:00Z' }];
+  const holdings = [
+    { id: 'h1', sym: '005930.KS', label: '삼성전자', src: 'yahoo', qty: 10, avgPrice: 70000, currency: 'KRW', memos },
+    { id: 'h2', sym: 'BTC', label: '비트코인', src: 'coingecko', coinId: 'bitcoin', qty: 0.05, avgPrice: 60000, currency: 'USD' },
+    { id: 'h3', sym: 'TSLA', label: '테슬라', src: 'finnhub', qty: 3, avgPrice: 200, currency: 'USD' },
+    { id: 'h4', sym: 'ETH', label: '이더리움', src: 'coingecko', coinId: 'ethereum', qty: 1, avgPrice: 3000, currency: 'USD', broker: '업비트' },
+  ];
+  const scans = [
+    { broker: '키움', items: [{ name: '삼성전자', code: '005930', kind: 'kr_stock', qty: 12, avgPrice: 71000, currency: 'KRW' }] },
+    { broker: '업비트', items: [{ name: '비트코인', code: 'BTC', kind: 'coin', qty: 0.02, avgPrice: 140000000, currency: 'KRW' }] },
+    // 같은 업비트 화면을 스크롤해서 한 장 더 — 겹친 비트코인 줄은 더하지 않음
+    { broker: '업비트', items: [{ name: '비트코인', code: 'KRW-BTC', kind: 'coin', qty: 0.02, avgPrice: 140000000, currency: 'KRW' },
+                                { name: '솔라나', code: 'SOL', kind: 'coin', qty: 4, avgPrice: 280000, currency: 'KRW' }] },
+    { broker: '빗썸', items: [{ name: '비트코인', code: 'BTC', kind: 'coin', qty: 0.03, avgPrice: 139000000, currency: 'KRW' }] },
+  ];
+  const items = mergeScanResults(scans);
+  t('캡처: 같은 앱 스크롤 캡처의 겹친 줄은 하나로', items.filter(i => i.code === 'BTC' && i.broker === '업비트').length === 1);
+  t('캡처: 다른 앱의 같은 코인은 따로', items.filter(i => i.code === 'BTC').length === 2);
+
+  const plan = planHoldingsUpdate(holdings, items, 1400);
+  const row = (b, c) => plan.rows.find(r => r.item.broker === b && r.item.code === c);
+  t('캡처: 삼성전자는 기존 종목과 연결', row('키움', '005930')?.holding?.id === 'h1');
+  t('캡처: 업비트 BTC는 손으로 넣은 BTC와 연결', row('업비트', 'BTC')?.holding?.id === 'h2');
+  t('캡처: 빗썸 BTC는 새 종목(같은 BTC를 두 번 덮지 않음)', row('빗썸', 'BTC')?.status === 'new');
+  t('캡처: 원화 코인 평균단가를 환율로 달러 변환', Math.abs(row('업비트', 'BTC').avgPrice - 100000) < 1e-6);
+  t('캡처: 업비트에서 안 보인 ETH는 "캡처에 없음"', plan.missing.some(h => h.id === 'h4'));
+  t('캡처: 앱 표시 없는 테슬라는 "캡처에 없음"에도 안 넣음', !plan.missing.some(h => h.id === 'h3'));
+  t('캡처: 환율이 없으면 변환하지 않고 비워 둠(직접 입력)', planHoldingsUpdate(holdings, items, null).rows.find(r => r.item.broker === '업비트' && r.item.code === 'BTC').avgPrice === null);
+
+  const accepted = plan.rows.map(r => ({
+    holding: r.holding, sym: r.holding?.sym || r.item.code, label: r.item.name,
+    src: r.item.kind === 'coin' ? 'coingecko' : 'yahoo', currency: r.currency, qty: r.item.qty, avgPrice: r.avgPrice, broker: r.item.broker,
+  }));
+  const next = applyHoldingsPlan(holdings, accepted, [], 1);
+  const h1 = next.find(h => h.id === 'h1');
+  t('캡처 반영: 수량·평균단가 바뀜', h1.qty === 12 && h1.avgPrice === 71000);
+  t('캡처 반영: 기존 메모·코드·시세 설정 유지', same(h1.memos, memos) && h1.sym === '005930.KS' && h1.src === 'yahoo');
+  t('캡처 반영: 코인 coinId 유지', next.find(h => h.id === 'h2').coinId === 'bitcoin');
+  t('캡처 반영: 캡처에 없는 종목은 그대로 남음', next.some(h => h.id === 'h3') && next.some(h => h.id === 'h4'));
+  t('캡처 반영: 새 종목 추가', next.length === holdings.length + 2);
+  t('캡처 반영: 고른 것만 삭제', applyHoldingsPlan(holdings, [], ['h4']).map(h => h.id).join() === 'h1,h2,h3');
+
+  const fakeSearch = async () => [
+    { sym: 'SOL', label: 'Solana', src: 'coingecko', currency: 'USD', coinId: 'solana' },
+    { sym: '005930.KS', label: '삼성전자', src: 'yahoo', currency: 'KRW' },
+  ];
+  const sol = await resolveScanSymbol({ name: '솔라나', code: 'SOL', kind: 'coin' }, fakeSearch);
+  t('캡처: 새 코인 코드 찾기(coinId 포함)', sol?.coinId === 'solana' && sol.label === '솔라나');
+  t('캡처: 못 찾은 코인은 추측하지 않음', (await resolveScanSymbol({ name: '없는코인', code: 'ZZZ', kind: 'coin' }, fakeSearch)) === null);
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;
