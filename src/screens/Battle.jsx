@@ -144,7 +144,8 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const [state, setState] = useState(makeState);
   const [resolving, setResolving] = useState(false);
   const [flash, setFlash] = useState(null);
-  const [showNpcStats, setShowNpcStats] = useState(true);
+  const [showStats, setShowStats] = useState(() => store.get('dm_battle_stats_open', true) !== false); // 능력치 비교 접기 (기기마다 기억)
+  const toggleStats = () => setShowStats(v => { store.set('dm_battle_stats_open', !v); return !v; });
   const [pops, setPops] = useState({ player: [], npc: [] }); // 칸마다 튀어 오르는 숫자
   const [shake, setShake] = useState({ player: null, npc: null }); // 흔들 칸 (key가 바뀔 때마다 다시 흔들림)
   const [callouts, setCallouts] = useState({ player: null, npc: null }); // 칸 위 기술 외침
@@ -269,30 +270,6 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         </div>
       </div>
 
-      <div style={S.card}>
-        <button onClick={() => setShowNpcStats(v => !v)} style={{ width: '100%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-          <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>🥊 상대 능력치</span>
-          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{showNpcStats ? '접기 ▲' : '펼치기 ▼'}</span>
-        </button>
-        {showNpcStats && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14, rowGap: 8, marginTop: 10 }}>
-            {GROWTH_STATS.map(stat => {
-              const score = npc.stats[stat.id] || 0;
-              return (
-                <div key={stat.id} style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, width: 18, textAlign: 'center', flexShrink: 0 }}>{stat.icon}</span>
-                  <span style={{ fontSize: 11, color: 'var(--dm-sub)', width: 34, flexShrink: 0 }}>{stat.name}</span>
-                  <div style={{ flex: 1, height: 6, background: 'var(--dm-row)', borderRadius: 4, overflow: 'hidden', minWidth: 0 }}>
-                    <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg,#F87171,#FCA5A5)', width: `${score}%` }} />
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-text)', width: 22, textAlign: 'right', flexShrink: 0 }}>{score}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* 전투 장면 생략 / 보기 */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px 6px' }}>
         <button onClick={toggleSkip}
@@ -378,6 +355,47 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           </div>
         </div>
       )}
+      {/* 능력치 비교 — 가운데 이름, 왼쪽 나(파랑)·오른쪽 상대(빨강) 막대가 마주 본다. 높은 쪽 숫자는 굵게.
+          ✨는 SPECIAL을 쓸 수 있는 능력치(10 이상). 예전엔 상대 능력치만 맨 위에 있었다(2026-10-30 사용자 요청) */}
+      <div style={S.card}>
+        <button onClick={toggleStats} style={{ width: '100%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+          <span style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>🥊 능력치 비교</span>
+          <span style={{ fontSize: 13, color: 'var(--dm-muted)' }}>{showStats ? '접기 ▲' : '펼치기 ▼'}</span>
+        </button>
+        {showStats && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px minmax(0,1fr)', gap: 8, fontSize: 12, fontWeight: 900, marginBottom: 6 }}>
+              <span style={{ textAlign: 'right', color: '#4B6FFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerLabel}</span>
+              <span />
+              <span style={{ color: '#EF4444', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{npc.name}</span>
+            </div>
+            {GROWTH_STATS.map(stat => {
+              const mine = player.stats[stat.id] || 0;
+              const theirs = npc.stats[stat.id] || 0;
+              return (
+                <div key={stat.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px minmax(0,1fr)', gap: 8, alignItems: 'center', padding: '4px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: mine > theirs ? 900 : 600, color: mine > theirs ? 'var(--dm-text)' : 'var(--dm-sub)', width: 26, textAlign: 'right', flexShrink: 0 }}>{mine}</span>
+                    <div style={{ flex: 1, height: 8, background: 'var(--dm-row)', borderRadius: 4, overflow: 'hidden', display: 'flex', justifyContent: 'flex-end' }}>
+                      <div style={{ height: '100%', borderRadius: 4, background: '#4B6FFF', width: `${Math.min(100, mine)}%` }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>
+                    {stat.icon} {stat.name}{mine >= 10 && <span title="SPECIAL 사용 가능" style={{ fontSize: 11 }}>✨</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <div style={{ flex: 1, height: 8, background: 'var(--dm-row)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 4, background: '#EF4444', width: `${Math.min(100, theirs)}%` }} />
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: theirs > mine ? 900 : 600, color: theirs > mine ? 'var(--dm-text)' : 'var(--dm-sub)', width: 26, flexShrink: 0 }}>{theirs}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* 라운드별 기록 — 왼쪽 내 행동, 오른쪽 상대 행동을 설명 문장으로 */}
       <div style={{ ...S.card, maxHeight: 260, overflowY: 'auto', padding: '8px 12px' }}>
         {rounds.length > 0 && (
