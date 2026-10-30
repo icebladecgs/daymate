@@ -7,6 +7,7 @@ import { toDateStr } from "../utils/date.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import { urlAt, openLink, findAll } from "../utils/links.js";
+import { printMemo } from "../utils/printMemo.js";
 import LinkOverlay from "./LinkOverlay.jsx";
 import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
@@ -181,6 +182,10 @@ export default function StickyMemo() {
   const copyAll = async () => {
     try { await navigator.clipboard.writeText(text); flash("복사했어요"); } catch { flash("복사하지 못했어요"); }
   };
+  const print = () => {
+    if (!text.trim()) { flash("출력할 내용이 없어요"); return; }
+    if (!printMemo(text, `${ds.replace(/-/g, ".")} ${memo?.createdAt || ""}`.trim())) flash("출력하지 못했어요");
+  };
   const remove = () => {
     setConfirmDel(false);
     writeMemo(ds, id, null);
@@ -309,7 +314,7 @@ export default function StickyMemo() {
         {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} style={iconBtn}>＋</button>}
         {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
         {/* 색·즐겨찾기·복사·삭제는 ⋯ 메뉴로 — 제목줄 빈 자리(끌어서 옮기는 곳)를 넓게 남긴다 */}
-        {!folded && <button onClick={() => setShowMenu(v => !v)} title="더 보기 (색·즐겨찾기·복사·삭제)" style={{ ...iconBtn, fontWeight: 900, background: showMenu ? c.line : "transparent" }}>⋯</button>}
+        {!folded && <button onClick={() => setShowMenu(v => !v)} title="더 보기 (색·즐겨찾기·복사·출력·삭제)" style={{ ...iconBtn, fontWeight: 900, background: showMenu ? c.line : "transparent" }}>⋯</button>}
         {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
         {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
         <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} style={iconBtn}>✕</button>
@@ -322,6 +327,7 @@ export default function StickyMemo() {
               ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
               [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
               ["📋", withKey("전체 복사", "copy"), copyAll],
+              ["🖨", "출력", print],
               ["🔍", "찾기 (Ctrl+F)", openFind],
               ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v)]] : []),
               ["🗑", "삭제", () => setConfirmDel(true)],
