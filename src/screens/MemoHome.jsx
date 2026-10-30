@@ -4,6 +4,7 @@ import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
+import { newDesignOn } from "../utils/todayLook.js";
 
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
 // 메모 화면은 검색·메모 열기·새 메모 쓰기로 모습이 바뀌므로, 알림(toast)은 바깥에서 한 번 그린다.
@@ -118,10 +119,10 @@ function MemoHomeInner({
   const timelineSection = (
     <div style={{ borderTop: '1px solid var(--dm-border)', marginTop: 8, padding: '18px 20px 28px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
+        <span style={{ fontSize: newDesignOn() ? 17 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
-          <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>
+          <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: 36, height: 36, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
+          <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: 36, height: 36, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>
         </div>
       </div>
       <MemoTimeline

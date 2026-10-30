@@ -11,6 +11,7 @@ import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
+import { newDesignOn } from "../utils/todayLook.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -30,6 +31,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const fileInputRef = useRef(null);
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
+  const [newLook] = useState(newDesignOn); // 새 디자인 — 버튼이 잘리지 않게 2줄, 흐린 태그·작은 글씨를 또렷하게
   const [sentTask, setSentTask] = useState(''); // 방금 언젠가로 보낸 제목 (버튼에 잠깐 표시)
   const [showSettings, setShowSettings] = useState(false);
 
@@ -218,13 +220,13 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       {drive.input}
 
       {/* 사진 추가 옆에 구글 드라이브 첨부 버튼 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <div style={newLook ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8, marginBottom: 14 } : { display: 'flex', gap: 8, marginBottom: 14 }}>
         <button
           onClick={handleAddPhoto}
           disabled={uploading}
           style={{
             flex: 1, minWidth: 0, padding: '12px 6px', borderRadius: 12, background: 'var(--dm-input)',
-            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            border: '1.5px dashed var(--dm-border)', color: newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
             cursor: uploading ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷 사진 추가'}</button>
@@ -234,7 +236,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
             disabled={drive.busy}
             style={{
               flex: 1, minWidth: 0, padding: '12px 6px', borderRadius: 12, background: 'var(--dm-input)',
-              border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+              border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
               cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}
           >{drive.busy ? drive.label : '📁 구글 드라이브'}</button>
@@ -246,7 +248,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           title="현재 줄 계산 (F12 또는 Ctrl+/) · 빈 줄이면 위 숫자 합계"
           style={{
             flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)',
-            border: '1.5px dashed var(--dm-border)', color: 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            border: '1.5px dashed var(--dm-border)', color: newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >🧮 계산</button>
@@ -264,15 +266,15 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
           style={{
             flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: sentTask ? 'rgba(74,222,128,.12)' : 'var(--dm-input)',
-            border: `1.5px dashed ${sentTask ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, color: sentTask ? '#4ADE80' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700,
+            border: `1.5px dashed ${sentTask ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, color: sentTask ? '#4ADE80' : newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
-        <div style={{ fontSize: 10, color: 'var(--dm-muted)', marginBottom: 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
+        <div style={{ fontSize: newLook ? 14 : 10, color: newLook ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
+        <div style={{ fontSize: newLook ? 12 : 10, color: 'var(--dm-muted)', marginBottom: newLook ? 8 : 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {myTags.map(name => (
             <div key={name} style={{ position: 'relative' }}>
@@ -280,7 +282,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
                 onClick={() => handleInsertTag(name)}
                 style={{
                   background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
-                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#c4b5fd',
+                  borderRadius: 999, padding: newLook ? '7px 13px' : '5px 11px', fontSize: newLook ? 14 : 12, color: newLook ? '#8B5CF6' : '#c4b5fd',
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >#{name}</button>
@@ -328,7 +330,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
               onClick={handleAddTag}
               style={{
                 background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
-                borderRadius: 999, padding: '5px 11px', fontSize: 12, color: 'var(--dm-muted)',
+                borderRadius: 999, padding: newLook ? '7px 13px' : '5px 11px', fontSize: newLook ? 14 : 12, color: newLook ? 'var(--dm-sub)' : 'var(--dm-muted)',
                 fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}
             >+ 새 태그</button>
@@ -337,7 +339,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       </div>
       {frequentTags.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 5 }}>많이 쓴 태그</div>
+          <div style={{ fontSize: newLook ? 14 : 10, color: newLook ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: 900, marginBottom: newLook ? 8 : 5 }}>많이 쓴 태그</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {frequentTags.map(name => (
               <button
@@ -345,7 +347,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
                 onClick={() => handleInsertTag(name)}
                 style={{
                   background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
-                  borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
+                  borderRadius: 999, padding: newLook ? '7px 13px' : '5px 11px', fontSize: newLook ? 14 : 12, color: newLook ? '#5B7CFA' : '#b8c3ff',
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >#{name}</button>
@@ -357,7 +359,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   );
 
   const footerBlock = (
-    <div style={{ padding: '0 20px 20px', fontSize: 11, color: 'var(--dm-muted)' }}>
+    <div style={{ padding: '0 20px 20px', fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)' }}>
       {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
     </div>
   );
@@ -380,26 +382,26 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
 
   return (
     <div style={S.fullScreenPanel(90)}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
         <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>긴 메모</div>
+          <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>긴 메모</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
-        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
+        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
         {/* 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다 */}
         <button onClick={() => {
           const id = idRef.current;
           if (!id || id === 'legacy') { onPhotoError?.('내용을 먼저 쓰고 저장한 뒤 잠가 주세요'); return; }
           handleClose();
           setTimeout(() => requestMemoLock(id, 'lock'), 50);
-        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔒</button>
-        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>⚙️</button>
-        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
-        {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🧠</button>}
+        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔒</button>
+        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>⚙️</button>
+        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔍</button>}
+        {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button
           onClick={handleSaveClick}
-          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px' } : {}) }}
         >저장</button>
       </div>
       {!uid && onRequireLogin && <LoginNotice onLogin={onRequireLogin} />}
