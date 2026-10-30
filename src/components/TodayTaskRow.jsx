@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { TaskDetailBadge, TaskStatIcon } from "./TaskDetailSheet.jsx";
 import { fmtMin, leftText } from "../utils/nowTask.js";
 
@@ -14,22 +15,30 @@ const X = icon(<path d="M6 6l12 12M18 6L6 18" />);
 // 전역 button padding(index.css) 때문에 padding: 0 필수
 const iconBtn = { width: 32, height: 40, padding: 0, border: "none", background: "none", color: "var(--dm-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 10 };
 
-export default function TodayTaskRow({ task, now, next, last, onToggle, onOpen, onSomeday, onDelete, onFocus }) {
+export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggle, onOpen, onSomeday, onDelete, onFocus }) {
   const done = !!task.done;
+  // 방금 체크했을 때만 동그라미가 튄다 (처음부터 끝난 줄은 가만히)
+  const [pop, setPop] = useState(0);
+  const prevDone = useRef(done);
+  useEffect(() => {
+    if (done && !prevDone.current) setPop(p => p + 1); // eslint-disable-line react-hooks/set-state-in-effect
+    prevDone.current = done;
+  }, [done]);
   const timeText = task.time ? `${task.time}${task.endTime && task.endTime > task.time ? `–${task.endTime}` : ""}` : "";
   const progress = now ? Math.min(1, Math.max(0, (now.nowMin - now.start) / Math.max(1, now.end - now.start))) : 0;
 
   return (
-    <div style={{
+    <div data-flip-id={task.id} className={riseDelay != null ? "dm-rise" : undefined} style={{
+      ...(riseDelay != null ? { animationDelay: `${riseDelay}ms` } : {}),
       position: "relative", display: "flex", alignItems: "flex-start", gap: 4,
       ...(now
         ? { margin: "2px -8px 8px", padding: "12px 4px 14px 8px", borderRadius: 14, background: "rgba(108,142,255,.12)", overflow: "hidden" }
         : { padding: "2px 0", borderBottom: last ? "none" : "1px solid var(--dm-row)" }),
     }}>
       {/* 동그란 체크 26px, 누르는 영역 40px */}
-      <button onClick={() => onToggle(task.id)} aria-label={done ? "완료 취소" : "완료"}
+      <button className="dm-rowcheck" onClick={() => onToggle(task.id)} aria-label={done ? "완료 취소" : "완료"}
         style={{ width: 40, height: 40, padding: 0, border: "none", background: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ width: 26, height: 26, borderRadius: "50%", boxSizing: "border-box", border: `2px solid ${done ? "#4ADE80" : now ? "#6C8EFF" : "var(--dm-muted)"}`, background: done ? "#4ADE80" : "transparent", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{done ? "✓" : ""}</span>
+        <span key={pop} className={pop ? "dm-pop" : undefined} style={{ transition: "background .18s, border-color .18s", width: 26, height: 26, borderRadius: "50%", boxSizing: "border-box", border: `2px solid ${done ? "#4ADE80" : now ? "#6C8EFF" : "var(--dm-muted)"}`, background: done ? "#4ADE80" : "transparent", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{done ? "✓" : ""}</span>
       </button>
 
       <div onClick={() => onOpen(task.id)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: now ? "0" : "8px 0" }}>
@@ -42,7 +51,8 @@ export default function TodayTaskRow({ task, now, next, last, onToggle, onOpen, 
         {/* 시간·제목·아이콘을 한 문장처럼 이어 써서, 길면 자연스럽게 다음 줄로 */}
         <div style={{ fontSize: now ? 20 : 17, fontWeight: now ? 800 : 500, lineHeight: 1.4, color: done ? "var(--dm-muted)" : "var(--dm-text)", wordBreak: "keep-all", overflowWrap: "anywhere" }}>
           {timeText && !now && <span style={{ fontSize: 15, fontWeight: 600, color: done ? "var(--dm-muted)" : "var(--dm-sub)", marginRight: 7, whiteSpace: "nowrap" }}>{timeText}</span>}
-          <span style={{ textDecoration: done ? "line-through" : "none" }}>{task.title}</span>
+          {/* 취소선이 왼쪽부터 그어진다 (text-decoration은 움직일 수 없어 배경 선으로) */}
+          <span style={{ backgroundImage: "linear-gradient(currentColor, currentColor)", backgroundRepeat: "no-repeat", backgroundPosition: "0 58%", backgroundSize: done ? "100% 1.5px" : "0% 1.5px", transition: "background-size .3s ease, color .2s" }}>{task.title}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginLeft: 6, verticalAlign: "middle" }}>
             <TaskStatIcon task={task} />
             <TaskDetailBadge task={task} />

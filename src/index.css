@@ -358,3 +358,21 @@ button:focus-visible {
   70%  { transform: scale(1.35); opacity: 0; }
   100% { transform: scale(1.35); opacity: 0; }
 }
+
+/* 오늘 탭 새 화면 움직임 (2026-10-30) — 할 일 줄이 차례로 떠오름, 체크 동그라미 튐 */
+@keyframes dm-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.dm-rise { animation: dm-rise .38s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes dm-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.dm-pop { animation: dm-pop .32s cubic-bezier(.3,1.6,.5,1); }
+@media (prefers-reduced-motion: reduce) {
+  .dm-rise, .dm-pop { animation: none !important; }
+}
+/* 할 일 줄 체크 — 손가락·마우스로 누른 뒤엔 테두리를 남기지 않음(키보드 이동 때만 표시) */
+.dm-rowcheck:focus:not(:focus-visible) { outline: none; }

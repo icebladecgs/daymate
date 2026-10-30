@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -21,6 +21,8 @@ import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
 import TodayTaskRow from "../components/TodayTaskRow.jsx";
 import { todayNewLookOn, todayDoneGroupOn } from "../utils/todayLook.js";
+import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
+import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
@@ -324,15 +326,44 @@ export default function Today({
   // 끝낸 할 일은 아래 "완료 n" 묶음으로 (설정에서 끄면 제자리)
   const timeMin = (t) => (/^\d{1,2}:\d{2}$/.test(t.time || '') ? t.time.split(':').reduce((h, m) => h * 60 + Number(m), 0) : Infinity);
   const [doneGroup] = useState(todayDoneGroupOn);
+  const [settle, setSettle] = useState(null); // { ids, order } 방금 체크해서 잠깐 제자리에 둔 할 일
+  const settleTimer = useRef(null);
+  useEffect(() => () => clearTimeout(settleTimer.current), []);
+  const listRef = useRef(null);
+  const headerRef = useRef(null);
+  useFlip(listRef); // 새 화면 목록에만 붙는다
+  // 처음 열 때만 줄이 차례로 떠오른다 (8줄까지)
+  const [entered, setEntered] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setEntered(true), 900); return () => clearTimeout(t); }, []);
   const listAll = targetTasks.filter(t => t.title.trim());
-  const listTasks = newLook
+  const sorted = newLook
     ? listAll.map((t, i) => ({ t, i })).sort((a, b) =>
         (doneGroup ? (a.t.done ? 1 : 0) - (b.t.done ? 1 : 0) : 0)
         || (b.t.id === nowTaskId) - (a.t.id === nowTaskId)
         || (timeMin(a.t) - timeMin(b.t) || 0)
         || a.i - b.i).map(x => x.t)
     : listAll;
-  const firstDoneIdx = newLook && doneGroup ? listTasks.findIndex(t => t.done) : -1;
+  // 방금 체크한 할 일은 0.7초(마지막 체크 기준) 제자리에 두었다가 완료 묶음으로 미끄러진다 — 그동안은 체크 직전 순서를 유지
+  const listTasks = settle
+    ? [...listAll].sort((a, b) => { const ia = settle.order.indexOf(a.id), ib = settle.order.indexOf(b.id); return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib); })
+    : sorted;
+  const firstDoneIdx = newLook && doneGroup ? listTasks.findIndex(t => t.done && !settle?.ids.includes(t.id)) : -1;
+  const toggleRow = (id) => {
+    const t = targetTasks.find(x => x.id === id);
+    if (t && !t.done) {
+      try { navigator.vibrate?.(12); } catch { /* 진동 없는 기기 */ }
+      if (doneGroup) {
+        setSettle(s => ({ ids: [...(s?.ids || []), id], order: s?.order || listTasks.map(x => x.id) }));
+        clearTimeout(settleTimer.current);
+        settleTimer.current = setTimeout(() => setSettle(null), 700);
+      }
+    }
+    toggleTargetTask(id);
+  };
+  const remainCount = filledCount - doneCount;
+  // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘, 글씨는 조금 작은 회색 — 할 일 목록보다 조용하게
+  const secTitle = newLook ? { ...S.sectionTitle, fontSize: 15, fontWeight: 800, color: 'var(--dm-sub)' } : S.sectionTitle;
+  const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
@@ -401,6 +432,7 @@ export default function Today({
 
   return (
     <div style={S.content}>
+      {newLook && filledCount > 0 && <CompactBar watchRef={headerRef} done={doneCount} total={filledCount} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       {focus && (
         <FocusTimerModal
@@ -449,11 +481,23 @@ export default function Today({
         );
       })()}
 
-      <div style={S.topbar}>
+      <div ref={headerRef} style={S.topbar}>
+        {newLook ? (
+          // 새 화면 머리글: 날짜·시각은 작게, 남은 할 일 수를 크게 + 할 일 수만큼 칸
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, color: 'var(--dm-sub)', fontWeight: 600 }}>{formatKoreanDate(dateStr)} · {clock}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 8px', lineHeight: 1.3 }}>
+              {!filledCount ? '오늘 할 일 없음' : remainCount ? `${remainCount}개 남았어요` : '모두 끝냈어요 🎉'}
+              {filledCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', marginLeft: 8 }}>완료 {doneCount}/{filledCount}</span>}
+            </div>
+            <DoneSegments done={doneCount} total={filledCount} />
+          </div>
+        ) : (
         <div style={{ flex: 1 }}>
           <div style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {filledCount ? `완료 ${doneCount}/${filledCount}` : '할일 없음'}</div>
         </div>
+        )}
         <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
@@ -466,9 +510,9 @@ export default function Today({
       )}
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          <span style={S.sectionEmoji}>✅</span>
+          {secIcon('today', '✅')}
           {/* 제목: "오늘의 할일"은 항상 한 줄, "9월 26일 (토) 할일"은 아주 좁은 화면에서만 줄바꿈.
               접기는 제목 옆, 자리가 없으면 제목 아래로. 오늘/내일/어제의 날짜는 그 아래 줄에 작게 */}
           <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -519,20 +563,24 @@ export default function Today({
       {tasksOpen && (
       <div style={S.card}>
         {/* 목록은 보기 전용 — 체크·언젠가·삭제만 바로 하고, 시간·스탯·메모·사진 등 편집은 할일 상세(줄 누르기)에서 */}
-        {newLook && listTasks.map((task, i) => (
-          <Fragment key={task.id}>
-          {i === firstDoneIdx && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', padding: i ? '14px 0 2px' : '0 0 2px' }}>완료 {listTasks.length - firstDoneIdx}</div>
-          )}
-          <TodayTaskRow task={task} last={i === listTasks.length - 1 || i === firstDoneIdx - 1}
-            now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
-            next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
-            onToggle={toggleTargetTask} onOpen={setDetailTaskId}
-            onSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
-            onDelete={confirmDeleteTargetTask}
-            onFocus={(t) => setFocus({ ds: dateStr, task: t })} />
-          </Fragment>
-        ))}
+        {newLook && (
+          // 줄 순서가 바뀌면 미끄러지게(useFlip) — offsetTop 기준이 이 상자가 되도록 position: relative
+          <div ref={listRef} style={{ position: 'relative' }}>
+            {listTasks.flatMap((task, i) => [
+              i === firstDoneIdx && (
+                <div key="__done" data-flip-id="__done" style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', padding: i ? '14px 0 2px' : '0 0 2px' }}>완료 {listTasks.length - firstDoneIdx}</div>
+              ),
+              <TodayTaskRow key={task.id} task={task} last={i === listTasks.length - 1 || i === firstDoneIdx - 1}
+                riseDelay={!entered && i < 8 ? i * 45 : null}
+                now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
+                next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
+                onToggle={toggleRow} onOpen={setDetailTaskId}
+                onSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
+                onDelete={confirmDeleteTargetTask}
+                onFocus={(t) => setFocus({ ds: dateStr, task: t })} />,
+            ])}
+          </div>
+        )}
         {newLook && listTasks.length > 0 && <div style={{ height: 10 }} />}
         {!newLook && targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -599,8 +647,10 @@ export default function Today({
           기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다) */}
       <div style={{ margin: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: 4 }}>
-          <span onClick={onOpenPeople} style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
-            💌 오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0 }}> · 다가오는 생일·기념일이 없어요</span>}
+          <span onClick={onOpenPeople} style={newLook
+            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 15, fontWeight: 800, color: 'var(--dm-sub)', cursor: onOpenPeople ? 'pointer' : 'default' }
+            : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
+            {newLook ? <SectionIcon name="people" /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
           </span>
           {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
@@ -614,9 +664,9 @@ export default function Today({
       </div>
 
       {/* 💪 오늘습관 */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>💪</span>오늘습관
+          {secIcon('repeat', '💪')}오늘습관
           <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>
@@ -688,9 +738,9 @@ export default function Today({
       )}
 
       {/* 📋 언젠가할일 */}
-      <div style={S.sectionTitle}>
+      <div style={secTitle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>📋</span>언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
+          {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
           <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>
@@ -735,8 +785,8 @@ export default function Today({
       )}
 
       {/* 📅 주간 일정 */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>📅</span>주간 일정</span>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
         <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
           {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
         </button>
@@ -753,9 +803,9 @@ export default function Today({
       )}
 
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          <span style={S.sectionEmoji}>📖</span>
+          {secIcon('book', '📖')}
           {/* 할일 헤더와 동일: 제목은 항상 한 줄, 날짜·안내문구는 자리가 없으면 제목 아래로 */}
           <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, minWidth: 0 }}>
             <span style={{ whiteSpace: 'nowrap' }}>{journalDayTitle}</span>
