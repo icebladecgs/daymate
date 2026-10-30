@@ -376,3 +376,61 @@ button:focus-visible {
 }
 /* 할 일 줄 체크 — 손가락·마우스로 누른 뒤엔 테두리를 남기지 않음(키보드 이동 때만 표시) */
 .dm-rowcheck:focus:not(:focus-visible) { outline: none; }
+
+/* 배틀 전투 장면 (2026-10-30, 영걸전 느낌) — 짧게: 돌진 0.5초, 맞음 0.38초, 컷인 0.42초 */
+@keyframes dm-st-idle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.dm-st-idle { animation: dm-st-idle 1.2s steps(2) infinite; }
+@keyframes dm-st-dash {
+  0% { transform: none; }
+  35%, 55% { transform: translateX(var(--dx)); }
+  100% { transform: none; }
+}
+.dm-st-dash { animation: dm-st-dash .5s cubic-bezier(.3,.7,.3,1) both; }
+@keyframes dm-st-hit {
+  0% { transform: none; filter: none; }
+  15% { transform: translateX(var(--kb)); filter: brightness(3) saturate(0); }
+  45% { transform: translateX(var(--kb)); filter: none; }
+  100% { transform: none; }
+}
+.dm-st-hit { animation: dm-st-hit .38s ease-out both; }
+@keyframes dm-st-dodge {
+  0% { transform: none; }
+  40% { transform: translate(var(--kb), -20px); }
+  100% { transform: none; }
+}
+.dm-st-dodge { animation: dm-st-dodge .4s ease-out both; }
+@keyframes dm-st-stumble {
+  0%, 100% { transform: none; } 25% { transform: rotate(-8deg); } 50% { transform: rotate(6deg); } 75% { transform: rotate(-4deg); }
+}
+.dm-st-stumble { animation: dm-st-stumble .4s ease-in-out; }
+@keyframes dm-st-slash {
+  0% { opacity: 0; transform: scale(.4); }
+  30% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+.dm-st-slash { opacity: 0; animation: dm-st-slash .3s ease-out both; pointer-events: none; }
+@keyframes dm-st-dmg {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(.7); }
+  20% { opacity: 1; transform: translate(-50%, -14px) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1); }
+}
+.dm-st-dmg { position: absolute; left: 50%; top: -6px; font-weight: 900; white-space: nowrap; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; opacity: 0; animation: dm-st-dmg .7s ease-out both; pointer-events: none; }
+@keyframes dm-st-aura {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+}
+.dm-st-aura { position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; border-radius: 50%; border: 4px solid; opacity: 0; animation: dm-st-aura .55s ease-out both; pointer-events: none; }
+@keyframes dm-st-cutin {
+  0% { transform: translateX(var(--from)); opacity: 0; }
+  22%, 78% { transform: none; opacity: 1; }
+  100% { transform: translateX(var(--to)); opacity: 0; }
+}
+.dm-st-cutin { animation: dm-st-cutin .42s ease-in-out both; }
+@keyframes dm-st-quake {
+  0%, 100% { transform: none; } 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, 0); }
+}
+.dm-st-quake { animation: dm-st-quake .3s linear both; }
+@media (prefers-reduced-motion: reduce) {
+  .dm-st-idle, .dm-st-dash, .dm-st-hit, .dm-st-dodge, .dm-st-stumble, .dm-st-cutin, .dm-st-quake { animation: none !important; }
+}

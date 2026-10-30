@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import S from "../styles.js";
+import BattleStage from "../components/battle/BattleStage.jsx";
+import { tierOfLevel } from "../components/battle/armor.js";
+import { store } from "../utils/storage.js";
 import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
 import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
 import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance } from "../data/battle/engine.js";
 
-const ROUND_GAP_MS = 1000; // 선공 결과를 보여준 뒤 후공까지의 간격
+// 선공 결과를 보여준 뒤 후공까지의 간격 — 전투 장면을 볼 때는 선공 동작(0.6초)이 끝날 즈음, 생략하면 짧게
+const ROUND_GAP_MS = 700;
+const ROUND_GAP_SKIP_MS = 350;
+const SKIP_KEY = 'dm_battle_skip_scene'; // 전투 장면 생략 (기기마다 기억)
 
 const FLASH_COLOR = {
   crit: 'rgba(252,211,77,0.55)',   // 크리티컬 — 노랑
@@ -144,6 +150,16 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const [callouts, setCallouts] = useState({ player: null, npc: null }); // 칸 위 기술 외침
   const [narration, setNarration] = useState(null); // 두 칸 아래 해설 한 줄 (방금 일어난 일)
   const removePop = (side, key) => setPops(prev => ({ ...prev, [side]: prev[side].filter(p => p.key !== key) }));
+  // 전투 장면(기본) — 새 기록을 차례로 재생. 생략하면 예전 좌우 칸 화면
+  const [skipScene, setSkipScene] = useState(() => store.get(SKIP_KEY, false) === true);
+  const [stageEvents, setStageEvents] = useState([]);
+  const [stageBusy, setStageBusy] = useState(false);
+  const onStageBusy = useCallback((b) => setStageBusy(b), []);
+  const toggleSkip = () => {
+    // 바꿀 때 예전 칸의 숫자·흔들림을 비운다 (장면을 보는 동안엔 쌓이지 않지만, 혹시 남은 것 정리)
+    setPops({ player: [], npc: [] }); setShake({ player: null, npc: null }); setCallouts({ player: null, npc: null });
+    setSkipScene(v => { store.set(SKIP_KEY, !v); return !v; });
+  };
 
   useEffect(() => {
     if (!npcDef) return;
@@ -179,13 +195,20 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
   // 방금 새로 추가된 로그 항목들에 대해 진동/색 효과를 판정
   const triggerEffects = (prevLog, newLog) => {
-    newLog.slice(prevLog.length).forEach(entry => {
+    const added = newLog.slice(prevLog.length);
+    setStageEvents(prev => [...prev, ...added.map(entry => {
       const special = entry.special || ['heal', 'shield', 'buff'].includes(entry.kind);
       const sp = special ? Object.values(SPECIALS_TIER10).find(x => x.name === entry.move) : null;
-      const co = calloutOf(entry, sp?.icon);
+      return { key: Date.now() + Math.random(), entry, icon: sp?.icon };
+    })]);
+    added.forEach(entry => {
+      const special = entry.special || ['heal', 'shield', 'buff'].includes(entry.kind);
+      const sp = special ? Object.values(SPECIALS_TIER10).find(x => x.name === entry.move) : null;
+      // 예전 좌우 칸의 외침·숫자·흔들림은 장면을 생략했을 때만 (장면을 볼 땐 그 칸이 안 보여서 숫자가 쌓이기만 한다)
+      const co = skipScene ? calloutOf(entry, sp?.icon) : null;
       if (co) setCallouts(prev => ({ ...prev, [entry.side]: { ...co, key: Date.now() + Math.random() } }));
       if (entry.kind !== 'regen') setNarration({ key: Date.now() + Math.random(), entry });
-      const fx = effectOf(entry);
+      const fx = skipScene ? effectOf(entry) : null;
       if (fx) {
         const key = Date.now() + Math.random();
         setPops(prev => ({ ...prev, [fx.popSide]: [...prev[fx.popSide], { key, text: fx.text, color: fx.color, big: fx.big }] }));
@@ -193,19 +216,20 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
       }
       if (entry.kind === 'attack' && entry.crit) {
         vibrate([40, 30, 40]);
-        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.crit });
+        if (skipScene) setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.crit });
       } else if (entry.kind === 'attack' && entry.special) {
         vibrate(25);
-        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.attack });
+        if (skipScene) setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR.attack });
       } else if (entry.kind === 'heal' || entry.kind === 'shield' || entry.kind === 'buff') {
         vibrate(20);
-        setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR[entry.kind] });
+        if (skipScene) setFlash({ key: Date.now() + Math.random(), color: FLASH_COLOR[entry.kind] });
       }
     });
   };
 
+  const busy = resolving || (!skipScene && stageBusy); // 장면이 재생되는 동안은 다음 공격을 막는다(합이 겹치지 않게)
   const act = (action) => {
-    if (status !== 'ongoing' || resolving) return;
+    if (status !== 'ongoing' || busy) return;
     const prevLog = state.log;
     const firstRaw = resolveRoundFirstTurn(state, action, playerLabel);
     const first = { ...firstRaw, log: tagRound(prevLog, firstRaw.log, state.round) };
@@ -221,7 +245,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         return second;
       });
       setResolving(false);
-    }, ROUND_GAP_MS);
+    }, skipScene ? ROUND_GAP_SKIP_MS : ROUND_GAP_MS);
   };
 
   const retryBattle = () => {
@@ -231,6 +255,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     setShake({ player: null, npc: null });
     setCallouts({ player: null, npc: null });
     setNarration(null);
+    setStageEvents([]);
     setState(makeState());
   };
 
@@ -268,7 +293,24 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
         )}
       </div>
 
-      {/* 좌우 캐릭터 칸 */}
+      {/* 전투 장면 생략 / 보기 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 16px 6px' }}>
+        <button onClick={toggleSkip}
+          style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-text)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {skipScene ? '🎬 전투 장면 보기' : '⏭ 전투 장면 생략'}
+        </button>
+      </div>
+
+      {!skipScene && (
+        <BattleStage events={stageEvents} player={player} npc={npc} playerLabel={playerLabel} npcLabel={npc.name}
+          npcEmoji={getNpcAvatar(npcId)} playerTier={tierOfLevel(player.level)} onBusyChange={onStageBusy} />
+      )}
+      {!skipScene && status === 'ongoing' && (
+        <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#A78BFA', margin: '-4px 0 10px' }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>
+      )}
+
+      {/* 좌우 캐릭터 칸 (전투 장면 생략 시) */}
+      {skipScene && (
       <div style={{ ...S.card, position: 'relative', overflow: 'hidden' }}>
         {flash && (
           <div key={flash.key} className="dm-battle-flash" style={{ background: flash.color }} onAnimationEnd={() => setFlash(null)} />
@@ -290,11 +332,12 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#A78BFA', marginTop: 8 }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>
         )}
       </div>
+      )}
 
       {/* 공격 버튼 — 기록이 길어져도 찾기 쉽게 캐릭터 칸 바로 아래, 라운드 기록 위 */}
       {status === 'ongoing' ? (
-        <div style={{ margin: '0 16px 14px', opacity: resolving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
-          <button onClick={() => act({ type: 'basic' })} disabled={resolving} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: resolving ? 'default' : 'pointer' }}>⚔️ 기본공격 · {player.basicMove || '기본공격'}</button>
+        <div style={{ margin: '0 16px 14px', opacity: busy ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+          <button onClick={() => act({ type: 'basic' })} disabled={busy} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: busy ? 'default' : 'pointer' }}>⚔️ 기본공격 · {player.basicMove || '기본공격'}</button>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.06em' }}>SPECIAL</div>
           {availableSpecials.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아직 사용 가능한 SPECIAL이 없어요 (능력치 10 이상 필요)</div>
@@ -303,7 +346,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
               {availableSpecials.map(sp => (
                 <button
                   key={sp.stat}
-                  disabled={sp.onCooldown || resolving}
+                  disabled={sp.onCooldown || busy}
                   onClick={() => act({ type: 'special', stat: sp.stat })}
                   title={sp.desc}
                   style={{
@@ -311,13 +354,15 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
                     border: `1px solid ${sp.onCooldown ? 'var(--dm-border)' : 'rgba(167,139,250,0.4)'}`,
                     borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 700,
                     color: sp.onCooldown ? 'var(--dm-muted)' : '#c4b5fd',
-                    cursor: (sp.onCooldown || resolving) ? 'default' : 'pointer', fontFamily: 'inherit',
+                    cursor: (sp.onCooldown || busy) ? 'default' : 'pointer', fontFamily: 'inherit',
                   }}
                 >{sp.icon} {sp.name}{sp.onCooldown ? ' (쿨다운)' : ''}</button>
               ))}
             </div>
           )}
         </div>
+      ) : !skipScene && stageBusy ? (
+        <div style={{ height: 8 }} /> /* 마지막 장면(쓰러짐)이 끝난 뒤 결과를 보여 준다 */
       ) : (
         <div style={{ ...S.card, textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>{status === 'win' ? '🎉' : '💧'}</div>
