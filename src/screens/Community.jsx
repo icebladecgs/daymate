@@ -14,6 +14,10 @@ import FreeBoard from "./FreeBoard.jsx";
 import CommunityChat from "../components/CommunityChat.jsx";
 import { getChatRead } from "../utils/chatRead.js";
 import S from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+import { SectionIcon } from "../components/TodayLook.jsx";
+// 새 디자인(설정 → 앱 관리) — 소셜 탭: 섹션 제목 17px 선 아이콘, 작은 글씨 키우기
+const NL = () => newDesignOn();
 
 function vibrateIfAvailable(pattern) {
   try {
@@ -50,13 +54,13 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
     >
       <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }} title={meta ? (meta.isPublic ? '공개 커뮤니티' : '비공개 커뮤니티') : undefined}>{!meta ? '👥' : meta.isPublic ? '🌐' : '🔒'}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ fontSize: NL() ? 16 : 14, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta?.name || communityName || '...'}</span>
           {unread > 0 && <span title="안 읽은 채팅" style={{ flexShrink: 0, background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 7px', fontSize: 11, fontWeight: 900 }}>💬 {unread > 99 ? '99+' : unread}</span>}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
         {meta?.lastActivityAt && (
-          <div style={{ fontSize: 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
+          <div style={{ fontSize: NL() ? 12 : 10, color: '#4ADE80', marginTop: 2 }}>● 최근 활동 {formatRelativeTime(meta.lastActivityAt)}</div>
         )}
       </div>
       {editingCommunityOrder ? (
@@ -910,11 +914,11 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {communityIds.length > 0 && (
             <div style={{ padding: '4px 16px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)' }}>내 커뮤니티</div>
+                <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' } : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)' }}>{NL() && <SectionIcon name="people" size={20} />}내 커뮤니티</div>
                 {communityIds.length > 1 && (
                   <button
                     onClick={() => setEditingCommunityOrder(v => !v)}
-                    style={{ background: 'transparent', border: 'none', color: editingCommunityOrder ? '#4ADE80' : 'var(--dm-muted)', fontSize: 11, fontWeight: 900, cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: editingCommunityOrder ? '#4ADE80' : 'var(--dm-muted)', fontSize: NL() ? 13 : 11, fontWeight: 900, cursor: 'pointer', padding: 0 }}
                   >
                     {editingCommunityOrder ? '완료 ✓' : '↕ 순서 편집'}
                   </button>
@@ -996,7 +1000,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
           {/* 공개 커뮤니티 */}
           <div style={{ padding: '4px 16px 12px' }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>공개 커뮤니티</div>
+            <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>{NL() && <SectionIcon name="globe" size={20} />}공개 커뮤니티</div>
             {publicLoading ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>불러오는 중...</div>
             ) : publicList.length === 0 ? (
@@ -1273,16 +1277,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* 상단 */}
       <div style={S.topbar}>
         <button onClick={() => setShowHome(true)} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
-        <div style={{ flex: 1 }}>
-          <div style={S.title}>{community?.name || '커뮤니티'}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={NL() ? { ...S.title, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : S.title}>{community?.name || '커뮤니티'}</div>
           <div style={{ ...S.sub, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            멤버 {community?.memberCount || 0}명 · 초대코드: <b style={{ color: 'var(--dm-text)', letterSpacing: 2 }}>{community?.inviteCode}</b>
+            멤버 {community?.memberCount || 0}명 · <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>초대코드: <b style={{ color: 'var(--dm-text)', letterSpacing: 2 }}>{community?.inviteCode}</b>
             <button onClick={() => {
               const text = `DayMate 커뮤니티 초대 코드: ${community?.inviteCode}`;
               navigator.clipboard?.writeText(text).then(() => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); });
             }} style={{ background: codeCopied ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', border: '1px solid var(--dm-border)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, color: codeCopied ? '#4ADE80' : 'var(--dm-sub)', cursor: 'pointer' }}>
               {codeCopied ? '✓ 복사됨' : '복사'}
             </button>
+            </span>
           </div>
         </div>
         <button onClick={() => setSoundOn(v => !v)}
@@ -1304,7 +1309,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               if (id === activeCommunityId) return;
               requestCommunityAccess(id, { openDetail: true });
             }} style={{
-              flexShrink: 0, padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+              flexShrink: 0, padding: '6px 14px', borderRadius: 999, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
               border: `1.5px solid ${id === activeCommunityId ? '#6C8EFF' : 'var(--dm-border)'}`,
               background: id === activeCommunityId ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
               color: id === activeCommunityId ? '#818cf8' : 'var(--dm-sub)',
@@ -1313,7 +1318,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </button>
           ))}
           <button onClick={() => setMode('add')} style={{
-            flexShrink: 0, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+            flexShrink: 0, padding: '6px 12px', borderRadius: 999, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
             border: '1.5px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-muted)',
           }}>+ 추가</button>
         </div>
@@ -1321,7 +1326,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {communityIds.length === 1 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 16px 0' }}>
           <button onClick={() => setMode('add')} style={{
-            fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
+            fontSize: NL() ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
           }}>+ 다른 커뮤니티 추가</button>
         </div>
       )}
@@ -1340,7 +1345,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
       {/* 내 닉네임 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px 2px' }}>
-        <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>내 닉네임</span>
+        <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>내 닉네임</span>
         {editingNickname ? (
           <input
             value={nicknameEdit}
@@ -1353,7 +1358,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           />
         ) : (
           <button onClick={() => { setNicknameEdit(myNickname); setEditingNickname(true); }}
-            style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
             {myNickname} <span style={{ fontSize: 11 }}>✏️</span>
           </button>
         )}
@@ -1361,7 +1366,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
       {isAdmin && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 16px 4px' }}>
-          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>커뮤니티 암호</span>
+          <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>커뮤니티 암호</span>
           {showPasswordEdit ? (
             <>
               <input
@@ -1384,7 +1389,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </>
           ) : (
             <button onClick={() => { setPasswordEditValue(community?.password || ''); setShowPasswordEdit(true); }}
-              style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+              style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
               {community?.password ? `${community.password} 🔒` : '없음 🔓'} <span style={{ fontSize: 11 }}>✏️</span>
             </button>
           )}
@@ -1435,14 +1440,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}
             onClick={() => { markNoticesRead(); }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={S.sectionEmoji}>📢</span>공지사항
+              {NL() ? <SectionIcon name="megaphone" size={20} /> : <span style={S.sectionEmoji}>📢</span>}공지사항
               {unreadCount > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 7px' }}>{unreadCount}</span>
               )}
             </span>
             {isAdmin && (
               <button onClick={() => setShowNoticeForm(v => !v)}
-                style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+                style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
                 {showNoticeForm ? '취소' : '+ 공지 작성'}
               </button>
             )}
@@ -1487,16 +1492,16 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     <div style={{ flex: 1, padding: '12px 14px 12px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: isUnread ? 900 : 700, color: isUnread ? 'var(--dm-text)' : 'var(--dm-sub)', marginBottom: n.body ? 4 : 0 }}>
+                          <div style={{ fontSize: NL() ? 16 : 14, fontWeight: isUnread ? 900 : 700, color: isUnread ? 'var(--dm-text)' : 'var(--dm-sub)', marginBottom: n.body ? 4 : 0 }}>
                             📢 {n.title}
                           </div>
-                          {n.body && <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
+                          {n.body && <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>{n.body}</div>}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                            <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                            <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>
                               {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount || 0}</span>
-                            {isUnread && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900 }}>NEW</span>}
+                            <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount || 0}</span>
+                            {isUnread && <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF', fontWeight: 900 }}>NEW</span>}
                           </div>
                         </div>
                         {isAdmin && (
@@ -1516,10 +1521,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* ── 자유게시판 ── */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>📝</span>커뮤니티 게시판
+          {NL() ? <SectionIcon name="pencil" size={20} /> : <span style={S.sectionEmoji}>📝</span>}커뮤니티 게시판
         </span>
         <button onClick={() => { if (showBoardForm) cancelBoardForm(); else setShowBoardForm(true); }}
-          style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {showBoardForm ? '취소' : '+ 글쓰기'}
         </button>
       </div>
@@ -1563,11 +1568,11 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   <img src={p.photos?.[0]?.url || p.photoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--dm-border)' }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
+                  <div style={{ fontSize: NL() ? 16 : 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
-                    <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
-                    {p.commentCount > 0 && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
+                    <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
+                    <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
+                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
                   </div>
                 </div>
                 {(isMine || isAdmin) && (
@@ -1587,12 +1592,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       )}
       {!loading && boardPosts.length === 0 && !showBoardForm && (
         <div style={{ margin: '0 16px 8px', borderRadius: 14, background: 'var(--dm-card)', border: '1.5px dashed var(--dm-border)', padding: '20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 게시글이 없어요. 첫 글을 남겨보세요 ✍️</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)' }}>아직 게시글이 없어요. 첫 글을 남겨보세요 ✍️</div>
         </div>
       )}
 
       {/* 오늘 출석 현황 */}
-      <div style={S.sectionTitle}><span style={S.sectionEmoji}>✋</span>오늘 출석</div>
+      <div style={S.sectionTitle}>{NL() ? <SectionIcon name="checkin" size={20} /> : <span style={S.sectionEmoji}>✋</span>}오늘 출석</div>
       <div style={S.card}>
         <button onClick={handleCheckin} disabled={!!myCheckin || checkingIn} style={{
           width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: myCheckin ? 'default' : 'pointer', fontWeight: 900, fontSize: 14, fontFamily: 'inherit',
@@ -1607,7 +1612,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
         {todayCheckins.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               오늘 {todayCheckins.length}명 출석
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1617,7 +1622,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     {c.nickname?.[0] || '?'}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>{c.nickname}</span>
+                    <span style={{ fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)' }}>{c.nickname}</span>
                     {c.streak > 1 && <span style={{ fontSize: 11, color: '#F97316', marginLeft: 6, fontWeight: 900 }}>🔥 {c.streak}일</span>}
                   </div>
                   {c.completionRate != null && (
@@ -1631,7 +1636,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           </div>
         )}
         {todayCheckins.length === 0 && !myCheckin && (
-          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center' }}>
+          <div style={{ marginTop: 10, fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', textAlign: 'center' }}>
             아직 아무도 출석하지 않았어요
           </div>
         )}
@@ -1642,12 +1647,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* 일정 섹션 — 달력/리스트 탭 */}
       <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={S.sectionEmoji}>📅</span>커뮤니티 일정
+          {NL() ? <SectionIcon name="cal" size={20} /> : <span style={S.sectionEmoji}>📅</span>}커뮤니티 일정
         </span>
         <div style={{ display: 'flex', gap: 4 }}>
           {[{ v: false, label: '≡ 목록' }, { v: true, label: '📅 달력' }].map(({ v, label }) => (
             <button key={String(v)} onClick={() => { setCalView(v); setSelectedCalDate(null); }} style={{
-              padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+              padding: '4px 10px', borderRadius: 8, fontSize: NL() ? 13 : 11, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
               border: `1px solid ${calView === v ? '#6C8EFF' : 'var(--dm-border)'}`,
               background: calView === v ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
               color: calView === v ? '#6C8EFF' : 'var(--dm-muted)',
