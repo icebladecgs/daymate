@@ -17,6 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
+import { todayNewLookOn, setTodayNewLook } from "../utils/todayLook.js";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
@@ -275,6 +276,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [memoAutoList, setMemoAutoListState] = useState(memoAutoListOn);
+  const [todayNewLook, setTodayNewLookState] = useState(todayNewLookOn);
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
@@ -1278,6 +1280,24 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </div>
 
       <AppLockSettings authUser={authUser} setToast={setToast} />
+
+      <div style={S.sectionTitle}>✅ 오늘 화면</div>
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 13 }}>새 오늘 화면</div>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
+              할 일 글씨를 크게, 지금 할 일을 목록 첫 줄로, 언젠가·삭제 버튼을 조용하게, 시계는 분 단위로 · 끄면 예전 화면 · 이 기기에만 적용
+            </div>
+          </div>
+          <div onClick={() => { const v = !todayNewLook; setTodayNewLookState(v); setTodayNewLook(v); }} role="switch" aria-checked={todayNewLook} aria-label="새 오늘 화면" style={{
+            width: 52, height: 28, borderRadius: 999, background: todayNewLook ? "#6C8EFF" : "var(--dm-border)",
+            cursor: "pointer", position: "relative", flexShrink: 0,
+          }}>
+            <div style={{ position: "absolute", top: 4, left: todayNewLook ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+          </div>
+        </div>
+      </div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
       <div style={S.card}>

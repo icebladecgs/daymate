@@ -19,6 +19,8 @@ import { recurringLabel } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
+import TodayTaskRow from "../components/TodayTaskRow.jsx";
+import { todayNewLookOn } from "../utils/todayLook.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
@@ -68,11 +70,14 @@ export default function Today({
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
   const [newHabitName, setNewHabitName] = useState('');
-  const [clock, setClock] = useState(() => new Date().toLocaleTimeString('ko-KR', { hour12: false }));
+  const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
+  // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
+  const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
+  const [clock, setClock] = useState(clockText);
   useEffect(() => {
-    const t = setInterval(() => setClock(new Date().toLocaleTimeString('ko-KR', { hour12: false })), 1000);
+    const t = setInterval(() => setClock(clockText()), newLook ? 10000 : 1000);
     return () => clearInterval(t);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [gcalWeekEvents, setGcalWeekEvents] = useState({});
   // 섹션 펼침 상태 — 마지막으로 둔 상태를 기억 (기본값: 펼쳐짐)
@@ -313,7 +318,11 @@ export default function Today({
   }, []);
 
   // 목록에서 "지금" 표시할 할일 (오늘을 볼 때만)
-  const nowTaskId = taskDayOffset === 0 ? findNowTask(tasks, nowMin).current?.task.id : null;
+  const nowFound = taskDayOffset === 0 ? findNowTask(tasks, nowMin) : { current: null, next: null };
+  const nowTaskId = nowFound.current?.task.id || null;
+  // 새 화면: 지금 할 일을 목록 첫 줄로 (나머지 순서는 그대로)
+  const listTasks = targetTasks.filter(t => t.title.trim());
+  if (newLook && nowTaskId) listTasks.sort((a, b) => (b.id === nowTaskId) - (a.id === nowTaskId));
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
@@ -475,7 +484,7 @@ export default function Today({
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
       {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
-      {tasksOpen && taskDayOffset === 0 && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
+      {tasksOpen && taskDayOffset === 0 && !newLook && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
       {tasksOpen && taskDayOffset === 0 && !carryDismissed && carryTasks.length > 0 && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -500,7 +509,17 @@ export default function Today({
       {tasksOpen && (
       <div style={S.card}>
         {/* 목록은 보기 전용 — 체크·언젠가·삭제만 바로 하고, 시간·스탯·메모·사진 등 편집은 할일 상세(줄 누르기)에서 */}
-        {targetTasks.filter(t => t.title.trim()).map(task => (
+        {newLook && listTasks.map((task, i) => (
+          <TodayTaskRow key={task.id} task={task} last={i === listTasks.length - 1}
+            now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
+            next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
+            onToggle={toggleTargetTask} onOpen={setDetailTaskId}
+            onSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
+            onDelete={confirmDeleteTargetTask}
+            onFocus={(t) => setFocus({ ds: dateStr, task: t })} />
+        ))}
+        {newLook && listTasks.length > 0 && <div style={{ height: 10 }} />}
+        {!newLook && targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <button
               onClick={() => toggleTargetTask(task.id)}

@@ -20,6 +20,10 @@ export function findNowTask(tasks, nowMin) {
   return { current, next };
 }
 
+// 분 → "15:00", 남은 분 → "25분 뒤"/"1시간 5분 뒤"
+export const fmtMin = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+export const leftText = (min) => (min < 60 ? `${min}분` : `${Math.floor(min / 60)}시간${min % 60 ? ` ${min % 60}분` : ""}`);
+
 export function useNowMinutes() {
   const [now, setNow] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
   useEffect(() => {
