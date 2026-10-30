@@ -1282,16 +1282,16 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <AppLockSettings authUser={authUser} setToast={setToast} />
 
-      <div style={S.sectionTitle}>✅ 오늘 화면</div>
+      <div style={S.sectionTitle}>✨ 화면 디자인</div>
       <div style={S.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <div style={{ fontWeight: 900, fontSize: 13 }}>새 오늘 화면</div>
+            <div style={{ fontWeight: 900, fontSize: 13 }}>새 디자인</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
-              할 일 글씨를 크게, 지금 할 일을 맨 위로, 시간 있는 할 일은 시간순, 언젠가·삭제 버튼을 조용하게, 시계는 분 단위로 · 끄면 예전 화면 · 이 기기에만 적용
+              오늘·My 탭: 큰 글씨, 또렷한 제목과 버튼, 지금 할 일을 맨 위로, 시간 있는 할 일은 시간순, 분 단위 시계 · 끄면 예전 화면 · 이 기기에만 적용
             </div>
           </div>
-          <div onClick={() => { const v = !todayNewLook; setTodayNewLookState(v); setTodayNewLook(v); }} role="switch" aria-checked={todayNewLook} aria-label="새 오늘 화면" style={{
+          <div onClick={() => { const v = !todayNewLook; setTodayNewLookState(v); setTodayNewLook(v); }} role="switch" aria-checked={todayNewLook} aria-label="새 디자인" style={{
             width: 52, height: 28, borderRadius: 999, background: todayNewLook ? "#6C8EFF" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>

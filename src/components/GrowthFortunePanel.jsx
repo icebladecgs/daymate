@@ -5,6 +5,8 @@ import { toDateStr } from "../utils/date.js";
 import { chatFetch } from "../api/chatFetch.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
+import { newDesignOn } from "../utils/todayLook.js";
+import { SectionHeading, SectionIcon } from "./TodayLook.jsx";
 
 // My 탭 위쪽 "나의 성장·운세" — 레벨·XP, 성장 능력치 6개, 배틀, 오늘의 운세·로또(+운세 팝업), XP 도움말.
 // 예전엔 오늘 탭 맨 위에 있었는데, 오늘 탭은 할일·습관·일기 중심으로 하기로 해서 옮김(2026-09-27).
@@ -22,6 +24,7 @@ export default function GrowthFortunePanel({
     const prefix = dateStr.slice(0, 7);
     return Object.entries(scores || {}).filter(([ds]) => ds.startsWith(prefix)).reduce((a, [, v]) => a + v, 0) + todayScore;
   }, [scores, todayScore, dateStr]);
+  const [nl] = useState(newDesignOn); // 새 디자인 — 작은 글씨·흐린 배틀 버튼을 키우고 또렷하게
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
@@ -158,15 +161,15 @@ export default function GrowthFortunePanel({
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05))", border: "1.5px solid rgba(108,142,255,.3)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
-            <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
+            <span style={{ fontSize: nl ? 16 : 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
+            <span style={{ fontSize: nl ? 14 : 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
             {onSetBattleNickname && (
               <button
                 onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(v => !v); }}
                 title="배틀 닉네임 설정"
                 style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 999, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
               >
-                <span style={{ fontSize: 10, color: "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
+                <span style={{ fontSize: nl ? 12 : 10, color: nl ? "#8B5CF6" : "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
               </button>
             )}
             {streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
@@ -193,12 +196,12 @@ export default function GrowthFortunePanel({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             {myRank ? (
               <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
-                <span style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF" }}>🏆 전체 {myRank.rank}위</span>
+                <span style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: "#6C8EFF" }}>🏆 전체 {myRank.rank}위</span>
                 <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
               </button>
             ) : <span />}
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
+              <span style={{ fontSize: nl ? 20 : 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
               <span style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
               <button onClick={() => setXpHelpOpen(true)} style={{ background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
             </div>
@@ -207,27 +210,27 @@ export default function GrowthFortunePanel({
             <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{ fontSize: 10, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
-            <span style={{ fontSize: 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
+            <span style={{ fontSize: nl ? 12 : 10, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
+            <span style={{ fontSize: nl ? 12 : 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
           </div>
-          <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>
+          {nl ? <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}><SectionIcon name="sprout" size={18} />나의 성장 능력치</div> : <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8 }}>
             {GROWTH_STATS.map(stat => {
               const score = calcStatScore(statXp[stat.id] || 0);
               return (
                 <div key={stat.id} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, width: 18, textAlign: "center", flexShrink: 0 }}>{stat.icon}</span>
-                  <span style={{ fontSize: 11, color: "var(--dm-sub)", width: 34, flexShrink: 0 }}>{stat.name}</span>
+                  <span style={{ fontSize: nl ? 15 : 13, width: nl ? 20 : 18, textAlign: "center", flexShrink: 0 }}>{stat.icon}</span>
+                  <span style={{ fontSize: nl ? 13 : 11, color: nl ? "var(--dm-text)" : "var(--dm-sub)", width: nl ? 42 : 34, flexShrink: 0 }}>{stat.name}</span>
                   <div style={{ flex: 1, height: 6, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", minWidth: 0 }}>
                     <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${score}%`, transition: "width 0.4s" }} />
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-text)", width: 22, textAlign: "right", flexShrink: 0 }}>{score}</span>
+                  <span style={{ fontSize: nl ? 14 : 11, fontWeight: 900, color: "var(--dm-text)", width: nl ? 26 : 22, textAlign: "right", flexShrink: 0 }}>{score}</span>
                 </div>
               );
             })}
           </div>
           {onOpenBattle && (
-            <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 12, padding: '10px 0', fontSize: 13, fontWeight: 900, color: '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 12, padding: nl ? '12px 0' : '10px 0', fontSize: nl ? 16 : 13, fontWeight: 900, color: nl ? '#8B5CF6' : '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
               ⚔️ 배틀
             </button>
           )}
@@ -239,18 +242,18 @@ export default function GrowthFortunePanel({
         const fl = fortuneLevel(todayFortuneScore);
         return (
         <div style={{ margin: '0 16px 10px' }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>
+          {nl ? <SectionHeading icon="sparkle">운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
               style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 3 }}>오늘의 운세</div>
+              <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 3 }}>오늘의 운세</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 15, fontWeight: 900, color: fl.color }}>{fl.label}</span>
-                <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{fl.desc}</span>
+                <span style={{ fontSize: nl ? 18 : 15, fontWeight: 900, color: fl.color }}>{fl.label}</span>
+                <span style={{ fontSize: nl ? 13 : 11, color: 'var(--dm-muted)' }}>{fl.desc}</span>
               </div>
             </button>
             <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '9px 12px' }}>
-              <div style={{ fontSize: 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>🎱 오늘의 로또</div>
+              <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>🎱 오늘의 로또</div>
               {lottoNums ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
                   {lottoNums.map((n, i) => {

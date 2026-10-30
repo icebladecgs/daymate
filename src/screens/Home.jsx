@@ -25,6 +25,8 @@ import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
 import { parseNth, NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
 import { chatFetch } from "../api/chatFetch.js";
+import { newDesignOn } from "../utils/todayLook.js";
+import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -370,6 +372,13 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     return { ...QUOTES[idx], photo: null, source: 'builtin' };
   }, [todayStr, starredMemos]); // eslint-disable-line
 
+  const [newLook] = useState(newDesignOn); // 새 디자인 (설정 → 앱 관리, 기기마다)
+  // My 탭 섹션 제목: 새 디자인은 17px 굵게 + 선 아이콘, 예전은 12px 회색 이름표
+  const myLabel = (icon, emoji, text, right, extraOld) => (newLook
+    ? <SectionHeading icon={icon} right={right}>{text}</SectionHeading>
+    : right
+      ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 4 }}><span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>{emoji} {text}</span>{right}</div>
+      : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4, ...extraOld }}>{emoji} {text}</div>);
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
@@ -644,14 +653,14 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
+          <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
+          <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={onToggleOpen} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          <button onClick={onToggleOpen} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {open ? '접기 ▲' : '펼치기 ▼'}
           </button>
-          <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
             {editing ? '저장 ✓' : '편집'}
           </button>
         </div>
@@ -682,7 +691,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <div key={i} onClick={onItemClick ? () => onItemClick(i) : undefined}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onItemClick ? 'pointer' : 'default' }}>
               <div style={{ width: 18, height: 18, borderRadius: 999, background: accent, color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
               {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}
               {onItemClick && (
                 <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
@@ -770,7 +779,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       <div style={S.topbar}>
         <div>
           <div style={S.title}>My</div>
-          <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', { hour12: false })}</div>
+          <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {[
@@ -780,7 +789,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <button key={label} onClick={onClick}
               style={{ ...S.btnGhost, marginTop: 0, padding: '7px 10px', borderRadius: 20, fontSize: 13, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, whiteSpace: 'nowrap' }}>
               <span>{icon}</span>
-              <span style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 600 }}>{label}</span>
+              <span style={newLook ? { fontSize: 13, color: 'var(--dm-text)', fontWeight: 700 } : { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 600 }}>{label}</span>
             </button>
           ))}
         </div>
@@ -932,7 +941,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>🎯 목표 관리</div>
+                {myLabel('target', '🎯', '목표 관리')}
                 {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]) })}
                 {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0 })}
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn, open: monthGoalsOpen, onToggleOpen: () => setMonthGoalsOpen(v => !v) })}
@@ -940,16 +949,14 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>🪣 버킷리스트 ({bucketList.length}/{BUCKET_LIST_MAX})</span>
-                  <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>
-                </div>
+                {myLabel('flag', '🪣', `버킷리스트 (${bucketList.length}/${BUCKET_LIST_MAX})`,
+                  <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
                 {bucketOpen && (
                   <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                     {bucketList.map(item => (
                       <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <button onClick={() => toggleBucketItem(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
                         <button onClick={() => copyBucketToSomeday(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
                         <button onClick={() => deleteBucketItem(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
                       </div>
@@ -976,7 +983,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>💳 내 명함</div>
+                {myLabel('card', '💳', '내 명함')}
                 <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                   <input ref={bcFileInputRef} type="file" accept="image/*" onChange={bcHandleFile} style={{ display: 'none' }} />
                   {bcDefault?.photoUrl ? (
@@ -1022,12 +1029,12 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             )}
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4 }}>👥 내 사람들</div>
+                {myLabel('people', '👥', '내 사람들')}
                 <button onClick={onOpenPeople} style={{ width: '100%', borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                   <span style={{ fontSize: 22 }}>🗂️</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{contacts.length > 0 ? `${contacts.length}명 등록됨` : '사람을 등록해보세요'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 1 }}>생일·기념일·만남 기록을 관리해요</div>
+                    <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{contacts.length > 0 ? `${contacts.length}명 등록됨` : '사람을 등록해보세요'}</div>
+                    <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 1 }}>생일·기념일·만남 기록을 관리해요</div>
                   </div>
                   <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
                 </button>
@@ -1787,10 +1794,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         <div style={{ order: getSectionOrder('portfolio') }}>
           <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={S.sectionEmoji}>💼</span>자산 브리핑
+              {newLook ? <SectionIcon name="briefcase" size={20} /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
             </span>
             <button onClick={onOpenPortfolio}
-              style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+              style={{ fontSize: newLook ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
               관리 →
             </button>
           </div>
