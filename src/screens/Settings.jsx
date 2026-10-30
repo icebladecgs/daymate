@@ -17,13 +17,14 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
-import { todayNewLookOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
+import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
 function MenuRow({ icon, title, sub, right, onClick }) {
+  const nl = newDesignOn(); // 새 디자인: 글씨 크게
   return (
     <div onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 14,
@@ -31,10 +32,10 @@ function MenuRow({ icon, title, sub, right, onClick }) {
       borderBottom: '1px solid var(--dm-row)',
       background: 'var(--dm-card)',
     }}>
-      <span style={{ fontSize: 19, width: 26, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: nl ? 21 : 19, width: 26, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)' }}>{title}</div>
-        {sub && <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 1 }}>{sub}</div>}
+        <div style={{ fontSize: nl ? 16 : 14, fontWeight: nl ? 800 : 700, color: 'var(--dm-text)' }}>{title}</div>
+        {sub && <div style={{ fontSize: nl ? 13 : 12, color: 'var(--dm-muted)', marginTop: nl ? 2 : 1 }}>{sub}</div>}
       </div>
       {right !== undefined ? right : (onClick && <span style={{ color: 'var(--dm-muted)', fontSize: 20, lineHeight: 1 }}>›</span>)}
     </div>
@@ -53,6 +54,7 @@ function MenuGroup({ label, children }) {
 }
 
 function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone = 'default' }) {
+  const nl = newDesignOn(); // 새 디자인: 글씨 크게, 버튼 글자를 밝은 화면에서도 또렷하게(예전 #C9D7FF는 밝은 화면에서 거의 안 보였다)
   const accent = tone === 'good'
     ? '#4ADE80'
     : tone === 'warn'
@@ -71,11 +73,11 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 900, color: accent, marginBottom: 6 }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--dm-sub)', lineHeight: 1.55 }}>{sub}</div>
+      <div style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>{label}</div>
+      <div style={{ fontSize: nl ? 18 : 16, fontWeight: 900, color: accent, marginBottom: 6 }}>{value}</div>
+      <div style={{ fontSize: nl ? 13 : 11, color: 'var(--dm-sub)', lineHeight: 1.55 }}>{sub}</div>
       {(onAction || onClick) && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 12 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 12, flexWrap: nl ? 'wrap' : undefined }}>
           {onAction && actionLabel && (
             <button
               type="button"
@@ -83,11 +85,12 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
               style={{
                 border: '1px solid rgba(108,142,255,.28)',
                 background: 'rgba(108,142,255,.12)',
-                color: '#C9D7FF',
+                color: nl ? '#5B7CFA' : '#C9D7FF',
                 borderRadius: 999,
-                padding: '6px 10px',
-                fontSize: 10,
+                padding: nl ? '7px 12px' : '6px 10px',
+                fontSize: nl ? 13 : 10,
                 fontWeight: 900,
+                whiteSpace: 'nowrap',
                 cursor: 'pointer',
               }}
             >
@@ -101,11 +104,12 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
               style={{
                 border: '1px solid var(--dm-border)',
                 background: 'transparent',
-                color: 'var(--dm-muted)',
+                color: nl ? 'var(--dm-sub)' : 'var(--dm-muted)',
                 borderRadius: 999,
-                padding: '6px 10px',
-                fontSize: 10,
+                padding: nl ? '7px 12px' : '6px 10px',
+                fontSize: nl ? 13 : 10,
                 fontWeight: 800,
+                whiteSpace: 'nowrap',
                 cursor: 'pointer',
               }}
             >
@@ -1489,8 +1493,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </div>
 
         <div style={{ ...S.card, marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10 }}>
             <SummaryTile
               label="계정"
               value={authUser ? '연결됨' : '로컬 모드'}
@@ -1533,7 +1537,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
 
       <div style={{ padding: '0 16px 12px' }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
+        <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {quickActions.map((item) => (
             <button
@@ -1543,11 +1547,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               style={{
                 border: '1px solid rgba(108,142,255,.24)',
                 background: 'rgba(108,142,255,.10)',
-                color: '#C9D7FF',
+                color: todayNewLook ? '#5B7CFA' : '#C9D7FF',
                 borderRadius: 999,
                 padding: '11px 16px',
                 minHeight: 44,
-                fontSize: 13,
+                fontSize: todayNewLook ? 15 : 13,
                 fontWeight: 900,
                 cursor: 'pointer',
               }}
