@@ -361,9 +361,9 @@ export default function Today({
     toggleTargetTask(id);
   };
   const remainCount = filledCount - doneCount;
-  // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘, 글씨는 조금 작은 회색 — 할 일 목록보다 조용하게
-  const secTitle = newLook ? { ...S.sectionTitle, fontSize: 15, fontWeight: 800, color: 'var(--dm-sub)' } : S.sectionTitle;
-  const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} /> : <span style={S.sectionEmoji}>{emoji}</span>);
+  // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘. 글씨는 할 일과 같은 17px·진하게(사용자 요청 — 섹션이 잘 보여야 함)
+  const secTitle = S.sectionTitle;
+  const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
@@ -648,9 +648,9 @@ export default function Today({
       <div style={{ margin: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: 4 }}>
           <span onClick={onOpenPeople} style={newLook
-            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 15, fontWeight: 800, color: 'var(--dm-sub)', cursor: onOpenPeople ? 'pointer' : 'default' }
+            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
-            {newLook ? <SectionIcon name="people" /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
+            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
           </span>
           {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
