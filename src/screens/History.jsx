@@ -10,8 +10,6 @@ import SearchViewer from "./SearchViewer.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
-import { newDesignOn } from "../utils/todayLook.js";
-import { SectionIcon } from "../components/TodayLook.jsx";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -33,7 +31,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [actionDrafts, setActionDrafts] = useState({});
 
   const [legendOpen, setLegendOpen] = useState(false);
-  const [newLook] = useState(newDesignOn); // 새 디자인 — 머리글 버튼 정리, 날짜 칸 글씨 크게
   const [gcalRefreshing, setGcalRefreshing] = useState(false);
   const [gcalToast, setGcalToast] = useState(null);
   const [gcalImporting, setGcalImporting] = useState(false);
@@ -456,54 +453,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           {gcalToast}
         </div>
       )}
-      {newLook ? (
-        <>
-          {/* 새 디자인 머리글: 테두리 상자 5개 대신 — 위쪽은 제목 + 월간/주간 + 아이콘 2개(검색·구글 캘린더), 아래 줄은 ‹ 2026년 10월 › 오늘 · 목표 */}
-          <div style={S.topbar}>
-            <div style={S.title}>달력</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ display: 'flex', background: 'var(--dm-input)', borderRadius: 10, padding: 3, gap: 2, marginRight: 4 }}>
-                {['monthly', 'weekly'].map(mode => (
-                  <button key={mode} onClick={() => setViewMode(mode)}
-                    style={{ padding: '6px 12px', borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
-                      background: viewMode === mode ? 'var(--dm-card)' : 'transparent',
-                      color: viewMode === mode ? 'var(--dm-text)' : 'var(--dm-muted)' }}>
-                    {mode === 'monthly' ? '월간' : '주간'}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowSearch(true)} title="날짜 검색" aria-label="날짜 검색"
-                style={{ width: 40, height: 40, padding: 0, border: 'none', background: 'none', color: 'var(--dm-sub)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <SectionIcon name="search" size={22} />
-              </button>
-              <button
-                onClick={async () => {
-                  const token = getValidGcalToken?.();
-                  if (!token) { showToast('📅 구글 캘린더 연동이 필요해요'); await onGcalConnect?.(); }
-                  fetchGcal(true);
-                }}
-                disabled={gcalRefreshing} title="구글 캘린더 동기화" aria-label="구글 캘린더 동기화"
-                style={{ width: 40, height: 40, padding: 0, border: 'none', background: 'none', color: 'var(--dm-sub)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: gcalRefreshing ? 0.4 : 1 }}>
-                <SectionIcon name="refresh" size={21} />
-              </button>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 12px 6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
-              <button onClick={prev} title="이전 달" aria-label="이전 달" style={{ width: 36, height: 40, padding: 0, border: 'none', background: 'none', color: 'var(--dm-text)', fontSize: 26, cursor: 'pointer', lineHeight: 1 }}>‹</button>
-              <div style={{ fontSize: 20, fontWeight: 900, whiteSpace: 'nowrap' }}>{monthLabel(year, month0)}</div>
-              <button onClick={next} title="다음 달" aria-label="다음 달" style={{ width: 36, height: 40, padding: 0, border: 'none', background: 'none', color: 'var(--dm-text)', fontSize: 26, cursor: 'pointer', lineHeight: 1 }}>›</button>
-              <button onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth0(n.getMonth()); }}
-                style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid var(--dm-border)', background: 'transparent', color: 'var(--dm-text)', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 4 }}>오늘</button>
-            </div>
-            <button onClick={() => setGoalsOpen(v => !v)}
-              style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid var(--dm-border)', background: goalsOpen ? 'var(--dm-input)' : 'transparent', color: 'var(--dm-text)', fontSize: 14, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              🎯 목표 {goalsOpen ? '▲' : '▼'}
-            </button>
-          </div>
-        </>
-      ) : (
-      <>
       <div style={S.topbar}>
         <div>
           <div style={S.title}>달력</div>
@@ -552,8 +501,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           🎯 목표 {goalsOpen ? '▲' : '▼'}
         </button>
       </div>
-      </>
-      )}
 
       {/* 목표 — 월 레이블 바로 아래 인라인 펼침 */}
       {goalsOpen && (
@@ -596,7 +543,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {/* 범례 — 기본 숨김, 토글 */}
       <div style={{ padding: '0 16px 8px' }}>
         <button onClick={() => setLegendOpen(v => !v)}
-          style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: newLook ? 13 : 10, cursor: 'pointer', padding: newLook ? '4px 0' : 0, fontWeight: 700 }}>
+          style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 10, cursor: 'pointer', padding: 0, fontWeight: 700 }}>
           {legendOpen ? '▲ 범례 숨기기' : '▼ 범례'}
         </button>
         {legendOpen && (
@@ -636,7 +583,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       <div style={{ padding: "0 10px 12px", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-            <div key={d} style={{ textAlign: "center", fontSize: newLook ? 13 : 11, color: newLook ? (d === "일" ? "#F87171" : d === "토" ? "#6C8EFF" : "var(--dm-sub)") : "var(--dm-muted)", fontWeight: 900 }}>
+            <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>
               {d}
             </div>
           ))}
@@ -668,7 +615,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 key={ds}
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); }}
                 style={{
-                  minHeight: newLook ? 92 : 80,
+                  minHeight: 80,
                   borderRadius: 10,
                   display: "flex",
                   flexDirection: "column",
@@ -685,14 +632,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               >
                 {/* 날짜 숫자 + 별 */}
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, marginBottom: 2, minHeight: 18 }}>
-                  <span style={{ fontSize: newLook ? 15 : 12, fontWeight: newLook ? 800 : st.fontWeight, lineHeight: 1 }}>{day}</span>
+                  <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1 }}>{day}</span>
                   {perfect && <span style={{ fontSize: 7, color: "#FBBF24", lineHeight: 1 }}>★</span>}
                 </div>
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
-                    fontSize: newLook ? 10 : 7,
-                    lineHeight: newLook ? 1.3 : 1.25,
+                    fontSize: 7,
+                    lineHeight: 1.25,
                     padding: '1px 2px',
                     borderRadius: 3,
                     background: item.color,
@@ -707,7 +654,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <div style={{ fontSize: newLook ? 11 : 8, fontWeight: newLook ? 700 : undefined, color: 'var(--dm-muted)', paddingLeft: 2, lineHeight: 1.3 }}>+{moreCount}</div>
+                  <div style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 2, lineHeight: 1.3 }}>+{moreCount}</div>
                 )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
