@@ -182,6 +182,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   // 라운드별로 묶어서 최신 라운드가 위로 (각 칸 = 그 라운드에서 그쪽이 한 행동)
   const rounds = [];
   log.forEach(e => {
+    if (!e.side && e.kind !== 'result') return; // "배틀 시작!" 같은 안내 줄은 라운드 칸을 만들지 않는다 (빈 "1R" 줄이 보였다)
     const n = e.round || 1;
     let r = rounds.find(x => x.round === n);
     if (!r) { r = { round: n, player: [], npc: [], result: null, all: [] }; rounds.push(r); }
@@ -329,8 +330,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
                   style={{
                     background: sp.onCooldown ? 'var(--dm-input)' : 'rgba(167,139,250,0.15)',
                     border: `1px solid ${sp.onCooldown ? 'var(--dm-border)' : 'rgba(167,139,250,0.4)'}`,
-                    borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 700,
-                    color: sp.onCooldown ? 'var(--dm-muted)' : '#c4b5fd',
+                    borderRadius: 10, padding: '8px 12px', fontSize: 14, fontWeight: 800,
+                    // 예전 #c4b5fd는 어두운 화면용이라 밝은 화면에서 꺼진 버튼처럼 보였다 — 양쪽에서 보이는 보라
+                    color: sp.onCooldown ? 'var(--dm-muted)' : '#8B5CF6',
                     cursor: (sp.onCooldown || busy) ? 'default' : 'pointer', fontFamily: 'inherit',
                   }}
                 >{sp.icon} {sp.name}{sp.onCooldown ? ' (쿨다운)' : ''}</button>
