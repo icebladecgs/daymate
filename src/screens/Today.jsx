@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -20,7 +20,7 @@ import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
 import TodayTaskRow from "../components/TodayTaskRow.jsx";
-import { todayNewLookOn } from "../utils/todayLook.js";
+import { todayNewLookOn, todayDoneGroupOn } from "../utils/todayLook.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
@@ -320,9 +320,19 @@ export default function Today({
   // 목록에서 "지금" 표시할 할일 (오늘을 볼 때만)
   const nowFound = taskDayOffset === 0 ? findNowTask(tasks, nowMin) : { current: null, next: null };
   const nowTaskId = nowFound.current?.task.id || null;
-  // 새 화면: 지금 할 일을 목록 첫 줄로 (나머지 순서는 그대로)
-  const listTasks = targetTasks.filter(t => t.title.trim());
-  if (newLook && nowTaskId) listTasks.sort((a, b) => (b.id === nowTaskId) - (a.id === nowTaskId));
+  // 새 화면 목록 순서(보여주기만, 저장 순서는 그대로): 지금 할 일 → 시간 있는 할 일 시간순 → 시간 없는 할 일(추가한 순)
+  // 끝낸 할 일은 아래 "완료 n" 묶음으로 (설정에서 끄면 제자리)
+  const timeMin = (t) => (/^\d{1,2}:\d{2}$/.test(t.time || '') ? t.time.split(':').reduce((h, m) => h * 60 + Number(m), 0) : Infinity);
+  const [doneGroup] = useState(todayDoneGroupOn);
+  const listAll = targetTasks.filter(t => t.title.trim());
+  const listTasks = newLook
+    ? listAll.map((t, i) => ({ t, i })).sort((a, b) =>
+        (doneGroup ? (a.t.done ? 1 : 0) - (b.t.done ? 1 : 0) : 0)
+        || (b.t.id === nowTaskId) - (a.t.id === nowTaskId)
+        || (timeMin(a.t) - timeMin(b.t) || 0)
+        || a.i - b.i).map(x => x.t)
+    : listAll;
+  const firstDoneIdx = newLook && doneGroup ? listTasks.findIndex(t => t.done) : -1;
 
   if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
@@ -510,13 +520,18 @@ export default function Today({
       <div style={S.card}>
         {/* 목록은 보기 전용 — 체크·언젠가·삭제만 바로 하고, 시간·스탯·메모·사진 등 편집은 할일 상세(줄 누르기)에서 */}
         {newLook && listTasks.map((task, i) => (
-          <TodayTaskRow key={task.id} task={task} last={i === listTasks.length - 1}
+          <Fragment key={task.id}>
+          {i === firstDoneIdx && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', padding: i ? '14px 0 2px' : '0 0 2px' }}>완료 {listTasks.length - firstDoneIdx}</div>
+          )}
+          <TodayTaskRow task={task} last={i === listTasks.length - 1 || i === firstDoneIdx - 1}
             now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
             next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
             onToggle={toggleTargetTask} onOpen={setDetailTaskId}
             onSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
             onDelete={confirmDeleteTargetTask}
             onFocus={(t) => setFocus({ ds: dateStr, task: t })} />
+          </Fragment>
         ))}
         {newLook && listTasks.length > 0 && <div style={{ height: 10 }} />}
         {!newLook && targetTasks.filter(t => t.title.trim()).map(task => (

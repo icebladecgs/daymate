@@ -17,7 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
-import { todayNewLookOn, setTodayNewLook } from "../utils/todayLook.js";
+import { todayNewLookOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
@@ -277,6 +277,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [searching, setSearching] = useState(false);
   const [memoAutoList, setMemoAutoListState] = useState(memoAutoListOn);
   const [todayNewLook, setTodayNewLookState] = useState(todayNewLookOn);
+  const [todayDoneGroup, setTodayDoneGroupState] = useState(todayDoneGroupOn);
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
@@ -1287,7 +1288,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>새 오늘 화면</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
-              할 일 글씨를 크게, 지금 할 일을 목록 첫 줄로, 언젠가·삭제 버튼을 조용하게, 시계는 분 단위로 · 끄면 예전 화면 · 이 기기에만 적용
+              할 일 글씨를 크게, 지금 할 일을 맨 위로, 시간 있는 할 일은 시간순, 언젠가·삭제 버튼을 조용하게, 시계는 분 단위로 · 끄면 예전 화면 · 이 기기에만 적용
             </div>
           </div>
           <div onClick={() => { const v = !todayNewLook; setTodayNewLookState(v); setTodayNewLook(v); }} role="switch" aria-checked={todayNewLook} aria-label="새 오늘 화면" style={{
@@ -1297,6 +1298,20 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             <div style={{ position: "absolute", top: 4, left: todayNewLook ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
           </div>
         </div>
+        {todayNewLook && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--dm-row)' }}>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 13 }}>끝낸 할 일 아래로 모으기</div>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>체크한 할 일을 목록 아래 "완료" 묶음으로 · 끄면 제자리에 남아요</div>
+            </div>
+            <div onClick={() => { const v = !todayDoneGroup; setTodayDoneGroupState(v); setTodayDoneGroup(v); }} role="switch" aria-checked={todayDoneGroup} aria-label="끝낸 할 일 아래로 모으기" style={{
+              width: 52, height: 28, borderRadius: 999, background: todayDoneGroup ? "#6C8EFF" : "var(--dm-border)",
+              cursor: "pointer", position: "relative", flexShrink: 0,
+            }}>
+              <div style={{ position: "absolute", top: 4, left: todayDoneGroup ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
