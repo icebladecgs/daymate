@@ -322,7 +322,7 @@ export default function StickyMemo() {
       {showMenu && !folded && (
         <>
           <div onClick={() => setShowMenu(false)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />
-          <div role="menu" style={{ position: "absolute", top: 30, right: 4, zIndex: 10, background: "#fff", color: "#000", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,.25)", padding: 4, minWidth: 150 }}>
+          <div role="menu" style={{ position: "absolute", top: 30, right: 4, zIndex: 10, background: "#fff", color: "#000", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,.25)", padding: 4, minWidth: 150, maxHeight: "calc(100vh - 36px)", overflowY: "auto", boxSizing: "border-box" }}>
             {[
               ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
               [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
@@ -334,7 +334,7 @@ export default function StickyMemo() {
               ["⚙️", "메모 설정", () => setShowSettings(true)],
             ].map(([icon, label, fn]) => (
               <button key={icon + label} role="menuitem" onClick={() => { setShowMenu(false); fn(); }}
-                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "7px 10px", border: "none", background: "transparent", color: "#000", fontSize: 13, textAlign: "left", cursor: "pointer", borderRadius: 6, fontFamily: "inherit", whiteSpace: "nowrap" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "5px 10px", border: "none", background: "transparent", color: "#000", fontSize: 13, textAlign: "left", cursor: "pointer", borderRadius: 6, fontFamily: "inherit", whiteSpace: "nowrap" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "#f1f1f1"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                 <span style={{ width: 18, textAlign: "center" }}>{icon}</span>{label}
               </button>
