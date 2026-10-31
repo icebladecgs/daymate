@@ -27,6 +27,14 @@ const PATHS = {
   sprout: <><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></>,
 };
 
+// 섹션 아이콘 색 (2026-10-31) — 제목 글자는 흰색 그대로, 아이콘만 칸마다 색. 밝은·어두운 화면 둘 다 보이는 색
+const COLORS = {
+  today: "#5B7CFA", people: "#EC4899", repeat: "#22C55E", inbox: "#8B5CF6", cal: "#F59E0B", book: "#14B8A6",
+  target: "#EF4444", flag: "#F97316", card: "#5B7CFA", sparkle: "#8B5CF6", briefcase: "#F59E0B",
+  megaphone: "#F97316", pencil: "#5B7CFA", checkin: "#22C55E", globe: "#14B8A6",
+  search: "#5B7CFA", refresh: "#5B7CFA", sprout: "#22C55E",
+};
+
 // 섹션 제목 한 줄 (새 디자인) — 17px 굵게 + 선 아이콘. right에 접기·수정 같은 버튼
 export function SectionHeading({ icon, children, right, style }) {
   return (
@@ -38,7 +46,7 @@ export function SectionHeading({ icon, children, right, style }) {
 }
 export function SectionIcon({ name, size = 18 }) {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>{PATHS[name]}</svg>
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={COLORS[name] || "currentColor"} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>{PATHS[name]}</svg>
   );
 }
 
