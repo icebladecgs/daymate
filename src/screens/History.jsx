@@ -681,10 +681,15 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       {/* 📈 이번 달 증시 일정 (2026-11-01) — 날짜 칸에는 넣지 않고 달력 아래 목록으로만(사용자 결정). 고른 시장만, 기본은 모두 꺼짐 */}
       {setMarketCal && (() => {
         const events = marketEventsOf(year, month0, marketCal);
-        const toggle = (id) => setMarketCal(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+        // 칩을 켜면 아래에 생긴 목록이 보이게 칸까지 스크롤 (2026-11-01 사용자 요청). 아래 메뉴에 가리지 않게 scrollMarginBottom
+        const toggle = (id) => {
+          const turningOn = !marketCal.includes(id);
+          setMarketCal(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+          if (turningOn) setTimeout(() => document.querySelector("[data-market-cal]")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
+        };
         const WD = ["일", "월", "화", "수", "목", "금", "토"];
         return (
-          <div style={{ margin: "0 10px 14px", padding: "12px 14px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)" }}>
+          <div data-market-cal style={{ margin: "0 10px 14px", padding: "12px 14px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", scrollMarginBottom: 110, scrollMarginTop: 80 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", marginRight: "auto" }}>📈 이번 달 증시 일정</span>
               {MARKETS.map(m => {
