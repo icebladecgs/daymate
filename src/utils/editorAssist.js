@@ -1,6 +1,7 @@
 // 메모 편집 도우미 (메모잇 참고) — 긴 메모·간편 메모·메모 관리자 입력칸에서 함께 쓴다.
 //  · F12 / Ctrl+/ : 현재 줄 수식 계산 ("1500000*12" → "1500000*12 = 18,000,000 (1,800만)")
 //                   빈 줄에서 누르면 바로 위에 이어진 숫자 줄들을 합산
+//  · Enter        : "=56+65"처럼 =로 시작하는 줄이면 "56+65 = 121"로 바꾸고 다음 줄 (휴대폰용, 🧮 버튼 대신)
 //  · Ctrl+;       : 오늘 날짜 넣기 (엑셀과 같은 키)   Ctrl+Shift+; : 지금 시각 넣기
 //  · Ctrl+D       : 현재 줄 복제
 //  · Enter        : "- ", "• ", "1. ", "[ ] " 로 시작하는 줄이면 다음 줄에도 이어 붙임
@@ -171,7 +172,24 @@ function currentLine(ta) {
   return { start, end, text: v.slice(start, end), lines: v.split("\n"), index: lines.length - 1 };
 }
 
-// 현재 줄 계산 (휴대폰의 🧮 버튼용). 성공하면 true
+// "=수식" 줄 → "수식 = 결과" (엑셀처럼 =로 시작하는 줄, 못하면 null). 들여쓰기는 그대로
+export function equalsLine(line) {
+  const m = /^(\s*)=\s*(.+?)\s*$/.exec(line || "");
+  if (!m || m[2].includes("=")) return null; // 이미 "= 결과"가 붙은 줄은 그냥 줄바꿈
+  const v = evaluate(m[2]);
+  return v === null ? null : `${m[1]}${m[2]} = ${withKorean(v)}`;
+}
+
+// =수식 줄에서 Enter: 결과를 붙이고 다음 줄로 (휴대폰에서도 버튼 없이 계산, 2026-11-01). 못하면 false
+function equalsEnter(ta) {
+  const cl = currentLine(ta);
+  const next = equalsLine(cl.text);
+  if (next === null) return false;
+  replaceRange(ta, cl.start, cl.end, `${next}\n`);
+  return true;
+}
+
+// 현재 줄 계산 (F12·Ctrl+/). 성공하면 true
 export function calcAtCursor(ta) {
   if (!ta) return false;
   const cl = currentLine(ta);
@@ -216,6 +234,10 @@ export function handleEditorKey(e, onCalcFail) {
   if (e.altKey && !ctrl && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
     const dir = e.key === "ArrowUp" ? -1 : 1;
     return later(() => { moveLines(ta, dir); autoRenumber(ta); });
+  }
+  // "=56+65" 줄에서 Enter → "56+65 = 121" 붙이고 다음 줄 (목록 자동완성 설정과 상관없이 항상)
+  if (e.key === "Enter" && !ctrl && !e.shiftKey && !e.altKey && equalsLine(currentLine(ta).text) !== null) {
+    return later(() => { if (!equalsEnter(ta)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, "\n"); });
   }
   if ((e.key === "Tab" || e.key === "Enter" || e.key === "Backspace") && !memoAutoListOn()) return false;
   // Tab은 메모장·워드처럼 입력칸 안에서 처리 (다음 칸으로 넘어가지 않음)

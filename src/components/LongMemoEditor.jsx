@@ -5,7 +5,7 @@ import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
-import { handleEditorKey, calcAtCursor } from "../utils/editorAssist.js";
+import { handleEditorKey } from "../utils/editorAssist.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
@@ -241,17 +241,6 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
             }}
           >{drive.busy ? drive.label : '📁 구글 드라이브'}</button>
         )}
-        {/* 휴대폰용 계산 버튼 (PC는 F12·Ctrl+/) — 누를 때 입력칸 포커스가 빠지지 않게 onMouseDown 막음 */}
-        <button
-          onMouseDown={e => e.preventDefault()}
-          onClick={() => { if (!calcAtCursor(textareaRef.current)) onPhotoError?.('계산할 줄에 커서를 두고 눌러요 (예: 1500000*12)'); }}
-          title="현재 줄 계산 (F12 또는 Ctrl+/) · 빈 줄이면 위 숫자 합계"
-          style={{
-            flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)',
-            border: '1.5px dashed var(--dm-border)', color: newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-          }}
-        >🧮 계산</button>
         {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — 메모 원본은 그대로 */}
         <button
           onMouseDown={e => e.preventDefault()}
@@ -265,7 +254,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           }}
           title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
           style={{
-            flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: sentTask ? 'rgba(74,222,128,.12)' : 'var(--dm-input)',
+            flex: '0 0 auto', gridColumn: newLook && onUpdateFiles ? '1 / -1' : undefined, padding: '12px 12px', borderRadius: 12, background: sentTask ? 'rgba(74,222,128,.12)' : 'var(--dm-input)',
             border: `1.5px dashed ${sentTask ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, color: sentTask ? '#4ADE80' : newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
