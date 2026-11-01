@@ -176,6 +176,8 @@ function currentLine(ta) {
 export function equalsLine(line) {
   const m = /^(\s*)=\s*(.+?)\s*$/.exec(line || "");
   if (!m || m[2].includes("=")) return null; // 이미 "= 결과"가 붙은 줄은 그냥 줄바꿈
+  // 연산 기호·%·단위가 있을 때만 — "=3"처럼 숫자만 있으면 "3 = 3"이 붙어 쓸모없다
+  if (!/[+\-*/×÷xX%천만억조kKmMbB]/.test(m[2].replace(/^\s*-/, ""))) return null;
   const v = evaluate(m[2]);
   return v === null ? null : `${m[1]}${m[2]} = ${withKorean(v)}`;
 }
