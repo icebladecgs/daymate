@@ -8,9 +8,12 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // 사진 전체화면 보기 — 두 손가락 확대·두 번 탭 확대·마우스 휠 확대, 확대 중 끌어서 이동,
 // 여러 장이면 좌우로 밀어 넘기기. 휴대폰 뒤로가기는 사진만 닫는다(열 때 히스토리 한 칸 추가).
-// photos: [{ url }], index: 처음 보여줄 사진 번호
-export default function PhotoViewer({ photos = [], index = 0, onClose }) {
+// photos: [{ url, caption? }], index: 처음 보여줄 사진 번호, onIndexChange: 넘길 때마다 지금 번호 (선택)
+export default function PhotoViewer({ photos = [], index = 0, onClose, onIndexChange }) {
   const [cur, setCur] = useState(() => clamp(index, 0, Math.max(0, photos.length - 1)));
+  const onIndexRef = useRef(onIndexChange);
+  onIndexRef.current = onIndexChange;
+  useEffect(() => { onIndexRef.current?.(cur); }, [cur]);
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -148,8 +151,9 @@ export default function PhotoViewer({ photos = [], index = 0, onClose }) {
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "#000", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", flexShrink: 0, color: "#fff" }}>
-        <div style={{ flex: 1, fontSize: 14, fontWeight: 700, opacity: 0.85 }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {photos.length > 1 ? `${cur + 1} / ${photos.length}` : ""}
+          {photo.caption && <span style={{ fontWeight: 500, marginLeft: photos.length > 1 ? 10 : 0 }}>{photo.caption}</span>}
         </div>
         <button onClick={() => window.open(photo.url, "_blank", "noopener")}
           style={{ ...btn, width: "auto", borderRadius: 20, padding: "0 14px", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>

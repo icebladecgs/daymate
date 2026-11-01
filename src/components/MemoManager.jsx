@@ -278,13 +278,19 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   );
 
   // 📷 사진 분류 — 목록 자리에 사진 모음(월별 3칸). 검색어가 있으면 그 글자가 든 메모·일정의 사진만,
-  // 사진을 누르면 아래 편집 칸에 그 기록이 열린다 (예전 통합 검색 화면의 사진 모아보기를 옮겨 옴, 2026-11-01)
+  // 사진을 누르면 크게 보기(좌우로 넘기며 모음 전체를 본다) — 넘길 때마다 아래 편집 칸에 그 사진의 기록이 열린다
+  // (예전 통합 검색 화면의 사진 모아보기를 옮겨 옴, 2026-11-01)
   const photoWall = useMemo(() => (filter !== "photo" ? [] : list
-    .flatMap(it => it.photos.filter(p => p?.url).map((p, i) => ({ key: `${it.key}|${i}`, url: p.url, ds: it.ds, kind: it.kind, itemKey: it.key })))
+    .flatMap(it => it.photos.filter(p => p?.url).map((p, i) => ({ key: `${it.key}|${i}`, url: p.url, ds: it.ds, kind: it.kind, itemKey: it.key, caption: `${formatKoreanDate(it.ds)} · ${it.title}` })))
     .sort((a, b) => b.ds.localeCompare(a.ds))), [filter, list]);
+  const [wallViewer, setWallViewer] = useState(null); // 크게 보는 사진 번호
   const wall = (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 4px 10px" }}>
-      <PhotoWall photos={photoWall} query={query} onOpen={(p) => select(p.itemKey)} tile={wide ? 120 : 0} />
+      <PhotoWall photos={photoWall} query={query} onOpen={(p) => setWallViewer(photoWall.indexOf(p))} tile={wide ? 120 : 0} />
+      {wallViewer !== null && photoWall.length > 0 && (
+        <PhotoViewer photos={photoWall} index={wallViewer} onClose={() => setWallViewer(null)}
+          onIndexChange={(i) => photoWall[i] && select(photoWall[i].itemKey)} />
+      )}
     </div>
   );
   const listArea = filter === "photo" ? wall : table;
