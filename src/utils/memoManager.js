@@ -69,7 +69,7 @@ export const BASE_FILTERS = [
   { id: "task", label: "일정", icon: "📅" },
   { id: "journal", label: "일기", icon: "📖" },
   { id: "starred", label: "즐겨찾기", icon: "⭐" },
-  { id: "photo", label: "사진 있음", icon: "📷" },
+  { id: "photo", label: "사진", icon: "📷" },
   { id: "locked", label: "잠긴 메모", icon: "🔒" },
   { id: "today", label: "오늘", icon: "🕐" },
   { id: "yesterday", label: "어제", icon: "🕐" },

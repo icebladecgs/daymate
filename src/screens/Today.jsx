@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
-import SearchViewer from "./SearchViewer.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
@@ -40,7 +39,6 @@ export default function Today({
   onRequireLogin,
   frequentTags,
   myTags,
-  hiddenTags,
   onHideTag,
   statFeedback,
   onClearStatFeedback,
@@ -55,7 +53,6 @@ export default function Today({
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = tasks.filter((t) => t.title.trim()).length;
   const doneTasks = tasks.filter((t) => t.done && t.title.trim());
-  const [showSearch, setShowSearch] = useState(false);
   // 🔍는 메모 관리자(검색창 포함)를 연다. 사진 모아보기·찾은 단어 이동은 메모 관리자의 상세검색에서
   const openMemoManager = () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }));
   const [carryDismissed, setCarryDismissed] = useState(() => store.get('dm_carry_dismissed', '') === dateStr); // "어제 못 한 할일" 카드를 오늘 닫았는지
@@ -314,15 +311,6 @@ export default function Today({
     deleteSomeday(item.id, { keepPhotos: true });
   };
 
-  // 데스크탑 앱의 "메모 검색" 단축키 — 오늘 화면으로 이동한 뒤 검색창을 연다.
-  // 화면이 뜨기 전에 신호가 오면 놓치지 않게 window.__dmOpenSearchPending 표시도 확인
-  useEffect(() => {
-    const open = () => { window.__dmOpenSearchPending = false; setShowSearch(true); };
-    if (window.__dmOpenSearchPending) open();
-    window.addEventListener('dm:open-search', open);
-    return () => window.removeEventListener('dm:open-search', open);
-  }, []);
-
   // 목록에서 "지금" 표시할 할일 (오늘을 볼 때만)
   const nowFound = taskDayOffset === 0 ? findNowTask(tasks, nowMin) : { current: null, next: null };
   const nowTaskId = nowFound.current?.task.id || null;
@@ -369,7 +357,6 @@ export default function Today({
   const secTitle = S.sectionTitle;
   const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} uid={uid} setToast={setToast} hiddenTags={hiddenTags} onHideTag={onHideTag} />;
 
   if (longMemo) return (
     <LongMemoEditor

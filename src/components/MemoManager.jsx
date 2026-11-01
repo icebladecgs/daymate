@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
+import PhotoWall from "./PhotoWall.jsx";
 import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
@@ -45,7 +46,7 @@ const updateMemoIn = (day, id, patch) => {
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
 // 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
-export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onOpenSearch, onRequireLogin }) {
+export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onRequireLogin }) {
   const [toast, setToast] = useState("");
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -276,6 +277,18 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     </div>
   );
 
+  // 📷 사진 분류 — 목록 자리에 사진 모음(월별 3칸). 검색어가 있으면 그 글자가 든 메모·일정의 사진만,
+  // 사진을 누르면 아래 편집 칸에 그 기록이 열린다 (예전 통합 검색 화면의 사진 모아보기를 옮겨 옴, 2026-11-01)
+  const photoWall = useMemo(() => (filter !== "photo" ? [] : list
+    .flatMap(it => it.photos.filter(p => p?.url).map((p, i) => ({ key: `${it.key}|${i}`, url: p.url, ds: it.ds, kind: it.kind, itemKey: it.key })))
+    .sort((a, b) => b.ds.localeCompare(a.ds))), [filter, list]);
+  const wall = (
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 4px 10px" }}>
+      <PhotoWall photos={photoWall} query={query} onOpen={(p) => select(p.itemKey)} tile={wide ? 120 : 0} />
+    </div>
+  );
+  const listArea = filter === "photo" ? wall : table;
+
   // [[키워드]]·#태그를 누르면 그 태그 목록으로 (크게 보던 중이면 목록이 보이게 돌아온다)
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
@@ -291,8 +304,6 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <button onClick={onClose} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
         <div style={{ fontSize: 15, fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
         <button onClick={addMemo} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
-        {/* 통합 검색 화면 — 사진 모아보기·찾은 단어 하나씩 이동은 그쪽에만 있다 */}
-        {onOpenSearch && <button onClick={onOpenSearch} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>🔎 본문·사진</button>}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); rememberQuery(); move(1); } else if (e.key === "ArrowDown" && (query || !recentQs.length)) { e.preventDefault(); move(1); } else if (e.key === "ArrowUp" && (query || !recentQs.length)) { e.preventDefault(); move(-1); } }}
@@ -315,7 +326,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <div style={{ width: 200, flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            {!isBig && <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{table}</div>}
+            {!isBig && <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{listArea}</div>}
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
               {detail}
             </div>
@@ -325,7 +336,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {!isBig && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>}
           {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: 132, overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
-          {!isBig && <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{table}</div>}
+          {!isBig && <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{listArea}</div>}
           <div style={{ flex: "1 1 60%", minHeight: 0, display: "flex", flexDirection: "column" }}>
             {detail}
           </div>

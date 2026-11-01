@@ -6,7 +6,6 @@ import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, normalizeGoals, se
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
-import SearchViewer from "./SearchViewer.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
@@ -86,7 +85,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   };
 
   useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
-  const [showSearch, setShowSearch] = useState(false);
   const [preview, setPreview] = useState(null);
   const [quickTaskInput, setQuickTaskInput] = useState('');
   // 할일 상세(메모·사진) — 미리보기 중인 날짜의 할일. 구글 캘린더에는 반영하지 않음
@@ -405,7 +403,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     </div>
   );
 
-  if (showSearch) return <SearchViewer plans={plans} onClose={() => setShowSearch(false)} onOpenDate={onOpenDate} onUpdateDayData={onUpdateDayData} />;
 
   // 달력 미리보기 할일 삭제 — 목록의 ✕와 상세 창의 삭제 버튼이 함께 쓴다 (확인창에서 취소하면 false)
   const deletePreviewTask = (t) => {
@@ -458,7 +455,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           <div style={S.title}>달력</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setShowSearch(true)} title="날짜 검색" aria-label="날짜 검색" style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36 }}>🔍</button>
+          <button onClick={() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }))} title="메모 관리자에서 찾기" aria-label="찾기" style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36 }}>🔍</button>
           <button
             onClick={async () => {
               const token = getValidGcalToken?.();

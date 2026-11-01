@@ -5,7 +5,8 @@ const PAGE = 60; // 원본 크기 사진이라 한 번에 다 그리면 휴대�
 const monthLabel = (ym) => `${ym.slice(0, 4)}년 ${Number(ym.slice(5, 7))}월`;
 
 // 인스타그램식 사진 모음 — 3열 정사각형, 월별 구분 줄, 누르면 해당 메모·일정으로 이동
-export default function PhotoWall({ photos, query, onOpen }) {
+// tile: 칸 최소 크기(px) — 주면 넓은 화면에서 한 줄에 여러 장(메모 관리자 PC 화면). 안 주면 3칸
+export default function PhotoWall({ photos, query, onOpen, tile = 0 }) {
   const [visible, setVisible] = useState(PAGE);
   const sentinelRef = useRef(null);
 
@@ -42,7 +43,7 @@ export default function PhotoWall({ photos, query, onOpen }) {
       {groups.map(({ ym, items }) => (
         <div key={ym} style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", padding: "6px 12px 8px" }}>{monthLabel(ym)}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3 }}>
+          <div style={{ display: "grid", gridTemplateColumns: tile ? `repeat(auto-fill, minmax(${tile}px, 1fr))` : "repeat(3, 1fr)", gap: 3 }}>
             {items.map(p => (
               <button key={p.key} type="button" onClick={() => onOpen(p)}
                 aria-label={p.kind === "memo" ? "메모 열기" : "일정 열기"}

@@ -1332,8 +1332,14 @@ export default function App() {
   const navigateRef = useRef(null);
   useEffect(() => {
     const onNavigate = (e) => navigateRef.current?.(e.detail);
+    // 데스크탑 앱의 "메모 검색" 단축키(dm:open-search) — 찾기는 메모 관리자 하나로 (예전 통합 검색 화면은 없앰, 2026-11-01)
+    const onOpenSearch = () => { window.__dmOpenSearchPending = false; navigateRef.current?.('manager'); };
     window.addEventListener('dm:navigate', onNavigate);
-    return () => window.removeEventListener('dm:navigate', onNavigate);
+    window.addEventListener('dm:open-search', onOpenSearch);
+    return () => {
+      window.removeEventListener('dm:navigate', onNavigate);
+      window.removeEventListener('dm:open-search', onOpenSearch);
+    };
   }, []);
   // 계정에 1분 넘게 못 올라간 날짜 기록 알림(UnsyncedBar) — 로그인 상태에서만, 평소엔 안 보임.
   // 인터넷이 다시 연결되면 자동으로 다시 저장한다. 닫으면 개수가 바뀌기 전까지 다시 띄우지 않는다
@@ -2628,12 +2634,6 @@ export default function App() {
           uid={authUser?.uid}
           onClose={() => history.back()}
           onOpenDate={(ds) => openDetail(ds)}
-          onOpenSearch={() => {
-            // 오늘 화면의 통합 검색을 연다(데스크탑 "메모 검색" 단축키와 같은 방식, Today.jsx)
-            window.__dmOpenSearchPending = true;
-            changeScreen("today");
-            window.dispatchEvent(new Event("dm:open-search"));
-          }}
           onRequireLogin={() => googleSignIn().catch(() => {})}
         />
       );
