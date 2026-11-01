@@ -12,6 +12,7 @@ import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
 import { handleEditorKey } from "../utils/editorAssist.js";
+import { printMemo } from "../utils/printMemo.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import MemoSettings from "./MemoSettings.jsx";
 import Toast from "./Toast.jsx";
@@ -440,6 +441,23 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { photos: next }));
     else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: next } : x)) }));
   };
+  // ⧉ 복사(휴대폰·PC) · 🖨 출력(PC만 — 포스트잇과 같은 A4 출력, utils/printMemo.js). 일기는 잘한 일·아쉬운 일·내일도 함께 (2026-11-01)
+  const fullText = () => {
+    if (item.kind !== "journal") return text;
+    const extra = [journal?.good && `😊 잘한 일: ${journal.good}`, journal?.regret && `🤔 아쉬운 일: ${journal.regret}`, journal?.tomorrow && `➡️ 내일: ${journal.tomorrow}`].filter(Boolean);
+    return extra.length ? [text, "", ...extra].join("\n") : text;
+  };
+  const copyText = async () => {
+    const t = fullText();
+    if (!t.trim()) { onError?.("복사할 내용이 없어요"); return; }
+    try { await navigator.clipboard.writeText(t); onError?.("복사했어요"); } catch { onError?.("복사하지 못했어요"); }
+  };
+  const printText = () => {
+    const t = fullText();
+    if (!t.trim()) { onError?.("출력할 내용이 없어요"); return; }
+    const head = `${formatKoreanDate(item.ds)}${item.kind === "task" && title.trim() ? ` · ${title.trim()}` : item.kind === "journal" ? " · 일기" : ""}`;
+    if (!printMemo(t, head)) onError?.("출력 창을 열지 못했어요");
+  };
   const small = { padding: z("5px 10px", "7px 12px"), borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
 
   return (
@@ -450,6 +468,8 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
         <button onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
         <button onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
+        <button onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
+        {canAutoFocus() && <button onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
         {item.kind === "memo" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
         )}
