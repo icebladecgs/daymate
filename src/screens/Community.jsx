@@ -365,7 +365,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleConfirmAccessPassword = () => {
     if (!accessPasswordModal) return;
-    const normalizedInput = String(accessPasswordInput).replace(/\D/g, '').slice(0, 4);
+    const normalizedInput = String(accessPasswordInput).replace(/\D/g, '').slice(0, 6);
     if (normalizedInput !== accessPasswordModal.password) {
       setToast('비밀번호가 틀렸어요 ❌');
       return;
@@ -591,6 +591,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleCreate = async () => {
     if (!nameInput.trim() || !nicknameInput.trim()) return;
+    if (createPassword && !/^\d{4,6}$/.test(createPassword)) { setToast('암호는 숫자 4~6자리로 입력해 주세요'); return; }
     setSubmitting(true);
     try {
       const { communityId: id } = await createCommunity(authUser.uid, nameInput.trim(), nicknameInput.trim(), isPublic, createPassword.trim() || null);
@@ -727,7 +728,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   const handleSavePassword = async () => {
     const val = passwordEditValue.trim();
-    if (val && !/^\d{4}$/.test(val)) { setToast('암호는 숫자 4자리로 입력해 주세요'); return; }
+    if (val && !/^\d{4,6}$/.test(val)) { setToast('암호는 숫자 4~6자리로 입력해 주세요'); return; }
     setSavingPassword(true);
     try {
       await setCommunityPassword(communityId, val || null);
@@ -862,20 +863,19 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           >
             <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호 4자리를 입력해주세요.</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호(숫자 4~6자리)를 입력해주세요.</div>
             <input
               autoFocus
               style={{ ...S.input, marginBottom: 10, textAlign: 'center', letterSpacing: 6, fontSize: 18 }}
-              placeholder="0000"
               inputMode="numeric"
               type="text"
               value={accessPasswordInput}
-              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') handleConfirmAccessPassword();
                 if (event.key === 'Escape') closeAccessPasswordModal();
               }}
-              maxLength={4}
+              maxLength={6}
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -888,8 +888,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               <button
                 type="button"
                 onClick={handleConfirmAccessPassword}
-                disabled={accessPasswordInput.length !== 4}
-                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length === 4 ? 1 : 0.5 }}
+                disabled={accessPasswordInput.length < 4}
+                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length >= 4 ? 1 : 0.5 }}
               >
                 입장
               </button>
@@ -1101,12 +1101,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           </div>
           <input
             style={S.input}
-            placeholder="입장 암호 4자리 숫자 (선택 · 없으면 빈칸)"
+            placeholder="입장 암호 숫자 4~6자리 (선택 · 6자리 권장)"
             type="text"
             inputMode="numeric"
             value={createPassword}
-            onChange={e => setCreatePassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            maxLength={4}
+            onChange={e => setCreatePassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            maxLength={6}
           />
           <button style={S.btn} onClick={handleCreate} disabled={submitting || !nameInput.trim() || !nicknameInput.trim()}>
             {submitting ? '생성 중...' : '만들기'}
@@ -1151,7 +1151,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   {selectedPublic.hasPassword && (
                     <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(255,107,107,.08)', border: '1px solid rgba(255,107,107,.3)' }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#FF6B6B', marginBottom: 6 }}>🔑 이 방은 비밀번호가 필요해요</div>
-                      <input style={{ ...S.input, borderColor: 'rgba(255,107,107,.4)', margin: 0 }} placeholder="비밀번호 4자리" type="text" inputMode="numeric" value={pubPassword} onChange={e => setPubPassword(e.target.value.replace(/\D/g, '').slice(0, 4))} maxLength={4} />
+                      <input style={{ ...S.input, borderColor: 'rgba(255,107,107,.4)', margin: 0 }} placeholder="비밀번호 (숫자 4~6자리)" type="text" inputMode="numeric" value={pubPassword} onChange={e => setPubPassword(e.target.value.replace(/\D/g, '').slice(0, 6))} maxLength={6} />
                     </div>
                   )}
                   <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
@@ -1186,12 +1186,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   {foundCommunity.hasPassword && (
                     <input
                       style={S.input}
-                      placeholder="입장 암호 4자리"
+                      placeholder="입장 암호 (숫자 4~6자리)"
                       type="text"
                       inputMode="numeric"
                       value={codePassword}
-                      onChange={e => setCodePassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      maxLength={4}
+                      onChange={e => setCodePassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
                     />
                   )}
                   <input style={S.input} placeholder="내 닉네임" value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} maxLength={20} />
@@ -1228,20 +1228,19 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           >
             <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호 4자리를 입력해주세요.</div>
+            <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호(숫자 4~6자리)를 입력해주세요.</div>
             <input
               autoFocus
               style={{ ...S.input, marginBottom: 10, textAlign: 'center', letterSpacing: 6, fontSize: 18 }}
-              placeholder="0000"
               inputMode="numeric"
               type="text"
               value={accessPasswordInput}
-              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              onChange={(event) => setAccessPasswordInput(event.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') handleConfirmAccessPassword();
                 if (event.key === 'Escape') closeAccessPasswordModal();
               }}
-              maxLength={4}
+              maxLength={6}
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -1254,8 +1253,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               <button
                 type="button"
                 onClick={handleConfirmAccessPassword}
-                disabled={accessPasswordInput.length !== 4}
-                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length === 4 ? 1 : 0.5 }}
+                disabled={accessPasswordInput.length < 4}
+                style={{ ...S.btn, flex: 1, marginTop: 0, opacity: accessPasswordInput.length >= 4 ? 1 : 0.5 }}
               >
                 입장
               </button>
@@ -1378,11 +1377,11 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             <>
               <input
                 value={passwordEditValue}
-                onChange={e => setPasswordEditValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={e => setPasswordEditValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={e => { if (e.key === 'Enter') handleSavePassword(); if (e.key === 'Escape') { setShowPasswordEdit(false); setPasswordEditValue(''); } }}
                 autoFocus
-                maxLength={4}
-                placeholder="숫자 4자리 (빈칸=제거)"
+                maxLength={6}
+                placeholder="숫자 4~6자리 (빈칸=제거)"
                 style={{ ...S.input, fontSize: 12, padding: '3px 8px', marginBottom: 0, width: 140 }}
               />
               <button onClick={handleSavePassword} disabled={savingPassword}

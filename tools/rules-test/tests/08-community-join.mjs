@@ -129,6 +129,10 @@ await t('허용: 만든 커뮤니티에 코드+비밀번호로 가입', assertSu
 // 관리자가 비밀번호 바꾸기 (setCommunityPassword)
 await t('허용: 관리자가 비밀번호 바꾸기', assertSucceeds(setDoc(doc(as('leader'), 'communities/priv/private/secret'), { password: '9999' }, { merge: true })));
 await t('허용: 관리자가 비밀번호 표시 바꾸기', assertSucceeds(updateDoc(doc(as('leader'), 'communities/priv'), { hasPassword: true })));
+// 비밀번호 4~6자리 (2026-11-01) — 6자리로 바꾸기
+await t('허용: 관리자가 6자리 비밀번호로 바꾸기', assertSucceeds(setDoc(doc(as('leader'), 'communities/pubPw/private/secret'), { password: '135790' }, { merge: true })));
+await t('차단: 6자리 중 앞 4자리만', assertFails(join('j11', 'pubPw', { joinKey: '1357' })));
+await t('허용: 6자리 비밀번호로 가입', assertSucceeds(join('ok10', 'pubPw', { joinKey: '135790' })));
 await t('차단: 바뀌기 전 비밀번호로 가입', assertFails(join('j9', 'priv', { joinCode: 'PRV123', joinKey: '1234' })));
 await t('허용: 바뀐 비밀번호로 가입', assertSucceeds(join('ok8', 'priv', { joinCode: 'PRV123', joinKey: '9999' })));
 
