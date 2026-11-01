@@ -16,6 +16,7 @@ import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { UNSYNCED_DAYS_KEY, markDayUnsynced, isDayUnsynced } from "./utils/daySync.js";
+import { prepareAccount } from "./utils/accountSwap.js";
 import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImportedGcalTask, dedupeDayTasks, mergeTasksIntoDay, mergeImportedGcalTasks } from "./utils/dayMerge.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
@@ -139,7 +140,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', handler);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [toast, setToast] = useState("");
+  // 계정을 바꿔 끼우고 새로 연 직후 한 번 알림 (utils/accountSwap.js)
+  const [toast, setToast] = useState(() => {
+    try {
+      const swapped = sessionStorage.getItem("dm_account_swapped");
+      if (!swapped) return "";
+      sessionStorage.removeItem("dm_account_swapped");
+      return swapped === "back" ? "이 계정의 기록으로 바꿨어요 (다른 계정 기록은 이 기기에 따로 보관돼 있어요)" : "다른 계정 기록은 이 기기에 따로 보관했어요";
+    } catch { return ""; }
+  });
   const [communityUnread, setCommunityUnread] = useState(0);
   const [pendingInviteCode, setPendingInviteCode] = useState(() => store.get('dm_pending_invite', ''));
   const [recentInviteReward, setRecentInviteReward] = useState(() => store.get('dm_recent_invite_reward', null));
@@ -1413,6 +1422,17 @@ export default function App() {
   // Firebase auth listener
   useEffect(() => {
     return onAuth(async (firebaseUser) => {
+      // 같은 기기에서 다른 계정으로 로그인하면 이 기기 기록을 계정별로 바꿔 끼우고 앱을 새로 연다 (utils/accountSwap.js).
+      // 이전 계정 기록이 새 계정으로 올라가거나 화면에 섞이지 않게, 다른 무엇보다 먼저 한다
+      if (firebaseUser) {
+        const swap = await prepareAccount(firebaseUser.uid);
+        if (swap === "swapped") { window.location.reload(); return; }
+        if (swap === "failed") {
+          window.alert("이 기기에 있는 이전 계정 기록을 따로 보관하지 못해서 로그인을 멈췄어요. 기록이 섞이지 않게 하기 위해서예요. 잠시 뒤 다시 시도해 주세요.");
+          googleSignOut().catch(() => {});
+          return;
+        }
+      }
       setAuthUser(firebaseUser);
       if (!firebaseUser) return;
 

@@ -1,7 +1,7 @@
 {
   "name": "daymate",
   "private": true,
-  "version": "0.808.0",
+  "version": "0.809.0",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
@@ -11,6 +11,7 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:data": "node scripts/data-test.mjs",
     "test:rules": "node tools/rules-test/rules.mjs test",
+    "test:account": "node tools/rules-test/rules.mjs account",
     "rules:deploy": "node tools/rules-test/rules.mjs deploy",
     "rules:login": "node tools/rules-test/rules.mjs login",
     "predev": "npm run generate:version",
