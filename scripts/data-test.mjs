@@ -87,6 +87,15 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   t('미동기화: 새 포스트잇 메모 유지', merged.memos.some(m => m.id === 'm2'));
   t('미동기화: 다른 기기에서 쓴 메모도 살림', merged.memos.some(m => m.id === 'm3'));
   t('미동기화: 이 기기 일기 유지', merged.journal?.body === '이 기기 일기');
+  // 인터넷 없이 넣은 지 10분 지난 할일 — 예전엔 "5분 이내"만 살려서 사라졌다 (2026-11-01)
+  const offlineLocal = { ...local, tasks: [...local.tasks, { id: `t_${now - 10 * 60 * 1000}`, title: '10분 전 오프라인 할일' }] };
+  const merged10 = keepUnsyncedLocal(mergeImportedGcalTasks(remote, offlineLocal, true), offlineLocal);
+  t('미동기화: 10분 전 추가한 할일도 유지', merged10.tasks.some(x => x.title === '10분 전 오프라인 할일'));
+  t('미동기화: 할일이 겹쳐 들어가지 않음', merged10.tasks.filter(x => x.title === '방금 추가한 할일').length === 1 && merged10.tasks.filter(x => x.id === 't1').length === 1);
+  // 인터넷 없이 지운 메모(이 기기 휴지통) — 서버에 남아 있어도 되살리지 않음 (2026-11-01)
+  const deletedLocal = { ...local, memos: [{ id: 'm1', text: '이 기기에서 고친 버전' }], memoTrash: [{ id: 'm3', text: '다른 기기에서 쓴 메모', deletedAt: new Date().toISOString() }] };
+  const mergedDel = keepUnsyncedLocal(mergeImportedGcalTasks(remote, deletedLocal, true), deletedLocal);
+  t('미동기화: 오프라인에서 지운 메모는 되살리지 않음', !mergedDel.memos.some(m => m.id === 'm3') && mergedDel.memoTrash?.some(m => m.id === 'm3'));
 
   // 동기화된 날짜: 서버가 우선 — 이 기기의 옛 버전이 다른 기기 입력을 덮으면 안 됨
   const synced = mergeImportedGcalTasks(remote, local, false);

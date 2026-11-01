@@ -32,12 +32,19 @@ export function stampMemoUpdates(prevDay, nextDay) {
 // 서버에 못 올린 변경이 있는 날짜: 할일은 mergeImportedGcalTasks(localWins)로 합치고, 나머지(메모·일기·습관 체크 등)도
 // 이 기기 내용을 우선한다. 메모는 같은 id면 이 기기 것, 서버에만 있는 메모(그 사이 다른 기기에서 쓴 것)는 뒤에 붙인다.
 // 예전엔 할일만 지켜서, 데스크탑 간편 메모를 만든 직후 서버 내용을 받으면 새 메모가 사라졌다(2026-09-25).
+// 할일: 서버에 없는 이 기기 할일은 만든 시각과 상관없이 모두 살린다 — mergeImportedGcalTasks는 "5분 이내"만 살려서,
+// 인터넷 없이 넣고 10분 뒤 앱을 다시 열면 할일이 사라지고 서버에도 빠진 채 저장됐다(2026-11-01, ChatGPT 검토로 발견).
+// 메모: 이 기기 휴지통에 있는 메모(인터넷 없이 지운 것)는 서버에만 남아 있어도 되살리지 않는다.
 export function keepUnsyncedLocal(mergedDay, localDay) {
   if (!localDay) return mergedDay;
   const localMemos = Array.isArray(localDay.memos) ? localDay.memos : [];
   const localIds = new Set(localMemos.map(m => m.id));
-  const remoteOnly = (mergedDay?.memos || []).filter(m => !localIds.has(m.id));
-  return { ...mergedDay, ...localDay, tasks: mergedDay?.tasks || localDay.tasks, memos: [...localMemos, ...remoteOnly] };
+  const trashIds = new Set((localDay.memoTrash || []).map(m => m.id));
+  const remoteOnly = (mergedDay?.memos || []).filter(m => !localIds.has(m.id) && !trashIds.has(m.id));
+  const tasks = mergedDay?.tasks || localDay.tasks;
+  const taskIds = new Set((tasks || []).map(x => String(x.id)));
+  const missing = (localDay.tasks || []).filter(x => x?.title?.trim() && !taskIds.has(String(x.id)));
+  return { ...mergedDay, ...localDay, tasks: missing.length ? mergeTasksIntoDay({ tasks }, missing).tasks : tasks, memos: [...localMemos, ...remoteOnly] };
 }
 
 // 서버 할일에는 없고 이 기기 할일(같은 ID)에만 남은 메모·사진·파일을 되살린다

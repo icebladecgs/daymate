@@ -135,16 +135,13 @@ async function askClaude(userMessage, today, uid) {
     messages: [{ role: 'user', content: userMessage }],
   });
 
-  // tool use 처리 — 한 메시지에 tool_use가 여러 개면 각 도구가 앞선 도구의 결과를 보고 실행되도록
-  // todayData를 순차적으로 갱신해가며 스레딩한다 (안 그러면 뒤 도구가 stale 데이터로 덮어써서
-  // 앞선 도구의 변경이 사라짐)
+  // tool use 처리 — 도구마다 트랜잭션으로 최신 기록을 다시 읽어 바꾼 칸만 저장한다(updateDay).
+  // 할일 번호는 AI에게 보여 준 목록(todayData) 기준으로 찾는다 — 앞 도구가 지워도 번호가 밀리지 않게
   const toolResults = [];
-  let currentDayData = todayData;
   for (const block of response.content) {
     if (block.type === 'tool_use') {
-      const { message, nextDayData } = await executeTool(block.name, block.input, today, currentDayData, uid);
+      const { message } = await executeTool(block.name, block.input, today, todayData, uid);
       toolResults.push({ toolName: block.name, result: message });
-      currentDayData = nextDayData;
     }
   }
 
@@ -176,59 +173,73 @@ async function askClaude(userMessage, today, uid) {
   return response.content.find(b => b.type === 'text')?.text || '죄송해요, 다시 말씀해주세요.';
 }
 
+// 하루 기록을 트랜잭션으로 고친다 — 봇이 AI 답을 기다리는 몇 초 사이에 앱에서 같은 날 기록을 고쳐도 덮어쓰지 않게
+// (예전엔 처음 읽은 하루 기록 전체를 다시 저장했다, 2026-11-01 ChatGPT 검토로 발견).
+// change(최신 기록) → { patch: 바꿀 칸만, message } (patch가 null이면 저장 안 함). _syncedAt은 다른 기기 반영용
+async function updateDay(uid, today, change) {
+  const ref = db.doc(`users/${uid}/days/${today}`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const { patch, message } = change(snap.data() || {});
+    if (patch) tx.set(ref, { ...patch, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return message;
+  });
+}
+
+// 번호(AI에게 보여 준 목록 기준)로 고른 할일을 최신 기록에서 id로 찾아 고친다
+function changeTaskById(id, title, edit, doneMsg) {
+  return (day) => {
+    const tasks = day.tasks || [];
+    if (!tasks.some(t => t.id === id && t.title?.trim())) return { patch: null, message: `"${title}" 할일이 이미 없어요` };
+    return { patch: { tasks: tasks.map(t => (t.id === id ? edit(t) : t)) }, message: doneMsg };
+  };
+}
+
 async function executeTool(name, input, today, todayData, uid) {
-  const allTasks = todayData.tasks || [];
-  const filledTasks = allTasks.filter(t => t.title?.trim());
+  const filledTasks = (todayData.tasks || []).filter(t => t.title?.trim());
 
   if (name === 'add_task') {
     const newTask = { id: `t${Date.now()}`, title: input.title, done: false, checkedAt: null, priority: false };
-    const tasks = [...allTasks];
-    const emptyIdx = tasks.findIndex(t => !t.title?.trim());
-    if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
-    else tasks.push(newTask);
-    const nextDayData = { ...todayData, tasks };
-    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return { message: `"${input.title}" 추가됨`, nextDayData };
+    const message = await updateDay(uid, today, (day) => {
+      const tasks = [...(day.tasks || [])];
+      const emptyIdx = tasks.findIndex(t => !t.title?.trim());
+      if (emptyIdx >= 0) tasks[emptyIdx] = newTask;
+      else tasks.push(newTask);
+      return { patch: { tasks }, message: `"${input.title}" 추가됨` };
+    });
+    return { message };
   }
 
-  if (name === 'complete_task') {
+  if (name === 'complete_task' || name === 'delete_task') {
     const target = filledTasks[input.number - 1];
-    if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
-    const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
-    const nextDayData = { ...todayData, tasks: updated };
-    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return { message: `"${target.title}" 완료 처리됨`, nextDayData };
-  }
-
-  if (name === 'delete_task') {
-    const target = filledTasks[input.number - 1];
-    if (!target) return { message: `번호 ${input.number}번 할일이 없습니다`, nextDayData: todayData };
-    const updated = allTasks.map(t => t.id === target.id ? { ...t, title: '', done: false } : t);
-    const nextDayData = { ...todayData, tasks: updated };
-    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return { message: `"${target.title}" 삭제됨`, nextDayData };
+    if (!target) return { message: `번호 ${input.number}번 할일이 없습니다` };
+    const message = await updateDay(uid, today, name === 'complete_task'
+      ? changeTaskById(target.id, target.title, t => ({ ...t, done: true, checkedAt: new Date().toISOString() }), `"${target.title}" 완료 처리됨`)
+      : changeTaskById(target.id, target.title, t => ({ ...t, title: '', done: false }), `"${target.title}" 삭제됨`));
+    return { message };
   }
 
   if (name === 'add_memo') {
-    const prev = todayData.memo || '';
-    const newMemo = prev ? `${prev}\n${input.content}` : input.content;
-    const nextDayData = { ...todayData, memo: newMemo };
-    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return { message: `메모 추가됨`, nextDayData };
+    const message = await updateDay(uid, today, (day) => {
+      const prev = day.memo || '';
+      return { patch: { memo: prev ? [prev, input.content].join('\n') : input.content }, message: '메모 추가됨' };
+    });
+    return { message };
   }
 
   if (name === 'toggle_habit') {
     const settingsSnap = await db.doc(`users/${uid}/data/settings`).get();
     const habits = settingsSnap.data()?.habits || [];
     const target = habits.find(h => h.name.toLowerCase().includes(input.habit_name.toLowerCase()));
-    if (!target) return { message: `"${input.habit_name}" 습관을 찾을 수 없습니다`, nextDayData: todayData };
-    const cur = todayData.habitChecks || {};
-    const nextDayData = { ...todayData, habitChecks: { ...cur, [target.id]: input.done } };
-    await db.doc(`users/${uid}/days/${today}`).set({ ...nextDayData, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return { message: `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`, nextDayData };
+    if (!target) return { message: `"${input.habit_name}" 습관을 찾을 수 없습니다` };
+    const message = await updateDay(uid, today, (day) => ({
+      patch: { habitChecks: { ...(day.habitChecks || {}), [target.id]: input.done } },
+      message: `"${target.name}" ${input.done ? '완료' : '취소'} 처리됨`,
+    }));
+    return { message };
   }
 
-  return { message: '알 수 없는 도구', nextDayData: todayData };
+  return { message: '알 수 없는 도구' };
 }
 
 export default async function handler(req, res) {
@@ -319,9 +330,8 @@ export default async function handler(req, res) {
         await send(fromChatId, `❌ 번호가 올바르지 않아요. 1~${filledTasks.length} 사이로 입력해주세요.`);
       } else {
         const target = filledTasks[num - 1];
-        const updated = allTasks.map(t => t.id === target.id ? { ...t, done: true, checkedAt: new Date().toISOString() } : t);
-        await db.doc(`users/${uid}/days/${today}`).set({ ...d, tasks: updated, _syncedAt: FieldValue.serverTimestamp() }, { merge: true });
-        await send(fromChatId, `✅ <b>${target.title}</b> 완료!`);
+        const message = await updateDay(uid, today, changeTaskById(target.id, target.title, t => ({ ...t, done: true, checkedAt: new Date().toISOString() }), ''));
+        await send(fromChatId, message || `✅ <b>${target.title}</b> 완료!`);
       }
     } else if (text === '/stats' || text === '/통계') {
       const snaps = await db.collection(`users/${uid}/days`).orderBy('__name__', 'desc').limit(7).get();
