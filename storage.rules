@@ -1,0 +1,31 @@
+rules_version = '2';
+// 사진 저장소(Firebase Storage) 보안 규칙 — 원본은 이 파일 (2026-11-01~, 예전엔 콘솔에만 있었다)
+// 게시: npm run rules:deploy (Firestore 규칙과 같이, 테스트 통과해야 게시)
+//
+// 사진은 모두 uploadPhoto(src/firebase.js)로 올리고 메타데이터 uid에 올린 사람을 적는다.
+// 화면·공유·사진 프록시는 다운로드 주소(보안 키 포함)로 열기 때문에 이 규칙과 상관없이 보인다 —
+// 커뮤니티·자유게시판 사진은 그 글을 볼 수 있는 사람이면 누구나 본다.
+// 이 규칙이 막는 것: 주소를 모르는 사람이 저장소를 뒤져(목록·직접 조회) 남의 사진을 찾는 것, 남의 사진 덮어쓰기.
+// 예전 규칙은 로그인 없이도 전체 목록과 모든 사진 읽기가 열려 있었다(2026-11-01 보안 점검에서 발견).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isImageUpload() {
+      return request.auth != null
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.metadata.uid == request.auth.uid;
+    }
+    function isUploader() {
+      return request.auth != null && resource.metadata.uid == request.auth.uid;
+    }
+    match /{allPaths=**} {
+      // 올린 직후 다운로드 주소를 받는 본인만 (getDownloadURL)
+      allow get: if isUploader();
+      allow list: if false;
+      // 같은 경로에 다시 올리기도 create로 들어온다 — 빈 자리이거나 내가 올린 사진일 때만
+      allow create: if isImageUpload() && (resource == null || isUploader());
+      allow update: if isImageUpload() && isUploader();
+      allow delete: if isUploader();
+    }
+  }
+}

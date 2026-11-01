@@ -207,6 +207,8 @@ Hobby 플랜에서 하루 1회를 초과하는 cron 스케줄이 하나라도 �
 
 Firestore에 새로운 컬렉션이나 서브컬렉션을 추가할 때는 Firebase 보안 규칙에도 해당 경로의 `match` 블록을 반드시 추가한다.
 
+**사진 저장소(Storage) 규칙 원본은 `storage.rules`다 (2026-11-01~, 예전엔 콘솔에만 있었고 로그인 없이 전체 목록·모든 사진이 열려 있었다).** 읽기(`get`)는 올린 본인만(올린 직후 `getDownloadURL`용), 목록은 아무도, 올리기는 빈 자리나 내 사진에만(같은 경로 덮어쓰기도 create로 들어온다), 지우기는 올린 본인만. 화면·공유·사진 프록시는 **다운로드 주소(보안 키 포함)**로 열어서 규칙과 상관없이 보인다 — 커뮤니티·자유게시판 사진은 그 글을 볼 수 있는 사람이 다 본다(사용자 확인). 사진은 `uploadPhoto`로만 올리고 메타데이터 `uid`를 붙인다 — 다른 방식으로 올리거나 SDK로 남의 사진을 읽는 기능을 만들면 이 규칙을 같이 고친다. `npm run rules:deploy`가 Firestore·Storage 규칙을 같이 게시한다.
+
 **보안 규칙 원본은 저장소 루트의 `firestore.rules`다 (2026-09-27~).** Firebase 콘솔에서 직접 고치지 않는다 — 콘솔에서 바꾸면 다음 게시 때 덮어써진다. 규칙 변경은 이 파일을 고치고 테스트 → 사용자 승인 → `npm run rules:deploy`로 게시한다. 상위 경로에 규칙이 있어도 하위 서브컬렉션에는 자동 상속되지 않으므로, 서브컬렉션마다 명시적으로 `match` 블록이 있어야 한다.
 
 보안 규칙을 추가하지 않으면 코드와 화면은 정상적으로 보여도 실제 저장·조회 과정에서 `permission-denied` 오류가 발생할 수 있다. "저장/등록이 안 된다"는 제보를 받으면 먼저 브라우저 콘솔 에러부터 확인한다 — "Missing or insufficient permissions"가 보이면 규칙 문제로 바로 확정할 수 있다.
@@ -239,7 +241,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 
 ### 보안 규칙 변경 시 검증 방법
 
-- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-11-01 기준 278개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
+- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-11-01 기준 300개, 사진 저장소 `10-storage.mjs` 포함 — 에뮬레이터는 firestore·storage). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
 - 규칙을 바꾸면 **테스트도 같이 추가**한다 — 새 파일 `tools/rules-test/tests/0N-이름.mjs`(기존 파일 형식: `t(이름, assertSucceeds/assertFails(...))`, 끝에 합계와 `process.exitCode`).
 - Java는 `tools/rules-test/rules.mjs`가 알아서 찾는다(2026-10-08~): 윈도우는 `C:\baduk\LizzieYZY\jre\java11\bin` → 설치된 Temurin(`Program Files\Eclipse Adoptium`, 설치 직후 PATH가 안 바뀐 터미널에서도 찾음) → PATH 순서, 하나도 없으면 **winget으로 Temurin 17을 자동 설치**한다(관리자 확인 창에서 "예"). 맥은 PATH의 Java를 쓰고, 없으면 `brew install --cask temurin@17` 안내 후 멈춘다. `C:\Dev\Projects\daymate` PC에는 2026-10-08 Temurin 17을 설치했다. 스크립트에서 환경변수를 고칠 때 윈도우는 이름이 `Path`라 `env.PATH`로 쓰면 원래 경로를 잃는다(`node` 못 찾음) — 실제 키 이름을 찾아 쓴다. 같은 PC에서 기본 점검이 브라우저 없음으로 멈추면 `npx playwright install chromium`. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
 - "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.

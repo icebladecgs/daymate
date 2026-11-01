@@ -1,4 +1,4 @@
-// Firestore 보안 규칙 테스트·게시 — 원본은 저장소 루트의 firestore.rules
+// Firestore·사진 저장소(Storage) 보안 규칙 테스트·게시 — 원본은 저장소 루트의 firestore.rules·storage.rules
 //   npm run test:rules    에뮬레이터(demo-daymate, 실제 서버 접속 없음)로 tests/ 전부 실행
 //   npm run rules:deploy  테스트 통과 후 실제 Firebase(daymate-a9ff6)에 게시 — 사용자 승인 뒤에만 실행
 // 처음 한 번: 도구 설치(자동), 게시하려면 `npm run rules:login`으로 Firebase 로그인
@@ -57,7 +57,7 @@ function ensureJava() {
 function test() {
   if (!ensureJava()) return 1;
   const inner = `node "${path.join(toolDir, 'run-all.mjs')}"`;
-  return run(firebaseBin, ['emulators:exec', '--only', 'firestore', '--project', 'demo-daymate', isWin ? `"${inner}"` : inner], { env });
+  return run(firebaseBin, ['emulators:exec', '--only', 'firestore,storage', '--project', 'demo-daymate', isWin ? `"${inner}"` : inner], { env });
 }
 
 if (cmd === 'test') process.exit(test());
@@ -65,7 +65,7 @@ if (cmd === 'login') process.exit(run(firebaseBin, ['login']));
 if (cmd === 'deploy') {
   if (test() !== 0) { console.error('\n규칙 테스트가 실패해서 게시하지 않았어요.'); process.exit(1); }
   console.log('\n테스트 통과 — 실제 Firebase(daymate-a9ff6)에 규칙을 게시해요…');
-  process.exit(run(firebaseBin, ['deploy', '--only', 'firestore:rules', '--project', 'daymate-a9ff6']));
+  process.exit(run(firebaseBin, ['deploy', '--only', 'firestore:rules,storage', '--project', 'daymate-a9ff6']));
 }
 console.error(`모르는 명령: ${cmd} (test | deploy | login)`);
 process.exit(1);
