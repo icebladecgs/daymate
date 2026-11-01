@@ -6,9 +6,17 @@ const monthLabel = (ym) => `${ym.slice(0, 4)}년 ${Number(ym.slice(5, 7))}월`;
 
 // 인스타그램식 사진 모음 — 3열 정사각형, 월별 구분 줄, 누르면 해당 메모·일정으로 이동
 // tile: 칸 최소 크기(px) — 주면 넓은 화면에서 한 줄에 여러 장(메모 관리자 PC 화면). 안 주면 3칸
-export default function PhotoWall({ photos, query, onOpen, tile = 0 }) {
-  const [visible, setVisible] = useState(PAGE);
+// selectedKey: 고른 사진(테두리 표시)
+export default function PhotoWall({ photos, query, onOpen, tile = 0, selectedKey = null }) {
+  const [scrolled, setVisible] = useState(PAGE);
   const sentinelRef = useRef(null);
+  // 고른 사진이 바뀌면(크게 보기에서 넘기고 돌아왔을 때 등) 그 칸까지 그리고 보이게
+  const selIndex = selectedKey ? photos.findIndex(p => p.key === selectedKey) : -1;
+  const visible = Math.max(scrolled, Math.ceil((selIndex + 1) / PAGE) * PAGE);
+  const tileRefs = useRef({});
+  useEffect(() => {
+    if (selectedKey) tileRefs.current[selectedKey]?.scrollIntoView({ block: "nearest" });
+  }, [selectedKey]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -45,9 +53,9 @@ export default function PhotoWall({ photos, query, onOpen, tile = 0 }) {
           <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)", padding: "6px 12px 8px" }}>{monthLabel(ym)}</div>
           <div style={{ display: "grid", gridTemplateColumns: tile ? `repeat(auto-fill, minmax(${tile}px, 1fr))` : "repeat(3, 1fr)", gap: 3 }}>
             {items.map(p => (
-              <button key={p.key} type="button" onClick={() => onOpen(p)}
+              <button key={p.key} ref={el => { tileRefs.current[p.key] = el; }} type="button" onClick={() => onOpen(p)}
                 aria-label={p.kind === "memo" ? "메모 열기" : "일정 열기"}
-                style={{ position: "relative", padding: 0, border: "none", aspectRatio: "1 / 1", overflow: "hidden", background: "var(--dm-input)", cursor: "pointer", borderRadius: 4 }}>
+                style={{ position: "relative", padding: 0, border: "none", aspectRatio: "1 / 1", overflow: "hidden", background: "var(--dm-input)", cursor: "pointer", borderRadius: 4, outline: p.key === selectedKey ? "3px solid #5B7CFA" : "none", outlineOffset: -3 }}>
                 <img src={p.url} alt="" loading="lazy" decoding="async"
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 <span style={{ position: "absolute", top: 4, right: 4, fontSize: 11, lineHeight: 1, background: "rgba(0,0,0,.5)", borderRadius: 6, padding: "3px 4px" }}>

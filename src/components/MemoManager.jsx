@@ -278,18 +278,29 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   );
 
   // 📷 사진 분류 — 목록 자리에 사진 모음(월별 3칸). 검색어가 있으면 그 글자가 든 메모·일정의 사진만,
-  // 사진을 누르면 크게 보기(좌우로 넘기며 모음 전체를 본다) — 넘길 때마다 아래 편집 칸에 그 사진의 기록이 열린다
-  // (예전 통합 검색 화면의 사진 모아보기를 옮겨 옴, 2026-11-01)
+  // 사진을 누르면 고르기(테두리 + 아래 편집 칸에 그 기록), 위쪽 "⤢ 크게 보기"로 고른 사진부터 크게 보며 좌우로 넘긴다.
+  // "⤡ 작게 보기"로 돌아오면 마지막으로 본 사진이 골라져 있다 (예전 통합 검색 화면의 사진 모아보기를 옮겨 옴, 2026-11-01)
   const photoWall = useMemo(() => (filter !== "photo" ? [] : list
     .flatMap(it => it.photos.filter(p => p?.url).map((p, i) => ({ key: `${it.key}|${i}`, url: p.url, ds: it.ds, kind: it.kind, itemKey: it.key, caption: `${formatKoreanDate(it.ds)} · ${it.title}` })))
     .sort((a, b) => b.ds.localeCompare(a.ds))), [filter, list]);
   const [wallViewer, setWallViewer] = useState(null); // 크게 보는 사진 번호
+  const [wallPick, setWallPick] = useState(null); // 고른 사진 key
+  const pickPhoto = (p) => { setWallPick(p.key); select(p.itemKey); };
+  const openBig = () => setWallViewer(Math.max(0, photoWall.findIndex(p => p.key === wallPick)));
   const wall = (
-    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 4px 10px" }}>
-      <PhotoWall photos={photoWall} query={query} onOpen={(p) => setWallViewer(photoWall.indexOf(p))} tile={wide ? 120 : 0} />
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      {photoWall.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
+          <span style={{ flex: 1, fontSize: 13, ...muted }}>사진 {photoWall.length}장 · 누르면 아래에 그 기록이 열려요</span>
+          <button onClick={openBig} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #5B7CFA", background: "rgba(91,124,250,.12)", color: "#5B7CFA", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>⤢ 크게 보기</button>
+        </div>
+      )}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 4px 10px" }}>
+        <PhotoWall photos={photoWall} query={query} onOpen={pickPhoto} tile={wide ? 120 : 0} selectedKey={wallPick} />
+      </div>
       {wallViewer !== null && photoWall.length > 0 && (
-        <PhotoViewer photos={photoWall} index={wallViewer} onClose={() => setWallViewer(null)}
-          onIndexChange={(i) => photoWall[i] && select(photoWall[i].itemKey)} />
+        <PhotoViewer photos={photoWall} index={wallViewer} closeLabel="⤡ 작게 보기" onClose={() => setWallViewer(null)}
+          onIndexChange={(i) => photoWall[i] && pickPhoto(photoWall[i])} />
       )}
     </div>
   );
