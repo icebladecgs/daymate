@@ -79,5 +79,10 @@ export function marketEventsOf(y, m0, markets) {
 }
 
 // 표(금통위·FOMC·CPI·고용·미국 휴장)가 들어 있는 달인지 — 아니면 만기일·한국 휴장만 보인다는 안내
+// 표를 새 해로 늘리면 SCHEDULE_END·SCHEDULE_RANGE도 같이 바꾼다 — 갱신 알림이 다음 해 11월로 자동으로 넘어간다
+const SCHEDULE_START = "2026-11";
+export const SCHEDULE_END = "2027-12";
 export const SCHEDULE_RANGE = "2026년 11월 ~ 2027년 12월";
-export const hasScheduleFor = (y, m0) => { const ym = `${y}-${pad(m0 + 1)}`; return ym >= "2026-11" && ym <= "2027-12"; };
+export const hasScheduleFor = (y, m0) => { const ym = `${y}-${pad(m0 + 1)}`; return ym >= SCHEDULE_START && ym <= SCHEDULE_END; };
+// 갱신 알림(관리자만, 사용자 요청 2026-11-01 "잊지 않게") — 표 마지막 해 11월 1일부터. 다음 해 일정은 보통 10월 말~11월에 다 나온다
+export const scheduleNeedsUpdate = (todayDs) => todayDs >= `${SCHEDULE_END.slice(0, 4)}-11-01`;

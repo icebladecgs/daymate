@@ -6,11 +6,11 @@ import { getCurrentGoalMonthKey, getMonthGoals, getYearGoals, normalizeGoals, se
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
-import { deletePhoto } from "../firebase.js";
+import { deletePhoto, isPrimaryAdmin } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
 import { holidayName } from "../utils/holidays.js";
-import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE } from "../utils/marketEvents.js";
+import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -697,6 +697,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 );
               })}
             </div>
+            {isPrimaryAdmin(uid) && scheduleNeedsUpdate(today) && (
+              <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 10, background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.45)", fontSize: 13, fontWeight: 700, color: "var(--dm-text)", lineHeight: 1.5 }}>
+                🔔 (관리자에게만 보여요) 증시 일정 표가 {SCHEDULE_END.slice(0, 4)}년 12월에 끝나요. Claude에게 "{Number(SCHEDULE_END.slice(0, 4)) + 1}년 증시 일정 추가해줘"라고 말해 주세요.
+              </div>
+            )}
             {marketCal.length === 0 ? (
               <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>보고 싶은 시장을 고르면 금리 결정·물가 발표·만기일·휴장일이 보여요.</div>
             ) : (
