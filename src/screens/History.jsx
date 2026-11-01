@@ -10,8 +10,9 @@ import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
 import { holidayName } from "../utils/holidays.js";
+import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE } from "../utils/marketEvents.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
@@ -676,6 +677,55 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           })}
         </div>
       </div>
+
+      {/* 📈 이번 달 증시 일정 (2026-11-01) — 날짜 칸에는 넣지 않고 달력 아래 목록으로만(사용자 결정). 고른 시장만, 기본은 모두 꺼짐 */}
+      {setMarketCal && (() => {
+        const events = marketEventsOf(year, month0, marketCal);
+        const toggle = (id) => setMarketCal(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+        const WD = ["일", "월", "화", "수", "목", "금", "토"];
+        return (
+          <div style={{ margin: "0 10px 14px", padding: "12px 14px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", marginRight: "auto" }}>📈 이번 달 증시 일정</span>
+              {MARKETS.map(m => {
+                const on = marketCal.includes(m.id);
+                return (
+                  <button key={m.id} onClick={() => toggle(m.id)} aria-pressed={on}
+                    style={{ padding: "6px 11px", borderRadius: 999, border: `1.5px solid ${on ? "#5B7CFA" : "var(--dm-border)"}`, background: on ? "rgba(91,124,250,.14)" : "var(--dm-input)", color: on ? "#5B7CFA" : "var(--dm-sub)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+            {marketCal.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>보고 싶은 시장을 고르면 금리 결정·물가 발표·만기일·휴장일이 보여요.</div>
+            ) : (
+              <>
+                {events.length === 0 && <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>이번 달 일정이 없어요.</div>}
+                <div style={{ marginTop: 6 }}>
+                  {events.map((e, i) => {
+                    const past = e.ds < today;
+                    const d = new Date(`${e.ds}T12:00:00`);
+                    return (
+                      <div key={`${e.ds}${e.market}${i}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: i ? "1px solid var(--dm-row)" : "none", opacity: past ? 0.45 : 1 }}>
+                        <span style={{ width: 78, flexShrink: 0, whiteSpace: "nowrap", fontSize: 14, fontWeight: 800, color: e.ds === today ? "#5B7CFA" : "var(--dm-text)" }}>{d.getMonth() + 1}/{d.getDate()} ({WD[d.getDay()]})</span>
+                        {(() => { const m = MARKETS.find(x => x.id === e.market); return <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: m.color, border: `1px solid ${m.color}`, borderRadius: 6, padding: "1px 5px" }}>{m.tag}</span>; })()}
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--dm-text)" }}>
+                          {e.title}{e.time && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-sub)" }}> · {e.time}</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 6, lineHeight: 1.5 }}>
+                  {!hasScheduleFor(year, month0) && `금리 결정·물가·고용 발표는 ${SCHEDULE_RANGE}만 들어 있어요. `}
+                  시간은 한국 기준이에요. 일정은 바뀔 수 있어요.
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 빈 상태: 이번 달 기록이 하나도 없을 때 */}
       {(() => {

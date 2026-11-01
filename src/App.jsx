@@ -395,6 +395,8 @@ export default function App() {
   // 분류 안 된 할일 능력치 묻기 — 고른 답은 "내 단어"(statWords)로 기억해 다음부터 자동 분류 (계정 설정에 동기화)
   const [statWords, setStatWords] = useState(() => store.get("dm_stat_words", []));
   const [statAskOff, setStatAskOff] = useState(() => !!store.get("dm_stat_ask_off", false));
+  // 달력 아래 증시 일정에서 고른 시장 ['kr','us'] (계정 동기화)
+  const [marketCal, setMarketCal] = useState(() => { const v = store.get("dm_market_cal", []); return Array.isArray(v) ? v : []; });
   const [statAsk, setStatAsk] = useState(null); // { ds, taskId, title, key } | null
   // 수험생 모드 (D-day·과목·켜기) — 계정 설정 exam에 동기화
   const [exam, setExam] = useState(() => normalizeExam(store.get("dm_exam", null)));
@@ -1437,6 +1439,7 @@ export default function App() {
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
             if (Array.isArray(s.statWords)) { setStatWords(s.statWords); store.set("dm_stat_words", s.statWords); }
             if (s.statAskOff !== undefined) { setStatAskOff(!!s.statAskOff); store.set("dm_stat_ask_off", !!s.statAskOff); }
+            if (Array.isArray(s.marketCal)) { setMarketCal(s.marketCal); store.set("dm_market_cal", s.marketCal); }
             if (s.exam) { const e = normalizeExam(s.exam); setExam(e); store.set("dm_exam", e); }
             else {
               // 로그인 전에 이 기기에서만 켜 둔 수험생 설정은 한 번 올린다 (서버에 없을 때)
@@ -1596,6 +1599,10 @@ export default function App() {
     store.set("dm_stat_ask_off", statAskOff);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statAskOff }).catch(() => {});
   }, [statAskOff, authUser]);
+  useEffect(() => {
+    store.set("dm_market_cal", marketCal);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { marketCal }).catch(() => {});
+  }, [marketCal, authUser]);
   useEffect(() => {
     store.set("dm_exam", exam);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { exam }).catch(() => {});
@@ -2443,7 +2450,7 @@ export default function App() {
       );
     }
     if (screen === "history") {
-      return <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} />;
+      return <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} />;
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
