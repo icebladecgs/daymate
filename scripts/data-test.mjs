@@ -152,6 +152,38 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   t('캡처: 못 찾은 코인은 추측하지 않음', (await resolveScanSymbol({ name: '없는코인', code: 'ZZZ', kind: 'coin' }, fakeSearch)) === null);
 }
 
+// ── 수험생 모드: D-day · 공부 시간 · 오답 다시 풀기 (2026-11-01) ──
+{
+  const { normalizeExam, upcomingDdays, ddayLabel, studyBySubject, studyTotal, lastWeekStudy, newStudyEntry, reviewWrongNote, firstDue, isDue, studyXp, EXAM_SUBJECTS } = await load('/src/utils/exam.js');
+  const today = '2026-11-01';
+  const up = upcomingDdays([{ id: 'a', title: '수능', date: '2027-11-18' }, { id: 'b', title: '지난시험', date: '2026-10-30' }, { id: 'c', title: '모의', date: '2026-11-01' }], today);
+  t('D-day: 지난 시험은 빼고 가까운 순', same(up.map(d => d.id), ['c', 'a']) && up[0].left === 0 && up[1].left === 382, JSON.stringify(up));
+  t('D-day: 표시', ddayLabel(0) === 'D-DAY' && ddayLabel(5) === 'D-5' && ddayLabel(-2) === 'D+2');
+  t('수험생 설정: 빈 값은 기본 과목·꺼짐', same(normalizeExam(null), { on: false, ddays: [], subjects: EXAM_SUBJECTS }));
+  t('수험생 설정: 잘못된 D-day는 버림', normalizeExam({ on: true, ddays: [{ title: 'x', date: '2026/1/1' }, { id: 'ok', title: '수능', date: '2027-11-18' }] }).ddays.length === 1);
+  const day = { study: [{ id: '1', sub: '수학', min: 50 }, { id: '2', sub: '영어', min: 30 }, { id: '3', sub: '수학', min: 25 }, { id: '4', sub: '한국사', min: 20 }, { bad: true }] };
+  t('공부: 하루 합계', studyTotal(day) === 125);
+  t('공부: 과목별(과목 순서, 목록 밖 과목은 뒤)', same(studyBySubject([day], ['국어', '수학', '영어']), [{ sub: '수학', min: 75 }, { sub: '영어', min: 30 }, { sub: '한국사', min: 20 }]));
+  const week = lastWeekStudy({ '2026-10-26': { study: [{ sub: '국어', min: 40 }] }, [today]: day }, today);
+  t('공부: 최근 7일(오늘로 끝남)', week.length === 7 && week[6].ds === today && week[6].min === 125 && week[0].ds === '2026-10-26' && week[0].min === 40);
+  const e = newStudyEntry('수학', 24.6, 'timer', 't1');
+  t('공부 기록: 모양', e.sub === '수학' && e.min === 25 && e.by === 'timer' && e.taskId === 't1' && e.id.startsWith('st_'));
+  t('공부 → 지력 XP: 10분마다 1', studyXp(9) === 0 && studyXp(10) === 1 && studyXp(125) === 12);
+  // 다시 풀기: 1일 → 3일 → 7일 → 21일, 4번 연속 맞으면 졸업, 틀리면 1일부터
+  let n = { step: 0, due: firstDue(today), done: false, reviews: [] };
+  t('오답: 처음엔 1일 뒤', n.due === '2026-11-02' && !isDue(n, today) && isDue(n, '2026-11-02'));
+  n = { ...n, ...reviewWrongNote(n, true, '2026-11-02') };
+  t('오답: 맞으면 3일 뒤', n.step === 1 && n.due === '2026-11-05');
+  n = { ...n, ...reviewWrongNote(n, true, '2026-11-05') };
+  t('오답: 또 맞으면 7일 뒤', n.step === 2 && n.due === '2026-11-12');
+  const wrong = { ...n, ...reviewWrongNote(n, false, '2026-11-12') };
+  t('오답: 틀리면 1일부터 다시', wrong.step === 0 && wrong.due === '2026-11-13' && !wrong.done && wrong.reviews.length === 3);
+  n = { ...n, ...reviewWrongNote(n, true, '2026-11-12') };
+  t('오답: 세 번째 맞으면 21일 뒤', n.step === 3 && n.due === '2026-12-03');
+  n = { ...n, ...reviewWrongNote(n, true, '2026-12-03') };
+  t('오답: 네 번 연속 맞으면 졸업', n.done === true && n.due === null && !isDue(n, '2027-01-01') && n.reviews.length === 4);
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

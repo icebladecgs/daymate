@@ -18,6 +18,7 @@ import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
+import { ExamSettingsCard } from "../components/Exam.jsx";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
@@ -157,7 +158,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, onMemoHistoryBackup, lastDriveBackup,
   onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen,
-  statWords = [], setStatWords, statAskOff = false, setStatAskOff }) {
+  statWords = [], setStatWords, statAskOff = false, setStatAskOff, exam, setExam }) {
 
   const [subPage, setSubPage] = useState(() => {
     const next = store.get('dm_open_settings_subpage', null);
@@ -1285,6 +1286,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </div>
 
       <AppLockSettings authUser={authUser} setToast={setToast} />
+
+      {exam && setExam && <ExamSettingsCard exam={exam} setExam={setExam} />}
 
       <div style={S.sectionTitle}>✨ 화면 디자인</div>
       <div style={S.card}>

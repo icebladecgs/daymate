@@ -953,6 +953,23 @@ export async function getTgChatId(uid) {
   return snap.exists() ? snap.data().chatId : null;
 }
 
+// ---------- 오답 노트 (수험생 모드, 2026-11-01) ----------
+// users/{uid}/wrongNotes/{id} = { sub, unit, reason, memo, photos:[{url,path}], answerPhotos, ds, createdAt,
+//   step, due, done, reviews:[{ds, ok}], updatedAt } — 본인만 읽고 씀(users/{uid}/** 규칙). 사진은 users/{uid}/wrong/
+export async function loadWrongNotes(uid) {
+  const snap = await getDocs(collection(db, 'users', uid, 'wrongNotes'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveWrongNote(uid, note) {
+  const { id, ...rest } = note;
+  await setDoc(doc(db, 'users', uid, 'wrongNotes', id), { ...rest, updatedAt: new Date().toISOString() });
+}
+
+export async function deleteWrongNote(uid, id) {
+  await deleteDoc(doc(db, 'users', uid, 'wrongNotes', id));
+}
+
 // ---------- 사진 업로드 (메모/일기/게시판 공용) ----------
 
 export async function uploadPhoto(path, blob, uid) {

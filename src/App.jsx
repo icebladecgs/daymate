@@ -1,7 +1,9 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes } from "./firebase.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
+import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
+import WrongNotes from "./components/WrongNotes.jsx";
 import { reportError } from "./utils/errorReport.js";
 import GrowthFortunePanel from "./components/GrowthFortunePanel.jsx";
 import { ensurePushSubscription } from "./utils/pushSubscription.js";
@@ -394,6 +396,10 @@ export default function App() {
   const [statWords, setStatWords] = useState(() => store.get("dm_stat_words", []));
   const [statAskOff, setStatAskOff] = useState(() => !!store.get("dm_stat_ask_off", false));
   const [statAsk, setStatAsk] = useState(null); // { ds, taskId, title, key } | null
+  // 수험생 모드 (D-day·과목·켜기) — 계정 설정 exam에 동기화
+  const [exam, setExam] = useState(() => normalizeExam(store.get("dm_exam", null)));
+  const [wrongNotes, setWrongNotes] = useState(null); // 오답 노트 (null = 아직 안 불러옴) — 수험생 모드일 때 로그인하면 불러옴
+  const [showWrongNotes, setShowWrongNotes] = useState(false);
   const statAskedRef = useRef(new Set()); // 이번 실행에서 이미 물어본 제목 (같은 제목을 거듭 묻지 않게)
   setUserStatWords(statWords); // 분류 함수(classifyTodoStat)가 기본 사전보다 먼저 보도록
   const clearStatFeedback = () => setStatFeedback(null);
@@ -1425,6 +1431,12 @@ export default function App() {
             if (s.habits) { setHabits(s.habits); store.set("dm_habits", s.habits); }
             if (Array.isArray(s.statWords)) { setStatWords(s.statWords); store.set("dm_stat_words", s.statWords); }
             if (s.statAskOff !== undefined) { setStatAskOff(!!s.statAskOff); store.set("dm_stat_ask_off", !!s.statAskOff); }
+            if (s.exam) { const e = normalizeExam(s.exam); setExam(e); store.set("dm_exam", e); }
+            else {
+              // 로그인 전에 이 기기에서만 켜 둔 수험생 설정은 한 번 올린다 (서버에 없을 때)
+              const localExam = normalizeExam(store.get("dm_exam", null));
+              if (localExam.on || localExam.ddays.length) saveSettings(firebaseUser.uid, { exam: localExam }).catch(() => {});
+            }
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.birthDate !== undefined) { setBirthDate(s.birthDate); store.set("dm_birth_date", s.birthDate); }
             if (s.birthTime !== undefined) { setBirthTime(s.birthTime); store.set("dm_birth_time", s.birthTime); }
@@ -1578,6 +1590,19 @@ export default function App() {
     store.set("dm_stat_ask_off", statAskOff);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statAskOff }).catch(() => {});
   }, [statAskOff, authUser]);
+  useEffect(() => {
+    store.set("dm_exam", exam);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { exam }).catch(() => {});
+  }, [exam, authUser]);
+  useEffect(() => {
+    if (!authUser) { setWrongNotes(null); return; }
+    if (!exam.on) return;
+    let alive = true;
+    loadWrongNotes(authUser.uid).then(list => { if (alive) setWrongNotes(list); })
+      .catch(e => { reportError('wrongNotes', e, '오답 노트 불러오기'); if (alive) setWrongNotes([]); });
+    return () => { alive = false; };
+  }, [authUser, exam.on]);
+  const wrongDueCount = (wrongNotes || []).filter(n => isWrongDue(n, todayStr)).length;
   useEffect(() => {
     store.set("dm_habits", habits);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { habits }).catch(() => {});
@@ -2328,7 +2353,10 @@ export default function App() {
           hiddenTags={hiddenTags}
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
-          contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus} />
+          contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
+          exam={exam} setExam={setExam}
+          wrongDue={wrongDueCount} onOpenWrong={() => setShowWrongNotes(true)}
+          onStudyXp={(min) => grantStatXp('INT', Math.sign(min) * studyXp(Math.abs(min)), { silent: min < 0 })} />
       );
     }
     if (screen === "memo") {
@@ -2348,6 +2376,7 @@ export default function App() {
           myTags={myMemoTags}
           hiddenTags={hiddenTags}
           onHideTag={hideMemoTag}
+          onOpenWrong={exam.on ? () => setShowWrongNotes(true) : null} wrongDue={wrongDueCount}
         />
       );
     }
@@ -2470,7 +2499,7 @@ export default function App() {
     if (screen === "settings") {
       return (
         <Settings
-          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff}
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam}
           user={user} setUser={setUser} goals={goals} setGoals={setGoals}
           notifEnabled={notifEnabled} setNotifEnabled={setNotifEnabled}
           telegramCfg={telegramCfg} setTelegramCfg={setTelegramCfg}
@@ -2511,7 +2540,7 @@ export default function App() {
       return canOpenAdmin
         ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
         : <Settings
-          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff}
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam}
           user={user} setUser={setUser}
           goals={goals} setGoals={setGoals}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
@@ -2699,6 +2728,10 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
+        {showWrongNotes && (
+          <WrongNotes uid={authUser?.uid} notes={authUser ? wrongNotes : []} setNotes={setWrongNotes} exam={exam} todayStr={todayStr}
+            onClose={() => setShowWrongNotes(false)} onRequireLogin={() => googleSignIn().catch(() => {})} />
+        )}
         {unsynced && unsynced.n !== unsyncedHidden && !statAsk && (
           <UnsyncedBar count={unsynced.n} offline={unsynced.offline} onRetry={() => retryUnsyncedRef.current?.()} onClose={() => setUnsyncedHidden(unsynced.n)} />
         )}

@@ -25,6 +25,7 @@ function MemoHomeInner({
   onRequireLogin,
   uid, toast, setToast,
   frequentTags, myTags, onHideTag,
+  onOpenWrong, wrongDue = 0, // 수험생 모드면 오답 노트 열기
 }) {
   const [dayOffset, setDayOffset] = useState(0);
   const [longMemo, setLongMemo] = useState(null); // 목록에서 특정 메모를 열어 편집할 때만 사용
@@ -118,6 +119,14 @@ function MemoHomeInner({
 
   const timelineSection = (
     <div style={{ borderTop: '1px solid var(--dm-border)', marginTop: 8, padding: '18px 20px 28px' }}>
+      {onOpenWrong && (
+        <button onClick={onOpenWrong} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 16, borderRadius: 14, border: '1.5px solid rgba(91,124,250,.35)', background: 'rgba(91,124,250,.08)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+          <span style={{ fontSize: 22 }}>📕</span>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 900, color: 'var(--dm-text)' }}>오답 노트</span>
+          {wrongDue > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>다시 풀 문제 {wrongDue}개</span>}
+          <span style={{ fontSize: 16, color: 'var(--dm-muted)' }}>›</span>
+        </button>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: newDesignOn() ? 17 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>

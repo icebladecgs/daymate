@@ -24,6 +24,8 @@ import { todayNewLookOn, todayDoneGroupOn } from "../utils/todayLook.js";
 import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
+import { ExamTodayPanel } from "../components/Exam.jsx";
+import { newStudyEntry } from "../utils/exam.js";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
@@ -45,8 +47,10 @@ export default function Today({
   contacts,
   onOpenPeople,
   onBonusXp,
+  exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
 }) {
   const tasks = data.tasks || [];
+  const examOn = !!exam?.on; // 수험생 모드 (설정 → 수험생 모드)
   const contactReminders = useMemo(() => getContactReminders(contacts, plans, 7, dateStr), [contacts, plans, dateStr]);
   const doneCount = tasks.filter((t) => t.done && t.title.trim()).length;
   const filledCount = tasks.filter((t) => t.title.trim()).length;
@@ -440,7 +444,17 @@ export default function Today({
           onClose={() => setFocus(null)}
           onToggleTask={(id) => { if (focus.ds === targetDs) toggleTargetTask(id); }}
           onXp={(xp) => { onBonusXp?.(xp); setToast(`⏱ 집중 완료 · +${xp} XP`); }}
-          onFocusTime={(m) => onUpdateDayData?.(focus.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === focus.task.id ? { ...t, focusMin: (t.focusMin || 0) + m } : t) }))}
+          subjects={examOn ? exam.subjects : null}
+          onFocusTime={(m, sub) => {
+            // 할일에 집중 시간을 쌓고, 수험생 모드면 그날 공부 기록(day.study)에도 남긴다 — 한 번에 저장
+            const entry = examOn ? newStudyEntry(sub, m, 'timer', focus.task.id) : null;
+            onUpdateDayData?.(focus.ds, prev => ({
+              ...prev,
+              tasks: focus.task.id ? (prev.tasks || []).map(t => t.id === focus.task.id ? { ...t, focusMin: (t.focusMin || 0) + m } : t) : (prev.tasks || []),
+              ...(entry ? { study: [...(prev.study || []), entry] } : {}),
+            }));
+            if (entry) onStudyXp?.(entry.min);
+          }}
         />
       )}
       {detailTask && (
@@ -500,6 +514,16 @@ export default function Today({
         )}
         <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
+
+      {/* 📚 수험생 모드: D-day · 오늘 공부 (설정에서 켰을 때만) */}
+      {examOn && (
+        <ExamTodayPanel exam={exam} setExam={setExam} dateStr={dateStr} plans={plans} todayData={data}
+          onStartStudy={() => setFocus({ ds: dateStr, task: { id: null, title: '📚 공부' } })}
+          onAddStudy={(entry) => { onUpdateDayData?.(dateStr, prev => ({ ...prev, study: [...(prev.study || []), entry] })); onStudyXp?.(entry.min); setToast(`📚 ${entry.sub} ${entry.min}분 기록했어요`); }}
+          onDeleteStudy={(entry) => { onUpdateDayData?.(dateStr, prev => ({ ...prev, study: (prev.study || []).filter(s => s.id !== entry.id) })); onStudyXp?.(-entry.min); }}
+          wrongDue={wrongDue} onOpenWrong={onOpenWrong}
+        />
+      )}
 
       {isPerfect && (
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))", border: "1.5px solid rgba(74,222,128,.35)" }}>

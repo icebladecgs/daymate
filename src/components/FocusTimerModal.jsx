@@ -9,8 +9,17 @@ const TIMER_OPTIONS = [
   { label: '50분', sec: 50 * 60, xp: 70 },
 ];
 
-// onFocusTime(분): 실제 집중한 시간을 할일에 기록할 때 (선택) — 끝까지 하면 설정 시간, 중간에 닫으면 1분 이상일 때 그만큼
-export default function FocusTimerModal({ task, onClose: closeModal, onToggleTask, onXp, onFocusTime }) {
+// onFocusTime(분, 과목): 실제 집중한 시간을 기록할 때 (선택) — 끝까지 하면 설정 시간, 중간에 닫으면 1분 이상일 때 그만큼
+// subjects: 수험생 모드면 과목 목록 — 시작 전에 과목을 고르고 onFocusTime 둘째 값으로 넘긴다 (2026-11-01)
+// task.id가 없으면 할일 없이 공부 타이머로만 쓴다 ("할일 완료" 버튼 없음)
+const LAST_SUBJECT_KEY = 'dm_exam_last_subject';
+export default function FocusTimerModal({ task, onClose: closeModal, onToggleTask, onXp, onFocusTime, subjects = null }) {
+  const [subject, setSubject] = useState(() => {
+    let last = null;
+    try { last = localStorage.getItem(LAST_SUBJECT_KEY); } catch { /* 무시 */ }
+    return subjects?.includes(last) ? last : subjects?.[0] || null;
+  });
+  const pickSubject = (s) => { setSubject(s); try { localStorage.setItem(LAST_SUBJECT_KEY, s); } catch { /* 무시 */ } };
   const [timerIdx, setTimerIdx] = useState(2);
   const [sec, setSec] = useState(TIMER_OPTIONS[2].sec);
   const [running, setRunning] = useState(false);
@@ -22,11 +31,11 @@ export default function FocusTimerModal({ task, onClose: closeModal, onToggleTas
   const reported = useRef(false);
   const onClose = () => {
     const elapsed = opt.sec - sec;
-    if (!reported.current && !done && elapsed >= 60) { reported.current = true; onFocusTime?.(Math.floor(elapsed / 60)); }
+    if (!reported.current && !done && elapsed >= 60) { reported.current = true; onFocusTime?.(Math.floor(elapsed / 60), subject); }
     closeModal();
   };
   useEffect(() => {
-    if (done && !reported.current) { reported.current = true; onFocusTime?.(Math.round(opt.sec / 60)); }
+    if (done && !reported.current) { reported.current = true; onFocusTime?.(Math.round(opt.sec / 60), subject); }
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   const pct = ((opt.sec - sec) / opt.sec) * 100;
   const min = String(Math.floor(sec / 60)).padStart(2, '0');
@@ -104,7 +113,21 @@ export default function FocusTimerModal({ task, onClose: closeModal, onToggleTas
       <div style={{ fontSize: isCompact ? 14 : 15, color: 'var(--dm-sub)', marginBottom: 6, fontWeight: 700, textAlign: 'center' }}>집중 중</div>
       <div style={{ fontSize: isCompact ? 18 : 20, fontWeight: 900, color: 'var(--dm-text)', marginBottom: isCompact ? 22 : 32, textAlign: 'center', maxWidth: 280, lineHeight: 1.45 }}>{task.title}</div>
 
-      {!running && !done && (
+      {subjects?.length > 0 && !done && (
+        // 수험생 모드: 무슨 과목을 공부하는지 (시작한 뒤엔 바꾸지 않게 고른 것만 보여줌)
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginBottom: isCompact ? 14 : 18, maxWidth: 320 }}>
+          {(running || sec !== opt.sec ? [subject] : subjects).map(s => (
+            <button key={s} onClick={() => pickSubject(s)} disabled={running || sec !== opt.sec} style={{
+              padding: '7px 12px', borderRadius: 999, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
+              borderWidth: 1.5, borderStyle: 'solid', borderColor: subject === s ? '#A78BFA' : 'var(--dm-border)',
+              background: subject === s ? 'rgba(167,139,250,.2)' : 'var(--dm-input)',
+              color: subject === s ? '#A78BFA' : 'var(--dm-sub)',
+            }}>📚 {s}</button>
+          ))}
+        </div>
+      )}
+
+      {!running && !done && !subjects?.length && (
         <div style={{
           width: '100%',
           maxWidth: 320,
@@ -151,12 +174,14 @@ export default function FocusTimerModal({ task, onClose: closeModal, onToggleTas
         <div style={{ textAlign: 'center', width: '100%' }}>
           <div style={{ fontSize: isCompact ? 16 : 18, fontWeight: 900, color: '#4ADE80', marginBottom: 8 }}>{opt.label} 집중 완료! 🌟</div>
           <div style={{ fontSize: 14, color: '#FCD34D', fontWeight: 900, marginBottom: isCompact ? 14 : 20 }}>+{opt.xp} XP 획득!</div>
-          <button onClick={() => { onToggleTask(task.id); onXp?.(opt.xp); onClose(); }}
-            style={{ ...S.btn, marginBottom: 10, background: 'linear-gradient(135deg,#4ADE80,#22c55e)' }}>
-            ✅ 할일 완료 + XP 받기
-          </button>
+          {task.id && (
+            <button onClick={() => { onToggleTask(task.id); onXp?.(opt.xp); onClose(); }}
+              style={{ ...S.btn, marginBottom: 10, background: 'linear-gradient(135deg,#4ADE80,#22c55e)' }}>
+              ✅ 할일 완료 + XP 받기
+            </button>
+          )}
           <button onClick={() => { onXp?.(opt.xp); onClose(); }}
-            style={{ ...S.btnGhost, marginBottom: 0 }}>XP만 받고 닫기</button>
+            style={task.id ? { ...S.btnGhost, marginBottom: 0 } : { ...S.btn, marginBottom: 0 }}>{task.id ? 'XP만 받고 닫기' : 'XP 받고 닫기'}</button>
         </div>
       ) : (
         <>
