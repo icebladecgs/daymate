@@ -499,6 +499,14 @@ export default function Today({
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {filledCount ? `완료 ${doneCount}/${filledCount}` : '할일 없음'}</div>
         </div>
         )}
+        {/* 수험생 모드 바로 켜고 끄기 (2026-11-01 사용자 결정 — 모든 사람에게 보임, 설정 → 수험생 모드와 같은 값). 꺼도 D-day·기록은 그대로 */}
+        {setExam && (
+          <button onClick={() => { setExam(e => ({ ...e, on: !e.on })); setToast(examOn ? '수험생 모드를 껐어요 (기록은 그대로예요)' : '📚 수험생 모드를 켰어요'); }}
+            role="switch" aria-checked={examOn} aria-label="수험생 모드" title="수험생 모드 (D-day·공부 시간·오답 노트)"
+            style={{ flexShrink: 0, alignSelf: 'center', padding: '6px 10px', borderRadius: 999, border: `1.5px solid ${examOn ? '#5B7CFA' : 'var(--dm-border)'}`, background: examOn ? 'rgba(91,124,250,.14)' : 'var(--dm-input)', color: examOn ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+            📚 시험 {examOn ? 'ON' : 'OFF'}
+          </button>
+        )}
         <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
