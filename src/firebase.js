@@ -58,8 +58,12 @@ export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const storage = getStorage(app);
 
 // ---------- Auth ----------
+// 로그인할 때마다 구글 계정 고르는 창을 띄운다 (2026-11-01 사용자 결정) — 앱 로그아웃은 크롬의 구글 로그인을 남겨 두어서,
+// 다시 로그인하면 구글이 방금 쓴 계정으로 바로 들어가 다른 계정을 고를 수 없었다. 캘린더·드라이브 권한 창에는 넣지 않는다(다른 계정을 고르면 꼬임)
 export function googleSignIn() {
-  return signInWithPopup(auth, new GoogleAuthProvider());
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  return signInWithPopup(auth, provider);
 }
 
 
