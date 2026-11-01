@@ -20,6 +20,8 @@ import { toggleCheckAt } from "../utils/memoView.js";
 import { openLinkOnCtrlClick } from "../utils/links.js";
 import { MemoLinks } from "./DriveFiles.jsx";
 import LinkOverlay from "./LinkOverlay.jsx";
+import IndentBar from "./IndentBar.jsx";
+import { newDesignOn } from "../utils/todayLook.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -28,6 +30,7 @@ const KIND = {
   trash: { icon: "🗑", label: "휴지통", color: "#F87171" },
 };
 const PAGE = 300;
+const ACCENT = (nl) => (nl ? "#5B7CFA" : "#6C8EFF"); // 새 디자인: 밝은·어두운 화면 둘 다 보이는 파랑
 
 const fmtUpdated = (v) => {
   if (!v) return "";
@@ -48,6 +51,9 @@ const updateMemoIn = (day, id, patch) => {
 // 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
 export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onRequireLogin }) {
   const [toast, setToast] = useState("");
+  // 새 디자인(2026-11-01): 글씨 12~13px → 14~16px, 버튼·줄 높이 크게. 배치는 그대로
+  const [nl] = useState(newDesignOn);
+  const z = (oldV, newV) => (nl ? newV : oldV);
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState({ key: "date", dir: "desc" });
@@ -184,15 +190,15 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     return (
       <button key={id} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
         style={wide
-          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? "5px 10px 5px 28px" : "6px 10px", borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? "#6C8EFF" : "var(--dm-text)", fontWeight: active ? 800 : 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }
-          : { flexShrink: 0, padding: "5px 10px", borderRadius: 14, border: active ? "1.5px solid #6C8EFF" : border, background: active ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: active ? "#6C8EFF" : "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
+          : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         <span>{icon}</span> {label}
       </button>
     );
   };
   // 태그 영역 — #부모/자식은 📂 카테고리로 묶는다(지식 화면에서 옮겨 옴). 좁은 화면에서는 "🏷 태그" 칩 하나로 접어 둔다
   const tagGuide = (
-    <div style={{ ...muted, fontSize: 12, lineHeight: 1.6, padding: wide ? "2px 10px" : "2px 2px" }}>
+    <div style={{ ...muted, fontSize: z(12, 13), lineHeight: 1.6, padding: wide ? "2px 10px" : "2px 2px" }}>
       메모에 <b>#태그</b>나 <b>[[키워드]]</b>를 쓰면 여기에 모여요. <b>#투자/주식</b>처럼 쓰면 📂 투자 묶음으로 보여요.
     </div>
   );
@@ -203,14 +209,14 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const filters = wide ? (
     <>
       {baseFilters.map(f => filterButton(f.id, f.label, f.icon))}
-      <div style={{ ...muted, fontSize: 11, fontWeight: 700, padding: "12px 10px 4px" }}>태그</div>
+      <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>태그</div>
       {tagButtons}
     </>
   ) : (
     <>
       {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
       <button onClick={() => setTagsOpen(o => !o)}
-        style={{ flexShrink: 0, padding: "5px 10px", borderRadius: 14, border: tagFilter ? "1.5px solid #6C8EFF" : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? "#6C8EFF" : "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+        style={{ flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         {tagChipLabel} {tagsOpen ? "▴" : "▾"}
       </button>
       {baseFilters.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
@@ -219,10 +225,10 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   // 태그·카테고리를 고르면 목록 위에 관련 태그(같은 날 함께 나온 태그) 한 줄
   const relatedRow = tagFilter && related.length > 0 && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 12px", flexShrink: 0, borderBottom: border }}>
-      <span style={{ ...muted, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>관련</span>
+      <span style={{ ...muted, fontSize: z(12, 14), fontWeight: 700, whiteSpace: "nowrap" }}>관련</span>
       {related.map(r => (
         <button key={r.name} onClick={() => changeFilter(`#${r.name}`)}
-          style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 12, border: "1px solid rgba(108,142,255,.35)", background: "rgba(108,142,255,.08)", color: "#6C8EFF", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+          style={{ flexShrink: 0, padding: z("3px 9px", "5px 11px"), borderRadius: z(12, 14), border: "1px solid rgba(108,142,255,.35)", background: "rgba(108,142,255,.08)", color: ACCENT(nl), fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
           #{r.name}
         </button>
       ))}
@@ -230,7 +236,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   );
 
   const th = (key, label, style) => (
-    <th onClick={() => toggleSort(key)} style={{ textAlign: "left", padding: "7px 8px", fontSize: 12, fontWeight: 700, ...muted, cursor: "pointer", whiteSpace: "nowrap", position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border, userSelect: "none", ...style }}>
+    <th onClick={() => toggleSort(key)} style={{ textAlign: "left", padding: z("7px 8px", "8px 8px"), fontSize: z(12, 13), fontWeight: 700, ...muted, cursor: "pointer", whiteSpace: "nowrap", position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border, userSelect: "none", ...style }}>
       {label}{sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
     </th>
   );
@@ -239,41 +245,42 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
         <thead>
           <tr>
-            {th("kind", "", { width: 30 })}
+            {th("kind", "", { width: z(30, 34) })}
             {th("title", "제목")}
-            {th("date", "날짜", { width: wide ? 150 : 96 })}
+            {th("date", "날짜", { width: wide ? 150 : z(96, 84) })}
             {wide && th("updated", filter === "trash" ? "삭제일" : "수정일", { width: 130 })}
-            {wide && <th style={{ width: 150, textAlign: "left", padding: "7px 8px", fontSize: 12, fontWeight: 700, ...muted, position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border }}>태그</th>}
-            {th("photo", "📷", { width: 40 })}
+            {wide && <th style={{ width: 150, textAlign: "left", padding: z("7px 8px", "8px 8px"), fontSize: z(12, 13), fontWeight: 700, ...muted, position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border }}>태그</th>}
+            {th("photo", "📷", { width: z(40, 36) })}
           </tr>
         </thead>
         <tbody>
           {list.slice(0, limit).map(it => {
             const active = it.key === selectedKey;
+            const cell = z("6px 8px", "10px 8px");
             return (
               <tr key={it.key} ref={el => { rowRefs.current[it.key] = el; }} onClick={() => select(it.key)}
                 style={{ cursor: "pointer", background: active ? "rgba(108,142,255,.2)" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
-                <td style={{ padding: "6px 8px", fontSize: 13 }} title={KIND[it.kind].label}>{KIND[it.kind].icon}</td>
-                <td style={{ padding: "6px 8px", fontSize: 13, ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
+                <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{KIND[it.kind].icon}</td>
+                <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.starred && "⭐ "}{it.title}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
-                  {!wide && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: 11, color: "#6C8EFF", opacity: 0.75 }}>#{t}</span>)}
+                  {!wide && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
                 </td>
-                <td style={{ padding: "6px 8px", fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{wide ? it.ds : it.ds.slice(2)}{wide && it.time ? ` ${it.time}` : ""}</td>
-                {wide && <td style={{ padding: "6px 8px", fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
-                {wide && <td style={{ padding: "6px 8px", fontSize: 12, color: "#6C8EFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
-                <td style={{ padding: "6px 8px", fontSize: 12, ...muted }}>{it.photos.length || ""}</td>
+                <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{wide ? it.ds : it.ds.slice(2)}{wide && it.time ? ` ${it.time}` : ""}</td>
+                {wide && <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
+                {wide && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
+                <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted) }}>{it.photos.length || ""}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
       {list.length > limit && (
-        <button onClick={() => setLimit(l => l + PAGE)} style={{ display: "block", margin: "10px auto", padding: "6px 16px", borderRadius: 8, border, background: "var(--dm-input)", ...muted, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+        <button onClick={() => setLimit(l => l + PAGE)} style={{ display: "block", margin: "10px auto", padding: z("6px 16px", "9px 18px"), borderRadius: 8, border, background: "var(--dm-input)", ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), fontSize: z(12, 14), cursor: "pointer", fontFamily: "inherit" }}>
           더 보기 ({list.length - limit}개 남음)
         </button>
       )}
-      {list.length === 0 && <div style={{ padding: 30, textAlign: "center", ...muted, fontSize: 13 }}>{query.trim() ? "검색 결과가 없어요" : "기록이 없어요"}</div>}
+      {list.length === 0 && <div style={{ padding: 30, textAlign: "center", ...muted, fontSize: z(13, 15) }}>{query.trim() ? "검색 결과가 없어요" : "기록이 없어요"}</div>}
     </div>
   );
 
@@ -291,7 +298,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {photoWall.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
-          <span style={{ flex: 1, fontSize: 13, ...muted }}>사진 {photoWall.length}장 · 누르면 아래에 그 기록이 열려요</span>
+          <span style={{ flex: 1, fontSize: z(13, 14), ...muted }}>사진 {photoWall.length}장 · 누르면 아래에 그 기록이 열려요</span>
           <button onClick={openBig} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #5B7CFA", background: "rgba(91,124,250,.12)", color: "#5B7CFA", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>⤢ 크게 보기</button>
         </div>
       )}
@@ -310,7 +317,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever}
+    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -318,22 +325,22 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit" }}>
       {/* 상단: 닫기 · 새 메모 · 검색 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: border, flexShrink: 0, flexWrap: wide ? "nowrap" : "wrap" }}>
-        <button onClick={onClose} style={{ padding: "6px 12px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
-        <div style={{ fontSize: 15, fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
-        <button onClick={addMemo} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
+        <button onClick={onClose} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 15), fontWeight: z(400, 700), cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
+        <div style={{ fontSize: z(15, 17), fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
+        <button onClick={addMemo} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: z(13, 15), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); rememberQuery(); move(1); } else if (e.key === "ArrowDown" && (query || !recentQs.length)) { e.preventDefault(); move(1); } else if (e.key === "ArrowUp" && (query || !recentQs.length)) { e.preventDefault(); move(-1); } }}
             onBlur={rememberQuery} list="dm-memo-recent-q"
             placeholder="검색 (메모·일정·일기)" autoFocus={canAutoFocus()}
-            style={{ flex: 1, minWidth: 0, padding: "7px 10px", borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+            style={{ flex: 1, minWidth: 0, padding: z("7px 10px", "9px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 16), fontFamily: "inherit", outline: "none" }} />
           <datalist id="dm-memo-recent-q">{recentQs.map(q => <option key={q} value={q} />)}</datalist>
-          <button onClick={() => move(1)} aria-label="다음" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▼</button>
-          <button onClick={() => move(-1)} aria-label="이전" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: "#6C8EFF", cursor: "pointer", fontSize: 13 }}>▲</button>
-          <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: 30, height: 30, padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>⚙️</button>
-          <span style={{ fontSize: 12, ...muted, whiteSpace: "nowrap" }}>{list.length}개</span>
+          <button onClick={() => move(1)} aria-label="다음" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▼</button>
+          <button onClick={() => move(-1)} aria-label="이전" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▲</button>
+          <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: z(14, 16), flexShrink: 0 }}>⚙️</button>
+          <span style={{ fontSize: z(12, 14), ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), whiteSpace: "nowrap" }}>{list.length}개</span>
           {filter === "trash" && list.length > 0 && (
-            <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
+            <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
           )}
         </div>
       </div>
@@ -341,7 +348,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 
       {wide ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-          <div style={{ width: 200, flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
+          <div style={{ width: z(200, 220), flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             {!isBig && <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{listArea}</div>}
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -352,7 +359,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {!isBig && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>}
-          {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: 132, overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
           {!isBig && <div style={{ flex: "1 1 40%", minHeight: 0, display: "flex", flexDirection: "column", borderTop: border, borderBottom: border }}>{relatedRow}{listArea}</div>}
           <div style={{ flex: "1 1 60%", minHeight: 0, display: "flex", flexDirection: "column" }}>
             {detail}
@@ -367,7 +374,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -377,6 +384,7 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
   const [viewer, setViewer] = useState(null);
   const [sentTask, setSentTask] = useState(false);
   const textRef = useRef(null);
+  const z = (oldV, newV) => (nl ? newV : oldV);
 
   const saved = useRef({ text: initial, title: task?.title || "" });
   const save = (t, ti) => {
@@ -397,33 +405,33 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
 
   if (item?.locked) {
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--dm-muted)", fontSize: 13, padding: 20, textAlign: "center" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--dm-muted)", fontSize: z(13, 15), padding: 20, textAlign: "center" }}>
         <div style={{ fontSize: 30 }}>🔒</div>
         잠긴 메모예요. 비밀번호를 넣어야 볼 수 있어요.
-        <button onClick={() => requestMemoLock(item.id, "open")} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid rgba(108,142,255,.4)", background: "rgba(108,142,255,.15)", color: "#6C8EFF", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🔓 열기</button>
+        <button onClick={() => requestMemoLock(item.id, "open")} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid rgba(108,142,255,.4)", background: "rgba(108,142,255,.15)", color: ACCENT(nl), fontSize: z(13, 15), fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🔓 열기</button>
       </div>
     );
   }
   if (item?.kind === "trash") {
-    const btn = { padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+    const btn = { padding: z("5px 12px", "7px 14px"), borderRadius: 8, fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
     return (
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "#F87171" }}>🗑 휴지통</span>
-          <span style={{ fontSize: 12, color: "var(--dm-muted)" }}>{formatKoreanDate(item.ds)} 메모 · 삭제 {fmtUpdated(item.updatedAt)}</span>
+          <span style={{ fontSize: z(12, 14), fontWeight: 800, color: "#F87171" }}>🗑 휴지통</span>
+          <span style={{ fontSize: z(12, 13), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)} 메모 · 삭제 {fmtUpdated(item.updatedAt)}</span>
           <span style={{ flex: 1 }} />
           <button onClick={() => onRestore(item)} style={{ ...btn, border: "1px solid rgba(74,222,128,.5)", background: "rgba(74,222,128,.12)", color: "#4ADE80" }}>↩ 되살리기</button>
           <button onClick={() => onDeleteForever(item)} style={{ ...btn, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.08)", color: "#F87171" }}>영구 삭제</button>
         </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", padding: "10px 12px", borderRadius: 8, border: "1px dashed var(--dm-border)", color: "var(--dm-sub)", fontSize: 14, lineHeight: 1.7 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", padding: "10px 12px", borderRadius: 8, border: "1px dashed var(--dm-border)", color: "var(--dm-sub)", fontSize: z(14, 16), lineHeight: 1.7 }}>
           {item.text || "(내용 없음)"}
         </div>
-        {item.photos.length > 0 && <div style={{ fontSize: 12, color: "var(--dm-muted)", flexShrink: 0 }}>📷 사진 {item.photos.length}장 (되살리면 다시 보여요)</div>}
+        {item.photos.length > 0 && <div style={{ fontSize: z(12, 14), color: "var(--dm-muted)", flexShrink: 0 }}>📷 사진 {item.photos.length}장 (되살리면 다시 보여요)</div>}
       </div>
     );
   }
   if (!item) {
-    return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dm-muted)", fontSize: 13, padding: 20, textAlign: "center" }}>목록에서 항목을 고르면 여기서 바로 보고 고칠 수 있어요.<br />↑↓ 키로 이동할 수 있어요.</div>;
+    return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dm-muted)", fontSize: z(13, 15), padding: 20, textAlign: "center" }}>목록에서 항목을 고르면 여기서 바로 보고 고칠 수 있어요.<br />↑↓ 키로 이동할 수 있어요.</div>;
   }
 
   const memo = item.kind === "memo" ? (day?.memos?.length ? day.memos : []).find(m => m.id === item.id) : null;
@@ -432,15 +440,15 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { photos: next }));
     else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: next } : x)) }));
   };
-  const small = { padding: "5px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+  const small = { padding: z("5px 10px", "7px 12px"), borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
-        <span style={{ fontSize: 12, color: "var(--dm-muted)" }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
-        <button onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: "#6C8EFF", borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
-        <button onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: "#6C8EFF", borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
+        <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
+        <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
+        <button onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
+        <button onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
         {item.kind === "memo" && (
           <button onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
@@ -468,7 +476,7 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
       </div>
       {item.kind === "task" && (
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
-          style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
+          style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
       {viewMode ? (
         <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
@@ -479,15 +487,16 @@ function DetailPane({ item, plans, onUpdateDayData, uid, onError, onOpenDate, on
           onClick={openLinkOnCtrlClick}
           onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
           placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
-          style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
+          style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
         {/* 링크 자리에 연한 파란 바탕·밑줄 (입력칸 위에 겹친 표시 층) */}
         <LinkOverlay taRef={textRef} text={text} />
+        <IndentBar taRef={textRef} />
       </div>
       )}
       {/* 편집 칸의 링크를 누를 수 있게 (보기 모드에선 글 속 링크를 바로 누르면 돼서 생략). 휴대폰은 Ctrl+클릭이 없어 이 버튼으로 연다 */}
       {!viewMode && <MemoLinks text={text} hint={canAutoFocus() ? "Ctrl+클릭으로도 열려요" : ""} style={{ marginTop: 0, marginBottom: 0, flexShrink: 0 }} />}
       {item.kind === "journal" && (journal?.good || journal?.regret || journal?.tomorrow) && (
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.6, flexShrink: 0, maxHeight: 90, overflowY: "auto" }}>
+        <div style={{ fontSize: z(12, 14), color: "var(--dm-sub)", lineHeight: 1.6, flexShrink: 0, maxHeight: z(90, 110), overflowY: "auto" }}>
           {journal.good && <div>😊 잘한 일: {journal.good}</div>}
           {journal.regret && <div>🤔 아쉬운 일: {journal.regret}</div>}
           {journal.tomorrow && <div>➡️ 내일: {journal.tomorrow}</div>}

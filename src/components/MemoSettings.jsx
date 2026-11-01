@@ -8,7 +8,7 @@ import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 
 const EDIT_KEYS = [
   ["Enter", "목록 줄(- 1. [ ])을 다음 줄에 이어 쓰기 · 빈 항목이면 한 단계 위로"],
-  ["Tab / Shift+Tab", "한 단계 들여쓰기 / 내어쓰기 (여러 줄 한꺼번에)"],
+  ["Tab / Shift+Tab", "한 단계 들여쓰기 / 내어쓰기 (여러 줄 한꺼번에) · 휴대폰은 키보드 위 ⇥ / ⇤ 버튼"],
   ["Backspace", "목록 기호 바로 뒤에서 누르면 한 단계 위로"],
   ["Ctrl+Shift+X", "체크박스 [ ] ↔ [x]"],
   ["Alt+↑ / Alt+↓", "줄(고른 여러 줄) 위아래로 옮기기"],

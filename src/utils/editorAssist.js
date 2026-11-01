@@ -426,6 +426,15 @@ function doTab(ta, shift) {
   if (!indentLines(ta, 1, multi)) replaceRange(ta, ta.selectionStart, ta.selectionEnd, INDENT); // 목록 아닌 줄 → 공백 4칸
 }
 
+// 휴대폰 ⇥/⇤ 버튼(IndentBar) — Tab/Shift+Tab과 같다. 직접 누른 버튼이라 목록 자동완성 설정과 상관없이 항상.
+// 한글 조합 중에 누르면 키 처리와 같게 조합이 끝난 뒤에 바꾼다
+export function indentAtCursor(ta, shift) {
+  if (!ta) return;
+  if (document.activeElement !== ta) ta.focus();
+  const fn = () => { doTab(ta, shift); autoRenumber(ta); };
+  if (imeComposing) afterIme(ta, fn); else fn();
+}
+
 // 커서가 목록 기호 바로 뒤인가 → 그 줄의 목록 정보
 function backspacePlan(ta) {
   if (ta.selectionStart !== ta.selectionEnd) return null;

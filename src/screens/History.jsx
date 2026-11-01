@@ -9,6 +9,7 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import { deletePhoto } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
+import { holidayName } from "../utils/holidays.js";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -580,7 +581,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       <div style={{ padding: "0 10px 12px", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3, marginBottom: 6 }}>
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-            <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--dm-muted)", fontWeight: 900 }}>
+            <div key={d} style={{ textAlign: "center", fontSize: 11, color: d === "일" ? "#EF4444" : "var(--dm-muted)", fontWeight: 900 }}>
               {d}
             </div>
           ))}
@@ -604,7 +605,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
             const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
             const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
-            const allItems = [...gcalItems, ...taskItems];
+            // 공휴일(utils/holidays.js) — 날짜 숫자를 빨갛게(일요일도), 이름은 칸 맨 위 일정 줄로
+            const holiday = holidayName(ds);
+            const redDay = !!holiday || (firstDay + i) % 7 === 0;
+            const allItems = [...(holiday ? [{ title: holiday, color: 'rgba(239,68,68,0.78)' }] : []), ...gcalItems, ...taskItems];
             const visibleItems = allItems.slice(0, 3);
             const moreCount = allItems.length - visibleItems.length;
             return (
@@ -625,11 +629,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   boxSizing: "border-box",
                   ...st,
                 }}
-                title={perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : undefined}
+                title={[holiday, perfect ? `${day}일 · 완벽한 하루 ✓` : r !== null ? `${day}일 · ${r}%` : ""].filter(Boolean).join(" · ") || undefined}
               >
                 {/* 날짜 숫자 + 별 */}
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, marginBottom: 2, minHeight: 18 }}>
-                  <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1 }}>{day}</span>
+                  <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1, ...(redDay ? { color: "#EF4444" } : {}) }}>{day}</span>
                   {perfect && <span style={{ fontSize: 7, color: "#FBBF24", lineHeight: 1 }}>★</span>}
                 </div>
                 {/* 이벤트 칩 */}
@@ -767,6 +771,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 <div>
                   <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>
                     {formatKoreanDate(preview)}
+                    {holidayName(preview) && <span style={{ fontSize: 14, fontWeight: 800, color: "#EF4444", marginLeft: 8 }}>{holidayName(preview)}</span>}
                     {mood && <span style={{ fontSize: 18, marginLeft: 8 }}>{moodMap[mood] || ''}</span>}
                   </div>
                   {tasks.length > 0 && (

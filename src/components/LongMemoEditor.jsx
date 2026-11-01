@@ -6,6 +6,7 @@ import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey } from "../utils/editorAssist.js";
+import IndentBar from "./IndentBar.jsx";
 import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
@@ -414,6 +415,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           <div style={{ flexShrink: 0 }}>{footerBlock}</div>
         </>
       )}
+      <IndentBar taRef={textareaRef} />
       {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
     </div>
   );
