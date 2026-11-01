@@ -4,7 +4,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, communitySecretRef, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -406,10 +406,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     if (!communityId) { setLoading(false); return; }
     setLoading(true);
 
+    // 초대 코드·비밀번호는 멤버만 읽는 private/secret에 따로 있다 — 두 문서를 합쳐서 보여준다
+    let secret = null;
+    const withSecret = (data) => secret ? { ...data, inviteCode: secret.inviteCode ?? null, password: secret.password ?? null } : data;
     const unsubCom = onSnapshot(doc(db, 'communities', communityId), (snap) => {
-      if (snap.exists()) setCommunity({ id: snap.id, ...snap.data() });
+      if (snap.exists()) setCommunity(withSecret({ id: snap.id, ...snap.data() }));
       else { removeCommunityId?.(communityId); }
     });
+    const unsubSecret = onSnapshot(communitySecretRef(communityId), (snap) => {
+      secret = snap.exists() ? snap.data() : null;
+      setCommunity(prev => (prev && prev.id === communityId ? withSecret(prev) : prev));
+    }, () => {});
 
     loadCommunityMembers(communityId).then(list => {
       setMembers(list);
@@ -449,7 +456,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     };
     subscribeBoard();
 
-    return () => { clearTimeout(boardRetryTimer); unsubCom(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
+    return () => { clearTimeout(boardRetryTimer); unsubCom(); unsubSecret(); unsubEv(); unsubCheckins(); unsubNotices(); unsubBoard(); };
   }, [communityId]); // eslint-disable-line
 
   useEffect(() => {
@@ -609,7 +616,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     if (foundCommunity.hasPassword && !codePassword.trim()) { setToast('비밀번호를 입력해주세요 🔑'); return; }
     setSubmitting(true);
     try {
-      await joinPublicCommunity(authUser.uid, foundCommunity.communityId, nicknameInput.trim(), codePassword.trim());
+      await joinPublicCommunity(authUser.uid, foundCommunity.communityId, nicknameInput.trim(), codePassword.trim(), foundCommunity.joinCode);
       addCommunityId(foundCommunity.communityId);
       setMode(null); setShowHome(true);
     } catch (e) {

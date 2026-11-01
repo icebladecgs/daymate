@@ -14,8 +14,10 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   const db = ctx.firestore();
   const s = (p, d) => setDoc(doc(db, p), d);
   await s('admin/config', { uids: ['appAdmin'] });
-  await s(C, { name: '모임', createdBy: 'leader', memberCount: 3 });
+  await s(C, { name: '모임', createdBy: 'leader', memberCount: 3, isPublic: true });
   await s(`${C}/members/author`, { nickname: 'a' });
+  await s(`${C}/members/other`, { nickname: 'o' }); // 커뮤니티 글쓰기·댓글·좋아요는 멤버만 (2026-11-01)
+  await s(`${C}/members/leader`, { nickname: 'l', isAdmin: true });
   await s(`${C}/checkins/author`, { uid: 'author', nickname: 'a' });
   await s(`${C}/board/p1`, { uid: 'author', title: '원본', body: 'b', commentCount: 1 });
   await s(`${C}/board/p1/comments/k1`, { uid: 'author', text: '원본댓글', likedBy: [] });

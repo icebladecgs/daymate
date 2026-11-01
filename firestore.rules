@@ -28,6 +28,26 @@ service cloud.firestore {
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
+    // 커뮤니티 초대 코드·비밀번호 (2026-11-01~ private/secret, 멤버만 읽음).
+    // 아직 옮기지 않은 옛 커뮤니티는 커뮤니티 문서에 그대로 있다.
+    function communitySecret(communityId) {
+      let p = /databases/$(database)/documents/communities/$(communityId)/private/secret;
+      return exists(p) ? get(p).data
+        : get(/databases/$(database)/documents/communities/$(communityId)).data;
+    }
+    // 가입 확인: 공개 커뮤니티가 아니면 초대 코드(joinCode), 비밀번호가 있으면 비밀번호(joinKey)가 맞아야 함.
+    // 예전엔 비밀번호를 화면에서만 확인해서, 로그인한 누구나 비밀번호를 읽고 바로 가입할 수 있었다.
+    function canJoin(communityId) {
+      let comm = get(/databases/$(database)/documents/communities/$(communityId)).data;
+      let s = communitySecret(communityId);
+      let code = s.get('inviteCode', null);
+      let pw = s.get('password', null);
+      let codeOk = comm.get('isPublic', false) == true
+        || (code != null && request.resource.data.get('joinCode', null) == code);
+      let pwOk = pw == null || pw == ''
+        || string(request.resource.data.get('joinKey', '')) == string(pw);
+      return codeOk && pwOk;
+    }
 
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
@@ -56,40 +76,50 @@ service cloud.firestore {
       );
       allow delete: if request.auth.uid in
         get(/databases/$(database)/documents/admin/config).data.uids;
-      // 멤버: 가입은 본인 것만. 수정·삭제(탈퇴)는 본인 또는 커뮤니티 관리자·앱 관리자
+      // 초대 코드·비밀번호: 멤버·앱 관리자만 읽고, 커뮤니티 관리자·앱 관리자만 바꾼다.
+      match /private/secret {
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow write: if isCommunityAdmin(communityId) || isAppAdmin();
+      }
+      // 멤버: 읽기는 멤버·앱 관리자(내 멤버 문서는 가입 전 확인용으로 본인도).
+      // 가입은 본인 것만, 초대 코드·비밀번호 확인(canJoin) — 만든 사람·앱 관리자는 확인 없이.
+      // 수정·삭제(탈퇴)는 본인 또는 커뮤니티 관리자·앱 관리자
       match /members/{userId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null
+          && (request.auth.uid == userId || isMember(communityId) || isAppAdmin());
+        allow create: if request.auth != null && request.auth.uid == userId
+          && (isCommunityAdmin(communityId) || isAppAdmin() || canJoin(communityId));
         allow update, delete: if (request.auth != null && request.auth.uid == userId)
           || isCommunityAdmin(communityId) || isAppAdmin();
       }
+      // 아래 커뮤니티 내용(일정·출석·공지·게시판)은 멤버·앱 관리자만 읽고, 멤버만 쓴다 (2026-11-01).
       // 일정: 만든 사람(createdBy) 명의로만 생성. 수정·삭제는 만든 사람 또는 커뮤니티 관리자·앱 관리자
       match /events/{eventId} {
-        allow read: if request.auth != null;
-        allow create: if isCreator('createdBy');
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if isCreator('createdBy') && isMember(communityId);
         allow update, delete: if isOwner('createdBy') || isCommunityAdmin(communityId) || isAppAdmin();
       }
       // 출석: 본인 기록만 생성·수정. 삭제는 본인 또는 커뮤니티 관리자·앱 관리자
       match /checkins/{userId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if request.auth != null && request.auth.uid == userId && isMember(communityId);
         allow update, delete: if (request.auth != null && request.auth.uid == userId)
           || isCommunityAdmin(communityId) || isAppAdmin();
       }
       // 공지·게시글: 본인 명의(uid)로만 작성. 수정·삭제는 글쓴이 또는 커뮤니티 관리자·앱 관리자.
-      // 다른 사람은 댓글 수(commentCount)만 변경 가능(댓글 달기·지우기).
-      // 댓글: 본인 명의로만 작성. 수정·삭제는 글쓴이 또는 관리자, 다른 사람은 좋아요(likedBy)만 변경 가능.
+      // 다른 멤버는 댓글 수(commentCount)만 변경 가능(댓글 달기·지우기).
+      // 댓글: 본인 명의로만 작성. 수정·삭제는 글쓴이 또는 관리자, 다른 멤버는 좋아요(likedBy)만 변경 가능.
       match /notices/{noticeId} {
-        allow read: if request.auth != null;
-        allow create: if isCreator('uid');
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if isCreator('uid') && isMember(communityId);
         allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
-          || (request.auth != null && onlyChanges(['commentCount']));
+          || (isMember(communityId) && onlyChanges(['commentCount']));
         allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
         match /comments/{commentId} {
-          allow read: if request.auth != null;
-          allow create: if isCreator('uid');
+          allow read: if isMember(communityId) || isAppAdmin();
+          allow create: if isCreator('uid') && isMember(communityId);
           allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
-            || (request.auth != null && onlyChanges(['likedBy']));
+            || (isMember(communityId) && onlyChanges(['likedBy']));
           allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
         }
       }
@@ -100,19 +130,29 @@ service cloud.firestore {
         allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
       }
       match /board/{postId} {
-        allow read: if request.auth != null;
-        allow create: if isCreator('uid');
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if isCreator('uid') && isMember(communityId);
         allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
-          || (request.auth != null && onlyChanges(['commentCount']));
+          || (isMember(communityId) && onlyChanges(['commentCount']));
         allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
         match /comments/{commentId} {
-          allow read: if request.auth != null;
-          allow create: if isCreator('uid');
+          allow read: if isMember(communityId) || isAppAdmin();
+          allow create: if isCreator('uid') && isMember(communityId);
           allow update: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin()
-            || (request.auth != null && onlyChanges(['likedBy']));
+            || (isMember(communityId) && onlyChanges(['likedBy']));
           allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
         }
       }
+    }
+    // 초대 코드 → 커뮤니티 찾기 (문서 id = 코드). 코드를 아는 사람만 하나씩 조회, 목록 조회 불가.
+    // 만들기·지우기는 그 커뮤니티 관리자·앱 관리자만.
+    match /inviteCodes/{code} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['communityId'])
+        && (isCommunityAdmin(request.resource.data.communityId) || isAppAdmin());
+      allow delete: if request.auth != null
+        && (isCommunityAdmin(resource.data.communityId) || isAppAdmin());
     }
     // 자유게시판 (전체 공개, 커뮤니티 소속 무관) — 작성은 본인 명의로만.
     // 수정·삭제는 글쓴이 또는 앱 관리자. 다른 사람은 댓글 수·좋아요만 변경 가능.
@@ -175,9 +215,11 @@ service cloud.firestore {
         allow delete: if isOwner('uid') || isAppAdmin();
       }
     }
+    // 텔레그램 연결 코드: 본인 것만 만들기. 쓰고 지우는 건 서버(봇)가 한다 — 예전엔 누구나 지울 수 있었다.
     match /tg_connect/{code} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow delete: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt']);
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
     match /tg_users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;

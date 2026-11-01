@@ -15,7 +15,7 @@ const seed = async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'admin/config'), { uids: ['appAdmin'] });
-    await setDoc(doc(db, 'communities/c1'), { name: '모임', createdBy: 'leader', memberCount: 3 });
+    await setDoc(doc(db, 'communities/c1'), { name: '모임', createdBy: 'leader', memberCount: 3, isPublic: true });
     for (const u of ['leader', 'member', 'member2']) await setDoc(doc(db, `communities/c1/members/${u}`), { nickname: u });
     await setDoc(doc(db, 'communities/c1/chat/m1'), { uid: 'member', nickname: 'member', text: '안녕', photos: [], createdAt: '2026-09-27T01:00:00.000Z' });
     await setDoc(doc(db, 'communities/c1/chat/m2'), { uid: 'member2', nickname: 'member2', text: '반가워', photos: [], createdAt: '2026-09-27T02:00:00.000Z' });
@@ -60,7 +60,7 @@ await t('차단: 멤버 아닌 사람이 삭제', assertFails(deleteDoc(doc(as('
 // ── 기존 기능 유지 (회귀) ──
 await seed();
 await t('유지: 게시글 작성', assertSucceeds(setDoc(doc(as('member'), 'communities/c1/board/p1'), { uid: 'member', title: 't', body: 'b', createdAt: 'now' })));
-await t('유지: 멤버 아닌 로그인 사용자가 게시판 읽기(기존과 동일)', assertSucceeds(getDoc(doc(as('outsider'), 'communities/c1/board/p1'))));
+await t('차단: 멤버 아닌 로그인 사용자가 게시판 읽기(2026-11-01부터 멤버만)', assertFails(getDoc(doc(as('outsider'), 'communities/c1/board/p1'))));
 await t('유지: 일반 멤버가 관리자 변경 차단', assertFails(updateDoc(doc(as('member'), 'communities/c1'), { createdBy: 'member' })));
 await t('유지: 가입(본인 멤버 문서)', assertSucceeds(setDoc(doc(as('newbie'), 'communities/c1/members/newbie'), { nickname: 'n' })));
 

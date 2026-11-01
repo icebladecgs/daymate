@@ -15,7 +15,7 @@ const seed = async () => {
     const db = ctx.firestore();
     const s = (p, d) => setDoc(doc(db, p), d);
     await s('admin/config', { uids: ['appAdmin'] });
-    await s(C, { name: '모임', createdBy: 'leader', memberCount: 3 });
+    await s(C, { name: '모임', createdBy: 'leader', memberCount: 3, isPublic: true });
     await s(`${C}/members/author`, { nickname: 'a' });
     await s(`${C}/members/other`, { nickname: 'o' });
     await s(`${C}/checkins/author`, { uid: 'author' });

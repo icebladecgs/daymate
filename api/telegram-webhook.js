@@ -260,7 +260,12 @@ export default async function handler(req, res) {
       const code = text.split(' ')[1];
       if (code) {
         const connectSnap = await db.doc(`tg_connect/${code}`).get();
-        if (connectSnap.exists) {
+        // 연결 코드는 만든 뒤 10분만 쓸 수 있다 (2026-11-01) — 예전엔 쓰기 전까지 계속 살아 있어서,
+        // 코드를 알아낸 사람이 자기 텔레그램을 남의 계정에 연결해 할일·메모를 볼 수 있었다.
+        const createdMs = connectSnap.exists ? Date.parse(connectSnap.data().createdAt || '') : NaN;
+        const fresh = Number.isFinite(createdMs) && Date.now() - createdMs < 10 * 60 * 1000;
+        if (connectSnap.exists && !fresh) await db.doc(`tg_connect/${code}`).delete().catch(() => {});
+        if (connectSnap.exists && fresh) {
           const { uid } = connectSnap.data();
           const firstName = msg.from?.first_name || '';
           await db.doc(`tg_users/${uid}`).set({ chatId: fromChatId, connectedAt: new Date().toISOString(), firstName });
@@ -279,7 +284,9 @@ export default async function handler(req, res) {
         }
       }
       // 코드 없거나 만료 → 앱에서 연결하도록 안내
-      await send(fromChatId, `👋 DayMate 봇이에요!\n앱 설정 → 텔레그램에서 연결 버튼을 눌러주세요.`);
+      await send(fromChatId, code
+        ? `⏰ 연결 코드가 만료됐거나 맞지 않아요.\n앱 설정 → 텔레그램에서 연결 버튼을 다시 눌러주세요(코드는 10분 동안 쓸 수 있어요).`
+        : `👋 DayMate 봇이에요!\n앱 설정 → 텔레그램에서 연결 버튼을 눌러주세요.`);
       return res.status(200).send('ok');
     }
 

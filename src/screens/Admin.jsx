@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
+import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
@@ -351,7 +351,27 @@ export default function Admin({ authUser, onBack }) {
         {/* 커뮤니티 탭 */}
         {activeTab === 'communities' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 80 }}>
-            {commLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 24, fontSize: 14 }}>삭제 중...</div>}
+            {commLoading && <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 24, fontSize: 14 }}>처리 중...</div>}
+            {/* 옛 커뮤니티: 비밀번호·초대 코드가 누구나 읽는 커뮤니티 문서에 있다 → 멤버만 읽는 곳으로 옮긴다 (2026-11-01) */}
+            {communities.some(isLegacyCommunity) && (
+              <button
+                disabled={commLoading}
+                onClick={async () => {
+                  const legacy = communities.filter(isLegacyCommunity);
+                  if (!window.confirm(`커뮤니티 ${legacy.length}개의 비밀번호·초대 코드를 멤버만 볼 수 있는 곳으로 옮길까요?\n코드와 비밀번호 값은 그대로예요.`)) return;
+                  setCommLoading(true);
+                  let failed = 0;
+                  for (const c of legacy) {
+                    try { await migrateCommunitySecret(c.id); } catch { failed++; }
+                  }
+                  setCommunities(await loadAllCommunities().then(list => list.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))).catch(() => communities));
+                  setCommLoading(false);
+                  alert(failed ? `${legacy.length - failed}개 옮김, ${failed}개 실패` : `${legacy.length}개 모두 옮겼어요`);
+                }}
+                style={{ background: 'rgba(91,124,250,.12)', border: '1px solid rgba(91,124,250,.4)', borderRadius: 10, color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', padding: '10px 12px' }}>
+                🔐 비밀번호·초대 코드 옮기기 ({communities.filter(isLegacyCommunity).length}개 남음)
+              </button>
+            )}
             {communities.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>커뮤니티 없음</div>
             ) : communities.map(c => (

@@ -233,11 +233,13 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 - 커뮤니티 자체 삭제는 앱 관리자만 가능하다(관리자 화면). 사용자가 이 상태를 유지하기로 했다.
 - 새 기능이 남의 문서를 수정해야 하면(예: 조회수, 반응) 규칙의 허용 필드 목록(`onlyChanges([...])`)에 추가해야 한다. 안 하면 조용히 permission-denied가 난다.
 - **챌린지(`challenges`, 2026-10-12)**도 같은 원칙: 수정은 만든 사람(`hostUid`)·앱 관리자, 다른 사람은 `memberCount`만. 삭제는 앱 관리자만. 참여 문서(`members/{uid}`)는 본인만 쓰고(삭제는 본인·앱 관리자), 인증(`certs`)은 본인 명의로만 작성·본인·앱 관리자만 수정·삭제, 다른 사람은 `cheerCount`(응원)만. 참여 문서의 연속 기록(`streak`·`totalCerts`)은 본인이 쓰는 값이라 본인이 부풀릴 수는 있다(서버 계산 아님).
+- **커뮤니티 내용은 멤버만 (2026-11-01, 보안 점검).** 커뮤니티 문서(이름·인원·공개 여부·`hasPassword`)는 로그인한 누구나 읽지만, **초대 코드·비밀번호는 `communities/{id}/private/secret`**(멤버·앱 관리자만 읽기, 커뮤니티 관리자·앱 관리자만 쓰기)에 둔다. 코드로 찾기는 **`inviteCodes/{코드}` = `{communityId}`**(하나씩 조회만, 목록 불가). 일정·출석·공지·게시판·댓글·멤버 목록은 **멤버·앱 관리자만 읽고 멤버만 쓴다.** 가입(멤버 문서 만들기)은 규칙의 `canJoin`이 확인한다 — 공개가 아니면 `joinCode`가 초대 코드와, 비밀번호가 있으면 `joinKey`가 비밀번호와 같아야 하고, 가입 뒤 앱이 두 칸을 지운다. 예전엔 비밀번호가 누구나 읽는 문서에 있고 확인을 화면에서만 해서, 로그인한 누구나 비밀번호를 읽고 가입·열람할 수 있었다. 옛 커뮤니티(문서에 `inviteCode`·`password`가 남은 것)는 관리자 화면 → 커뮤니티 탭 "🔐 비밀번호·초대 코드 옮기기"(`migrateCommunitySecret`)로 옮긴다(규칙은 옮기기 전에도 옛 칸으로 가입을 확인한다). 비밀번호는 4자리 숫자라 끈질기게 대입하면 뚫릴 수 있다는 한계가 남아 있다(서버 확인·시도 제한은 아직 없음).
+- **텔레그램 연결 코드 (2026-11-01):** 안전한 난수 12자리, 봇이 **만든 지 10분 안에만** 받는다(`api/telegram-webhook.js`). 코드 문서는 본인만 만들고 본인만 지운다.
 - **단체 채팅(`communities/{id}/chat`, 2026-09-27)**은 게시판보다 좁다: **읽기·보내기 모두 멤버만**(`isMember` — `members/{내 uid}` 문서 존재), 본인 명의로만, **수정 없음**, 삭제는 보낸 사람·커뮤니티 관리자·앱 관리자.
 
 ### 보안 규칙 변경 시 검증 방법
 
-- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-10-12 기준 196개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
+- 규칙 테스트는 저장소에 있다: `tools/rules-test/tests/*.mjs` (2026-11-01 기준 278개). `npm run test:rules` 한 번으로 에뮬레이터(`demo-daymate`, 실제 Firebase 접속 없음)에서 전부 실행한다. 도구(`tools/rules-test`, firebase-tools 13 등)는 앱과 분리돼 있어 처음 실행 때 자동 설치되고 Vercel에는 올라가지 않는다.
 - 규칙을 바꾸면 **테스트도 같이 추가**한다 — 새 파일 `tools/rules-test/tests/0N-이름.mjs`(기존 파일 형식: `t(이름, assertSucceeds/assertFails(...))`, 끝에 합계와 `process.exitCode`).
 - Java는 `tools/rules-test/rules.mjs`가 알아서 찾는다(2026-10-08~): 윈도우는 `C:\baduk\LizzieYZY\jre\java11\bin` → 설치된 Temurin(`Program Files\Eclipse Adoptium`, 설치 직후 PATH가 안 바뀐 터미널에서도 찾음) → PATH 순서, 하나도 없으면 **winget으로 Temurin 17을 자동 설치**한다(관리자 확인 창에서 "예"). 맥은 PATH의 Java를 쓰고, 없으면 `brew install --cask temurin@17` 안내 후 멈춘다. `C:\Dev\Projects\daymate` PC에는 2026-10-08 Temurin 17을 설치했다. 스크립트에서 환경변수를 고칠 때 윈도우는 이름이 `Path`라 `env.PATH`로 쓰면 원래 경로를 잃는다(`node` 못 찾음) — 실제 키 이름을 찾아 쓴다. 같은 PC에서 기본 점검이 브라우저 없음으로 멈추면 `npx playwright install chromium`. firebase-tools 14 이상은 더 높은 Java가 필요하므로 13을 쓴다.
 - "막혀야 할 것"과 "앱이 실제로 보내는 요청과 같은 형태의 허용 케이스"를 둘 다 테스트한다.

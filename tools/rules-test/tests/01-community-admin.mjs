@@ -46,7 +46,7 @@ await t('허용: 승계받은 새 관리자가 암호 변경', assertSucceeds(up
 await t('차단: 승계 후 예전 관리자는 암호 변경 불가', assertFails(updateDoc(doc(as('leader'), 'communities/c1'), { password: '1111' })));
 await t('허용: 앱 관리자가 관리자 변경', assertSucceeds(updateDoc(doc(as('appAdmin'), 'communities/c1'), { createdBy: 'leader' })));
 await t('허용: 커뮤니티 조회', assertSucceeds(getDoc(doc(as('member'), 'communities/c1'))));
-await t('허용: 멤버 문서 쓰기(가입)', assertSucceeds(setDoc(doc(as('member'), 'communities/c1/members/member'), { nickname: 'n', isAdmin: false })));
+await t('허용: 멤버 문서 쓰기(가입, 비밀번호 확인)', assertSucceeds(setDoc(doc(as('member'), 'communities/c1/members/member'), { nickname: 'n', isAdmin: false, joinKey: '9999' })));
 await t('허용: 게시글 작성', assertSucceeds(setDoc(doc(as('member'), 'communities/c1/board/p1'), { uid: 'member', text: 'hi', commentCount: 0 })));
 await t('허용: 앱 관리자 커뮤니티 삭제', assertSucceeds(deleteDoc(doc(as('appAdmin'), 'communities/c1'))));
 

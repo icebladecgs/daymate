@@ -30,6 +30,7 @@ import {
   limit,
   serverTimestamp,
   Timestamp,
+  deleteField,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -257,16 +258,44 @@ export async function getUserDaysCount(uid) {
 
 // ---------- Community ----------
 
+// 초대 코드·비밀번호는 멤버만 읽는 communities/{id}/private/secret에 둔다 (2026-11-01).
+// 커뮤니티 문서는 로그인한 누구나 읽으므로, 거기엔 비밀번호가 있는지(hasPassword)만 남긴다.
+// 코드로 찾기는 inviteCodes/{코드} = { communityId }.
+export const communitySecretRef = (communityId) => doc(db, 'communities', communityId, 'private', 'secret');
+
 export async function createCommunity(uid, name, nickname, isPublic = false, password = null) {
   const code = Math.random().toString(36).slice(2, 8).toUpperCase();
   const ref = doc(collection(db, 'communities'));
   await setDoc(ref, {
-    name, createdBy: uid, inviteCode: code,
+    name, createdBy: uid,
     createdAt: new Date().toISOString(), memberCount: 1,
-    isPublic, password: password || null,
+    isPublic, hasPassword: !!password,
   });
+  await setDoc(communitySecretRef(ref.id), { inviteCode: code, password: password || null });
+  await setDoc(doc(db, 'inviteCodes', code), { communityId: ref.id });
   await setDoc(doc(db, 'communities', ref.id, 'members', uid), { nickname, joinedAt: new Date().toISOString(), isAdmin: true });
   return { communityId: ref.id, inviteCode: code };
+}
+
+// 옛 커뮤니티(문서에 inviteCode·password가 그대로 있는 것)를 새 구조로 옮긴다.
+// 커뮤니티 관리자·앱 관리자만 할 수 있다. 옮길 게 없으면 false.
+export function isLegacyCommunity(data) {
+  return !!data && ('inviteCode' in data || 'password' in data);
+}
+
+export async function migrateCommunitySecret(communityId) {
+  const snap = await getDoc(doc(db, 'communities', communityId));
+  if (!snap.exists() || !isLegacyCommunity(snap.data())) return false;
+  const { inviteCode = null, password = null } = snap.data();
+  await setDoc(communitySecretRef(communityId), { inviteCode, password: password || null }, { merge: true });
+  if (inviteCode) {
+    const codeRef = doc(db, 'inviteCodes', inviteCode);
+    if (!(await getDoc(codeRef)).exists()) await setDoc(codeRef, { communityId });
+  }
+  await updateDoc(doc(db, 'communities', communityId), {
+    inviteCode: deleteField(), password: deleteField(), hasPassword: !!password,
+  });
+  return true;
 }
 
 export async function loadAllCommunities() {
@@ -285,47 +314,74 @@ export async function loadMyCommunityIds(uid) {
   return ids;
 }
 
+// 공개 목록에 보여줄 정보 — 옛 문서에 남아 있는 비밀번호·초대 코드는 빼고 넘긴다
+const publicCommunityInfo = (data) => {
+  const { password, inviteCode, ...rest } = data;
+  return { ...rest, hasPassword: rest.hasPassword ?? !!password };
+};
+
 export async function loadPublicCommunities() {
   const q = query(collection(db, 'communities'), where('isPublic', '==', true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => {
-    const { password, ...rest } = d.data();
-    return { id: d.id, ...rest, hasPassword: !!password };
-  });
+  return snap.docs.map(d => ({ id: d.id, ...publicCommunityInfo(d.data()) }));
 }
 
-export async function joinPublicCommunity(uid, communityId, nickname, password) {
-  const snap = await getDoc(doc(db, 'communities', communityId));
-  if (!snap.exists()) throw new Error('not found');
-  const data = snap.data();
-  if (data.password && data.password !== password) throw new Error('wrong password');
-  await joinCommunity(uid, communityId, nickname);
+// 공개 목록·초대 코드로 가입. 코드·비밀번호 확인은 보안 규칙이 한다(틀리면 permission-denied).
+export async function joinPublicCommunity(uid, communityId, nickname, password, joinCode = null) {
+  try {
+    await joinCommunity(uid, communityId, nickname, { joinCode, joinKey: password || null });
+  } catch (e) {
+    if (e?.code === 'permission-denied') throw new Error(password ? 'wrong password' : 'join denied');
+    throw e;
+  }
 }
 
 export async function findCommunityByCode(code) {
-  const q = query(collection(db, 'communities'), where('inviteCode', '==', code.toUpperCase()));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  const { password, ...rest } = d.data();
-  return { communityId: d.id, ...rest, hasPassword: !!password };
+  const c = code.trim().toUpperCase();
+  const codeSnap = await getDoc(doc(db, 'inviteCodes', c));
+  let communityId = codeSnap.exists() ? codeSnap.data().communityId : null;
+  if (!communityId) {
+    // 아직 옮기지 않은 옛 커뮤니티
+    const snap = await getDocs(query(collection(db, 'communities'), where('inviteCode', '==', c)));
+    if (snap.empty) return null;
+    communityId = snap.docs[0].id;
+  }
+  const d = await getDoc(doc(db, 'communities', communityId));
+  if (!d.exists()) return null;
+  return { communityId, ...publicCommunityInfo(d.data()), joinCode: c };
 }
 
-export async function joinCommunity(uid, communityId, nickname) {
+export async function joinCommunity(uid, communityId, nickname, { joinCode = null, joinKey = null } = {}) {
   const memberRef = doc(db, 'communities', communityId, 'members', uid);
   const existing = await getDoc(memberRef);
   if (existing.exists()) return; // 이미 가입됨
-  await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), isAdmin: false });
+  const proof = {};
+  if (joinCode) proof.joinCode = joinCode;
+  if (joinKey) proof.joinKey = joinKey;
+  await setDoc(memberRef, { nickname, joinedAt: new Date().toISOString(), isAdmin: false, ...proof });
+  // 확인용 값은 가입 뒤 바로 지운다 (멤버 목록에 남지 않게)
+  if (Object.keys(proof).length) {
+    updateDoc(memberRef, { joinCode: deleteField(), joinKey: deleteField() }).catch(() => {});
+  }
   await updateDoc(doc(db, 'communities', communityId), { memberCount: increment(1) });
 }
 
 export async function setCommunityPassword(communityId, password) {
-  await updateDoc(doc(db, 'communities', communityId), { password: password || null });
+  await migrateCommunitySecret(communityId);
+  await setDoc(communitySecretRef(communityId), { password: password || null }, { merge: true });
+  await updateDoc(doc(db, 'communities', communityId), { hasPassword: !!password });
 }
 
+// 커뮤니티 정보 + (멤버면) 초대 코드·비밀번호
 export async function loadCommunityData(communityId) {
   const snap = await getDoc(doc(db, 'communities', communityId));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  if (!snap.exists()) return null;
+  const data = { id: snap.id, ...snap.data() };
+  try {
+    const s = await getDoc(communitySecretRef(communityId));
+    if (s.exists()) Object.assign(data, { inviteCode: s.data().inviteCode ?? null, password: s.data().password ?? null });
+  } catch { /* 멤버가 아니면 읽을 수 없다 */ }
+  return data;
 }
 
 export async function loadCommunityMembers(communityId) {
@@ -342,11 +398,12 @@ export async function syncCommunityMemberCount(communityId, actualCount) {
 export async function loadTodayCommunityEvents(communityIds, date) {
   const results = [];
   for (const communityId of communityIds) {
+    // 나간(또는 내보내진) 커뮤니티는 일정을 읽을 수 없다 — 그 하나만 건너뛴다
     const [commSnap, evSnap] = await Promise.all([
       getDoc(doc(db, 'communities', communityId)),
       getDocs(query(collection(db, 'communities', communityId, 'events'), where('date', '==', date))),
-    ]);
-    if (!commSnap.exists()) continue;
+    ]).catch(() => [null, null]);
+    if (!commSnap?.exists()) continue;
     const communityName = commSnap.data().name || '커뮤니티';
     evSnap.docs.forEach(d => results.push({ id: d.id, ...d.data(), communityId, communityName }));
   }
@@ -395,6 +452,13 @@ export async function leaveCommunity(communityId, uid) {
 }
 
 export async function deleteCommunityFull(communityId) {
+  let inviteCode = null;
+  try {
+    const s = await getDoc(communitySecretRef(communityId));
+    inviteCode = s.data()?.inviteCode || null;
+  } catch { /* 옮기기 전 커뮤니티 */ }
+  if (inviteCode) await deleteDoc(doc(db, 'inviteCodes', inviteCode)).catch(() => {});
+  await deleteDoc(communitySecretRef(communityId)).catch(() => {});
   const subcollections = ['members', 'events', 'checkins', 'notices', 'board', 'chat'];
   for (const sub of subcollections) {
     const snap = await getDocs(collection(db, 'communities', communityId, sub));
@@ -860,8 +924,10 @@ export async function loadAllChallenges() {
 // ---------- 텔레그램 연결 ----------
 
 // 연결 코드 생성 (클라이언트에서 Firestore에 직접 저장)
+// 텔레그램 봇이 만든 지 10분 안에만 받아 준다(api/telegram-webhook.js). 맞히기 어렵게 안전한 난수 12자리.
 export async function saveTgConnectCode(uid) {
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => chars[b % chars.length]).join('');
   await setDoc(doc(db, 'tg_connect', code), {
     uid,
     createdAt: new Date().toISOString(),
