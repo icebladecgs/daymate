@@ -175,6 +175,49 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     purgeTrash(all);
   };
 
+  // ☑ 여러 개 한꺼번에 (2026-11-03) — 메모만 고를 수 있다(일정·일기·휴지통 제외). 지우기는 휴지통으로, 태그는 끝에 한 줄,
+  // 날짜 옮기기는 새 날짜에 넣고 원래 날짜에서 뺀다(빼면 휴지통에 들어가는 사본은 바로 정리)
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
+  const [bulkTag, setBulkTag] = useState("");
+  const pickable = (it) => it.kind === "memo";
+  const togglePick = (key) => setPicked(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  const stopPicking = () => { setPicking(false); setPicked(new Set()); setBulkTag(""); };
+  const pickedItems = () => items.filter(it => picked.has(it.key) && pickable(it));
+  const byDayOf = (list) => { const m = new Map(); list.forEach(it => m.set(it.ds, [...(m.get(it.ds) || []), it.id])); return m; };
+  const bulkDelete = () => {
+    const list = pickedItems();
+    if (!list.length || !window.confirm(`메모 ${list.length}개를 지울까요? (휴지통에 30일 보관)`)) return;
+    byDayOf(list).forEach((ids, ds) => onUpdateDayData(ds, prev => { const next = updateMemoIn(prev, "", {}); return { ...next, memos: next.memos.filter(m => !ids.includes(m.id)) }; }));
+    setToast(`메모 ${list.length}개를 휴지통으로 옮겼어요`);
+    setSelectedKey(null);
+    stopPicking();
+  };
+  const bulkAddTag = () => {
+    const tag = bulkTag.trim().replace(/^#+/, "").replace(/\s+/g, "");
+    const list = pickedItems().filter(it => !it.locked);
+    if (!tag || !list.length) return;
+    byDayOf(list).forEach((ids, ds) => onUpdateDayData(ds, prev => {
+      const next = updateMemoIn(prev, "", {});
+      return { ...next, memos: next.memos.map(m => (ids.includes(m.id) && !(m.text || "").includes(`#${tag}`) ? { ...m, text: `${(m.text || "").replace(/\s+$/, "")}\n#${tag}` } : m)) };
+    }));
+    setToast(`메모 ${list.length}개에 #${tag}를 붙였어요`);
+    stopPicking();
+  };
+  const bulkMove = (toDs) => {
+    const list = pickedItems().filter(it => it.ds !== toDs);
+    if (!toDs || !list.length) return;
+    byDayOf(list).forEach((ids, ds) => {
+      const moving = (plans[ds]?.memos || []).filter(m => ids.includes(m.id));
+      onUpdateDayData(toDs, prev => ({ ...prev, memos: [...(prev.memos || []).filter(m => !ids.includes(m.id)), ...moving] }));
+      onUpdateDayData(ds, prev => { const next = updateMemoIn(prev, "", {}); return { ...next, memos: next.memos.filter(m => !ids.includes(m.id)) }; });
+      onUpdateDayData(ds, prev => ({ ...prev, memoTrash: (prev.memoTrash || []).filter(m => !ids.includes(m.id)) }));
+    });
+    setToast(`메모 ${list.length}개를 ${toDs}로 옮겼어요`);
+    setSelectedKey(null);
+    stopPicking();
+  };
+
   const deleteMemo = (it) => {
     if (!window.confirm(`"${it.title}" 메모를 삭제할까요? (휴지통에 30일 보관)`)) return;
     onUpdateDayData(it.ds, prev => {
@@ -249,6 +292,29 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       {label}{sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
     </th>
   );
+  const bulkBtn = { padding: z("4px 10px", "6px 12px"), borderRadius: 8, border, background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 };
+  const pickBar = filter !== "trash" && (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
+      {!picking ? (
+        <button onClick={() => setPicking(true)} style={bulkBtn}>☑ 여러 개 고르기</button>
+      ) : (
+        <>
+          <span style={{ fontSize: z(12, 14), fontWeight: 800, ...ink }}>{picked.size}개</span>
+          <button onClick={() => setPicked(new Set(list.filter(pickable).slice(0, limit).map(it => it.key)))} style={bulkBtn}>모두</button>
+          <button onClick={bulkDelete} disabled={!picked.size} style={{ ...bulkBtn, color: "#F87171" }}>🗑 지우기</button>
+          <input value={bulkTag} onChange={e => setBulkTag(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.nativeEvent.isComposing && bulkAddTag()} placeholder="태그" aria-label="붙일 태그"
+            style={{ width: 80, padding: z("4px 8px", "6px 8px"), borderRadius: 8, border, background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(12, 14), fontFamily: "inherit" }} />
+          <button onClick={bulkAddTag} disabled={!picked.size || !bulkTag.trim()} style={bulkBtn}>🏷 붙이기</button>
+          <label style={{ ...bulkBtn, position: "relative" }}>📅 날짜 옮기기
+            <input type="date" onChange={e => bulkMove(e.target.value)} disabled={!picked.size} aria-label="옮길 날짜"
+              onClick={e => { try { e.currentTarget.showPicker(); } catch { /* 기본 동작 */ } }}
+              style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }} />
+          </label>
+          <button onClick={stopPicking} style={bulkBtn}>취소</button>
+        </>
+      )}
+    </div>
+  );
   const table = (
     <div tabIndex={0} onKeyDown={onListKey} style={{ flex: 1, minHeight: 0, overflow: "auto", outline: "none" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -267,9 +333,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             const active = it.key === selectedKey;
             const cell = z("6px 8px", "10px 8px");
             return (
-              <tr key={it.key} ref={el => { rowRefs.current[it.key] = el; }} onClick={() => select(it.key)}
-                style={{ cursor: "pointer", background: active ? "rgba(108,142,255,.2)" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
-                <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{KIND[it.kind].icon}</td>
+              <tr key={it.key} ref={el => { rowRefs.current[it.key] = el; }} onClick={() => (picking ? pickable(it) && togglePick(it.key) : select(it.key))}
+                style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "rgba(108,142,255,.2)" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
+                <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.starred && "⭐ "}{it.title}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
@@ -320,7 +386,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       )}
     </div>
   );
-  const listArea = filter === "photo" ? wall : table;
+  const listArea = filter === "photo" ? wall : <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{pickBar}{table}</div>;
 
   // [[키워드]]·#태그를 누르면 그 태그 목록으로 (크게 보던 중이면 목록이 보이게 돌아온다)
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
