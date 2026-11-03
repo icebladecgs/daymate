@@ -24,6 +24,9 @@ import { ExamSettingsCard } from "../components/Exam.jsx";
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 
+// 하위 화면의 작은 설명 글씨 — 새 디자인일 때 키운다 (첫 화면은 아래 nl로 따로)
+const NL = () => newDesignOn();
+
 function MenuRow({ icon, title, sub, right, onClick }) {
   const nl = newDesignOn(); // 새 디자인: 글씨 크게
   return (
@@ -549,16 +552,16 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}>🔮 생년월일시 (운세용)</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
           오늘의 운세 · 사주 · 토정비결에 사용돼요
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>생년월일</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>생년월일</div>
             <input style={{ ...S.input, marginBottom: 0 }} type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>출생 시간 (선택)</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>출생 시간 (선택)</div>
             <input style={{ ...S.input, marginBottom: 0 }} type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} placeholder="예: 14:30" />
           </div>
         </div>
@@ -567,7 +570,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}>연간 목표</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
           👑 연간 목표 (최대 5개)
         </div>
         <textarea
@@ -577,7 +580,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           onChange={(e) => setYearText(e.target.value)}
           placeholder="한 줄에 하나씩 입력"
         />
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
           💡 이달 목표는 My 탭에서 직접 추가/편집할 수 있어요
         </div>
         <button style={S.btn} onClick={save}>저장</button>
@@ -594,7 +597,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}>질문 편집 (최대 {MAX_DIARY_QUESTIONS}개)</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
           🎙️ 음성 일기 작성 시 순서대로 물어볼 질문이에요
         </div>
         <textarea
@@ -604,7 +607,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           onChange={(e) => setDiaryQText(e.target.value)}
           placeholder="한 줄에 하나씩 입력"
         />
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.6 }}>
           💡 순서대로 질문이 나오고, 답변을 모아 AI가 일기 한 편으로 정리해드려요
         </div>
         <button style={S.btn} onClick={saveDiaryQuestions}>저장</button>
@@ -625,17 +628,17 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 900 }}>알림</div>
             {permission === "denied" && (
-              <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
+              <div style={{ fontSize: NL() ? 14 : 12, color: "#F87171", marginTop: 6 }}>
                 브라우저 알림이 차단되어 있어요. (사이트 설정에서 허용)
               </div>
             )}
             {permission === "default" && (
-              <div style={{ fontSize: 12, color: "#FCD34D", marginTop: 6 }}>
+              <div style={{ fontSize: NL() ? 14 : 12, color: "#FCD34D", marginTop: 6 }}>
                 알림 권한을 먼저 허용해야 해요.
               </div>
             )}
             {permission === "unsupported" && (
-              <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>
+              <div style={{ fontSize: NL() ? 14 : 12, color: "#F87171", marginTop: 6 }}>
                 이 브라우저는 알림을 지원하지 않아요.
               </div>
             )}
@@ -738,7 +741,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
             <div>
               <div style={{ fontWeight: 900, fontSize: 14 }}>{label}</div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{sub}</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{sub}</div>
             </div>
             <div onClick={() => onChange(!value)} style={{
               width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer',
@@ -750,7 +753,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         ))}
         {notifSound && (
           <div>
-            <div style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 8 }}>소리 스타일</div>
+            <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 8 }}>소리 스타일</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {SOUND_STYLES.map(s => (
                 <button key={s.id} onClick={() => { setSoundStyle(s.id); localStorage.setItem('dm_notif_sound_style', s.id); playNotifSound(s.id); }}
@@ -762,7 +765,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                     fontSize: 13, fontWeight: soundStyle === s.id ? 900 : 400, cursor: 'pointer',
                   }}>
                   {s.label}
-                  <span style={{ fontSize: 10, color: 'var(--dm-muted)', marginLeft: 4 }}>{s.desc}</span>
+                  <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)', marginLeft: 4 }}>{s.desc}</span>
                 </button>
               ))}
             </div>
@@ -772,7 +775,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}>알림 시간 설정</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           아침·점심·저녁·밤 알림 시간을 조정할 수 있어요.
         </div>
         {[
@@ -794,7 +797,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>📱 잠금화면 할일 알림</div>
-          <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>매일 아침 7시 고정</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>매일 아침 7시 고정</div>
         </div>
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
@@ -804,7 +807,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 14 }}>음성 알람</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>알람 시 문구를 음성으로 읽어줘요</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>알람 시 문구를 음성으로 읽어줘요</div>
           </div>
           <div onClick={() => { const v = !ttsEnabled; setTtsEnabled(v); localStorage.setItem('dm_notif_tts', v); if (v) speakTTS('음성 알람이 켜졌어요!'); }}
             style={{ width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer', background: ttsEnabled ? '#6C8EFF' : 'var(--dm-border)', position: 'relative' }}>
@@ -821,7 +824,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               { key: 'night',       label: '🌙 밤 마감 알람' },
             ].map(({ key, label }) => (
               <div key={key}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 6 }}>{label}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13 }}
@@ -856,7 +859,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                 <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 900, color: '#4ADE80' }}>✓ 텔레그램 연결됨</div>
-                  <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 2 }}>{tgFirstName ? `${tgFirstName}님 계정` : '연결 완료'}</div>
+                  <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginTop: 2 }}>{tgFirstName ? `${tgFirstName}님 계정` : '연결 완료'}</div>
                 </div>
               </div>
               <button style={S.btnGhost} onClick={handleTgDisconnect}>연결 해제</button>
@@ -867,13 +870,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                 <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 900 }}>텔레그램 연결</div>
-                  <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 2 }}>버튼 하나로 바로 연결</div>
+                  <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginTop: 2 }}>버튼 하나로 바로 연결</div>
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.8, marginBottom: 14, background: 'var(--dm-deep)', borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.8, marginBottom: 14, background: 'var(--dm-deep)', borderRadius: 10, padding: '10px 12px' }}>
                 <b style={{ color: '#6C8EFF' }}>1.</b> 아래 버튼을 누르면 텔레그램이 열려요<br />
                 <b style={{ color: '#6C8EFF' }}>2.</b> 봇에서 <b>시작</b> 버튼만 누르면 끝!<br />
-                <span style={{ color: 'var(--dm-muted)', fontSize: 11 }}>BotFather, 토큰, Chat ID — 모두 필요 없어요 ✨</span>
+                <span style={{ color: 'var(--dm-muted)', fontSize: NL() ? 13 : 11 }}>BotFather, 토큰, Chat ID — 모두 필요 없어요 ✨</span>
               </div>
               <button
                 style={{ ...S.btn, opacity: tgConnecting ? 0.6 : 1 }}
@@ -883,7 +886,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                 {tgConnecting ? '⏳ 텔레그램 열리는 중...' : '📨 텔레그램으로 연결하기'}
               </button>
               {tgConnecting && (
-                <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', marginTop: 8 }}>
+                <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', textAlign: 'center', marginTop: 8 }}>
                   텔레그램에서 시작 버튼을 누르면 자동으로 연결돼요
                 </div>
               )}
@@ -893,34 +896,34 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
         <div style={S.card}>
           <div style={{ height: 10 }} />
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>
             Finnhub API Key <span style={{ color: "var(--dm-muted)", fontWeight: 400 }}>(Vercel 환경변수로 설정)</span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", padding: "10px 12px", background: "var(--dm-deep)", borderRadius: 8, border: "1px solid var(--dm-border)" }}>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)", padding: "10px 12px", background: "var(--dm-deep)", borderRadius: 8, border: "1px solid var(--dm-border)" }}>
             🔒 FINNHUB_KEY 서버 환경변수로 관리됨 — 입력할 필요 없음
           </div>
 
           <div style={{ height: 10 }} />
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 4 }}>날씨 도시</div>
           <input style={S.input} value={weatherCity}
             onChange={(e) => setWeatherCity(e.target.value)}
             placeholder="서울 (기본값)" />
 
           <div style={{ height: 14 }} />
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>알림 시간</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>자산 브리핑</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>자산 브리핑</div>
               <input style={S.input} type="time" value={briefingTime} onChange={(e) => setBriefingTime(e.target.value)} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
               <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
             </div>
           </div>
 
           <div style={{ height: 14 }} />
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 10 }}>브리핑 자산 선택</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {Object.entries(ASSET_META).map(([sym, meta]) => {
               const on = selectedAssets.includes(sym);
@@ -929,7 +932,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                   key={sym}
                   onClick={() => toggleAsset(sym)}
                   style={{
-                    padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 700,
                     background: on ? "#4B6FFF" : "var(--dm-row)",
                     color: on ? "#fff" : "var(--dm-muted)",
                   }}
@@ -945,7 +948,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               {customAssets.map(a => (
                 <div key={a.sym} style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  padding: "5px 10px", borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700,
                   background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "var(--dm-row)",
                   color: selectedAssets.includes(a.sym) ? "#fff" : "var(--dm-muted)",
                 }}>
@@ -962,7 +965,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           )}
 
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>자산 검색 추가</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
               {[
                 { id: 'stock', label: '해외주식/ETF' },
@@ -973,7 +976,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                   key={id}
                   onClick={() => { setSearchMode(id); setSearchResults([]); setAssetSearch(''); }}
                   style={{
-                    padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 700,
                     background: searchMode === id ? "#4B6FFF" : "var(--dm-row)",
                     color: searchMode === id ? "#fff" : "var(--dm-muted)",
                   }}
@@ -987,7 +990,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                 value={assetSearch}
                 onChange={e => doAssetSearch(e.target.value)}
               />
-              {searching && <span style={{ color: "var(--dm-sub)", fontSize: 12, alignSelf: "center" }}>검색 중...</span>}
+              {searching && <span style={{ color: "var(--dm-sub)", fontSize: NL() ? 14 : 12, alignSelf: "center" }}>검색 중...</span>}
             </div>
             {searchResults.length > 0 && (
               <div style={{
@@ -1005,9 +1008,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                   >
                     <div>
                       <span style={{ fontWeight: 700, fontSize: 13, color: "var(--dm-text)" }}>{item.sym}</span>
-                      <span style={{ fontSize: 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
+                      <span style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
                     </div>
-                    <span style={{ fontSize: 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
+                    <span style={{ fontSize: NL() ? 14 : 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
                   </div>
                 ))}
               </div>
@@ -1018,7 +1021,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <button style={S.btn} onClick={saveTelegram}>알림 설정 저장</button>
           {tgConnected && <button style={S.btnGhost} onClick={testTelegramMsg}>연결 테스트</button>}
           {tgConnected && <button style={S.btnGhost} onClick={testBriefing}>자산 브리핑 테스트 전송</button>}
-          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
+          <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.7 }}>
             ⚠️ 탭이 열려 있을 때만 동작해요.
           </div>
         </div>
@@ -1043,10 +1046,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               )}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{authUser.displayName}</div>
-                <div style={{ fontSize: 12, color: "var(--dm-sub)" }}>{authUser.email}</div>
+                <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)" }}>{authUser.email}</div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: syncStatus === 'synced' ? '#4ade80' : 'var(--dm-sub)', marginBottom: 12 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, color: syncStatus === 'synced' ? '#4ade80' : 'var(--dm-sub)', marginBottom: 12 }}>
               {syncStatus === 'syncing' ? '동기화 중...' : syncStatus === 'synced' ? '✓ 동기화 완료' : '대기 중'}
             </div>
             <button style={S.btnGhost} onClick={() => {
@@ -1055,7 +1058,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </div>
         ) : (
           <div>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
               Google 계정으로 로그인하면 데스크탑↔모바일 데이터가 자동으로 동기화돼요.
             </div>
             <button
@@ -1070,7 +1073,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>🗓️</span> 구글 캘린더</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
           {gcalConnected
             ? `연동됨 · ${new Date(gcalTokenExp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 까지 유효`
             : '할일을 구글 캘린더에 자동으로 추가하거나, 캘린더 일정을 오늘 할일로 가져올 수 있어요.'}
@@ -1094,13 +1097,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
         {gcalStatus && (
           <div style={{
-            fontSize: 12, marginTop: 10, fontWeight: 700,
+            fontSize: NL() ? 14 : 12, marginTop: 10, fontWeight: 700,
             color: gcalStatus.startsWith('✓') ? '#4ADE80' : gcalStatus.includes('중') ? 'var(--dm-sub)' : '#F87171',
           }}>
             {gcalStatus}
           </div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.8 }}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 10, lineHeight: 1.8 }}>
           💡 연동 버튼을 누르면 구글 계정 선택 팝업이 열려요.<br/>
           ⚠️ "앱을 확인할 수 없습니다" 경고창이 뜨면 <b>고급 → 계속</b>을 눌러주세요.<br/>
           🕐 연동은 1시간 유효해요. 만료되면 버튼이 다시 "연동하기"로 바뀌며, 재연동하면 돼요.
@@ -1110,7 +1113,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>☁️</span> 구글 드라이브</div>
       <div style={S.card}>
         {lastDriveBackup && (
-          <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 8 }}>
+          <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 8 }}>
             마지막 백업: {new Date(lastDriveBackup).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </div>
         )}
@@ -1128,7 +1131,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </button>
         )}
         {driveStatus && (
-          <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: driveStatus.startsWith('✓') ? '#4ADE80' : driveStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
+          <div style={{ fontSize: NL() ? 14 : 12, marginTop: 8, fontWeight: 700, color: driveStatus.startsWith('✓') ? '#4ADE80' : driveStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
             {driveStatus}
           </div>
         )}
@@ -1147,11 +1150,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           </button>
         )}
         {memoHistoryStatus && (
-          <div style={{ fontSize: 12, marginTop: 8, fontWeight: 700, color: memoHistoryStatus.startsWith('✓') ? '#4ADE80' : memoHistoryStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
+          <div style={{ fontSize: NL() ? 14 : 12, marginTop: 8, fontWeight: 700, color: memoHistoryStatus.startsWith('✓') ? '#4ADE80' : memoHistoryStatus.includes('중') ? 'var(--dm-sub)' : '#F87171' }}>
             {memoHistoryStatus}
           </div>
         )}
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.7 }}>
           💡 연동하면 매일 자동으로 구글 드라이브 <b>DayMate</b> 폴더에 백업돼요.<br/>
           📁 전체 백업은 <b>DayMate/백업</b>, 메모·일기는 <b>DayMate/메모/YYYY-MM.md</b>, 첨부 파일은 <b>DayMate/첨부파일</b>에 저장돼요.<br/>
           ⚠️ 1시간마다 재연동이 필요해요.
@@ -1171,16 +1174,16 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       <div style={S.card}>
         {pendingInviteCode && (
           <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,rgba(108,142,255,.12),rgba(74,222,128,.08))', border: '1px solid rgba(108,142,255,.25)' }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>지금 들어온 초대 코드</div>
-            <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>지금 들어온 초대 코드</div>
+            <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>
               <b style={{ color: '#6C8EFF' }}>{pendingInviteCode}</b> 가 감지됐어요. 아래에서 바로 적용되거나, 이미 적용됐다면 친구에게 내 링크를 다시 공유해보세요.
             </div>
           </div>
         )}
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           내 코드/링크로 친구가 가입하면 <b style={{ color: "#6C8EFF" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
         </div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>내 초대 코드</div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>내 초대 코드</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <div style={{ flex: 1, padding: "12px 14px", borderRadius: 12, background: "var(--dm-deep)", border: "1.5px solid var(--dm-border)", fontSize: 20, fontWeight: 900, letterSpacing: 4, textAlign: "center", color: "#6C8EFF" }}>
             {myCode}
@@ -1192,8 +1195,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             {codeCopied ? '✓' : '복사'}
           </button>
         </div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 4 }}>친구 코드 입력</div>
-        <div style={{ fontSize: 11, color: "var(--dm-sub)", marginBottom: 8, lineHeight: 1.5 }}>친구에게 코드를 직접 받았다면 여기 입력 → <b style={{ color: "#4ADE80" }}>내가 +100 XP</b> 획득!</div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 4 }}>친구 코드 입력</div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-sub)", marginBottom: 8, lineHeight: 1.5 }}>친구에게 코드를 직접 받았다면 여기 입력 → <b style={{ color: "#4ADE80" }}>내가 +100 XP</b> 획득!</div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             style={{ ...S.input, flex: 1, marginBottom: 0, letterSpacing: 2, textTransform: "uppercase" }}
@@ -1212,7 +1215,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>🔗</span> 친구에게 공유하기</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           링크로 접속하면 내 초대 코드가 자동 적용돼요. 친구가 +100 XP를 받고, 나는 초대 랭킹이 올라가요! 🎉
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1267,7 +1270,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               <IOSInstallGuide />
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.9, marginTop: 12 }}>
               🤖 {androidInstallText(isSamsung)}
             </div>
           )
@@ -1276,7 +1279,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={S.sectionTitle}>백업 & 복구</div>
       <div style={S.card}>
-        <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+        <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
           • 이 앱 데이터는 각 기기 브라우저에 저장됩니다.<br />
           • JSON으로 백업하면 다른 기기에서 복구할 수 있어요.
         </div>
@@ -1294,7 +1297,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>새 디자인</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
               오늘·My 탭: 큰 글씨, 또렷한 제목과 버튼, 지금 할 일을 맨 위로, 시간 있는 할 일은 시간순, 분 단위 시계 · 끄면 예전 화면 · 이 기기에만 적용
             </div>
           </div>
@@ -1309,7 +1312,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--dm-row)' }}>
             <div>
               <div style={{ fontWeight: 900, fontSize: 13 }}>끝낸 할 일 아래로 모으기</div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>체크한 할 일을 목록 아래 "완료" 묶음으로 · 끄면 제자리에 남아요</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>체크한 할 일을 목록 아래 "완료" 묶음으로 · 끄면 제자리에 남아요</div>
             </div>
             <div onClick={() => { const v = !todayDoneGroup; setTodayDoneGroupState(v); setTodayDoneGroup(v); }} role="switch" aria-checked={todayDoneGroup} aria-label="끝낸 할 일 아래로 모으기" style={{
               width: 52, height: 28, borderRadius: 999, background: todayDoneGroup ? "#6C8EFF" : "var(--dm-border)",
@@ -1326,7 +1329,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>분류 안 된 할일 물어보기</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>능력치를 알 수 없는 할일을 완료하면 한 번 물어보고 기억해요</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>능력치를 알 수 없는 할일을 완료하면 한 번 물어보고 기억해요</div>
           </div>
           <div onClick={() => setStatAskOff?.(v => !v)} role="switch" aria-checked={!statAskOff} style={{
             width: 52, height: 28, borderRadius: 999, background: !statAskOff ? "#6C8EFF" : "var(--dm-border)",
@@ -1337,13 +1340,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
         {statWords.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>기억한 단어 ({statWords.length})</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>기억한 단어 ({statWords.length})</div>
             {statWords.map(x => {
               const stat = GROWTH_STAT_MAP[x.s];
               return (
                 <div key={x.w} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.w}</span>
-                  <span style={{ fontSize: 12, color: stat ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, flexShrink: 0 }}>{stat ? `${stat.icon} ${stat.name}` : '🚫 해당 없음'}</span>
+                  <span style={{ fontSize: NL() ? 14 : 12, color: stat ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, flexShrink: 0 }}>{stat ? `${stat.icon} ${stat.name}` : '🚫 해당 없음'}</span>
                   <button onClick={() => setStatWords?.(prev => (prev || []).filter(y => y.w !== x.w))} aria-label="지우기"
                     style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 15, padding: '0 4px', flexShrink: 0 }}>✕</button>
                 </div>
@@ -1358,7 +1361,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>목록 자동완성</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
               "- ", "1. ", "[ ] " 줄에서 Enter를 치면 다음 줄에 이어 붙이고, Tab·Shift+Tab으로 단계를 들이고 내요. 기호 바로 뒤 Backspace는 한 단계 위로, 번호 목록은 넣고·지우고·옮기면 다시 매겨요 · 끄면 Tab은 다음 칸 이동 · 이 기기에만 적용 (메모 창의 ⚙️에서도 바꿀 수 있어요)
             </div>
           </div>
@@ -1380,18 +1383,18 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </button>
         {showEventAdvanced && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
               홈 화면에 이벤트 배너를 표시해요. 기간 내에만 노출되고 D-day가 카운트다운돼요.
             </div>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>이벤트 이름</div>
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 6 }}>이벤트 이름</div>
             <input style={S.input} value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="예: 3월 챌린지 🔥" maxLength={30} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>시작일</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>시작일</div>
                 <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종료일</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>종료일</div>
                 <input style={{ ...S.input, marginBottom: 0 }} type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} />
               </div>
             </div>
@@ -1419,7 +1422,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </button>
         {showDangerZone && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
+            <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 12 }}>
               이 기기의 DayMate 데이터가 모두 삭제됩니다. 백업 후 진행하는 것을 권장합니다.
             </div>
             <button
@@ -1441,7 +1444,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
-      <div style={{ margin: '0 16px 16px', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', fontSize: 12, color: 'var(--dm-muted)' }}>
+      <div style={{ margin: '0 16px 16px', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)' }}>
         DayMate {APP_VERSION} · {APP_BUILD}
       </div>
       <div style={{ height: 12 }} />
@@ -1496,7 +1499,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
       </div>
 
         <div style={{ ...S.card, marginBottom: 14 }}>
-          <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
+          <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10 }}>
             <SummaryTile
               label="계정"
@@ -1540,7 +1543,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         </div>
 
       <div style={{ padding: '0 16px 12px' }}>
-        <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
+        <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: NL() ? 13 : 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {quickActions.map((item) => (
             <button
@@ -1567,10 +1570,10 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       {authUser && onOpenAdmin && (
         <div style={{ padding: '0 16px 12px' }}>
-          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: 12, position: 'relative', marginTop: 0 }}>
+          <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: NL() ? 14 : 12, position: 'relative', marginTop: 0 }}>
             🛠 관리자 페이지
             {pendingSuggestions > 0 && (
-              <span style={{ position: 'absolute', top: -4, right: -4, fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
+              <span style={{ position: 'absolute', top: -4, right: -4, fontSize: NL() ? 12 : 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
             )}
           </button>
         </div>
@@ -1611,7 +1614,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         />
       </MenuGroup>
 
-      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
+      <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: NL() ? 14 : 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
 
       {/* 제안 모달 */}
@@ -1629,12 +1632,12 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>제안이 접수됐어요!</div>
-                <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 20 }}>검토 후 반영 여부를 알려드릴게요.</div>
+                <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginBottom: 20 }}>검토 후 반영 여부를 알려드릴게요.</div>
                 <button onClick={() => setSuggestionOpen(false)} style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', width: 'auto', padding: '10px 28px' }}>확인</button>
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>
+                <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 8 }}>
                   작성자: <span style={{ color: 'var(--dm-sub)', fontWeight: 700 }}>{maskEmail(authUser?.email)}</span>
                 </div>
                 <textarea
@@ -1645,7 +1648,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
                   maxLength={500}
                   style={{ ...S.input, resize: 'none', marginBottom: 6 }}
                 />
-                <div style={{ fontSize: 11, color: 'var(--dm-muted)', textAlign: 'right', marginBottom: 12 }}>{suggestionText.length}/500</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', textAlign: 'right', marginBottom: 12 }}>{suggestionText.length}/500</div>
                 <button onClick={handleSubmitSuggestion}
                   disabled={submittingSuggestion || !suggestionText.trim()}
                   style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', marginTop: 0 }}>

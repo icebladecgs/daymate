@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import S from "../styles.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import Linkify from "../utils/linkify.jsx";
+import { newDesignOn } from "../utils/todayLook.js";
+
+// 새 디자인(설정 → 앱 관리)일 때 메모 줄 글씨를 키운다
+const NL = () => newDesignOn();
 
 function getMemoTime() {
   const now = new Date();
@@ -14,7 +18,7 @@ const chipBtn = (color) => ({
   color,
   borderRadius: 8,
   padding: '4px 10px',
-  fontSize: 12,
+  fontSize: NL() ? 14 : 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
 });
@@ -37,8 +41,8 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
     return (
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <div onClick={() => requestMemoLock(item.id, 'open')}
-          style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-muted)', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}>
-          {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}🔒 잠긴 메모 <span style={{ fontSize: 11 }}>(눌러서 열기)</span>
+          style={{ flex: 1, minWidth: 0, fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-muted)', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}>
+          {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}🔒 잠긴 메모 <span style={{ fontSize: NL() ? 13 : 11 }}>(눌러서 열기)</span>
         </div>
         <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
       </div>
@@ -53,7 +57,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
           rows={editRows}
           autoFocus
           onChange={e => setEditText(e.target.value)}
-          style={{ ...S.input, marginBottom: 6, resize: "none", fontSize: 13, lineHeight: 1.6, padding: "8px 10px", wordBreak: "break-word", overflowWrap: "break-word" }}
+          style={{ ...S.input, marginBottom: 6, resize: "none", fontSize: NL() ? 15 : 13, lineHeight: 1.6, padding: "8px 10px", wordBreak: "break-word", overflowWrap: "break-word" }}
         />
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={handleSave} style={chipBtn('#4B6FFF')}>저장</button>
@@ -66,7 +70,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
   if (mode === 'expanded') {
     return (
       <div>
-        <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
+        <div style={{ fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, marginBottom: 6 }}>
           {/* 글 속 링크는 눌러서 열기 (한 줄로 접힌 상태는 누르면 펼쳐지므로 펼친 뒤에만) */}
           <Linkify text={item.text} />
         </div>
@@ -90,7 +94,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <div
         onClick={() => isLong ? setMode('expanded') : setMode('editing')}
-        style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
+        style={{ flex: 1, minWidth: 0, fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
       >
         {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}
         {item.photos?.length > 0 && <span style={{ marginRight: 4 }}>📷</span>}
@@ -152,7 +156,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
       <div ref={listRef}>
         {memos.map(memo => (
           <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
-            <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: 34, flexShrink: 0 }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: NL() ? 44 : 34, flexShrink: 0 }}>
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -169,7 +173,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
           rows={inputRows}
           onChange={e => setInput(e.target.value)}
           placeholder={placeholder || "메모 입력 후 + 버튼"}
-          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, resize: "none", lineHeight: 1.6 }}
+          style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: NL() ? 15 : 13, resize: "none", lineHeight: 1.6 }}
         />
         {extraAction}
         <button
