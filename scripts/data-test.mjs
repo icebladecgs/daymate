@@ -8,6 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
+const { getUpcomingContactEvents, solarToLunar } = await load('/src/data/contacts.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
@@ -109,6 +110,18 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   const lost = restoreLostTaskDetails({ tasks: [{ id: 't1', title: 'a', note: '' }] }, { tasks: [{ id: 't1', title: 'a', note: '사라질 뻔한 메모', photos: [{ path: 'p' }] }] });
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
+}
+
+// ── 음력 (2026-11-03) ──
+{
+  const l = solarToLunar('2026-11-04');
+  t('음력: 2026-11-04는 음력 9월 25일', l?.month === 9 && l.day === 25 && !l.leap, JSON.stringify(l));
+  t('음력: 윤달 구분 (2025-07-25 = 윤6월 1일)', solarToLunar('2025-07-25')?.leap === true && solarToLunar('2025-07-25')?.month === 6);
+  const people = [{ id: 'p1', name: '할아버지', anniversaries: [{ id: 'a1', name: '제사', month: 10, day: 1, calendar: 'lunar' }] }];
+  const ev = getUpcomingContactEvents(people, 7, '2026-11-04'); // 음력 10월 1일 = 2026-11-09
+  t('음력 기념일: 양력으로 바꿔 D-5', ev.length === 1 && ev[0].dday === 5, JSON.stringify(ev));
+  const solar = getUpcomingContactEvents([{ id: 'p2', name: '친구', anniversaries: [{ id: 'a2', name: '기념일', month: 11, day: 9 }] }], 7, '2026-11-04');
+  t('양력 기념일은 그대로 (calendar 없으면 양력)', solar.length === 1 && solar[0].dday === 5);
 }
 
 // ── 알람 (2026-11-03) ──

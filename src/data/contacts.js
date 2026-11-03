@@ -20,7 +20,7 @@ export function newContact(name) {
     tags: [],
     cards: [], // { id, frontUrl, frontPath, backUrl, backPath, addedAt }
     birthday: null, // { calendar: 'solar'|'lunar', month, day, year: number|null }
-    anniversaries: [], // { id, name, month, day, year: number|null } — v1은 양력만 지원
+    anniversaries: [], // { id, name, month, day, year: number|null, calendar?: 'solar'|'lunar' } — 음력은 2026-11-03부터 (제사 등)
     firstMet: { date: null, place: "" },
     introducedBy: { personId: null, text: "" },
     memo: "",
@@ -120,7 +120,7 @@ export function getUpcomingContactEvents(contacts, windowDays, todayStr = toDate
     }
     (c.anniversaries || []).forEach((a) => {
       if (!a.month || !a.day) return;
-      const occ = getNextSolarOccurrence(a.month, a.day, "solar", todayStr);
+      const occ = getNextSolarOccurrence(a.month, a.day, a.calendar || "solar", todayStr);
       if (occ) {
         const dday = daysUntil(occ, todayStr);
         if (dday >= 0 && dday <= windowDays) {
@@ -191,3 +191,22 @@ export function searchContacts(contacts, query) {
   if (!pq.q) return contacts || [];
   return (contacts || []).filter((c) => matchSearchIndex(buildSearchIndex(c), pq));
 }
+
+// 양력 날짜 → 음력 { year, month, day, leap } (달력에 음력 표시, 2026-11-03) — 생일과 같은 KASI 표 기반 라이브러리. 안 되면 null
+const lunarCache = new Map();
+export function solarToLunar(ds) {
+  if (lunarCache.has(ds)) return lunarCache.get(ds);
+  let out = null;
+  try {
+    const [y, m, d] = ds.split("-").map(Number);
+    const cal = new KoreanLunarCalendar();
+    if (cal.setSolarDate(y, m, d)) {
+      const l = cal.getLunarCalendar();
+      out = { year: l.year, month: l.month, day: l.day, leap: !!l.intercalation };
+    }
+  } catch { out = null; }
+  lunarCache.set(ds, out);
+  return out;
+}
+// "음 9.1" · "음 윤6.1"
+export const lunarShort = (ds) => { const l = solarToLunar(ds); return l ? `음 ${l.leap ? "윤" : ""}${l.month}.${l.day}` : ""; };

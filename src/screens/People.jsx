@@ -111,7 +111,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
 
           <div style={S.card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)" }}>기타 기념일 (양력)</div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)" }}>기타 기념일 (제사처럼 음력이면 "음력"을 눌러요)</div>
               <button type="button" onClick={addAnniversary} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>＋ 추가</button>
             </div>
             {(draft.anniversaries || []).map(a => (
@@ -119,6 +119,8 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
                 <input value={a.name} onChange={e => updateAnniversary(a.id, { name: e.target.value })} placeholder="이름 (예: 결혼기념일)" style={{ ...S.input, flex: 1.4, marginBottom: 0 }} />
                 <input type="number" min={1} max={12} value={a.month} onChange={e => updateAnniversary(a.id, { month: e.target.value ? Number(e.target.value) : "" })} placeholder="월" style={{ ...S.input, flex: 1, marginBottom: 0 }} />
                 <input type="number" min={1} max={31} value={a.day} onChange={e => updateAnniversary(a.id, { day: e.target.value ? Number(e.target.value) : "" })} placeholder="일" style={{ ...S.input, flex: 1, marginBottom: 0 }} />
+                <button type="button" onClick={() => updateAnniversary(a.id, { calendar: a.calendar === "lunar" ? "solar" : "lunar" })} title="양력/음력 바꾸기"
+                  style={{ flexShrink: 0, padding: "0 8px", height: 40, borderRadius: 10, border: `1.5px solid ${a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-border)"}`, background: a.calendar === "lunar" ? "rgba(139,92,246,.12)" : "var(--dm-input)", color: a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-sub)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{a.calendar === "lunar" ? "음력" : "양력"}</button>
                 <button type="button" onClick={() => removeAnniversary(a.id)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer" }}>✕</button>
               </div>
             ))}
@@ -259,7 +261,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
           <BirthdayLine birthday={contact.birthday} />
           {(contact.anniversaries || []).map(a => a.month && a.day && (
             <div key={a.id} style={{ fontSize: 13, color: "var(--dm-text)", marginTop: 4 }}>
-              📌 {a.name || "기념일"} · {a.month}월 {a.day}일
+              📌 {a.name || "기념일"} · {a.calendar === "lunar" ? "음력 " : ""}{a.month}월 {a.day}일
             </div>
           ))}
         </div>

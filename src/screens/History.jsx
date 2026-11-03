@@ -12,6 +12,7 @@ import { pickTaskDetail } from "../utils/taskDetail.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
 import { holidayName } from "../utils/holidays.js";
+import { solarToLunar } from "../data/contacts.js";
 import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
@@ -649,6 +650,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1, ...(redDay ? { color: "#EF4444" } : {}) }}>{day}</span>
                   {perfect && <span style={{ fontSize: 7, color: "#FBBF24", lineHeight: 1 }}>★</span>}
                 </div>
+                {/* 음력 초하루·보름만 작게 (2026-11-03) — 날짜마다 넣으면 칸이 복잡해서. 다른 날은 누르면 미리보기에 */}
+                {(() => { const l = solarToLunar(ds); return l && (l.day === 1 || l.day === 15) ? <div style={{ fontSize: 8, lineHeight: 1, textAlign: 'center', color: 'var(--dm-muted)', marginTop: -1, marginBottom: 2 }}>음{l.leap ? '윤' : ''}{l.month}.{l.day}</div> : null; })()}
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
                   <div key={idx} style={{
@@ -846,6 +849,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     {holidayName(preview) && <span style={{ fontSize: 14, fontWeight: 800, color: "#EF4444", marginLeft: 8 }}>{holidayName(preview)}</span>}
                     {mood && <span style={{ fontSize: 18, marginLeft: 8 }}>{moodMap[mood] || ''}</span>}
                   </div>
+                  {(() => { const l = solarToLunar(preview); return l ? <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 2 }}>음력 {l.leap ? '윤' : ''}{l.month}월 {l.day}일</div> : null; })()}
                   {tasks.length > 0 && (
                     <div style={{ fontSize: 12, color: done === tasks.length ? '#4ADE80' : 'var(--dm-muted)', fontWeight: 700, marginTop: 2 }}>
                       {done === tasks.length ? '✓ 전체 완료' : `${done}/${tasks.length} 완료`}
