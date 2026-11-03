@@ -12,3 +12,14 @@ export const setTodayNewLook = (on) => store.set(KEY, !!on);
 const DONE_KEY = "dm_today_done_group";
 export const todayDoneGroupOn = () => store.get(DONE_KEY, true) !== false;
 export const setTodayDoneGroup = (on) => store.set(DONE_KEY, !!on);
+
+// 오늘 탭에서 안 쓰는 칸 숨기기 (2026-11-03, 기기마다) — 설정 → 앱 관리 → 오늘 탭에 보일 칸
+const HIDDEN_KEY = "dm_today_hidden";
+export const TODAY_SECTIONS = [
+  { id: "people", label: "💌 오늘 챙길 사람" },
+  { id: "habits", label: "💪 오늘습관" },
+  { id: "someday", label: "📋 언젠가할일" },
+  { id: "weekly", label: "📅 주간 일정" },
+];
+export const todayHiddenSections = () => { const v = store.get(HIDDEN_KEY, {}); return v && typeof v === "object" ? v : {}; };
+export const setTodayHiddenSection = (id, hidden) => store.set(HIDDEN_KEY, { ...todayHiddenSections(), [id]: !!hidden });

@@ -19,7 +19,7 @@ import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
 import TodayTaskRow from "../components/TodayTaskRow.jsx";
-import { todayNewLookOn, todayDoneGroupOn } from "../utils/todayLook.js";
+import { todayNewLookOn, todayDoneGroupOn, todayHiddenSections } from "../utils/todayLook.js";
 import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
@@ -85,6 +85,7 @@ export default function Today({
     const id = setTimeout(() => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); }, 400);
     return () => clearTimeout(id);
   }, []);
+  const [hiddenSec] = useState(todayHiddenSections); // 설정에서 숨긴 칸 (기기마다)
   const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
   // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
   const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
@@ -766,6 +767,7 @@ export default function Today({
 
       {/* 💌 오늘 챙길 사람 — 내 사람들의 생일·기념일(7일 안)과 사람에게 연결된 할일. 없는 날도 한 줄로 보여서
           기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다) */}
+      {!hiddenSec.people && (<>
       <div style={{ margin: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: 4 }}>
           <span onClick={onOpenPeople} style={newLook
@@ -784,7 +786,10 @@ export default function Today({
         )}
       </div>
 
+      </>)}
+
       {/* 💪 오늘습관 */}
+      {!hiddenSec.habits && (<>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘습관
@@ -858,7 +863,10 @@ export default function Today({
       </div>
       )}
 
+      </>)}
+
       {/* 📋 언젠가할일 */}
+      {!hiddenSec.someday && (<>
       <div style={secTitle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
@@ -905,7 +913,10 @@ export default function Today({
       </div>
       )}
 
+      </>)}
+
       {/* 📅 주간 일정 */}
+      {!hiddenSec.weekly && (<>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
         <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -922,6 +933,8 @@ export default function Today({
           />
         </div>
       )}
+
+      </>)}
 
       {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
       <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />

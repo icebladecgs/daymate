@@ -17,7 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
-import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
+import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
 
@@ -285,6 +285,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [memoAutoList, setMemoAutoListState] = useState(memoAutoListOn);
   const [todayNewLook, setTodayNewLookState] = useState(todayNewLookOn);
   const [todayDoneGroup, setTodayDoneGroupState] = useState(todayDoneGroupOn);
+  const [todayHidden, setTodayHidden] = useState(todayHiddenSections); // 오늘 탭에서 숨긴 칸 (기기마다)
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
@@ -1330,6 +1331,17 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             </div>
           </div>
         )}
+      </div>
+
+      <div style={S.sectionTitle}>📱 오늘 탭에 보일 칸</div>
+      <div style={S.card}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 6, lineHeight: 1.5 }}>안 쓰는 칸을 끄면 오늘 탭이 짧아져요 · 이 기기에만 적용 · 바꾼 뒤 오늘 탭을 다시 열면 반영돼요</div>
+        {TODAY_SECTIONS.map(sec => (
+          <div key={sec.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: '1px solid var(--dm-row)' }}>
+            <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13 }}>{sec.label}</div>
+            <Toggle value={!todayHidden[sec.id]} onChange={(on) => { setTodayHiddenSection(sec.id, !on); setTodayHidden(todayHiddenSections()); }} />
+          </div>
+        ))}
       </div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
