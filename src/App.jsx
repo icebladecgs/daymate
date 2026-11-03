@@ -35,7 +35,7 @@ import { IOSInstallGuide } from "./components/InstallGuide.jsx";
 import { genMemoId, withMemoList } from "./components/MemoTimeline.jsx";
 import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
-import { matchesRecurring } from "./utils/recurring.js";
+import { addRecurringToDay } from "./utils/recurring.js";
 import { pickTaskDetail } from "./utils/taskDetail.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
@@ -303,6 +303,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const canOpenAdmin = isPrimaryAdmin(authUser?.uid);
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [authResolved, setAuthResolved] = useState(false); // 로그인 여부를 처음 확인했는지 (반복 할일 넣기를 그때까지 미룸)
   const syncReadyRef = useRef(false);
   const daySaveSeqRef = useRef({}); // 날짜별 서버 저장 순번 — 마지막 저장이 성공했을 때만 "미동기화" 표시를 지운다
   const daySyncedAtRef = useRef(0); // 서버에서 받은 날짜 문서 중 가장 늦은 저장 시각(서버 시각 ms)
@@ -1417,6 +1418,7 @@ export default function App() {
         }
       }
       setAuthUser(firebaseUser);
+      setAuthResolved(true);
       if (!firebaseUser) return;
 
       setSyncStatus('syncing');
@@ -1693,6 +1695,17 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
+  // 반복 할일을 오늘 할일에 넣기 (2026-11-03) — 예전엔 달력에서 처음 여는 날짜에만 생겨서 오늘 탭에는 안 들어갔다.
+  // 로그인한 사람은 서버 기록과 합치기가 끝난 뒤에 넣는다(그 전에 이 기기에서 오늘 기록을 바꾸면 "못 올린 날짜"로 남아
+  // 합칠 때 이 기기 내용이 우선돼서 다른 기기에서 쓴 일기 등을 가릴 수 있다). 넣은 규칙은 그날 기록에 남겨 지운 것은 다시 안 생긴다.
+  useEffect(() => {
+    if (!authResolved || (authUser && !syncReadyRef.current)) return;
+    const cur = plansRef.current[todayStr] || newDay(todayStr);
+    if (!addRecurringToDay(cur, recurringTasks, todayStr)) return;
+    setDayData(todayStr, prev => addRecurringToDay(prev, recurringTasks, todayStr) || prev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authResolved, authUser, syncStatus, todayStr, recurringTasks]);
+
   const addFabMemo = (text, time, id = genMemoId()) => {
     setTodayData(prev => ({
       ...prev,
@@ -1768,11 +1781,7 @@ export default function App() {
   const openDetail = (ds) => {
     setPlans((prev) => {
       if (prev[ds]) return prev;
-      const d = newDay(ds);
-      const applicable = recurringTasks.filter(t => t.title.trim() && matchesRecurring(t.days, ds));
-      if (applicable.length > 0) {
-        d.tasks = [...d.tasks.filter(t => t.title.trim()), ...applicable.map(t => ({id:`r${t.id}_${ds}`, title: t.title, done: false, checkedAt: null, priority: false}))];
-      }
+      const d = addRecurringToDay(newDay(ds), recurringTasks, ds) || newDay(ds);
       const savedDay = persistDayData(ds, d);
       return { ...prev, [ds]: savedDay };
     });

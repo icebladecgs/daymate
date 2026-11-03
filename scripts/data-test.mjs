@@ -8,7 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
-const { recurringIdOf } = await load('/src/utils/recurring.js');
+const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
 const { buildGoalProgress, goalKey, goalProgressLine, weekSummary } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
@@ -112,6 +112,23 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ── 반복 할일: 생긴 할일에서 규칙 찾기 (2026-11-03) ──
 t('반복: 할일 id에서 규칙 id', recurringIdOf('rr100_2026-11-04') === 'r100');
+{
+  const rules = [{ id: 'r1', title: '주간 회의', days: '3' }, { id: 'r2', title: '매일 운동', days: 'daily' }, { id: 'r3', title: '', days: 'daily' }];
+  const day = { tasks: [{ id: 't1', title: '보고서', done: false }, { id: 't2', title: '', done: false }] };
+  const a = addRecurringToDay(day, rules, '2026-11-04'); // 수요일
+  t('반복 넣기: 맞는 규칙만 (빈 이름 제외)', a && a.tasks.filter(x => x.title).map(x => x.title).join() === '보고서,주간 회의,매일 운동', JSON.stringify(a?.tasks));
+  t('반복 넣기: 빈 칸 먼저 채움', a.tasks.length === 3);
+  t('반복 넣기: 기존 할일 그대로', a.tasks[0].id === 't1' && a.tasks[0].title === '보고서');
+  t('반복 넣기: 한 번 넣으면 다시 안 넣음', addRecurringToDay(a, rules, '2026-11-04') === null);
+  const deleted = { ...a, tasks: a.tasks.filter(x => x.id !== 'rr1_2026-11-04') };
+  t('반복 넣기: 지운 반복 할일은 다시 안 생김', addRecurringToDay(deleted, rules, '2026-11-04') === null);
+  const added = addRecurringToDay(a, [...rules, { id: 'r4', title: '새 규칙', days: '3' }], '2026-11-04');
+  t('반복 넣기: 오늘 새로 만든 규칙은 들어감', added?.tasks.some(x => x.id === 'rr4_2026-11-04') && added.tasks.filter(x => x.id === 'rr1_2026-11-04').length === 1);
+  const other = { tasks: [{ id: 'rr1_2026-11-04', title: '주간 회의', done: true }] }; // 다른 기기에서 이미 넣고 체크
+  const b = addRecurringToDay(other, rules, '2026-11-04');
+  t('반복 넣기: 다른 기기에서 넣은 것은 겹치지 않음', b.tasks.filter(x => x.id === 'rr1_2026-11-04').length === 1 && b.tasks[0].done === true);
+  t('반복 넣기: 맞는 날이 아니면 그대로', addRecurringToDay({ tasks: [] }, [rules[0]], '2026-11-05') === null);
+}
 t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && recurringIdOf('gcal_x') === null);
 
 // ── 할일 입력 미리보기: 읽기 쉬운 말 (2026-11-03) ──
