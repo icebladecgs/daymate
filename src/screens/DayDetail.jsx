@@ -8,6 +8,8 @@ import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
+import UndoBar from "../components/UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 import TimeSelect from "../components/TimeSelect.jsx";
 
 export default function DayDetail({ dateStr, data, setData, onBack, toast, setToast, habits, scrollToMemo, getValidGcalToken, onGcalConnect, onImportGcalEvents, someday, setSomeday, onNavigateDay, uid, onMoveTaskDate }) {
@@ -68,6 +70,8 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     }, 50);
   };
 
+  const undo = useUndo(); // ↩ 되돌리기 (5초)
+  const shortTitle = (t) => (t.length > 14 ? `${t.slice(0, 14)}…` : t);
   const removeTask = (id, { keepPhotos = false } = {}) => {
     const token = getValidGcalToken?.();
     const task = data.tasks.find(t => t.id === id);
@@ -80,12 +84,27 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
     setData((prev) => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
   };
 
+  // ✕ — 바로 지우고 5초 되돌리기 (2026-11-03, 예전엔 되돌릴 방법이 없었다). 구글 캘린더와 연결된 할일은 removeTask가 먼저 묻는다.
+  const deleteTaskWithUndo = (id) => {
+    const task = data.tasks.find(t => t.id === id);
+    const idx = data.tasks.findIndex(t => t.id === id);
+    const linked = !!(getValidGcalToken?.() && task?.gcalEventId && !String(task.id || '').startsWith('gcal_'));
+    if (!task?.title?.trim() || linked) { removeTask(id); return; }
+    removeTask(id, { keepPhotos: true });
+    undo.offer(`"${shortTitle(task.title)}" 지웠어요`, () => setData(prev => ({ ...prev, tasks: putBack(prev.tasks, task, idx) })),
+      () => (task.photos || []).forEach(p => p?.path && deletePhoto(p.path)));
+  };
   const moveToSomeday = (id) => {
     const task = data.tasks.find(t => t.id === id);
     if (!task?.title?.trim()) return;
+    const idx = data.tasks.findIndex(t => t.id === id);
+    const sdId = `sd${Date.now()}`;
     removeTask(id, { keepPhotos: true });
-    setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: task.title.trim(), done: false, ...pickTaskDetail(task) }]);
-    setToast('언젠가 할일로 이동 ✅');
+    setSomeday(prev => [...(prev || []), { id: sdId, title: task.title.trim(), done: false, ...pickTaskDetail(task) }]);
+    undo.offer(`"${shortTitle(task.title)}" 언젠가로 옮겼어요`, () => {
+      setSomeday(prev => (prev || []).filter(x => x.id !== sdId));
+      setData(prev => ({ ...prev, tasks: putBack(prev.tasks, task, idx) }));
+    });
   };
 
   const moveToTask = (sdId) => {
@@ -140,6 +159,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   return (
     <div ref={contentRef} style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
       {detailTask && (
         <TaskDetailSheet
           key={detailTask.id}
@@ -280,7 +300,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                         ↓ 나중에
                       </button>
                     )}
-                    <button onMouseDown={e => e.preventDefault()} onClick={() => removeTask(t.id)}
+                    <button onMouseDown={e => e.preventDefault()} onClick={() => deleteTaskWithUndo(t.id)}
                       style={{ background: 'transparent', border: '1px solid rgba(248,113,113,.3)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 11, color: '#F87171', flexShrink: 0 }}>
                       ✕ 삭제
                     </button>

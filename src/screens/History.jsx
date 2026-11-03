@@ -9,6 +9,8 @@ import WeeklySchedule from "../components/WeeklySchedule.jsx";
 import { deletePhoto, isPrimaryAdmin } from "../firebase.js";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
+import UndoBar from "../components/UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 import { holidayName } from "../utils/holidays.js";
 import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
 
@@ -36,6 +38,8 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [gcalToast, setGcalToast] = useState(null);
   const [gcalImporting, setGcalImporting] = useState(false);
 
+  const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초, 2026-11-03)
+  const shortTitle = (t) => (t.length > 14 ? `${t.slice(0, 14)}…` : t);
   const showToast = (msg) => {
     setGcalToast(msg);
     setTimeout(() => setGcalToast(null), 2500);
@@ -407,16 +411,17 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
 
   // 달력 미리보기 할일 삭제 — 목록의 ✕와 상세 창의 삭제 버튼이 함께 쓴다 (확인창에서 취소하면 false)
+  // 오늘 탭과 같이 확인창 대신 5초 되돌리기 (2026-11-03). 구글 캘린더와 연결된 할일은 되돌릴 수 없어 예전처럼 묻는다.
   const deletePreviewTask = (t) => {
     const isImported = t.gcalEventId && String(t.id || '').startsWith('gcal_');
     const willDeleteFromGcal = !!(getValidGcalToken?.() && t.gcalEventId && !isImported);
-    const msg = willDeleteFromGcal
-      ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
-      : `"${t.title}" 할일을 삭제할까요?`;
-    if (!window.confirm(msg)) return false;
-    // 첨부 사진도 저장소에서 정리하고 메모·사진 필드를 비움 (기존과 같이 제목을 비워 삭제 처리)
-    (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
+    if (willDeleteFromGcal && !window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return false;
+    const deletePhotos = () => (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
     const ds = preview;
+    const idx = (plans?.[ds]?.tasks || []).findIndex(tk => tk.id === t.id);
+    if (willDeleteFromGcal) deletePhotos();
+    else undo.offer(`"${shortTitle(t.title)}" 지웠어요`, () => onUpdateDayData?.(ds, prev => ({ ...prev, tasks: putBack(prev.tasks, t, idx) })), deletePhotos);
+    // 메모·사진 필드를 비움 (기존과 같이 제목을 비워 삭제 처리 — 사진 파일은 되돌릴 시간이 지난 뒤 지움)
     onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(tk => {
       if (tk.id !== t.id) return tk;
       const { note, photos, files, ...rest } = tk; // eslint-disable-line no-unused-vars
@@ -426,14 +431,20 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
   // 언젠가할일로 보내기 — 오늘 탭과 같이 상세 정보(pickTaskDetail)를 함께 옮기고, 사진은 지우지 않고 목록에서만 뺀다
   const movePreviewTaskToSomeday = (t) => {
-    setSomeday?.(prev => [...(prev || []), { id: `sd${Date.now()}`, title: t.title, done: false, ...pickTaskDetail(t) }]);
+    const sdId = `sd${Date.now()}`;
+    setSomeday?.(prev => [...(prev || []), { id: sdId, title: t.title, done: false, ...pickTaskDetail(t) }]);
     const ds = preview;
+    const idx = (plans?.[ds]?.tasks || []).findIndex(tk => tk.id === t.id);
     onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).filter(tk => tk.id !== t.id) }));
-    showToast('언젠가 할일로 이동 ✅');
+    undo.offer(`"${shortTitle(t.title)}" 언젠가로 옮겼어요`, () => {
+      setSomeday?.(prev => (prev || []).filter(x => x.id !== sdId));
+      onUpdateDayData?.(ds, prev => ({ ...prev, tasks: putBack(prev.tasks, t, idx) }));
+    });
   };
 
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
       {detailTask && (
         <TaskDetailSheet
           key={`${preview}_${detailTask.id}`}

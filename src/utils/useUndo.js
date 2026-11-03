@@ -36,3 +36,12 @@ export function useUndo() {
   useEffect(() => () => finishRef.current(), []);
   return { bar, offer, run };
 }
+
+// 되돌리기 — 지운 항목을 원래 자리에 다시 넣는다. 같은 id가 아직 있으면(제목만 비워 둔 경우 등) 원래 것으로 바꾼다.
+export function putBack(list, item, idx) {
+  const next = [...(list || [])];
+  const at = next.findIndex(x => x.id === item.id);
+  if (at >= 0) { next[at] = item; return next; }
+  next.splice(Math.max(0, Math.min(idx, next.length)), 0, item);
+  return next;
+}
