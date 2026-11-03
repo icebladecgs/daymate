@@ -13,7 +13,7 @@ import { deletePhoto } from "../firebase.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
 import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
-import { parseSchedule, describeSchedule } from "../utils/nlSchedule.js";
+import { parseSchedule, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
 import { recurringLabel } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
@@ -696,12 +696,18 @@ export default function Today({
           />
           <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
+        {/* 어떻게 들어갈지 저장 전에 보여준다 — 잘못 알아들었으면 "그냥 글자로" (2026-11-03 읽기 쉬운 말로) */}
         {parsedTask && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: 'var(--dm-sub)' }}>
-            <span style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '5px 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: '#6C8EFF' }}>{describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
-            </span>
-            <button onClick={() => setNlOff(true)} style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+            <div style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '7px 10px' }}>
+              <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: '#5B7CFA' }}>{friendlySchedule(parsedTask, targetDs, recurringLabel) || describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
+              </div>
+              {(parsedTask.recurring || (parsedTask.date && parsedTask.date !== targetDs)) && (
+                <div style={{ fontSize: 12, color: 'var(--dm-sub)', marginTop: 2 }}>{parsedTask.recurring ? '→ 반복 할일로 등록돼요' : '→ 그날 할일로 들어가요'}</div>
+              )}
+            </div>
+            <button onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
           </div>
         )}
       </div>

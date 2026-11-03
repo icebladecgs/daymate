@@ -101,3 +101,24 @@ export function describeSchedule(p, labelRecurring) {
   if (p.time) parts.push(p.time);
   return parts.join(" ");
 }
+
+// 입력칸 아래 미리보기용 — "내일 11월 4일 (수) 오후 3시" / "매주 화요일 오전 9:30" (2026-11-03)
+// baseDs: 지금 보고 있는 할일 날짜 — 이 날짜와 같으면 날짜를 생략하고 시간만
+export function friendlySchedule(p, baseDs, labelRecurring, now = new Date()) {
+  if (!p) return "";
+  const parts = [];
+  if (p.recurring) parts.push(labelRecurring ? labelRecurring(p.recurring) : "반복");
+  if (p.date && p.date !== baseDs) {
+    const d = new Date(`${p.date}T00:00:00`);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diff = Math.round((d - today) / 86400000);
+    const rel = { 0: "오늘", 1: "내일", 2: "모레" }[diff];
+    parts.push(`${rel ? `${rel} ` : ""}${d.getMonth() + 1}월 ${d.getDate()}일 (${"일월화수목금토"[d.getDay()]})`);
+  }
+  if (p.time) {
+    const [h, m] = p.time.split(":").map(Number);
+    const h12 = h % 12 || 12;
+    parts.push(`${h < 12 ? "오전" : "오후"} ${h12}${m ? `:${pad(m)}` : "시"}`);
+  }
+  return parts.join(" ");
+}

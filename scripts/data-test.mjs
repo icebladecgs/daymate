@@ -8,6 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
+const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
 const { buildGoalProgress, goalKey, goalProgressLine } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
 
@@ -106,6 +107,14 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   const lost = restoreLostTaskDetails({ tasks: [{ id: 't1', title: 'a', note: '' }] }, { tasks: [{ id: 't1', title: 'a', note: '사라질 뻔한 메모', photos: [{ path: 'p' }] }] });
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
+}
+
+// ── 할일 입력 미리보기: 읽기 쉬운 말 (2026-11-03) ──
+{
+  const now = new Date('2026-11-03T10:00:00');
+  const p = parseSchedule('내일 오후 3시 치과', now);
+  t('미리보기: 내일 오후 3시', friendlySchedule(p, '2026-11-03', null, now) === '내일 11월 4일 (수) 오후 3시', friendlySchedule(p, '2026-11-03', null, now));
+  t('미리보기: 보고 있는 날짜면 시간만', friendlySchedule(parseSchedule('오늘 9시 반 회의', now), '2026-11-03', null, now).startsWith('오전 9'), friendlySchedule(parseSchedule('오늘 9시 반 회의', now), '2026-11-03', null, now));
 }
 
 // ── 목표 진행: 목표에서 나온 할일을 끝낸 기록 세기 (2026-11-03) ──
