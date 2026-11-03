@@ -49,3 +49,25 @@ export function goalProgressLine(p, todayStr) {
   parts.push(`마지막 ${agoText(p.lastDs, todayStr)}`);
   return parts.join(' · ');
 }
+
+// 주간 돌아보기 (2026-11-03) — endDs(일요일)까지 7일: 끝낸 할일·전체·집중 시간·가장 많이 한 날·목표별 끝낸 수
+export function weekSummary(plans, endDs) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(endDs, i - 6));
+  let done = 0, total = 0, focus = 0, best = null;
+  const goals = new Map();
+  for (const ds of days) {
+    const list = (plans?.[ds]?.tasks || []).filter(t => t?.title?.trim());
+    const d = list.filter(t => t.done).length;
+    done += d;
+    total += list.length;
+    for (const t of list) {
+      if (t.focusMin > 0) focus += t.focusMin;
+      if (t.done && t.goalRef?.title) {
+        const k = goalKey(t.goalRef.kind, t.goalRef.title);
+        goals.set(k, { ...t.goalRef, count: (goals.get(k)?.count || 0) + 1 });
+      }
+    }
+    if (d && (!best || d > best.done)) best = { ds, done: d };
+  }
+  return { done, total, focus, best, goals: [...goals.values()].sort((a, b) => b.count - a.count) };
+}

@@ -9,7 +9,7 @@ const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
-const { buildGoalProgress, goalKey, goalProgressLine } = await load('/src/utils/goalProgress.js');
+const { buildGoalProgress, goalKey, goalProgressLine, weekSummary } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
 
 let pass = 0, fail = 0;
@@ -115,6 +115,21 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const p = parseSchedule('내일 오후 3시 치과', now);
   t('미리보기: 내일 오후 3시', friendlySchedule(p, '2026-11-03', null, now) === '내일 11월 4일 (수) 오후 3시', friendlySchedule(p, '2026-11-03', null, now));
   t('미리보기: 보고 있는 날짜면 시간만', friendlySchedule(parseSchedule('오늘 9시 반 회의', now), '2026-11-03', null, now).startsWith('오전 9'), friendlySchedule(parseSchedule('오늘 9시 반 회의', now), '2026-11-03', null, now));
+}
+
+// ── 주간 돌아보기 (2026-11-03) ──
+{
+  const g = { kind: 'year', title: '독서' };
+  const plans = {
+    '2026-11-02': { tasks: [{ id: 'a', title: '책', done: true, goalRef: g }, { id: 'b', title: '운동', done: false, focusMin: 20 }] },
+    '2026-11-05': { tasks: [{ id: 'c', title: '책', done: true, goalRef: g }, { id: 'd', title: '보고', done: true }, { id: 'e', title: '', done: false }] },
+    '2026-11-09': { tasks: [{ id: 'f', title: '다음 주', done: true }] },
+  };
+  const w = weekSummary(plans, '2026-11-08');
+  t('주간: 끝낸 할일·전체 (빈 줄·다음 주 제외)', w.done === 3 && w.total === 4, JSON.stringify(w));
+  t('주간: 집중 시간', w.focus === 20);
+  t('주간: 가장 많이 한 날', w.best?.ds === '2026-11-05' && w.best.done === 2);
+  t('주간: 목표별 끝낸 수', w.goals.length === 1 && w.goals[0].title === '독서' && w.goals[0].count === 2);
 }
 
 // ── 목표 진행: 목표에서 나온 할일을 끝낸 기록 세기 (2026-11-03) ──

@@ -489,7 +489,7 @@ export default function Today({
         />
       )}
       {wrapOpen && (
-        <DayWrapUpSheet dateStr={dateStr} tasks={tasks} journalBody={bodyText}
+        <DayWrapUpSheet dateStr={dateStr} tasks={tasks} plans={plans} journalBody={bodyText}
           onMoveTaskDate={onMoveTaskDate} setData={setData} setSomeday={setSomeday} pickDetail={pickTaskDetail}
           onClose={() => setWrapOpen(false)}
           onFinish={() => { setWrapOpen(false); setToast('오늘 하루 수고했어요 🌙'); }} />
@@ -902,7 +902,7 @@ export default function Today({
       )}
 
       {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
-      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
+      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
 
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
