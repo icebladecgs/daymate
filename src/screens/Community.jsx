@@ -4,7 +4,8 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, communitySecretRef, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, communitySecretRef, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince, countCommunitySince } from "../firebase.js";
+import { countCommunityNews, markCommunitySeen, getCommunitySeen } from "../utils/communityNews.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import Challenge from "./Challenge.jsx";
@@ -56,7 +57,7 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: NL() ? 16 : 14, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta?.name || communityName || '...'}</span>
-          {unread > 0 && <span title="안 읽은 채팅" style={{ flexShrink: 0, background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 7px', fontSize: 11, fontWeight: 900 }}>💬 {unread > 99 ? '99+' : unread}</span>}
+          {unread > 0 && <span title="새 소식 (채팅·게시판·공지)" style={{ flexShrink: 0, background: '#F87171', color: '#fff', borderRadius: 999, padding: '1px 7px', fontSize: 11, fontWeight: 900 }}>🔔 {unread > 99 ? '99+' : unread}</span>}
         </div>
         <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {meta?.memberCount || 0}명 · 코드 {meta?.inviteCode || '...'}</div>
         {meta?.lastActivityAt && (
@@ -170,7 +171,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onUnreadChange, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onNewsChanged, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge | freeboard
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -195,7 +196,6 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const lastReadNotice = store.get(noticeReadKey, null);
   const unreadCount = notices.filter(n => !lastReadNotice || n.createdAt > lastReadNotice).length;
 
-  useEffect(() => { onUnreadChange?.(unreadCount); }, [unreadCount]); // eslint-disable-line
 
   // 알림 소리
   const [soundOn, setSoundOn] = useState(() => store.get('dm_community_sound', true));
@@ -281,17 +281,32 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   // 단체 채팅 — 창을 연 동안만 실시간. 안 읽은 수는 목록·상세를 볼 때 개수만 센다
   const [showChat, setShowChat] = useState(false);
   const [unreadChat, setUnreadChat] = useState({}); // id -> 개수
+  // 상세 화면의 💬 — 채팅방을 읽은 뒤 온 메시지 (한 번도 안 열었으면 이 커뮤니티를 지난번에 본 뒤부터)
   const refreshUnread = (ids) => {
     if (!authUser) return;
     (ids || []).forEach(id => {
-      countChatSince(id, getChatRead(id)).then(n => setUnreadChat(prev => ({ ...prev, [id]: n }))).catch(() => {});
+      countChatSince(id, getChatRead(id) || getCommunitySeen(id)).then(n => setUnreadChat(prev => ({ ...prev, [id]: n }))).catch(() => {});
     });
   };
-  // 목록을 볼 때는 내 커뮤니티 전부, 상세를 볼 때는 그 커뮤니티만 센다
+  // 목록 카드의 🔔 — 새 소식(채팅·게시판·공지, utils/communityNews.js)
+  const [newsCount, setNewsCount] = useState({}); // id -> 개수
+  const refreshNews = (ids) => {
+    if (!authUser) return;
+    (ids || []).forEach(id => {
+      countCommunityNews(id, countCommunitySince).then(r => setNewsCount(prev => ({ ...prev, [id]: r.total }))).catch(() => {});
+    });
+  };
+  // 목록을 볼 때는 내 커뮤니티 전부의 새 소식, 상세를 볼 때는 그 커뮤니티 채팅만 센다
   useEffect(() => {
-    if (showHome) refreshUnread(communityIds);
+    if (showHome) refreshNews(communityIds);
     else if (communityId && !showChat) refreshUnread([communityId]);
   }, [showHome, communityId, communityIds, authUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 커뮤니티 상세에서 나올 때(목록으로·다른 커뮤니티로·다른 탭으로) "여기까지 봤음"으로 — 아래 메뉴 숫자도 다시 센다
+  useEffect(() => {
+    if (showHome || !communityId) return;
+    const cid = communityId;
+    return () => { markCommunitySeen(cid); onNewsChanged?.(); };
+  }, [showHome, communityId]); // eslint-disable-line react-hooks/exhaustive-deps
   // 내 커뮤니티 중 지금 칸(전체·공개·비공개)에 보일 것 — 정보를 아직 못 불러온 곳은 '전체'에만
   const shownMyIds = myFilter === 'all' ? communityIds
     : communityIds.filter(id => communityMeta[id] && !!communityMeta[id].isPublic === (myFilter === 'public'));
@@ -982,7 +997,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                           meta={meta}
                           communityName={communityNames[id]}
                           editingCommunityOrder={editingCommunityOrder}
-                          unread={unreadChat[id] || 0}
+                          unread={newsCount[id] || 0}
                           onOpen={() => { requestCommunityAccess(id); }}
                         />
                       );

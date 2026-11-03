@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes, countCommunitySince } from "./firebase.js";
+import { countCommunityNews } from "./utils/communityNews.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
@@ -1390,6 +1391,24 @@ export default function App() {
   }, []);
   const refreshDaysRef = useRef(refreshFromServer);
   useEffect(() => { refreshDaysRef.current = refreshFromServer; });
+
+  // 아래 메뉴 "소셜" 숫자 — 내 커뮤니티 전체의 새 소식(채팅·게시판·공지, utils/communityNews.js) (2026-11-03).
+  // 앱을 켤 때·앱으로 돌아올 때(15초 간격)·커뮤니티 상세에서 나올 때 개수만 센다 (실시간 연결은 하지 않음 — CLAUDE.md 14.6)
+  const newsAtRef = useRef(0);
+  const refreshNewsRef = useRef(() => {});
+  refreshNewsRef.current = (force = false) => {
+    if (!authUser || !communityIds.length) { setCommunityUnread(0); return; }
+    if (!force && Date.now() - newsAtRef.current < 15000) return;
+    newsAtRef.current = Date.now();
+    Promise.all(communityIds.map(id => countCommunityNews(id, countCommunitySince).then(r => r.total).catch(() => 0)))
+      .then(ns => setCommunityUnread(ns.reduce((a, b) => a + b, 0)));
+  };
+  useEffect(() => { refreshNewsRef.current(true); }, [authUser, communityIds]);
+  useEffect(() => {
+    const onReturn = () => { if (document.visibilityState === 'visible') refreshNewsRef.current(); };
+    document.addEventListener('visibilitychange', onReturn);
+    return () => document.removeEventListener('visibilitychange', onReturn);
+  }, []);
   useEffect(() => {
     const onReturn = () => { if (document.visibilityState === 'visible') refreshDaysRef.current(); };
     // 데스크탑 앱: 절전·화면 잠금 복귀, 포스트잇을 눌렀을 때 — 메인 창은 숨어 있어도 받는다(포스트잇이 이 내용을 넘겨받음)
@@ -2405,7 +2424,7 @@ export default function App() {
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           setToast={setToast}
           todayCompletion={todayCompletion}
-          onUnreadChange={setCommunityUnread}
+          onNewsChanged={() => refreshNewsRef.current(true)}
           initialMainTab={communityInitialTab}
           initialChallengeId={communityInitialChallengeId}
           openChatId={pendingChatId} onOpenChatHandled={() => setPendingChatId(null)}

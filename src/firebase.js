@@ -522,7 +522,12 @@ export async function loadOlderChat(communityId, before, n = 50) {
 
 // 안 읽은 메시지 수 — since(ISO) 뒤에 온 메시지 (개수만 세서 읽기 비용이 적다)
 export async function countChatSince(communityId, since) {
-  const base = collection(db, 'communities', communityId, 'chat');
+  return countCommunitySince(communityId, 'chat', since);
+}
+
+// 커뮤니티 채팅·게시판·공지에서 since(ISO) 뒤에 생긴 글 수 — 개수만 센다(내용은 안 받음). 새 소식 숫자용 (2026-11-03)
+export async function countCommunitySince(communityId, sub, since) {
+  const base = collection(db, 'communities', communityId, sub);
   const q = since ? query(base, where('createdAt', '>', since)) : base;
   const snap = await getCountFromServer(q);
   return snap.data().count;
