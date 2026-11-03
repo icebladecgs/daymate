@@ -5,7 +5,8 @@ import PhotoViewer from "./PhotoViewer.jsx";
 import PhotoWall from "./PhotoWall.jsx";
 import { deletePhoto } from "../firebase.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
-import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems } from "../utils/memoManager.js";
+import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts } from "../utils/memoManager.js";
+import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
@@ -74,6 +75,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 
   const items = useMemo(() => buildManagerItems(plans), [plans]);
   const tags = useMemo(() => tagTree(items), [items]);
+  const colors = useMemo(() => colorCounts(items), [items]); // 🎨 포스트잇 색별 개수
   const related = useMemo(() => relatedTags(items, filter), [items, filter]);
   const tagFilter = filter.startsWith("#") || filter.startsWith("@");
   // 📌 포스트잇 분류 — 데스크탑 앱(1.3.1~)에서만. 지금 띄워 둔 포스트잇 목록을 앱에서 받아 온다(창으로 돌아올 때 다시)
@@ -206,10 +208,15 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const tagButtons = tags.length === 0 ? tagGuide : tags.map(e => (e.type === "group"
     ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂"), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true))]
     : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#")));
+  // 🎨 색상 — 포스트잇에서 색을 고른 메모가 있을 때만
+  const colorButtons = Object.keys(STICKY_COLORS).filter(k => colors[k]).map(k => filterButton(`color:${k}`, `${STICKY_COLORS[k].name} (${colors[k]})`,
+    <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: STICKY_COLORS[k].bg, border: `1px solid ${STICKY_COLORS[k].line}`, verticalAlign: "middle" }} />));
   const tagChipLabel = tagFilter ? `${filter.startsWith("@") ? "📂" : "#"} ${filter.slice(1)}` : "🏷 태그";
   const filters = wide ? (
     <>
       {baseFilters.map(f => filterButton(f.id, f.label, f.icon))}
+      {colorButtons.length > 0 && <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>🎨 색상</div>}
+      {colorButtons}
       <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>태그</div>
       {tagButtons}
     </>
@@ -221,6 +228,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
         {tagChipLabel} {tagsOpen ? "▴" : "▾"}
       </button>
       {baseFilters.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
+      {colorButtons}
     </>
   );
   // 태그·카테고리를 고르면 목록 위에 관련 태그(같은 날 함께 나온 태그) 한 줄

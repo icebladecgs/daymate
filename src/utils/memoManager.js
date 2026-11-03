@@ -30,6 +30,7 @@ export function buildManagerItems(plans) {
         title: titleLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
         text, time: validTime(m.createdAt), updatedAt: m.updatedAt || "",
         starred: !!m.starred, photos: m.photos || [], tags: parseWikiLinks(text),
+        color: m.color || "", alarm: m.alarm?.time ? m.alarm : null,
       });
     });
     (d.tasks || []).forEach(t => {
@@ -132,6 +133,14 @@ export function relatedTags(items, filter, limit = 8) {
     .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko")).slice(0, limit);
 }
 
+// 🎨 색상 분류 (2026-11-03, 메모잇 참고) — "color:pink"처럼. 포스트잇에서 색을 고른 메모만 (색을 안 고른 메모는 전부 노랑이라 빼 둠)
+const colorMatcher = (filter) => (filter.startsWith("color:") ? (it) => it.kind === "memo" && it.color === filter.slice(6) : null);
+export function colorCounts(items) {
+  const n = {};
+  items.forEach(it => { if (it.kind === "memo" && it.color) n[it.color] = (n[it.color] || 0) + 1; });
+  return n;
+}
+
 // stickyKeys: 데스크탑 앱에서 지금 포스트잇으로 띄워 둔 메모("날짜|id")
 export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null) {
   const recent = (days) => {
@@ -153,7 +162,7 @@ export function filterItems(items, filter, query, today = toDateStr(), stickyKey
     d15: recent(15),
     d30: recent(30),
     trash: () => true,
-  }[filter] || tagMatcher(filter) || (() => true);
+  }[filter] || colorMatcher(filter) || tagMatcher(filter) || (() => true);
   const q = norm(query.trim());
   // 휴지통 항목은 휴지통 보기에서만, 다른 보기에서는 제외
   const inView = (it) => (filter === "trash" ? it.kind === "trash" : it.kind !== "trash");
