@@ -21,8 +21,9 @@ const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).sli
 // - 할일·언젠가할일 모두 같은 화면 사용 (언젠가로 옮기기는 목록의 버튼으로)
 // - onDelete를 넘긴 화면에서만 삭제 버튼 표시
 // - onComplete를 넘긴 화면에서는 작은 단계를 다 끝냈을 때 "할일도 완료" 버튼 (자동 완료는 안 함 — 목록 체크와 같은 경로로 저장)
+// - recurring: 반복으로 생긴 할일이면 { label, onStop, onManage } — 반복 칸을 보여준다 (2026-11-03)
 // - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete }) {
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete, recurring }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -147,6 +148,13 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
           {task.memoRef && (
             <div style={{ fontSize: 12, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14, lineHeight: 1.5 }}>
               📝 {task.memoRef.ds ? `${formatShortKoreanDate(task.memoRef.ds)} ` : ''}메모에서 나온 할일
+            </div>
+          )}
+          {recurring && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14, color: '#5B7CFA', fontWeight: 700, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>🔁 {recurring.label} 반복</span>
+              {recurring.onManage && <button onClick={() => { handleClose(); recurring.onManage(); }} style={{ ...chip(false), fontSize: 13, color: '#5B7CFA', fontWeight: 700 }}>반복 관리</button>}
+              <button onClick={() => { if (recurring.onStop() !== false) handleClose(); }} style={{ ...chip(false), fontSize: 13, color: '#F87171', fontWeight: 700 }}>반복 그만하기</button>
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 4 }}>제목</div>

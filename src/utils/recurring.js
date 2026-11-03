@@ -34,3 +34,6 @@ export function recurringLabel(days) {
   if (nth) return `매월 ${NTH_LABELS[nth.n]} ${WEEKDAY_LABELS[nth.w]}요일`;
   return `매주 ${WEEKDAY_LABELS[Number(days)] ?? ""}요일`;
 }
+
+// 반복으로 생긴 할일 id(`r{규칙 id}_YYYY-MM-DD`)에서 규칙 id를 꺼낸다 (2026-11-03)
+export const recurringIdOf = (taskId) => /^r(.+)_\d{4}-\d{2}-\d{2}$/.exec(String(taskId || ''))?.[1] || null;

@@ -8,6 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
+const { recurringIdOf } = await load('/src/utils/recurring.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
 const { buildGoalProgress, goalKey, goalProgressLine, weekSummary } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
@@ -108,6 +109,10 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const lost = restoreLostTaskDetails({ tasks: [{ id: 't1', title: 'a', note: '' }] }, { tasks: [{ id: 't1', title: 'a', note: '사라질 뻔한 메모', photos: [{ path: 'p' }] }] });
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
 }
+
+// ── 반복 할일: 생긴 할일에서 규칙 찾기 (2026-11-03) ──
+t('반복: 할일 id에서 규칙 id', recurringIdOf('rr100_2026-11-04') === 'r100');
+t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && recurringIdOf('gcal_x') === null);
 
 // ── 할일 입력 미리보기: 읽기 쉬운 말 (2026-11-03) ──
 {

@@ -19,6 +19,7 @@ import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
+import RecurringManager from "../components/RecurringManager.jsx";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
@@ -163,11 +164,9 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen,
   statWords = [], setStatWords, statAskOff = false, setStatAskOff, exam, setExam }) {
 
-  const [subPage, setSubPage] = useState(() => {
-    const next = store.get('dm_open_settings_subpage', null);
-    if (next) store.remove('dm_open_settings_subpage');
-    return next;
-  });
+  // 다른 화면에서 하위 화면을 바로 열 때 남긴 표시 — 화면이 처음 그려질 때 두 번 읽힐 수 있어서(지연 로딩) 지우기는 다 열린 뒤에
+  const [subPage, setSubPage] = useState(() => store.get('dm_open_settings_subpage', null));
+  useEffect(() => { store.remove('dm_open_settings_subpage'); }, []);
   const [pendingSuggestions, setPendingSuggestions] = useState(0);
   useEffect(() => {
     if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
@@ -590,6 +589,15 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   );
 
   // ── 서브페이지: 음성 일기 질문 ──────────────────────────────
+  if (subPage === 'recurring') return (
+    <div style={S.content}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+      <SubHeader title="반복 할일" onBack={() => setSubPage(null)} />
+      <RecurringManager recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks} />
+      <div style={{ height: 12 }} />
+    </div>
+  );
+
   if (subPage === 'voiceDiaryQuestions') return (
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
@@ -1454,6 +1462,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const SETTINGS_MENU = [
     { category: '핵심 설정', items: [
       { icon: '👤', title: '프로필 & 목표', sub: '이름 · 생년월일 · 연간 목표', action: () => setSubPage('profile') },
+      { icon: '🔁', title: '반복 할일', sub: (recurringTasks || []).length ? `${(recurringTasks || []).filter(t => t.title?.trim()).length}개 · 고치기·그만하기` : '매일·요일마다 자동으로 생기는 할일', action: () => setSubPage('recurring') },
       { icon: '🎙️', title: '음성 일기 질문', sub: `질문 편집 · 최대 ${MAX_DIARY_QUESTIONS}개`, action: () => setSubPage('voiceDiaryQuestions') },
       ...(onOpenLifeCoach ? [{ icon: '🌱', title: '인생 플랜 만들기', sub: 'AI가 질문으로 목표·습관·할 일을 설계', action: () => onOpenLifeCoach() }] : []),
       ...(onOpenStats ? [{ icon: '📊', title: '통계', sub: '달성률 · 습관 · 점수 분석', action: () => onOpenStats() }] : []),

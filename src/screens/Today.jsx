@@ -14,7 +14,7 @@ import { GROWTH_STATS } from "../data/growthStats.js";
 import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
 import { parseSchedule, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
-import { recurringLabel } from "../utils/recurring.js";
+import { recurringLabel, recurringIdOf } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
@@ -31,7 +31,7 @@ import { newStudyEntry } from "../utils/exam.js";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
-  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, setRecurringTasks, onMoveTaskDate,
+  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
   onOpenInvest, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
@@ -507,6 +507,20 @@ export default function Today({
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, targetDs, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
           onFocus={(t) => { setDetailTaskId(null); setFocus({ ds: targetDs, task: t }); }}
           onComplete={(t) => toggleRow(t.id)}
+          recurring={(() => {
+            const rule = (recurringTasks || []).find(r => r.id === recurringIdOf(detailTask.id));
+            if (!rule || !setRecurringTasks) return null;
+            return {
+              label: recurringLabel(rule.days),
+              onStop: () => {
+                if (!window.confirm(`"${rule.title}" 반복을 그만할까요?
+(이미 만들어진 날의 할일은 그대로 남아요)`)) return false;
+                setRecurringTasks(prev => (prev || []).filter(r => r.id !== rule.id));
+                setToast('반복을 그만했어요');
+              },
+              onManage: () => { store.set('dm_open_settings_subpage', 'recurring'); window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'settings' })); },
+            };
+          })()}
         />
       )}
       {detailSomeday && (
