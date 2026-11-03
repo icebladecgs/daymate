@@ -25,6 +25,7 @@ import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import DayWrapUpSheet, { DayWrapUpCard } from "../components/DayWrapUp.jsx";
 import UndoBar from "../components/UndoBar.jsx";
+import { onThisDay } from "../utils/goalProgress.js";
 import { useUndo, putBack } from "../utils/useUndo.js";
 import { ExamTodayPanel } from "../components/Exam.jsx";
 import { newStudyEntry } from "../utils/exam.js";
@@ -938,6 +939,23 @@ export default function Today({
 
       {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
       <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
+
+      {/* 🕰 1년 전 오늘 — 1~5년 전 같은 날 남긴 기록 한 줄, 누르면 그날 (2026-11-03). 기록이 없으면 안 보임 */}
+      {!hiddenSec.onthisday && (() => {
+        const otd = onThisDay(plans, dateStr);
+        if (!otd) return null;
+        const line = otd.journal ? `📖 ${otd.journal}` : otd.memo ? `📝 ${otd.memo}${otd.memoCount > 1 ? ` 외 ${otd.memoCount - 1}개` : ''}` : `✅ 할일 ${otd.done}개 끝냄`;
+        return (
+          <div onClick={() => onOpenDate?.(otd.ds)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <span style={{ fontSize: 22 }}>🕰</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-sub)' }}>{otd.years}년 전 오늘 · {otd.ds.slice(0, 4)}년 {Number(otd.ds.slice(5, 7))}월 {Number(otd.ds.slice(8))}일</div>
+              <div style={{ fontSize: 15, color: 'var(--dm-text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line}</div>
+            </div>
+            <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
+          </div>
+        );
+      })()}
 
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>

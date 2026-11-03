@@ -20,6 +20,7 @@ export const TODAY_SECTIONS = [
   { id: "habits", label: "💪 오늘습관" },
   { id: "someday", label: "📋 언젠가할일" },
   { id: "weekly", label: "📅 주간 일정" },
+  { id: "onthisday", label: "🕰 1년 전 오늘" },
 ];
 export const todayHiddenSections = () => { const v = store.get(HIDDEN_KEY, {}); return v && typeof v === "object" ? v : {}; };
 export const setTodayHiddenSection = (id, hidden) => store.set(HIDDEN_KEY, { ...todayHiddenSections(), [id]: !!hidden });

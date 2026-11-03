@@ -50,6 +50,24 @@ export function goalProgressLine(p, todayStr) {
   return parts.join(' · ');
 }
 
+// "1년 전 오늘" (2026-11-03) — 1~5년 전 같은 날 기록 중 가장 가까운 해. 일기 첫 줄·메모 첫 줄·끝낸 할일 수.
+// 잠긴 메모는 내용을 보여주지 않는다. 남긴 게 없으면 null.
+export function onThisDay(plans, todayStr) {
+  const [y, md] = [Number(todayStr.slice(0, 4)), todayStr.slice(4)];
+  for (let back = 1; back <= 5; back++) {
+    const ds = `${y - back}${md}`;
+    const day = plans?.[ds];
+    if (!day) continue;
+    const firstLine = (t) => String(t || '').split('\n').map(l => l.trim()).find(Boolean) || '';
+    const journal = firstLine(day.journal?.body);
+    const memos = (day.memos || []).filter(m => !m.locked && firstLine(m.text));
+    const done = (day.tasks || []).filter(t => t.done && t.title?.trim()).length;
+    if (!journal && !memos.length && !done) continue;
+    return { ds, years: back, journal, memo: memos.length ? firstLine(memos[0].text) : '', memoCount: memos.length, done };
+  }
+  return null;
+}
+
 // 주간 돌아보기 (2026-11-03) — endDs(일요일)까지 7일: 끝낸 할일·전체·집중 시간·가장 많이 한 날·목표별 끝낸 수
 export function weekSummary(plans, endDs) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(endDs, i - 6));

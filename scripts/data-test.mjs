@@ -11,7 +11,7 @@ const { matchGoalsByTitle } = await load('/src/utils/goals.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
-const { buildGoalProgress, goalKey, goalProgressLine, weekSummary } = await load('/src/utils/goalProgress.js');
+const { buildGoalProgress, goalKey, goalProgressLine, weekSummary, onThisDay } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
 
 let pass = 0, fail = 0;
@@ -173,6 +173,18 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('주간: 집중 시간', w.focus === 20);
   t('주간: 가장 많이 한 날', w.best?.ds === '2026-11-05' && w.best.done === 2);
   t('주간: 목표별 끝낸 수', w.goals.length === 1 && w.goals[0].title === '독서' && w.goals[0].count === 2);
+}
+
+// ── 1년 전 오늘 (2026-11-03) ──
+{
+  const plans = {
+    '2024-11-04': { journal: { body: '2년 전 일기' } },
+    '2025-11-04': { memos: [{ id: 'm1', text: '', locked: { iv: 'x' } }, { id: 'm2', text: '\n작년 메모 첫 줄' }] },
+  };
+  const o = onThisDay(plans, '2026-11-04');
+  t('1년 전 오늘: 가장 가까운 해, 잠긴 메모 제외', o?.years === 1 && o.memo === '작년 메모 첫 줄' && o.memoCount === 1, JSON.stringify(o));
+  t('1년 전 오늘: 작년에 아무것도 없으면 그 전 해', onThisDay({ '2025-11-04': { tasks: [] }, '2024-11-04': plans['2024-11-04'] }, '2026-11-04')?.years === 2);
+  t('1년 전 오늘: 기록 없으면 안 보임', onThisDay({}, '2026-11-04') === null);
 }
 
 // ── 목표 진행: 목표에서 나온 할일을 끝낸 기록 세기 (2026-11-03) ──
