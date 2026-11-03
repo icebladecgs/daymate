@@ -4,6 +4,10 @@ import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge,
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+// 새 디자인(설정 → 앱 관리)일 때 작은 글씨를 키운다 — 커뮤니티 화면과 같은 방식
+const NL = () => newDesignOn();
 
 const NICKNAME_KEY = 'dm_challenge_nickname';
 
@@ -119,7 +123,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
   return (
     <div style={{ paddingBottom: 80 }}>
       {toast && (
-        <div style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '10px 18px', fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', boxShadow: '0 4px 20px rgba(0,0,0,.3)', whiteSpace: 'nowrap' }}>
+        <div style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '10px 18px', fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)', boxShadow: '0 4px 20px rgba(0,0,0,.3)', whiteSpace: 'nowrap' }}>
           {toast}
         </div>
       )}
@@ -127,19 +131,19 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
       {/* 닉네임 */}
       <div style={{ padding: '8px 16px 0', display: 'grid', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>챌린지 닉네임</span>
+          <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>챌린지 닉네임</span>
           {editingNickname ? (
             <div style={{ display: 'flex', gap: 6, flex: 1 }}>
-              <input value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveNickname()} placeholder="닉네임 입력" maxLength={20} autoFocus style={{ ...S.input, marginBottom: 0, fontSize: 12, padding: '4px 10px', flex: 1 }} />
-              <button onClick={saveNickname} style={{ ...S.btn, marginTop: 0, padding: '4px 12px', fontSize: 12, width: 'auto' }}>확인</button>
+              <input value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveNickname()} placeholder="닉네임 입력" maxLength={20} autoFocus style={{ ...S.input, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: '4px 10px', flex: 1 }} />
+              <button onClick={saveNickname} style={{ ...S.btn, marginTop: 0, padding: '4px 12px', fontSize: NL() ? 14 : 12, width: 'auto' }}>확인</button>
             </div>
           ) : (
-            <button onClick={() => { setNicknameInput(nickname); setEditingNickname(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-              {nickname} <span style={{ fontSize: 11 }}>✏️</span>
+            <button onClick={() => { setNicknameInput(nickname); setEditingNickname(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+              {nickname} <span style={{ fontSize: NL() ? 13 : 11 }}>✏️</span>
             </button>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--dm-muted)', paddingLeft: 1 }}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', paddingLeft: 1 }}>
           커뮤니티 닉네임과 별개로, 모든 챌린지에서 공통으로 사용됩니다.
         </div>
       </div>
@@ -149,25 +153,25 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
         <div style={{ display: 'flex', flex: 1, gap: 6 }}>
           {[{ key: 'my', label: `내 챌린지 ${activeMyChallenges.length}` }, { key: 'explore', label: '탐색' }, { key: 'archive', label: `보관함 ${archivedChallenges.length}` }].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
-              flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none',
+              flex: 1, padding: '8px 0', borderRadius: 10, fontSize: NL() ? 15 : 13, fontWeight: 800, cursor: 'pointer', border: 'none',
               background: tab === t.key ? '#6C8EFF' : 'var(--dm-input)',
               color: tab === t.key ? '#fff' : 'var(--dm-sub)',
             }}>{t.label}</button>
           ))}
         </div>
-        <button onClick={() => setShowCreate(true)} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: 13, width: 'auto', flexShrink: 0 }}>
+        <button onClick={() => setShowCreate(true)} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: NL() ? 15 : 13, width: 'auto', flexShrink: 0 }}>
           + 만들기
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 40, fontSize: 14 }}>불러오는 중...</div>
+        <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 40, fontSize: NL() ? 16 : 14 }}>불러오는 중...</div>
       ) : tab === 'my' ? (
         activeMyChallenges.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🏁</div>
-            <div style={{ fontSize: 14, color: 'var(--dm-muted)', marginBottom: 16 }}>참여 중인 챌린지가 없어요</div>
-            <button onClick={() => setTab('explore')} style={{ ...S.btn, width: 'auto', padding: '10px 24px', marginTop: 0, fontSize: 13 }}>챌린지 탐색하기</button>
+            <div style={{ fontSize: NL() ? 16 : 14, color: 'var(--dm-muted)', marginBottom: 16 }}>참여 중인 챌린지가 없어요</div>
+            <button onClick={() => setTab('explore')} style={{ ...S.btn, width: 'auto', padding: '10px 24px', marginTop: 0, fontSize: NL() ? 15 : 13 }}>챌린지 탐색하기</button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
@@ -180,7 +184,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
         publicChallenges.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-            <div style={{ fontSize: 14, color: 'var(--dm-muted)' }}>공개 챌린지가 없어요</div>
+            <div style={{ fontSize: NL() ? 16 : 14, color: 'var(--dm-muted)' }}>공개 챌린지가 없어요</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
@@ -192,8 +196,8 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
       ) : archivedChallenges.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40 }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🗂️</div>
-          <div style={{ fontSize: 14, color: 'var(--dm-muted)', marginBottom: 8 }}>보관된 챌린지가 없어요</div>
-          <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>마감일이 지나거나 관리자가 종료한 챌린지가 이쪽으로 모입니다.</div>
+          <div style={{ fontSize: NL() ? 16 : 14, color: 'var(--dm-muted)', marginBottom: 8 }}>보관된 챌린지가 없어요</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)' }}>마감일이 지나거나 관리자가 종료한 챌린지가 이쪽으로 모입니다.</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
@@ -216,21 +220,21 @@ function ChallengeCard({ challenge: c, myMember, today, onClick }) {
     <div onClick={onClick} style={{ background: 'var(--dm-card)', border: `1.5px solid ${certedToday ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, borderRadius: 14, padding: '14px', cursor: 'pointer' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>{c.title}</div>
-          {c.description && <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.5 }}>{c.description}</div>}
-          {isClosed && <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 5 }}>{closedMeta.line}</div>}
+          <div style={{ fontSize: NL() ? 16 : 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>{c.title}</div>
+          {c.description && <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', lineHeight: 1.5 }}>{c.description}</div>}
+          {isClosed && <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 5 }}>{closedMeta.line}</div>}
         </div>
         {isClosed ? (
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#F87171', background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 8, padding: '2px 8px', flexShrink: 0, marginLeft: 8 }}>{closedMeta.badge}</span>
+          <span style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#F87171', background: 'rgba(248,113,113,.12)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 8, padding: '2px 8px', flexShrink: 0, marginLeft: 8 }}>{closedMeta.badge}</span>
         ) : certedToday ? (
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#4ADE80', background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.3)', borderRadius: 8, padding: '2px 8px', flexShrink: 0, marginLeft: 8 }}>✓ 인증완료</span>
+          <span style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#4ADE80', background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.3)', borderRadius: 8, padding: '2px 8px', flexShrink: 0, marginLeft: 8 }}>✓ 인증완료</span>
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명</span>
-        {myMember && <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 700 }}>🔥 {myMember.streak || 0}일 연속</span>}
-        {!isClosed && daysLeft !== null && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{`⏰ ${daysLeft}일 남음`}</span>}
-        <span style={{ fontSize: 11, color: 'var(--dm-muted)', background: 'var(--dm-input)', borderRadius: 6, padding: '1px 7px' }}>
+        <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명</span>
+        {myMember && <span style={{ fontSize: NL() ? 13 : 11, color: '#FBBF24', fontWeight: 700 }}>🔥 {myMember.streak || 0}일 연속</span>}
+        {!isClosed && daysLeft !== null && <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{`⏰ ${daysLeft}일 남음`}</span>}
+        <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', background: 'var(--dm-input)', borderRadius: 6, padding: '1px 7px' }}>
           {c.certType === 'check' ? '✓ 체크' : '✏️ 텍스트'}
         </span>
       </div>
@@ -380,23 +384,23 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
           <button onClick={onBack} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>{c.title}</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {isClosed ? closedMeta.line : (daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음')}</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {isClosed ? closedMeta.line : (daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음')}</div>
           </div>
           {isAdmin && (
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
               {!isClosed && (endConfirm ? (
                 <>
-                  <button onClick={() => setEndConfirm(false)} style={{ background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 8, color: 'var(--dm-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>취소</button>
-                  <button onClick={handleEndChallenge} style={{ background: 'rgba(251,191,36,.18)', border: '1px solid rgba(251,191,36,.4)', borderRadius: 8, color: '#FBBF24', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>종료확인</button>
+                  <button onClick={() => setEndConfirm(false)} style={{ background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 8, color: 'var(--dm-muted)', fontSize: NL() ? 13 : 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>취소</button>
+                  <button onClick={handleEndChallenge} style={{ background: 'rgba(251,191,36,.18)', border: '1px solid rgba(251,191,36,.4)', borderRadius: 8, color: '#FBBF24', fontSize: NL() ? 13 : 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>종료확인</button>
                 </>
               ) : deleteConfirm ? (
                 <>
-                  <button onClick={() => setDeleteConfirm(false)} style={{ background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 8, color: 'var(--dm-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>취소</button>
-                  <button onClick={handleDeleteChallenge} style={{ background: 'rgba(248,113,113,.2)', border: '1px solid rgba(248,113,113,.5)', borderRadius: 8, color: '#F87171', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>삭제확인</button>
+                  <button onClick={() => setDeleteConfirm(false)} style={{ background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 8, color: 'var(--dm-muted)', fontSize: NL() ? 13 : 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>취소</button>
+                  <button onClick={handleDeleteChallenge} style={{ background: 'rgba(248,113,113,.2)', border: '1px solid rgba(248,113,113,.5)', borderRadius: 8, color: '#F87171', fontSize: NL() ? 13 : 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>삭제확인</button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => setEndConfirm(true)} style={{ background: 'transparent', border: '1px solid rgba(251,191,36,.35)', borderRadius: 8, color: '#FBBF24', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>종료</button>
+                  <button onClick={() => setEndConfirm(true)} style={{ background: 'transparent', border: '1px solid rgba(251,191,36,.35)', borderRadius: 8, color: '#FBBF24', fontSize: NL() ? 13 : 11, fontWeight: 700, cursor: 'pointer', padding: '5px 10px' }}>종료</button>
                   <button onClick={() => setDeleteConfirm(true)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px', flexShrink: 0 }}>🗑</button>
                 </>
               ))}
@@ -407,11 +411,11 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
           )}
         </div>
         {c.description && (
-          <div style={{ fontSize: 12, color: 'var(--dm-sub)', lineHeight: 1.7, background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.7, background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px' }}>
             {c.description}
           </div>
         )}
-        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 8, fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
           생성 보너스 XP는 없고, 인증은 하루 1회만 반영됩니다.
         </div>
       </div>
@@ -421,27 +425,27 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
         <div style={{ margin: '12px 16px', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <LevelChip levelInfo={myLevel} score={myMemberScore} />
-            <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
+            <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>
               다음 레벨까지 {Math.max(0, (myLevel?.nextFloor || 0) - myMemberScore).toLocaleString()} XP
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: certedToday ? 0 : 12 }}>
             <div>
-              <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 2 }}>내 현황</div>
+              <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginBottom: 2 }}>내 현황</div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <span style={{ fontSize: 20, fontWeight: 900, color: '#FBBF24' }}>🔥 {myMember?.streak || 0}일</span>
-                <span style={{ fontSize: 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회 · {myMemberScore.toLocaleString()} XP · 현재 {myMemberRank || '-'}위</span>
+                <span style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-muted)', alignSelf: 'flex-end', marginBottom: 2 }}>총 {myMember?.totalCerts || 0}회 · {myMemberScore.toLocaleString()} XP · 현재 {myMemberRank || '-'}위</span>
               </div>
             </div>
             {certedToday && (
-              <div style={{ fontSize: 13, fontWeight: 900, color: '#4ADE80' }}>✓ 오늘 인증완료</div>
+              <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 900, color: '#4ADE80' }}>✓ 오늘 인증완료</div>
             )}
           </div>
 
           {!certedToday && (
             <div>
               {isClosed && (
-                <div style={{ fontSize: 12, color: '#F87171', marginBottom: 8, fontWeight: 700 }}>
+                <div style={{ fontSize: NL() ? 14 : 12, color: '#F87171', marginBottom: 8, fontWeight: 700 }}>
                   종료된 챌린지라 추가 인증은 닫혀 있어요.
                 </div>
               )}
@@ -451,11 +455,11 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                   onChange={e => setCertText(e.target.value)}
                   placeholder="오늘 한 것을 한 줄로 적어주세요"
                   maxLength={100}
-                  style={{ ...S.input, marginBottom: 8, fontSize: 13 }}
+                  style={{ ...S.input, marginBottom: 8, fontSize: NL() ? 15 : 13 }}
                 />
               )}
               <button onClick={handleCert} disabled={isClosed || certifying || (c.certType === 'text' && !certText.trim())} style={{
-                ...S.btn, marginTop: 0, fontSize: 13,
+                ...S.btn, marginTop: 0, fontSize: NL() ? 15 : 13,
                 background: certifying ? 'var(--dm-input)' : 'linear-gradient(135deg,#4ADE80,#22C55E)',
                 opacity: (isClosed || certifying) ? 0.6 : 1,
               }}>
@@ -467,7 +471,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
           {/* 습관 연결 */}
           {habits.length > 0 && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-border)' }}>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>🔗 습관 연결 — 인증하면 자동 체크</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 8 }}>🔗 습관 연결 — 인증하면 자동 체크</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {[{ id: '', title: '연결 안 함', icon: '✕' }, ...habits].map(h => {
                   const selected = linkedHabitId === h.id;
@@ -476,7 +480,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                       setLinkedHabitId(h.id);
                       updateMemberLinkedHabit(c.id, authUser.uid, h.id).catch(() => {});
                     }} style={{
-                      padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      padding: '5px 10px', borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer',
                       border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
                       background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
                       color: selected ? '#6C8EFF' : 'var(--dm-muted)',
@@ -492,8 +496,8 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       {/* 참여 버튼 (비참여자) */}
       {!isMember && (
         <div style={{ margin: '12px 16px' }}>
-          {c.description && <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 12, lineHeight: 1.6 }}>{c.description}</div>}
-          <button onClick={handleJoin} disabled={joining} style={{ ...S.btn, marginTop: 0, fontSize: 14 }}>
+          {c.description && <div style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-sub)', marginBottom: 12, lineHeight: 1.6 }}>{c.description}</div>}
+          <button onClick={handleJoin} disabled={joining} style={{ ...S.btn, marginTop: 0, fontSize: NL() ? 16 : 14 }}>
             {isClosed ? '종료된 챌린지' : joining ? '참여 중...' : '🏁 챌린지 참여하기'}
           </button>
         </div>
@@ -503,7 +507,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       <div style={{ display: 'flex', gap: 6, padding: '4px 16px 12px' }}>
         {[{ key: 'feed', label: `인증 피드 (오늘 ${todayCerts}명)` }, { key: 'members', label: `전체 참여자 ${members.length}명` }].map(t => (
           <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
-            flex: 1, padding: '7px 0', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: 'none',
+            flex: 1, padding: '7px 0', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', border: 'none',
             background: detailTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
             color: detailTab === t.key ? '#fff' : 'var(--dm-sub)',
           }}>{t.label}</button>
@@ -511,11 +515,11 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>불러오는 중...</div>
+        <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: NL() ? 16 : 14 }}>불러오는 중...</div>
       ) : detailTab === 'feed' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
           {certs.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 인증이 없어요. 첫 번째로 인증해보세요!</div>
+            <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: NL() ? 16 : 14 }}>아직 인증이 없어요. 첫 번째로 인증해보세요!</div>
           ) : certs.map(cert => {
             const certLevel = cert.uid === authUser.uid ? myLevel : calcLevel(memberRankings[cert.uid]?.totalScore || 0);
             const certScore = cert.uid === authUser.uid ? (memberRankings[authUser.uid]?.totalScore || 0) : (memberRankings[cert.uid]?.totalScore || 0);
@@ -523,32 +527,32 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
             <div key={cert.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cert.text && cert.text !== '✓' ? 6 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#6C8EFF' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 15 : 13, fontWeight: 900, color: '#6C8EFF' }}>
                     {cert.nickname?.[0] || '?'}
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)' }}>{cert.nickname}</span>
+                      <span style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)' }}>{cert.nickname}</span>
                       <LevelChip levelInfo={certLevel} score={certScore} compact />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
-                      <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
-                      <span style={{ fontSize: 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
+                      <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
+                      <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
+                      <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button onClick={() => handleCheer(cert.id)} disabled={cheeredCerts.has(cert.id)} style={{ background: cheeredCerts.has(cert.id) ? 'rgba(251,191,36,.25)' : 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: 12, fontWeight: 700, cursor: cheeredCerts.has(cert.id) ? 'default' : 'pointer' }}>
+                  <button onClick={() => handleCheer(cert.id)} disabled={cheeredCerts.has(cert.id)} style={{ background: cheeredCerts.has(cert.id) ? 'rgba(251,191,36,.25)' : 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 8, padding: '4px 10px', color: '#FBBF24', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: cheeredCerts.has(cert.id) ? 'default' : 'pointer' }}>
                     👏 {cert.cheerCount || 0}
                   </button>
                   {(cert.uid === authUser.uid || isAdmin) && (
-                    <button onClick={() => handleDeleteCert(cert.id)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', padding: '4px 6px' }}>✕</button>
+                    <button onClick={() => handleDeleteCert(cert.id)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: NL() ? 15 : 13, cursor: 'pointer', padding: '4px 6px' }}>✕</button>
                   )}
                 </div>
               </div>
               {cert.text && cert.text !== '✓' && (
-                <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, paddingLeft: 36 }}>{cert.text}</div>
+                <div style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-text)', lineHeight: 1.6, paddingLeft: 36 }}>{cert.text}</div>
               )}
             </div>
           )})}
@@ -556,8 +560,8 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 16px' }}>
           <div style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px', marginBottom: 2 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>현재 참여 중인 멤버</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>현재 참여 중인 멤버</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', lineHeight: 1.6 }}>
               닉네임과 레벨, 누적 XP, 인증 횟수, 연속 인증 일수를 한 번에 볼 수 있어요.
             </div>
           </div>
@@ -566,9 +570,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
               {podiumMembers.map((member, index) => (
                 <div key={member.uid} style={{ background: 'var(--dm-card)', border: `1.5px solid ${rankAccent[index]}55`, borderRadius: 14, padding: '12px 10px', textAlign: 'center', boxShadow: index === 0 ? '0 8px 22px rgba(251,191,36,.12)' : 'none' }}>
                   <div style={{ fontSize: 18, marginBottom: 6 }}>{rankBadge[index]}</div>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.nickname}</div>
-                  <div style={{ fontSize: 10, color: rankAccent[index], fontWeight: 900, marginBottom: 4 }}>{member.totalCerts}회 인증</div>
-                  <div style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{member.totalScore.toLocaleString()} XP</div>
+                  <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.nickname}</div>
+                  <div style={{ fontSize: NL() ? 12 : 10, color: rankAccent[index], fontWeight: 900, marginBottom: 4 }}>{member.totalCerts}회 인증</div>
+                  <div style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{member.totalScore.toLocaleString()} XP</div>
                 </div>
               ))}
             </div>
@@ -576,30 +580,30 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
           {myMemberRank > 0 && (
             <div style={{ background: 'linear-gradient(135deg,rgba(108,142,255,.14),rgba(108,142,255,.06))', border: '1px solid rgba(108,142,255,.25)', borderRadius: 12, padding: '10px 12px', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>내 현재 위치</div>
-                <div style={{ fontSize: 11, color: 'var(--dm-sub)' }}>지금 {myMemberRank}위예요. 순위는 인증 횟수가 먼저 반영되고, 이후 XP와 연속 인증이 비교됩니다.</div>
+                <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>내 현재 위치</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-sub)' }}>지금 {myMemberRank}위예요. 순위는 인증 횟수가 먼저 반영되고, 이후 XP와 연속 인증이 비교됩니다.</div>
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>#{myMemberRank}</div>
             </div>
           )}
           {rankedMembers.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: 14 }}>아직 참여자가 없어요.</div>
+            <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: NL() ? 16 : 14 }}>아직 참여자가 없어요.</div>
           ) : rankedMembers.map((m, i) => (
             <div key={m.uid} style={{ background: 'var(--dm-card)', border: m.uid === authUser.uid ? '1.5px solid rgba(108,142,255,.35)' : '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, boxShadow: i < 3 ? '0 8px 22px rgba(15,23,42,.04)' : 'none' }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: i < 3 ? rankAccent[i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>
+              <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 900, color: i < 3 ? rankAccent[i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 16 : 14, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>
                 {m.nickname?.[0] || '?'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-text)' }}>{m.nickname}</span>
-                  {m.uid === authUser.uid && <span style={{ fontSize: 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
+                  <span style={{ fontSize: NL() ? 15 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{m.nickname}</span>
+                  {m.uid === authUser.uid && <span style={{ fontSize: NL() ? 12 : 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
                   <LevelChip levelInfo={m.levelInfo} score={m.totalScore} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: 'var(--dm-sub)', background: 'var(--dm-input)', borderRadius: 999, padding: '4px 8px' }}>인증 {m.totalCerts}회</span>
-                  <span style={{ fontSize: 11, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.18)', borderRadius: 999, padding: '4px 8px' }}>누적 {m.totalScore.toLocaleString()} XP</span>
-                  <span style={{ fontSize: 11, color: '#FBBF24', background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.18)', borderRadius: 999, padding: '4px 8px' }}>🔥 연속 {m.streak || 0}일</span>
+                  <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-sub)', background: 'var(--dm-input)', borderRadius: 999, padding: '4px 8px' }}>인증 {m.totalCerts}회</span>
+                  <span style={{ fontSize: NL() ? 13 : 11, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.18)', borderRadius: 999, padding: '4px 8px' }}>누적 {m.totalScore.toLocaleString()} XP</span>
+                  <span style={{ fontSize: NL() ? 13 : 11, color: '#FBBF24', background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.18)', borderRadius: 999, padding: '4px 8px' }}>🔥 연속 {m.streak || 0}일</span>
                 </div>
               </div>
             </div>
@@ -654,28 +658,28 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
 
       <div style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>생성 정책</div>
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.7 }}>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>생성 정책</div>
+          <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', lineHeight: 1.7 }}>
             생성 보너스 XP는 없고, 진행 중인 내 챌린지는 최대 3개까지 만들 수 있어요. 마감일은 오늘부터 90일 이내만 설정됩니다.
           </div>
         </div>
 
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>챌린지 이름 *</div>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>챌린지 이름 *</div>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="예: 매일 1만보 걷기" maxLength={40} style={{ ...S.input, marginBottom: 0 }} />
         </div>
 
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>설명 (선택)</div>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>설명 (선택)</div>
           <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="챌린지 목표나 규칙을 간단히 적어주세요" maxLength={150} rows={3} style={{ ...S.input, resize: 'none', marginBottom: 0 }} />
         </div>
 
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>인증 방식</div>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>인증 방식</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[{ key: 'check', label: '✓ 체크만' }, { key: 'text', label: '✏️ 한 줄 텍스트' }].map(t => (
               <button key={t.key} onClick={() => setCertType(t.key)} style={{
-                flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+                flex: 1, padding: '10px 0', borderRadius: 10, fontSize: NL() ? 15 : 13, fontWeight: 700, cursor: 'pointer', border: 'none',
                 background: certType === t.key ? '#6C8EFF' : 'var(--dm-input)',
                 color: certType === t.key ? '#fff' : 'var(--dm-sub)',
               }}>{t.label}</button>
@@ -684,21 +688,21 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
         </div>
 
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>마감일 (선택)</div>
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 6 }}>최대 90일 안으로만 설정할 수 있어요.</div>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>마감일 (선택)</div>
+          <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 6 }}>최대 90일 안으로만 설정할 수 있어요.</div>
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={toDateStr()} style={{ ...S.input, marginBottom: 0 }} />
         </div>
 
         {habits.length > 0 && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>습관 연결 (선택)</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginBottom: 8 }}>인증하면 연결된 습관이 자동으로 체크돼요</div>
+            <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)', marginBottom: 6 }}>습관 연결 (선택)</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 8 }}>인증하면 연결된 습관이 자동으로 체크돼요</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {[{ id: '', title: '연결 안 함', icon: '✕' }, ...habits].map(h => {
                 const selected = linkedHabitId === h.id;
                 return (
                   <button key={h.id} onClick={() => setLinkedHabitId(h.id)} style={{
-                    padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    padding: '5px 10px', borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer',
                     border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
                     background: selected ? 'rgba(108,142,255,.2)' : 'var(--dm-card)',
                     color: selected ? '#6C8EFF' : 'var(--dm-text)',
@@ -711,8 +715,8 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px' }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)' }}>공개 챌린지</div>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>누구나 탐색에서 찾아 참여 가능</div>
+            <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)' }}>공개 챌린지</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>누구나 탐색에서 찾아 참여 가능</div>
           </div>
           <div onClick={() => setIsPublic(p => !p)} style={{ width: 44, height: 24, borderRadius: 999, background: isPublic ? '#6C8EFF' : 'var(--dm-input)', cursor: 'pointer', position: 'relative', transition: 'background .2s' }}>
             <div style={{ position: 'absolute', top: 2, left: isPublic ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />

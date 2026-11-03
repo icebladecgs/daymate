@@ -6,6 +6,10 @@ import { formatRelativeTime } from "../utils/date.js";
 import Linkify from "../utils/linkify.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 import S from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+// 새 디자인(설정 → 앱 관리)일 때 작은 글씨를 키운다 — 커뮤니티 화면과 같은 방식
+const NL = () => newDesignOn();
 
 export default function FreeBoard({ authUser, user, setToast }) {
   const [posts, setPosts] = useState([]);
@@ -166,7 +170,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
 
       {/* 내 닉네임 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px 10px' }}>
-        <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>내 닉네임</span>
+        <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>내 닉네임</span>
         {editingNickname ? (
           <input
             value={nicknameEdit}
@@ -175,12 +179,12 @@ export default function FreeBoard({ authUser, user, setToast }) {
             onBlur={handleUpdateNickname}
             autoFocus
             maxLength={20}
-            style={{ ...S.input, fontSize: 12, padding: '3px 8px', marginBottom: 0, width: 120 }}
+            style={{ ...S.input, fontSize: NL() ? 14 : 12, padding: '3px 8px', marginBottom: 0, width: 120 }}
           />
         ) : (
           <button onClick={() => { setNicknameEdit(myNickname); setEditingNickname(true); }}
-            style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {myNickname} <span style={{ fontSize: 11 }}>✏️</span>
+            style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {myNickname} <span style={{ fontSize: NL() ? 13 : 11 }}>✏️</span>
           </button>
         )}
       </div>
@@ -190,14 +194,14 @@ export default function FreeBoard({ authUser, user, setToast }) {
           <span style={S.sectionEmoji}>📝</span>게시글
         </span>
         <button onClick={() => { if (showForm) cancelForm(); else setShowForm(true); }}
-          style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {showForm ? '취소' : '+ 글쓰기'}
         </button>
       </div>
 
       {showForm && (
         <div style={{ ...S.card, marginBottom: 8 }}>
-          {editingPost && <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 8 }}>✏️ 게시글 수정</div>}
+          {editingPost && <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 8 }}>✏️ 게시글 수정</div>}
           <input value={title} onChange={e => setTitle(e.target.value)}
             placeholder="제목 (필수)"
             style={{ ...S.input, marginBottom: 8, fontWeight: 700 }} maxLength={60} />
@@ -232,23 +236,23 @@ export default function FreeBoard({ authUser, user, setToast }) {
                   <img src={p.photos[0].url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1.5px solid var(--dm-border)' }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
+                  <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
-                    <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
-                    {p.commentCount > 0 && <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
+                    <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
+                    <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
+                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
                   </div>
                 </div>
                 {isMine && (
                   <button onClick={e => { e.stopPropagation(); handleDelete(p.id); }}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 14, cursor: 'pointer', padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                    style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: NL() ? 16 : 14, cursor: 'pointer', padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
                 )}
               </div>
             );
           })}
           {posts.length > 20 && (
             <button onClick={() => setShowAll(v => !v)}
-              style={{ width: '100%', padding: '10px', background: 'var(--dm-input)', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', borderTop: '1px solid var(--dm-border)' }}>
+              style={{ width: '100%', padding: '10px', background: 'var(--dm-input)', border: 'none', color: '#6C8EFF', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', borderTop: '1px solid var(--dm-border)' }}>
               {showAll ? '접기 ▲' : `더보기 +${posts.length - 20} ▼`}
             </button>
           )}
@@ -256,7 +260,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
       )}
       {!loading && posts.length === 0 && !showForm && (
         <div style={{ margin: '0 16px 8px', borderRadius: 14, background: 'var(--dm-card)', border: '1.5px dashed var(--dm-border)', padding: '20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--dm-muted)' }}>아직 게시글이 없어요. 첫 글을 남겨보세요 ✍️</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)' }}>아직 게시글이 없어요. 첫 글을 남겨보세요 ✍️</div>
         </div>
       )}
       {loading && <div style={{ padding: 32, textAlign: 'center', color: 'var(--dm-muted)' }}>불러오는 중...</div>}
@@ -279,23 +283,23 @@ export default function FreeBoard({ authUser, user, setToast }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{selectedPost.title}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dm-sub)' }}>{selectedPost.nickname}</span>
-                  <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>
+                  <span style={{ fontSize: NL() ? 14 : 12, fontWeight: 700, color: 'var(--dm-sub)' }}>{selectedPost.nickname}</span>
+                  <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>
                     {new Date(selectedPost.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </span>
-                  {selectedPost.editedAt && <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>(수정됨)</span>}
+                  {selectedPost.editedAt && <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>(수정됨)</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {selectedPost.uid === authUser?.uid && (
                   <button onClick={() => startEdit(selectedPost)}
-                    style={{ background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    style={{ background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
                     수정
                   </button>
                 )}
                 {selectedPost.uid === authUser?.uid && (
                   <button onClick={() => handleDelete(selectedPost.id)}
-                    style={{ background: 'transparent', border: 'none', color: '#F87171', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    style={{ background: 'transparent', border: 'none', color: '#F87171', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
                     삭제
                   </button>
                 )}
@@ -305,9 +309,9 @@ export default function FreeBoard({ authUser, user, setToast }) {
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {selectedPost.body ? (
-                <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}><Linkify text={selectedPost.body} /></div>
+                <div style={{ fontSize: NL() ? 16 : 14, color: 'var(--dm-text)', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}><Linkify text={selectedPost.body} /></div>
               ) : (
-                <div style={{ fontSize: 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
+                <div style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-muted)', fontStyle: 'italic' }}>내용 없음</div>
               )}
               {(selectedPost.photos || []).map((p, i) => (
                 <img key={p.path || i} src={p.url} alt="" onClick={() => setViewer({ photos: selectedPost.photos, index: i })} style={{ width: '100%', borderRadius: 12, marginTop: 12, display: 'block', cursor: 'zoom-in' }} />
@@ -316,9 +320,9 @@ export default function FreeBoard({ authUser, user, setToast }) {
 
               {/* 댓글 목록 */}
               <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--dm-border)' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12 }}>💬 댓글 {comments.length > 0 ? comments.length : ''}</div>
+                <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12 }}>💬 댓글 {comments.length > 0 ? comments.length : ''}</div>
                 {comments.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: '12px 0' }}>
+                  <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: NL() ? 15 : 13, padding: '12px 0' }}>
                     아직 댓글이 없어요. 첫 댓글을 남겨보세요 💬
                   </div>
                 ) : (
@@ -328,27 +332,27 @@ export default function FreeBoard({ authUser, user, setToast }) {
                     const isLiked = likedBy.includes(authUser?.uid);
                     return (
                       <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 15 : 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
                           {(c.nickname || '?')[0]}
                         </div>
                         <div style={{ flex: 1, background: isMine ? 'rgba(75,111,255,.07)' : 'var(--dm-card)', border: `1px solid ${isMine ? 'rgba(108,142,255,.25)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
+                            <span style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>
+                              <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>
                                 {formatRelativeTime(c.createdAt)}
                               </span>
                               {isMine && (
                                 <button onClick={() => handleDeleteComment(c.id)}
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: NL() ? 15 : 13, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
                               )}
                             </div>
                           </div>
-                          <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}><Linkify text={c.text} /></div>
+                          <div style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-text)', lineHeight: 1.6 }}><Linkify text={c.text} /></div>
                           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
                             <button
                               onClick={() => toggleFreeBoardCommentLike(selectedPost.id, c.id, authUser?.uid).catch(() => {})}
-                              style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: 11, fontWeight: isLiked ? 700 : 400 }}>
+                              style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: NL() ? 13 : 11, fontWeight: isLiked ? 700 : 400 }}>
                               {isLiked ? '❤️' : '🤍'} {likedBy.length > 0 ? likedBy.length : ''}
                             </button>
                           </div>
@@ -369,7 +373,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
                 placeholder={postingComment ? '등록 중...' : '댓글을 입력하세요'}
                 maxLength={200}
                 disabled={postingComment}
-                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 14, boxSizing: 'border-box' }}
+                style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: NL() ? 16 : 14, boxSizing: 'border-box' }}
               />
               <button
                 onClick={handlePostComment}
@@ -377,7 +381,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
                 style={{
                   background: hasCommentText ? '#4B6FFF' : 'var(--dm-input)',
                   color: hasCommentText ? '#fff' : 'var(--dm-muted)',
-                  border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: hasCommentText ? 'pointer' : 'default', flexShrink: 0,
+                  border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: NL() ? 15 : 13, fontWeight: 800, cursor: hasCommentText ? 'pointer' : 'default', flexShrink: 0,
                 }}
               >
                 등록
