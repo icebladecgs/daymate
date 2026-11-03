@@ -443,6 +443,12 @@ export default function Today({
     (t.photos || []).forEach(p => p?.path && deletePhoto(p.path));
     removeFromYesterday([t.id]);
   };
+  // ☀️ 아침 "오늘 계획" (2026-11-03) — 정오 전에는 어제 못 한 할일 카드에 오늘 첫 일정 한 줄과 언젠가할일 3개(오늘로)를 같이 보여준다.
+  // 시간 있는 할일 목록은 바로 아래 할일 목록에 있으므로 다시 늘어놓지 않고 한 줄로만.
+  const morning = nowMin < 12 * 60;
+  const timedToday = tasks.filter(t => t.title?.trim() && t.time && !t.done).sort((a, b) => a.time.localeCompare(b.time));
+  const morningSomeday = morning ? (someday || []).filter(x => !x.done && x.title?.trim()).slice(0, 3) : [];
+  const showPlanCard = !carryDismissed && (carryTasks.length > 0 || morningSomeday.length > 0);
   const dismissCarry = () => { store.set('dm_carry_dismissed', dateStr); setCarryDismissed(true); };
 
   const saveSomedayDetail = (id, patch) => setSomeday?.(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
@@ -603,15 +609,27 @@ export default function Today({
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
       {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
       {tasksOpen && taskDayOffset === 0 && !newLook && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
-      {tasksOpen && taskDayOffset === 0 && !carryDismissed && carryTasks.length > 0 && (
+      {tasksOpen && taskDayOffset === 0 && showPlanCard && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 할일 {carryTasks.length}개</span>
-            <button onClick={() => carryToToday(carryTasks)}
-              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
+            <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
+            {!morning && <button onClick={() => carryToToday(carryTasks)}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
             <button onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
               style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
+          {morning && (
+            <div style={{ fontSize: 14, color: 'var(--dm-sub)', marginBottom: 10 }}>
+              {timedToday.length ? `⏰ 시간 정한 일 ${timedToday.length}개 · 첫 일정 ${timedToday[0].time} ${timedToday[0].title}` : '⏰ 오늘은 시간 정한 일이 없어요'}
+            </div>
+          )}
+          {morning && carryTasks.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 2px' }}>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 일 {carryTasks.length}개</span>
+              <button onClick={() => carryToToday(carryTasks)}
+                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#5B7CFA', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
+            </div>
+          )}
           {carryTasks.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -622,6 +640,17 @@ export default function Today({
               <button onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </div>
           ))}
+          {morningSomeday.length > 0 && (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dm-text)', padding: '10px 0 2px' }}>📋 언젠가에서 오늘 할 것 고르기</div>
+              {morningSomeday.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                  <button onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
       {tasksOpen && (
