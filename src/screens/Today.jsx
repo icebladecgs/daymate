@@ -24,6 +24,8 @@ import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.j
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import DayWrapUpSheet, { DayWrapUpCard } from "../components/DayWrapUp.jsx";
+import UndoBar from "../components/UndoBar.jsx";
+import { useUndo } from "../utils/useUndo.js";
 import { ExamTodayPanel } from "../components/Exam.jsx";
 import { newStudyEntry } from "../utils/exam.js";
 
@@ -75,6 +77,7 @@ export default function Today({
   const [newHabitIcon, setNewHabitIcon] = useState('');
   const [newHabitName, setNewHabitName] = useState('');
   const [wrapOpen, setWrapOpen] = useState(false); // 🌙 하루 마무리 창
+  const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초)
   const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
   // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
   const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
@@ -260,8 +263,26 @@ export default function Today({
     setTargetTasks(targetTasks.filter(t => t.id !== id));
   };
   const moveTargetTaskToSomeday = (task) => {
-    saveSomeday([...(someday || []), { id: `sd${Date.now()}`, title: task.title, done: false, ...pickTaskDetail(task) }]);
+    const sdId = `sd${Date.now()}`;
+    saveSomeday([...(someday || []), { id: sdId, title: task.title, done: false, ...pickTaskDetail(task) }]);
     deleteTargetTask(task.id, { keepPhotos: true });
+    return sdId;
+  };
+  // 되돌리기 — 지운 할일을 원래 자리에 다시 넣는다 (그사이 바뀐 다른 할일은 그대로)
+  const reinsertTask = (ds, task, idx) => onUpdateDayData?.(ds, prev => {
+    const list = [...(prev.tasks || [])];
+    if (list.some(x => x.id === task.id)) return prev;
+    list.splice(Math.max(0, Math.min(idx, list.length)), 0, task);
+    return { ...prev, tasks: list };
+  });
+  const shortTitle = (t) => (t.length > 14 ? `${t.slice(0, 14)}…` : t);
+  const somedayWithUndo = (task) => {
+    const ds = targetDs, idx = targetTasks.findIndex(x => x.id === task.id);
+    const sdId = moveTargetTaskToSomeday(task);
+    undo.offer(`"${shortTitle(task.title)}" 언젠가로 옮겼어요`, () => {
+      setSomeday?.(prev => (prev || []).filter(x => x.id !== sdId));
+      reinsertTask(ds, task, idx);
+    });
   };
   // 할일 상세(메모·사진) — 최신 데이터 기준으로 병합 저장 (사진 업로드가 끝나는 시점에도 안전하게)
   const [detailTaskId, setDetailTaskId] = useState(null);
@@ -269,12 +290,19 @@ export default function Today({
   const detailTask = detailTaskId ? targetTasks.find(t => t.id === detailTaskId) : null;
   const saveTaskDetail = (ds, id, patch) => onUpdateDayData?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, ...patch } : t) }));
   // 목록의 삭제 버튼과 할일 상세의 삭제가 함께 쓰는 확인 후 삭제 (취소하면 false)
+  // 보통 할일은 확인창 없이 지우고 5초 동안 되돌리기 (사진 파일은 그 뒤에 지움).
+  // 구글 캘린더와 연결된 할일은 구글 일정도 지워져 되돌릴 수 없으므로 예전처럼 먼저 묻는다.
   const confirmDeleteTargetTask = (t) => {
-    const msg = t.gcalEventId && !String(t.id || '').startsWith('gcal_') && getValidGcalToken?.()
-      ? '이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?'
-      : `"${t.title}" 할일을 삭제할까요?`;
-    if (!window.confirm(msg)) return false;
-    deleteTargetTask(t.id);
+    const gcalLinked = t.gcalEventId && !String(t.id || '').startsWith('gcal_') && getValidGcalToken?.();
+    if (gcalLinked) {
+      if (!window.confirm('이 할일은 구글 캘린더 일정과 연동되어 있어요. 삭제하면 구글 캘린더에서도 삭제됩니다. 삭제할까요?')) return false;
+      deleteTargetTask(t.id);
+      return;
+    }
+    const ds = targetDs, idx = targetTasks.findIndex(x => x.id === t.id);
+    deleteTargetTask(t.id, { keepPhotos: true });
+    undo.offer(`"${shortTitle(t.title)}" 지웠어요`, () => reinsertTask(ds, t, idx),
+      () => (t.photos || []).forEach(p => p?.path && deletePhoto(p.path)));
   };
   const taskDayDateLabel = formatShortKoreanDate(targetDs);
   const taskDayLabel = taskDayOffset === 0 ? '오늘' : taskDayOffset === 1 ? '내일' : taskDayOffset === -1 ? '어제' : taskDayDateLabel;
@@ -418,15 +446,23 @@ export default function Today({
   const dismissCarry = () => { store.set('dm_carry_dismissed', dateStr); setCarryDismissed(true); };
 
   const saveSomedayDetail = (id, patch) => setSomeday?.(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
+  // 언젠가할일 지우기도 확인창 대신 5초 되돌리기
   const confirmDeleteSomeday = (item) => {
-    if (!window.confirm(`"${item.title}" 언젠가할일을 삭제할까요?`)) return false;
-    deleteSomeday(item.id);
+    const idx = (someday || []).findIndex(x => x.id === item.id);
+    deleteSomeday(item.id, { keepPhotos: true });
+    undo.offer(`"${shortTitle(item.title)}" 지웠어요`, () => setSomeday?.(prev => {
+      const list = [...(prev || [])];
+      if (list.some(x => x.id === item.id)) return prev;
+      list.splice(Math.max(0, Math.min(idx, list.length)), 0, item);
+      return list;
+    }), () => (item.photos || []).forEach(p => p?.path && deletePhoto(p.path)));
   };
 
   return (
     <div style={S.content}>
       {newLook && filledCount > 0 && <CompactBar watchRef={headerRef} done={doneCount} total={filledCount} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
       {focus && (
         <FocusTimerModal
           task={focus.task}
@@ -464,6 +500,7 @@ export default function Today({
           dateStr={targetDs}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, targetDs, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
           onFocus={(t) => { setDetailTaskId(null); setFocus({ ds: targetDs, task: t }); }}
+          onComplete={(t) => toggleRow(t.id)}
         />
       )}
       {detailSomeday && (
@@ -602,7 +639,7 @@ export default function Today({
                 now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
                 next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
                 onToggle={toggleRow} onOpen={setDetailTaskId}
-                onSomeday={(t) => { moveTargetTaskToSomeday(t); setToast('언젠가 할일로 이동 ✅'); }}
+                onSomeday={somedayWithUndo}
                 onDelete={confirmDeleteTargetTask}
                 onFocus={(t) => setFocus({ ds: dateStr, task: t })} />,
             ])}
@@ -633,7 +670,7 @@ export default function Today({
             {/* 자주 쓰는 "언젠가로 미루기"(미완료만)와 삭제(확인창)만 목록에 바로 노출. 나머지 편집은 상세에서 */}
             {!task.done && (
               <button
-                onClick={() => { moveTargetTaskToSomeday(task); setToast('언젠가 할일로 이동 ✅'); }}
+                onClick={() => somedayWithUndo(task)}
                 style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
@@ -785,7 +822,7 @@ export default function Today({
               <TaskDetailBadge task={item} />
             </span>
             <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
-            <button onClick={() => deleteSomeday(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+            <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
         ))}
         {somedayList.length > 3 && (

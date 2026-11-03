@@ -148,6 +148,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           onSave={(patch) => saveTaskDetail(detailTask.id, patch)}
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
+          onComplete={(t) => toggleDone(t.id)}
           dateStr={dateStr}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, dateStr, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />

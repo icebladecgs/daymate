@@ -20,8 +20,9 @@ const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).sli
 // - 구글 캘린더에는 메모·사진을 반영하지 않음 (제목·시간은 기존 동기화 그대로)
 // - 할일·언젠가할일 모두 같은 화면 사용 (언젠가로 옮기기는 목록의 버튼으로)
 // - onDelete를 넘긴 화면에서만 삭제 버튼 표시
+// - onComplete를 넘긴 화면에서는 작은 단계를 다 끝냈을 때 "할일도 완료" 버튼 (자동 완료는 안 함 — 목록 체크와 같은 경로로 저장)
 // - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus }) {
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -192,6 +193,13 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             placeholder="＋ 단계 추가 (예: 서류 출력)"
             style={{ ...S.input, padding: '8px 10px', fontSize: 15, borderStyle: 'dashed', marginBottom: 14 }}
           />
+          {onComplete && !task.done && stepTotal > 0 && stepDone === stepTotal && (
+            // 완료를 먼저 저장하고 닫는다 (닫을 때 저장하는 제목·메모는 그 위에 합쳐짐)
+            <button onClick={() => { onComplete(task); handleClose(); }}
+              style={{ width: '100%', height: 44, padding: 0, marginTop: -6, marginBottom: 14, borderRadius: 12, border: 'none', background: '#4ADE80', color: '#fff', fontSize: 15, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>
+              ✓ 단계를 다 끝냈어요 · 할일도 완료
+            </button>
+          )}
 
           <div style={sectionLabel}>{onMoveDate ? '날짜·시간' : '시간'}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: importedGcal && onMoveDate ? 6 : 14, minHeight: 32, flexWrap: 'wrap' }}>

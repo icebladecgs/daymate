@@ -443,6 +443,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onClose={() => setDetailTaskId(null)}
           onError={showToast}
           onDelete={deletePreviewTask}
+          onComplete={onToggleTaskForDate && ((t) => onToggleTaskForDate(preview, t.id))}
           dateStr={preview}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, preview, to); if (ok) showToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
