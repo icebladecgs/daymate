@@ -25,7 +25,7 @@ import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import DayWrapUpSheet, { DayWrapUpCard } from "../components/DayWrapUp.jsx";
 import UndoBar from "../components/UndoBar.jsx";
-import { useUndo } from "../utils/useUndo.js";
+import { useUndo, putBack } from "../utils/useUndo.js";
 import { ExamTodayPanel } from "../components/Exam.jsx";
 import { newStudyEntry } from "../utils/exam.js";
 
@@ -815,7 +815,7 @@ export default function Today({
                 />
                 <StatSelect value={h.statTag} name={h.name}
                   onChange={v => setHabits?.(prev => prev.map(x => x.id === h.id ? withStatTag(x, v) : x))} />
-                <button onClick={() => setHabits?.(prev => prev.filter(x => x.id !== h.id))}
+                <button onClick={() => { const idx = (habits || []).findIndex(x => x.id === h.id); setHabits?.(prev => prev.filter(x => x.id !== h.id)); undo.offer(`"${shortTitle(h.name || '습관')}" 습관을 지웠어요`, () => setHabits?.(prev => putBack(prev, h, idx))); }}
                   style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0, padding: '0 2px' }}>✕</button>
               </div>
             ))}
