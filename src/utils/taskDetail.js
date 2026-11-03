@@ -2,6 +2,7 @@
 // 새 항목을 상세 창에 추가하면 여기에도 추가해야 이동 시 사라지지 않음
 export const pickTaskDetail = (x = {}) => ({
   ...(x.note ? { note: x.note } : {}),
+  ...(x.steps?.length ? { steps: x.steps } : {}), // 작은 단계 체크리스트 [{id, text, done}] (2026-11-03)
   ...(x.photos?.length ? { photos: x.photos } : {}),
   ...(x.files?.length ? { files: x.files } : {}),
   ...(x.time ? { time: x.time } : {}),

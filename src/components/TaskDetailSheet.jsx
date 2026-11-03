@@ -13,6 +13,7 @@ const chip = (active) => ({
   background: active ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)',
 });
 const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 };
+const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).slice(2, 6)}`, text: text.trim(), done: false });
 
 // 할일 상세 — 목록은 보기 전용, 편집(제목·시간·성장 스탯·메모·사진·언젠가·삭제)은 모두 여기서.
 // - 시간·스탯·사진은 바꾸는 즉시 저장 / 제목·메모는 닫을 때 저장 (뒤로가기로 언마운트될 때 포함)
@@ -35,25 +36,59 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
     onSave({ endTime: v });
   };
 
-  const savedRef = useRef({ title: task.title || '', note: task.note || '' });
+  // 작은 단계 체크리스트 — 체크·추가·삭제는 바로 저장, 글 고치기는 칸을 벗어나거나 창을 닫을 때 저장.
+  // 할일 완료와는 따로 움직인다(단계를 다 끝내도 할일을 자동으로 완료하지 않음).
+  const [steps, setSteps] = useState(task.steps || []);
+  const [stepDraft, setStepDraft] = useState('');
+  const draftRef = useRef(null);
+  const imeEnterRef = useRef(false); // 한글 조합 중 Enter — 조합이 끝난 뒤 추가 (두 번 들어가지 않게)
+
+  const savedRef = useRef({ title: task.title || '', note: task.note || '', steps: JSON.stringify(task.steps || []) });
   const doneRef = useRef(false); // 삭제·이동 후에는 언마운트 저장을 건너뜀
-  const flush = (t, n) => {
+  // 빈 단계는 빼고, 아직 Enter를 안 친 새 단계 글도 넣는다
+  const finalSteps = (st, draft) => {
+    const list = st.map(s => ({ ...s, text: s.text.trim() })).filter(s => s.text);
+    return draft.trim() ? [...list, newStep(draft)] : list;
+  };
+  const commitSteps = (next) => {
+    setSteps(next);
+    const clean = finalSteps(next, '');
+    const key = JSON.stringify(clean);
+    if (key === savedRef.current.steps) return;
+    savedRef.current = { ...savedRef.current, steps: key };
+    onSave({ steps: clean.length ? clean : undefined });
+  };
+  const flush = (t, n, st, draft) => {
     if (doneRef.current) return;
+    const patch = {};
     const nextTitle = t.trim() || savedRef.current.title; // 제목을 비우면 기존 제목 유지 (삭제는 아래 삭제 버튼으로)
-    if (nextTitle === savedRef.current.title && n === savedRef.current.note) return;
-    savedRef.current = { title: nextTitle, note: n };
-    onSave({ title: nextTitle, note: n });
+    if (nextTitle !== savedRef.current.title || n !== savedRef.current.note) Object.assign(patch, { title: nextTitle, note: n });
+    const clean = finalSteps(st, draft);
+    const stepsKey = JSON.stringify(clean);
+    if (stepsKey !== savedRef.current.steps) patch.steps = clean.length ? clean : undefined;
+    if (!Object.keys(patch).length) return;
+    savedRef.current = { title: nextTitle, note: n, steps: stepsKey };
+    onSave(patch);
   };
 
   // 뒤로가기 등으로 화면이 바뀌어 언마운트돼도 입력 중인 내용이 사라지지 않게
-  const latestRef = useRef({ title, note, flush });
-  useEffect(() => { latestRef.current = { title, note, flush }; });
+  const latestRef = useRef({ title, note, steps, stepDraft, flush });
+  useEffect(() => { latestRef.current = { title, note, steps, stepDraft, flush }; });
   useEffect(() => () => {
-    const { title: t, note: n, flush: f } = latestRef.current;
-    f(t, n);
+    const { title: t, note: n, steps: st, stepDraft: d, flush: f } = latestRef.current;
+    f(t, n, st, d);
   }, []);
 
-  const handleClose = () => { flush(title, note); onClose(); };
+  const handleClose = () => { flush(title, note, steps, stepDraft); onClose(); };
+
+  const addStep = () => {
+    const text = (draftRef.current?.value ?? stepDraft).trim();
+    if (!text) return;
+    setStepDraft('');
+    commitSteps([...steps, newStep(text)]);
+  };
+  const stepDone = steps.filter(s => s.done && s.text.trim()).length;
+  const stepTotal = steps.filter(s => s.text.trim()).length;
 
   const handlePhotos = (next) => {
     setPhotos(next);
@@ -71,7 +106,8 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   const importedGcal = !!(task.gcalEventId && String(task.id || '').startsWith('gcal_'));
   const handleMoveDate = (toDs) => {
     if (!toDs || toDs === dateStr) return;
-    const latest = { ...task, title: title.trim() || task.title, note };
+    const st = finalSteps(steps, stepDraft);
+    const latest = { ...task, title: title.trim() || task.title, note, steps: st.length ? st : undefined };
     if (onMoveDate(latest, toDs) === false) return;
     doneRef.current = true;
     onClose();
@@ -118,6 +154,43 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             onChange={e => setTitle(e.target.value)}
             maxLength={60}
             style={{ ...S.input, marginBottom: 14 }}
+          />
+
+          <div style={sectionLabel}>작은 단계{stepTotal > 0 && ` · ${stepDone}/${stepTotal}`}</div>
+          {steps.map(s => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <button onClick={() => commitSteps(steps.map(x => x.id === s.id ? { ...x, done: !x.done } : x))} aria-label={s.done ? '단계 완료 취소' : '단계 완료'}
+                style={{ width: 36, height: 38, padding: 0, border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 22, height: 22, borderRadius: 6, boxSizing: 'border-box', border: `2px solid ${s.done ? '#4ADE80' : 'var(--dm-muted)'}`, background: s.done ? '#4ADE80' : 'transparent', color: '#fff', fontSize: 13, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{s.done ? '✓' : ''}</span>
+              </button>
+              <input
+                value={s.text}
+                onChange={e => setSteps(steps.map(x => x.id === s.id ? { ...x, text: e.target.value } : x))}
+                onBlur={() => commitSteps(steps)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); draftRef.current?.focus(); } }}
+                maxLength={80}
+                aria-label="단계 내용"
+                style={{ ...S.input, flex: 1, minWidth: 0, width: 'auto', padding: '8px 10px', fontSize: 15, textDecoration: s.done ? 'line-through' : 'none', color: s.done ? 'var(--dm-muted)' : 'var(--dm-text)' }}
+              />
+              <button onClick={() => commitSteps(steps.filter(x => x.id !== s.id))} aria-label="단계 삭제"
+                style={{ width: 32, height: 38, padding: 0, border: 'none', background: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+          <input
+            ref={draftRef}
+            value={stepDraft}
+            onChange={e => setStepDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              if (e.nativeEvent.isComposing) { imeEnterRef.current = true; return; }
+              addStep();
+            }}
+            onCompositionEnd={() => { if (imeEnterRef.current) { imeEnterRef.current = false; setTimeout(addStep, 0); } }}
+            enterKeyHint="enter"
+            maxLength={80}
+            placeholder="＋ 단계 추가 (예: 서류 출력)"
+            style={{ ...S.input, padding: '8px 10px', fontSize: 15, borderStyle: 'dashed', marginBottom: 14 }}
           />
 
           <div style={sectionLabel}>{onMoveDate ? '날짜·시간' : '시간'}</div>
@@ -247,9 +320,16 @@ export function TaskDetailBadge({ task }) {
   const photoCount = task?.photos?.length || 0;
   const fileCount = task?.files?.length || 0;
   const goalTitle = task?.goalRef?.title || '';
-  if (!hasNote && !photoCount && !fileCount && !goalTitle) return null;
+  const steps = task?.steps || [];
+  if (!hasNote && !photoCount && !fileCount && !goalTitle && !steps.length) return null;
   return (
     <>
+      {/* 작은 단계 진행 — 체크는 상세 창에서만 (목록은 보기 전용) */}
+      {steps.length > 0 && (
+        <span title="작은 단계" style={{ fontSize: 11, fontWeight: 700, color: steps.every(s => s.done) ? '#4ADE80' : 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          ☑{steps.filter(s => s.done).length}/{steps.length}
+        </span>
+      )}
       {(hasNote || photoCount > 0 || fileCount > 0) && (
         <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
           {hasNote && '📝'}{photoCount > 0 && `📷${photoCount > 1 ? photoCount : ''}`}{fileCount > 0 && `📎${fileCount > 1 ? fileCount : ''}`}

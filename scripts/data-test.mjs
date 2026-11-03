@@ -20,7 +20,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // ── 1. 할일 ↔ 언젠가 이동 시 상세 정보 유지 (CLAUDE.md 14.2) ──
 {
   const full = {
-    note: '메모', photos: [{ path: 'p1', url: 'u1' }], files: [{ id: 'f1', name: 'a.pdf' }],
+    note: '메모', steps: [{ id: 's1', text: '서류 출력', done: true }, { id: 's2', text: '제출', done: false }], photos: [{ path: 'p1', url: 'u1' }], files: [{ id: 'f1', name: 'a.pdf' }],
     time: '09:00', endTime: '10:00', focusMin: 25, statTag: 'int', goalRef: { kind: 'year', title: '건강' }, memoRef: { ds: '2026-10-05', id: 'm1' },
   };
   const task = { id: 't1', title: '운동', done: false, ...full };
