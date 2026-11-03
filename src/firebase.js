@@ -414,9 +414,16 @@ export async function loadTodayCommunityEvents(communityIds, date) {
   return results;
 }
 
+// 커뮤니티 "최근 활동" — 출석·채팅·게시판 글·댓글·공지·일정 때 서버 시각으로 (2026-11-03).
+// 예전엔 출석·채팅·게시판 새 글 때만, 쓴 사람 기기 시계로 기록했다. 실패해도 글쓰기는 그대로 (보안 규칙: 멤버는 이 칸만 바꿀 수 있음)
+export function touchCommunity(communityId) {
+  return updateDoc(doc(db, 'communities', communityId), { lastActivityAt: serverTimestamp() }).catch(() => {});
+}
+
 export async function addCommunityEvent(communityId, event) {
   const ref = doc(collection(db, 'communities', communityId, 'events'));
   await setDoc(ref, { ...event, createdAt: new Date().toISOString() });
+  touchCommunity(communityId);
   return ref.id;
 }
 
@@ -439,7 +446,7 @@ export async function checkinCommunity(communityId, uid, nickname, completionRat
       ? (prev.streak || 1)
       : 1;
   await setDoc(ref, { uid, nickname, date: today, completionRate: completionRate ?? null, streak, lastCheckin: today, checkedAt: new Date().toISOString() });
-  await updateDoc(doc(db, 'communities', communityId), { lastActivityAt: new Date().toISOString() });
+  touchCommunity(communityId);
 }
 
 export async function updateMemberNickname(communityId, uid, nickname) {
@@ -505,7 +512,7 @@ export const chatQuery = (communityId, n = 50) =>
 export async function addChatMessage(communityId, msg) {
   const createdAt = new Date().toISOString();
   const ref = await addDoc(collection(db, 'communities', communityId, 'chat'), { ...msg, createdAt });
-  updateDoc(doc(db, 'communities', communityId), { lastActivityAt: createdAt }).catch(() => {});
+  touchCommunity(communityId);
   return { id: ref.id, createdAt };
 }
 
@@ -538,7 +545,7 @@ export async function countCommunitySince(communityId, sub, since) {
 export async function addBoardPost(communityId, post) {
   const ref = doc(collection(db, 'communities', communityId, 'board'));
   await setDoc(ref, { ...post, createdAt: new Date().toISOString() });
-  await updateDoc(doc(db, 'communities', communityId), { lastActivityAt: new Date().toISOString() });
+  touchCommunity(communityId);
   return ref.id;
 }
 
@@ -554,6 +561,7 @@ export async function addBoardComment(communityId, postId, comment) {
   const ref = doc(collection(db, 'communities', communityId, 'board', postId, 'comments'));
   await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });
   await updateDoc(doc(db, 'communities', communityId, 'board', postId), { commentCount: increment(1) });
+  touchCommunity(communityId);
   return ref.id;
 }
 
@@ -578,6 +586,7 @@ export async function toggleBoardCommentLike(communityId, postId, commentId, uid
 export async function addCommunityNotice(communityId, notice) {
   const ref = doc(collection(db, 'communities', communityId, 'notices'));
   await setDoc(ref, { ...notice, createdAt: new Date().toISOString() });
+  touchCommunity(communityId);
   return ref.id;
 }
 
@@ -589,6 +598,7 @@ export async function addNoticeComment(communityId, noticeId, comment) {
   const ref = doc(collection(db, 'communities', communityId, 'notices', noticeId, 'comments'));
   await setDoc(ref, { ...comment, createdAt: new Date().toISOString(), likedBy: [] });
   await updateDoc(doc(db, 'communities', communityId, 'notices', noticeId), { commentCount: increment(1) });
+  touchCommunity(communityId);
   return ref.id;
 }
 
