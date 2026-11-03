@@ -241,6 +241,14 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
                 ~ {task.endTime && task.endTime > task.time ? task.endTime : '끝 시간'}
               </button>
             ))}
+            {/* 끝 시간 빠르게 — 시작 시간만 있을 때 30분·1시간·2시간 뒤 (자정을 넘으면 안 보임) */}
+            {task.time && !editingTime && !editingEnd && !(task.endTime && task.endTime > task.time) && [30, 60, 120].map(d => {
+              const [hh, mm] = task.time.split(':').map(Number);
+              const end = hh * 60 + mm + d;
+              if (end >= 24 * 60) return null;
+              const v = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+              return <button key={d} onClick={() => saveEndTime(v)} style={{ ...chip(false), color: '#5B7CFA', fontWeight: 700 }}>+{d < 60 ? `${d}분` : `${d / 60}시간`}</button>;
+            })}
             {task.time && (
               <button onClick={() => { setEditingTime(false); setEditingEnd(false); onSave({ time: undefined, endTime: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
             )}
