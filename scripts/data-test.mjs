@@ -8,6 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
+const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
 const { buildGoalProgress, goalKey, goalProgressLine, weekSummary } = await load('/src/utils/goalProgress.js');
@@ -108,6 +109,26 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   const lost = restoreLostTaskDetails({ tasks: [{ id: 't1', title: 'a', note: '' }] }, { tasks: [{ id: 't1', title: 'a', note: '사라질 뻔한 메모', photos: [{ path: 'p' }] }] });
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
+}
+
+// ── 알람 (2026-11-03) ──
+{
+  t('알람: 한 번은 그날만', alarmOccursOn({ time: '09:00', repeat: 'once', date: '2026-11-04' }, '2026-11-04') && !alarmOccursOn({ time: '09:00', repeat: 'once', date: '2026-11-04' }, '2026-11-05'));
+  t('알람: 평일은 주말 빼고', alarmOccursOn({ time: '09:00', repeat: 'weekdays', date: '2026-11-01' }, '2026-11-06') && !alarmOccursOn({ time: '09:00', repeat: 'weekdays', date: '2026-11-01' }, '2026-11-07'));
+  t('알람: 매주는 정한 날 요일', alarmOccursOn({ time: '09:00', repeat: 'weekly', date: '2026-11-04' }, '2026-11-11') && !alarmOccursOn({ time: '09:00', repeat: 'weekly', date: '2026-11-04' }, '2026-11-12'));
+  t('알람: 시작 날짜 전에는 안 울림', !alarmOccursOn({ time: '09:00', repeat: 'daily', date: '2026-11-10' }, '2026-11-04'));
+  t('알람: 지난 시각이면 내일로', nextOnceDate('08:00', new Date('2026-11-04T09:00:00')) === '2026-11-05' && nextOnceDate('10:00', new Date('2026-11-04T09:00:00')) === '2026-11-04');
+  const plans = { '2026-11-01': { memos: [{ id: 'm1', text: '치과 예약 전화\n둘째 줄', alarm: { time: '10:05', repeat: 'daily', date: '2026-11-01' } }, { id: 'm2', text: '알람 없음' }, { id: 'm3', text: '', locked: { iv: 'x' }, alarm: { time: '10:05', repeat: 'daily' } }] } };
+  const ma = collectMemoAlarms(plans);
+  t('알람: 알람 걸린 메모만, 잠긴 메모는 내용 숨김', ma.length === 2 && ma[0].text === '치과 예약 전화' && ma[1].text.includes('잠긴'), JSON.stringify(ma));
+  const tasks = [{ id: 't1', title: '회의', time: '10:10' }, { id: 't2', title: '끝낸 일', time: '10:10', done: true }];
+  const at = (hm) => new Date('2026-11-04T' + hm + ':00');
+  const d1 = dueAlarms({ memoAlarms: ma, tasks, lead: 5, todayStr: '2026-11-04', now: at('10:05') });
+  t('알람: 5분 전 할일 + 메모 (끝낸 할일 제외)', d1.length === 3 && d1.filter(x => x.kind === 'task').length === 1, JSON.stringify(d1.map(x => x.key)));
+  const fired = Object.fromEntries(d1.map(x => [x.key, 1]));
+  t('알람: 한 번 울린 건 다시 안 울림', dueAlarms({ memoAlarms: ma, tasks, lead: 5, todayStr: '2026-11-04', now: at('10:07'), fired }).length === 0);
+  t('알람: 10분 넘게 지나면 안 울림', dueAlarms({ memoAlarms: ma, tasks, lead: 5, todayStr: '2026-11-04', now: at('10:20') }).length === 0);
+  t('알람: 할일 알림 끔', dueAlarms({ memoAlarms: [], tasks, lead: null, todayStr: '2026-11-04', now: at('10:10') }).length === 0);
 }
 
 // ── 반복 할일: 생긴 할일에서 규칙 찾기 (2026-11-03) ──

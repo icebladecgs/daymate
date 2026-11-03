@@ -20,6 +20,7 @@ import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
+import { taskAlarmLead, setTaskAlarmLead } from "../utils/alarms.js";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
@@ -286,6 +287,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   const [todayNewLook, setTodayNewLookState] = useState(todayNewLookOn);
   const [todayDoneGroup, setTodayDoneGroupState] = useState(todayDoneGroupOn);
   const [todayHidden, setTodayHidden] = useState(todayHiddenSections); // 오늘 탭에서 숨긴 칸 (기기마다)
+  const [alarmLead, setAlarmLead] = useState(() => { const v = taskAlarmLead(); return v == null ? "off" : v; }); // 할일 알림 시점 (기기마다)
   const [notifSound, setNotifSound] = useState(() => localStorage.getItem('dm_notif_sound') !== 'false');
   const [notifVibration, setNotifVibration] = useState(() => localStorage.getItem('dm_notif_vibration') !== 'false');
   const [soundStyle, setSoundStyle] = useState(() => localStorage.getItem('dm_notif_sound_style') || 'beep');
@@ -630,6 +632,21 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <SubHeader title="알림 설정" onBack={() => setSubPage(null)} />
+
+      <div style={S.sectionTitle}>⏰ 할일·메모 알람</div>
+      <div style={S.card}>
+        <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13, marginBottom: 6 }}>시간 정한 할일 알림</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {[['off', '끄기'], [0, '정각'], [5, '5분 전'], [10, '10분 전']].map(([v, label]) => (
+            <button key={String(v)} onClick={() => { setAlarmLead(v); setTaskAlarmLead(v); }}
+              style={{ padding: '7px 12px', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                border: alarmLead === v ? '1.5px solid #5B7CFA' : '1px solid var(--dm-border)', background: alarmLead === v ? 'rgba(91,124,250,.12)' : 'var(--dm-input)', color: alarmLead === v ? '#5B7CFA' : 'var(--dm-sub)' }}>{label}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 8, lineHeight: 1.6 }}>
+          메모 알람은 포스트잇 ⋯ 메뉴 → ⏰ 알람에서 정해요. 앱(PC는 데스크탑 앱)이 켜져 있고 아래 알림이 켜져 있을 때 울려요 · 이 기기에만 적용 · 휴대폰 할일은 구글 캘린더 알림을 권해요
+        </div>
+      </div>
 
       <div style={S.sectionTitle}>알림 ON/OFF</div>
       <div style={S.card}>

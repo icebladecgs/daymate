@@ -23,7 +23,8 @@ import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, ST
 import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
 import DesktopUpdateBar from "./components/DesktopUpdateBar.jsx";
-import { triggerVibration } from "./utils/notification.js";
+import { triggerVibration, sendNotification, getPermission, playNotifSound } from "./utils/notification.js";
+import { collectMemoAlarms, dueAlarms, taskAlarmLead, loadFired, saveFired } from "./utils/alarms.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
 import { getTopKeywords } from "./utils/knowledge.js";
@@ -1686,9 +1687,31 @@ export default function App() {
     return () => scheduler.cancelManaged();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifEnabled, user.name, telegramCfg, alarmTimes]);
+  // ⏰ 알람 — 시간 정한 할일(정각·5분 전·10분 전, 설정 → 알림)과 메모(포스트잇) 알람 (2026-11-03, utils/alarms.js).
+  // 30초마다 "지금 울릴 것"을 확인한다(예전엔 한 번 예약해서 PC 절전 뒤에 빠졌다). 알림을 켠 기기에서만.
+  const memoAlarms = useMemo(() => collectMemoAlarms(plans), [plans]);
+  const alarmRef = useRef({});
+  alarmRef.current = { memoAlarms, tasks: todayData?.tasks || [], notifEnabled };
   useEffect(() => {
-    scheduler.scheduleTaskAlarms(todayData?.tasks || [], user.name || "사용자", notifEnabled);
-  }, [todayData, notifEnabled]); // eslint-disable-line
+    const tick = () => {
+      const { memoAlarms: ma, tasks, notifEnabled: on } = alarmRef.current;
+      if (!on || getPermission() !== 'granted') return;
+      const fired = loadFired();
+      const due = dueAlarms({ memoAlarms: ma, tasks, lead: taskAlarmLead(), todayStr: toDateStr(), fired });
+      if (!due.length) return;
+      for (const a of due) {
+        fired[a.key] = Date.now();
+        const n = sendNotification(a.title, a.body, a.kind === 'memo' ? '📝' : '⏰');
+        // 메모 알람을 누르면 그 포스트잇을 연다 (데스크탑 앱)
+        if (n && a.kind === 'memo' && window.daymateDesktop?.openSticky) n.onclick = () => { try { window.daymateDesktop.openSticky(a.ds, a.id); n.close(); } catch { /* 무시 */ } };
+      }
+      saveFired(fired);
+      try { if (localStorage.getItem('dm_notif_sound') !== 'false') playNotifSound(); } catch { /* 소리 없음 */ }
+    };
+    tick();
+    const h = setInterval(tick, 30000);
+    return () => clearInterval(h);
+  }, []);
 
   useEffect(() => {
     if (screen === "today") ensureToday();

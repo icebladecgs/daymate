@@ -11,6 +11,7 @@ import { printMemo } from "../utils/printMemo.js";
 import LinkOverlay from "./LinkOverlay.jsx";
 import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
+import { ALARM_REPEATS, alarmLabel, nextOnceDate } from "../utils/alarms.js";
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -82,6 +83,7 @@ export default function StickyMemo() {
   // 투명도(데스크탑 1.3.1~) — 앱이 기억해 둔 값을 주소(op)로 넘겨준다
   const [opacity, setOpacityState] = useState(() => Number(new URLSearchParams(window.location.search).get("op")) || 1);
   const [showOpacity, setShowOpacity] = useState(false);
+  const [showAlarm, setShowAlarm] = useState(false); // ⏰ 알람 정하기 띠 (2026-11-03, 메모잇 참고 — 울리는 건 메인 창이 한다)
   // 포스트잇 안 찾기 (Ctrl+F) — 찾은 곳은 글 뒤에 깐 같은 모양의 층(backdrop)에 형광펜으로 표시
   const [find, setFind] = useState(null); // null = 닫힘, { q, i }
   const taRef = useRef(null);
@@ -264,7 +266,7 @@ export default function StickyMemo() {
   // 포스트잇 창 안 단축키 — 데스크탑 앱이 키를 받아 동작 이름을 보내 준다(키 설정은 트레이 → 단축키 설정)
   const actionsRef = useRef({});
   // 삭제 확인·찾기 등이 열려 있으면 접기 키(기본 Esc)가 그것을 닫는다
-  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : find ? closeFind : showSettings ? () => setShowSettings(false) : showOpacity ? () => setShowOpacity(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
+  actionsRef.current = { fold: confirmDel ? () => setConfirmDel(false) : find ? closeFind : showSettings ? () => setShowSettings(false) : showOpacity ? () => setShowOpacity(false) : showAlarm ? () => setShowAlarm(false) : showMenu ? () => setShowMenu(false) : toggleFold, close, pin: togglePin, copy: copyAll };
   const [keys, setKeys] = useState({});
   useEffect(() => {
     const d = desktop();
@@ -309,7 +311,7 @@ export default function StickyMemo() {
       <div onDoubleClick={toggleFold}
         style={{ display: "flex", alignItems: "center", gap: 1, height: folded ? "100%" : 28, padding: "0 4px 0 8px", background: c.bar, WebkitAppRegion: "drag", flexShrink: 0, userSelect: "none" }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: folded ? 12 : 11, fontWeight: folded ? 700 : 400, color: folded ? "#000" : c.sub, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-          {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}`}
+          {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}${memo.alarm?.time ? ` · ⏰ ${alarmLabel(memo.alarm, toDateStr())}` : ""}`}
         </span>
         {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} style={iconBtn}>＋</button>}
         {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
@@ -329,6 +331,7 @@ export default function StickyMemo() {
               ["📋", withKey("전체 복사", "copy"), copyAll],
               ["🖨", "출력", print],
               ["🔍", "찾기 (Ctrl+F)", openFind],
+              ["⏰", memo.alarm?.time ? `알람 (${alarmLabel(memo.alarm, toDateStr())})` : "알람", () => setShowAlarm(v => !v)],
               ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v)]] : []),
               ["🗑", "삭제", () => setConfirmDel(true)],
               ["⚙️", "메모 설정", () => setShowSettings(true)],
@@ -352,6 +355,30 @@ export default function StickyMemo() {
           ))}
         </div>
       )}
+      {showAlarm && !folded && (() => {
+        const a = memo.alarm || {};
+        const time = a.time || "09:00";
+        const setAlarm = (p) => {
+          const next = { time, repeat: a.repeat || "once", ...p };
+          // 한 번 울리는 알람은 그 시각이 오늘 지났으면 내일로, 매주는 오늘 요일 기준
+          next.date = next.repeat === "once" ? nextOnceDate(next.time) : (a.date || toDateStr());
+          patch({ alarm: next });
+        };
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap", fontSize: 12, color: c.sub }}>
+            ⏰
+            <input type="time" value={time} onChange={e => e.target.value && setAlarm({ time: e.target.value })} aria-label="알람 시각"
+              style={{ fontSize: 12, padding: "1px 4px", border: `1px solid ${c.line}`, borderRadius: 6, background: "#fff", color: "#000", fontFamily: "inherit" }} />
+            {ALARM_REPEATS.map(r => (
+              <button key={r.id} onClick={() => setAlarm({ repeat: r.id })}
+                style={{ ...iconBtn, width: "auto", height: 22, padding: "0 6px", fontSize: 12, color: "#000", background: a.time && (a.repeat || "once") === r.id ? c.line : "transparent", fontWeight: a.time && (a.repeat || "once") === r.id ? 800 : 400 }}>{r.label}</button>
+            ))}
+            {a.time && <button onClick={() => { patch({ alarm: null }); setShowAlarm(false); }} style={{ ...iconBtn, width: "auto", height: 22, padding: "0 6px", fontSize: 12, color: "#B91C1C" }}>끄기</button>}
+            <button onClick={() => setShowAlarm(false)} aria-label="닫기" style={{ ...iconBtn, marginLeft: "auto" }}>✕</button>
+            <div style={{ width: "100%", fontSize: 11, color: c.sub }}>{a.time ? `${alarmLabel(a, toDateStr())}에 알려요 · PC가 켜져 있고 알림을 켰을 때` : "시각과 반복을 고르면 켜져요"}</div>
+          </div>
+        );
+      })()}
       {showOpacity && !folded && (
         <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap", fontSize: 11, color: c.sub }}>
           투명도
