@@ -35,10 +35,10 @@
   ],
   "shortcuts": [
     {
-      "name": "오늘 할일",
-      "short_name": "할일",
-      "description": "오늘 할일 바로가기",
-      "url": "/?screen=today",
+      "name": "할일 추가",
+      "short_name": "할일 추가",
+      "description": "오늘 할일 입력칸 바로 열기",
+      "url": "/?screen=today&add=1",
       "icons": [
         {
           "src": "/icon.svg",
@@ -47,10 +47,10 @@
       ]
     },
     {
-      "name": "오늘 습관",
-      "short_name": "습관",
-      "description": "홈의 오늘 습관 섹션 바로가기",
-      "url": "/?screen=home&focus=habits",
+      "name": "메모 쓰기",
+      "short_name": "메모",
+      "description": "새 메모 쓰기",
+      "url": "/?screen=memo",
       "icons": [
         {
           "src": "/icon.svg",
@@ -59,10 +59,10 @@
       ]
     },
     {
-      "name": "이번주 일정",
-      "short_name": "일정",
-      "description": "이번주 일정 보기",
-      "url": "/?screen=history",
+      "name": "메모 관리자",
+      "short_name": "메모 찾기",
+      "description": "메모·일정·일기 찾기",
+      "url": "/?screen=manager",
       "icons": [
         {
           "src": "/icon.svg",

@@ -439,8 +439,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [showConfetti, setShowConfetti] = useState(false);
   const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => store.get('dm_shortcut_tip_dismissed', false));
   const [srAnnouncement, ] = useState('');
-  const habitsSectionRef = useRef(null);
-  const [, setHighlightedHomeSection] = useState(null);
 
 
 
@@ -475,17 +473,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   }, [levelUpInfo]); // eslint-disable-line
 
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const focus = params.get('focus');
-    if (focus !== 'habits') return;
-    const timeoutId = window.setTimeout(() => {
-      habitsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setHighlightedHomeSection('habits');
-      window.setTimeout(() => setHighlightedHomeSection(null), 2200);
-    }, 180);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
 
   const currentYearGoals = yearGoals.map(g => g.title);
   const currentMonthGoals = monthGoals;

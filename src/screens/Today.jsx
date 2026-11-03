@@ -78,6 +78,13 @@ export default function Today({
   const [newHabitName, setNewHabitName] = useState('');
   const [wrapOpen, setWrapOpen] = useState(false); // 🌙 하루 마무리 창
   const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초)
+  // 앱 아이콘을 길게 눌러 "할일 추가"로 열면(?add=1) 입력칸에 바로 커서 — 사용자가 직접 고른 동작이라 휴대폰에서도 키보드를 띄운다
+  const taskInputRef = useRef(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('add') !== '1') return;
+    const id = setTimeout(() => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); }, 400);
+    return () => clearTimeout(id);
+  }, []);
   const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
   // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
   const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
@@ -730,6 +737,7 @@ export default function Today({
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           <input
+            ref={taskInputRef}
             style={{ ...S.input, flex: 1, marginBottom: 0 }}
             value={taskInput}
             onChange={e => { setTaskInput(e.target.value); setNlOff(false); }}
