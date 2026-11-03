@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import S from "../styles.js";
+import { agoText, fmtFocus } from "../utils/goalProgress.js";
+import { formatShortKoreanDate } from "../utils/date.js";
 
 // 목표 상세 — 인생목표·올해 목표가 같은 화면 사용.
 // "이루기 위해 할 것들"(실천 항목)을 적고, 항목마다 "언젠가로"를 눌러 언젠가할일로 파생시킨다.
 // 파생된 할일에는 goalRef가 붙어 🎯 표시로 어느 목표에서 왔는지 보이고, 언젠가 → 오늘로 옮겨도 유지된다.
 // 같은 항목에서 여러 번 파생 가능 (매주 반복하는 일 등)
-export default function GoalDetailSheet({ kind, title, actions = [], onChangeActions, onSendToSomeday, onClose }) {
+// progress: 이 목표에서 나온 할일을 끝낸 기록 (utils/goalProgress.js) — 없으면 진행 칸을 숨긴다
+export default function GoalDetailSheet({ kind, title, actions = [], progress, todayStr, onChangeActions, onSendToSomeday, onClose }) {
   const [input, setInput] = useState('');
   const [sentId, setSentId] = useState(null);
   const label = kind === 'life' ? '🌟 인생목표' : '🌱 올해 목표';
@@ -44,6 +47,24 @@ export default function GoalDetailSheet({ kind, title, actions = [], onChangeAct
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 20px 12px' }}>
+          {progress?.lastDs && (
+            <div style={{ borderRadius: 12, background: 'rgba(108,142,255,.08)', border: '1px solid rgba(108,142,255,.25)', padding: '10px 12px', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>📈 진행</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  ['최근 7일', `${progress.week}개`, progress.weekFocus ? `집중 ${fmtFocus(progress.weekFocus)}` : ''],
+                  ['지금까지', `${progress.total}개`, progress.totalFocus ? `집중 ${fmtFocus(progress.totalFocus)}` : ''],
+                  ['마지막 실천', agoText(progress.lastDs, todayStr), formatShortKoreanDate(progress.lastDs)],
+                ].map(([label, big, small]) => (
+                  <div key={label} style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', lineHeight: 1.3 }}>{big}</div>
+                    {small && <div style={{ fontSize: 11, color: 'var(--dm-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{small}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8 }}>📌 이루기 위해 할 것들</div>
           {actions.length === 0 && (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', lineHeight: 1.6, padding: '6px 0 12px' }}>

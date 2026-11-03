@@ -26,6 +26,7 @@ import { androidInstallText } from "../utils/installGuideText.jsx";
 import { parseNth, NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
 import { chatFetch } from "../api/chatFetch.js";
 import { newDesignOn } from "../utils/todayLook.js";
+import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
@@ -420,6 +421,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     setSomeday(prev => [...(prev || []), { id: `sd${Date.now()}`, title: action.title, done: false, goalRef: { kind: openGoal.kind, title: openGoalInfo.title } }]);
     setSheetToast('언젠가할일에 추가했어요 ✅ 오늘 탭에서 확인하세요');
   };
+  // 목표 진행 — 목표에서 나온 할일을 끝낸 기록 (최근 7일·집중 시간·마지막 실천)
+  const goalTodayStr = toDateStr();
+  const goalProgress = useMemo(() => buildGoalProgress(plans, goalTodayStr), [plans, goalTodayStr]);
+  const goalProgressOf = (kind, title) => goalProgress.get(goalKey(kind, title));
   const lifeActionCount = (title) => (lifeGoalActions || []).find(x => x.title === title)?.actions?.length || 0;
   const [habitCheckedId, setHabitCheckedId] = useState(null);
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
@@ -649,7 +654,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   useEffect(() => { store.set('dm_section_open_lifegoals', lifeGoalsOpen); }, [lifeGoalsOpen]);
   useEffect(() => { store.set('dm_section_open_yeargoals', yearGoalsOpen); }, [yearGoalsOpen]);
   useEffect(() => { store.set('dm_section_open_monthgoals', monthGoalsOpen); }, [monthGoalsOpen]);
-  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen, onItemClick, itemCount }) => (
+  const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen, onItemClick, itemCount, progressOf }) => (
     <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
         <div>
@@ -691,7 +696,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <div key={i} onClick={onItemClick ? () => onItemClick(i) : undefined}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onItemClick ? 'pointer' : 'default' }}>
               <div style={{ width: 18, height: 18, borderRadius: 999, background: accent, color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: newLook ? 16 : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+                {progressOf?.(i) && <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 1 }}>{progressOf(i)}</div>}
+              </div>
               {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}
               {onItemClick && (
                 <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
@@ -717,6 +725,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           kind={openGoal.kind}
           title={openGoalInfo.title}
           actions={openGoalInfo.actions}
+          progress={goalProgressOf(openGoal.kind, openGoalInfo.title)}
+          todayStr={goalTodayStr}
           onChangeActions={saveGoalActions}
           onSendToSomeday={sendGoalActionToSomeday}
           onClose={() => setOpenGoal(null)}
@@ -942,8 +952,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isMyTab && (
               <div style={{ margin: '0 16px 10px' }}>
                 {myLabel('target', '🎯', '목표 관리')}
-                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]) })}
-                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0 })}
+                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]), progressOf: (i) => goalProgressLine(goalProgressOf('life', lifeGoals[i]), goalTodayStr) })}
+                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0, progressOf: (i) => goalProgressLine(goalProgressOf('year', currentYearGoals[i]), goalTodayStr) })}
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn, open: monthGoalsOpen, onToggleOpen: () => setMonthGoalsOpen(v => !v) })}
               </div>
             )}

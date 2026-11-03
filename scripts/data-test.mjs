@@ -8,6 +8,7 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
+const { buildGoalProgress, goalKey, goalProgressLine } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
 
 let pass = 0, fail = 0;
@@ -105,6 +106,24 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   const lost = restoreLostTaskDetails({ tasks: [{ id: 't1', title: 'a', note: '' }] }, { tasks: [{ id: 't1', title: 'a', note: '사라질 뻔한 메모', photos: [{ path: 'p' }] }] });
   t('서버에서 빠진 할일 메모·사진 되살림', lost.tasks[0].note === '사라질 뻔한 메모' && lost.tasks[0].photos?.length === 1);
+}
+
+// ── 목표 진행: 목표에서 나온 할일을 끝낸 기록 세기 (2026-11-03) ──
+{
+  const g = { kind: 'life', title: '건강' };
+  const plans = {
+    '2026-10-01': { tasks: [{ id: 'a', title: '걷기', done: true, goalRef: g }] },
+    '2026-10-30': { tasks: [{ id: 'b', title: '걷기', done: true, focusMin: 30, goalRef: g }, { id: 'c', title: '헬스', done: false, goalRef: g }] },
+    '2026-11-03': { tasks: [{ id: 'd', title: '걷기', done: false, focusMin: 15, goalRef: g }, { id: 'e', title: '다른 일', done: true }] },
+    '2026-11-05': { tasks: [{ id: 'f', title: '걷기', done: true, goalRef: g }] },
+  };
+  const p = buildGoalProgress(plans, '2026-11-03').get(goalKey('life', '건강'));
+  t('목표 진행: 최근 7일 끝낸 할일만 셈', p?.week === 1, JSON.stringify(p));
+  t('목표 진행: 지금까지 끝낸 할일 (앞으로의 날짜 제외)', p?.total === 2);
+  t('목표 진행: 끝내지 않아도 집중한 시간은 셈', p?.weekFocus === 45 && p?.totalFocus === 45);
+  t('목표 진행: 마지막 실천 날짜', p?.lastDs === '2026-11-03');
+  t('목표 진행: 목록 한 줄', goalProgressLine(p, '2026-11-03') === '최근 7일 1개 · 집중 45분 · 마지막 오늘', goalProgressLine(p, '2026-11-03'));
+  t('목표 진행: 기록 없는 목표는 빈 글', goalProgressLine(undefined, '2026-11-03') === '');
 }
 
 // ── 보유자산 캡처 반영: 기존 종목의 메모·설정 유지, 캡처에 없는 종목은 지우지 않음 (2026-10-19) ──
