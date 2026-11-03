@@ -32,7 +32,7 @@ import { newStudyEntry } from "../utils/exam.js";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
-  dateStr, data, setData, toast, setToast, plans, onOpenDate, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
+  dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
   onOpenInvest, onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
@@ -78,6 +78,20 @@ export default function Today({
   const [newHabitIcon, setNewHabitIcon] = useState('');
   const [newHabitName, setNewHabitName] = useState('');
   const [wrapOpen, setWrapOpen] = useState(false); // 🌙 하루 마무리 창
+  // 👋 처음 쓰는 사람 안내 (2026-11-03) — 할일을 한 번도 안 넣은 사람에게만 처음 띄운다(이미 쓰던 사람은 안 보임).
+  // ① 첫 할일 넣기 ② 목표 하나 적기, 둘 다 하거나 ✕로 닫으면 사라진다 (기기마다 dm_onboard)
+  const [onboard, setOnboard] = useState(() => {
+    const v = store.get('dm_onboard', null);
+    if (v) return v;
+    const used = Object.values(plans || {}).some(d => (d?.tasks || []).some(t => t.title?.trim()));
+    const init = used ? 'done' : 'show';
+    store.set('dm_onboard', init);
+    return init;
+  });
+  const closeOnboard = () => { store.set('dm_onboard', 'done'); setOnboard('done'); };
+  const onboardStep1 = Object.values(plans || {}).some(d => (d?.tasks || []).some(t => t.title?.trim())) || tasks.some(t => t.title?.trim());
+  const onboardStep2 = !!hasGoal;
+  useEffect(() => { if (onboard === 'show' && onboardStep1 && onboardStep2) closeOnboard(); }, [onboard, onboardStep1, onboardStep2]); // eslint-disable-line react-hooks/exhaustive-deps
   const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초)
   // 앱 아이콘을 길게 눌러 "할일 추가"로 열면(?add=1) 입력칸에 바로 커서 — 사용자가 직접 고른 동작이라 휴대폰에서도 키보드를 띄운다
   const taskInputRef = useRef(null);
@@ -652,6 +666,29 @@ export default function Today({
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
       {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
       {tasksOpen && taskDayOffset === 0 && !newLook && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
+      {onboard === 'show' && (() => {
+        const step1 = onboardStep1, step2 = onboardStep2;
+        const row = (done, n, label, sub, onClick) => (
+          <button onClick={done ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 4px', border: 'none', borderTop: '1px solid var(--dm-row)', background: 'none', cursor: done ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: done ? '#4ADE80' : 'rgba(91,124,250,.15)', color: done ? '#fff' : '#5B7CFA' }}>{done ? '✓' : n}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
+              {!done && <span style={{ display: 'block', fontSize: 13, color: 'var(--dm-sub)', marginTop: 1 }}>{sub}</span>}
+            </span>
+            {!done && <span style={{ color: '#5B7CFA', fontSize: 18 }}>›</span>}
+          </button>
+        );
+        return (
+          <div style={{ ...S.card, border: '1.5px solid rgba(91,124,250,.4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>👋 처음이세요? 두 가지만 해 봐요</span>
+              <button onClick={closeOnboard} aria-label="안내 닫기" style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+            {row(step1, 1, '오늘 할 일 하나 넣기', '"내일 오후 3시 회의"처럼 쓰면 날짜·시간도 알아들어요', () => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); })}
+            {row(step2, 2, '이루고 싶은 목표 하나 적기', 'My 탭 → 목표 관리. 목표에서 할 일을 만들면 진행이 쌓여요', () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'my' })))}
+          </div>
+        );
+      })()}
       {tasksOpen && taskDayOffset === 0 && showPlanCard && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>

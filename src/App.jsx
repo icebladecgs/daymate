@@ -2332,7 +2332,7 @@ export default function App() {
     if (screen === "today") {
       const d = plans[todayStr] || newDay(todayStr);
       return (
-        <Today onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+        <Today hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
