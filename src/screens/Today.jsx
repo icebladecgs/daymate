@@ -23,6 +23,7 @@ import { todayNewLookOn, todayDoneGroupOn } from "../utils/todayLook.js";
 import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
+import DayWrapUpSheet, { DayWrapUpCard } from "../components/DayWrapUp.jsx";
 import { ExamTodayPanel } from "../components/Exam.jsx";
 import { newStudyEntry } from "../utils/exam.js";
 
@@ -73,6 +74,7 @@ export default function Today({
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
   const [newHabitName, setNewHabitName] = useState('');
+  const [wrapOpen, setWrapOpen] = useState(false); // 🌙 하루 마무리 창
   const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
   // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
   const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
@@ -443,6 +445,12 @@ export default function Today({
             if (entry) onStudyXp?.(entry.min);
           }}
         />
+      )}
+      {wrapOpen && (
+        <DayWrapUpSheet dateStr={dateStr} tasks={tasks} journalBody={bodyText}
+          onMoveTaskDate={onMoveTaskDate} setData={setData} setSomeday={setSomeday} pickDetail={pickTaskDetail}
+          onClose={() => setWrapOpen(false)}
+          onFinish={() => { setWrapOpen(false); setToast('오늘 하루 수고했어요 🌙'); }} />
       )}
       {detailTask && (
         <TaskDetailSheet
@@ -820,6 +828,9 @@ export default function Today({
           />
         </div>
       )}
+
+      {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
+      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
 
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
