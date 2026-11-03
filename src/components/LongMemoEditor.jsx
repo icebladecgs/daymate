@@ -18,7 +18,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, onOpenKnowledge, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
+export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
@@ -388,7 +388,6 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔒</button>
         <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>⚙️</button>
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔍</button>}
-        {onOpenKnowledge && <button onClick={onOpenKnowledge} aria-label="지식" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🧠</button>}
         <button
           onClick={handleSaveClick}
           style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px' } : {}) }}

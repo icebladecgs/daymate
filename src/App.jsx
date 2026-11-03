@@ -39,7 +39,6 @@ import { matchesRecurring } from "./utils/recurring.js";
 import { pickTaskDetail } from "./utils/taskDetail.js";
 
 const Home = lazy(() => import("./screens/Home.jsx"));
-const DailyPage = lazy(() => import("./screens/DailyPage.jsx"));
 const Today = lazy(() => import("./screens/Today.jsx"));
 const History = lazy(() => import("./screens/History.jsx"));
 const Stats = lazy(() => import("./screens/Stats.jsx"));
@@ -51,9 +50,7 @@ const Community = lazy(() => import("./screens/Community.jsx"));
 const Portfolio = lazy(() => import("./screens/Portfolio.jsx"));
 const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
-const Knowledge = lazy(() => import("./screens/Knowledge.jsx"));
 const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
-const KeywordDetail = lazy(() => import("./screens/KeywordDetail.jsx"));
 const MemoManager = lazy(() => import("./components/MemoManager.jsx"));
 const MemoLockSheet = lazy(() => import("./components/MemoLockSheet.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
@@ -107,7 +104,7 @@ export default function App() {
       if (inviteParam) store.set('dm_pending_invite', inviteParam.toUpperCase());
       if (params.get('longmemo') === '1') return "today";
       const s = params.get('screen') || window.location.hash.replace('#','');
-      if (s) return s;
+      if (s) return s === 'home' ? 'today' : s; // 예전 홈 화면은 없어짐 (2026-11-03)
     } catch {}
     return "today";
   });
@@ -127,10 +124,7 @@ export default function App() {
           history.pushState({ screen: screenRef.current, isRoot: false }, '', `?screen=${screenRef.current}`);
         }
       } else {
-        setScreen(e.state.screen);
-        if (e.state.screen === 'keyword-detail' && e.state.keyword) {
-          setOpenKeyword(e.state.keyword);
-        }
+        setScreen(e.state.screen === 'home' ? 'today' : e.state.screen);
         if (e.state.screen === 'detail' && e.state.date) {
           setOpenDate(e.state.date);
         }
@@ -908,23 +902,12 @@ export default function App() {
     }, 10000);
   }, [plans[todayStr], habits, scores, authUser]); // eslint-disable-line
 
-  const [homeMode, setHomeMode] = useState(() => store.get("dm_home_mode", "dashboard"));
-  const toggleHomeMode = () => {
-    setHomeMode(prev => {
-      const next = prev === "daily" ? "dashboard" : "daily";
-      store.set("dm_home_mode", next);
-      return next;
-    });
-  };
 
   // 새로고침/딥링크로 바로 진입할 때도 URL의 date/kw를 읽어 복원 (screen 초기값 파싱과 동일한 패턴)
   const [openDate, setOpenDate] = useState(() => {
     try { return new URLSearchParams(window.location.search).get('date') || null; } catch { return null; }
   });
   const [scrollToMemo, setScrollToMemo] = useState(false);
-  const [openKeyword, setOpenKeyword] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get('kw') || null; } catch { return null; }
-  });
 
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
@@ -2229,15 +2212,9 @@ export default function App() {
   };
   navigateRef.current = changeScreen;
 
-  const openKeywordDetail = (kw) => {
-    setOpenKeyword(kw);
-    setScreen("keyword-detail");
-    history.pushState({ screen: 'keyword-detail', keyword: kw, isRoot: false }, '', `?screen=keyword-detail&kw=${encodeURIComponent(kw)}`);
-  };
-
   const renderScreen = () => {
     if (screen === "my") {
-      // My 탭 — 대시보드만 (DailyPage 없음)
+      // My 탭
       return (
         <Home
           growthPanel={
@@ -2298,71 +2275,6 @@ export default function App() {
             ...prev,
             memos: (prev.memos || []).filter(m => m.id !== id),
           }))}
-          onToggleMode={toggleHomeMode}
-        />
-      );
-    }
-    if (screen === "home") {
-      if (homeMode === "daily") {
-        return (
-          <DailyPage
-            plans={plans}
-            setDayData={setDayData}
-            todayStr={todayStr}
-            onToggleMode={toggleHomeMode}
-          />
-        );
-      }
-      return (
-        <Home
-          onMoveTaskDate={moveTaskToDate}
-          user={user} goals={goals} todayData={todayData} plans={plans}
-          onToggleTask={toggleTodayTaskFromHome}
-          onSetTodayTasks={onSetTodayTasks}
-          habits={habits} setHabits={setHabits} onToggleHabit={onToggleHabit}
-          recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
-          someday={someday} setSomeday={setSomeday}
-          bucketList={bucketList} setBucketList={setBucketList}
-          scores={scores} onOpenDate={openDetail} onOpenDateMemo={openDetailMemo}
-          installPrompt={installPrompt} handleInstall={handleInstall}
-          showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
-          isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
-          contacts={contacts} onOpenPeople={() => changeScreen('people')}
-          onOpenChat={() => changeScreen("chat")}
-          isDark={isDark} setIsDark={setIsDark}
-          getValidGcalToken={getValidGcalToken}
-          myRank={myRank} onOpenStats={() => changeScreen("stats")}
-          onLuckyXp={addInviteBonus}
-          onOpenGoalsHub={() => changeScreen('history', { openGoals: true })}
-          onOpenSettings={() => changeScreen("settings")}
-          pendingInviteCode={pendingInviteCode}
-          invitePromptCode={!showInstallBanner && pendingInviteCode && dismissedInvitePromptCode !== pendingInviteCode ? pendingInviteCode : ''}
-          recentInviteReward={recentInviteReward}
-          onOpenInviteFlow={openInviteFlow}
-          onDismissInvitePrompt={dismissInvitePrompt}
-          onDismissInviteReward={dismissInviteReward}
-          levelUpInfo={levelUpInfo} onDismissLevelUp={() => setLevelUpInfo(null)}
-          myChallenges={myChallenges}
-          communityEventsToday={communityEventsToday}
-          communityEventChecks={communityEventChecks}
-          onToggleCommunityEvent={onToggleCommunityEvent}
-          onOpenChallengeHub={() => changeScreen('community', { communityTab: 'challenge' })}
-          onOpenChallengeItem={(challengeId) => changeScreen('community', { communityTab: 'challenge', challengeId })}
-          telegramCfg={telegramCfg}
-          onOpenPortfolio={() => changeScreen("portfolio")}
-          onAddMemo={(text, time) => setTodayData(prev => ({
-            ...prev,
-            memos: [...(prev.memos || []), { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`, text, createdAt: time }],
-          }))}
-          onUpdateMemo={(id, text) => setTodayData(prev => ({
-            ...prev,
-            memos: (prev.memos || []).map(m => m.id === id ? { ...m, text } : m),
-          }))}
-          onDeleteMemo={(id) => setTodayData(prev => ({
-            ...prev,
-            memos: (prev.memos || []).filter(m => m.id !== id),
-          }))}
-          onToggleMode={toggleHomeMode}
         />
       );
     }
@@ -2610,7 +2522,7 @@ export default function App() {
         />;
     }
     if (screen === "chat") {
-      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("home")}
+      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("my")}
         onSetTodayTasks={onSetTodayTasks}
         onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memos: [...(prev.memos || []), { id: `m_${Date.now()}`, text: memo, createdAt: new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' }) }] }))}
         onToggleHabit={onToggleHabit}
@@ -2635,24 +2547,6 @@ export default function App() {
         />
       );
     }
-    if (screen === "knowledge") {
-      return (
-        <Knowledge
-          plans={plans}
-          onBack={() => history.back()}
-          onOpenKeyword={openKeywordDetail}
-          onOpenDate={(ds, viaMemo) => viaMemo ? openDetailMemo(ds) : openDetail(ds)}
-          onUpdateDayData={setDayData}
-          uid={authUser?.uid}
-          toast={toast} setToast={setToast}
-          onRequireLogin={() => googleSignIn().catch(() => {})}
-          frequentTags={frequentMemoTags}
-          myTags={myMemoTags}
-          hiddenTags={hiddenTags}
-          onHideTag={hideMemoTag}
-        />
-      );
-    }
     if (screen === "manager") {
       return (
         <MemoManager
@@ -2665,28 +2559,10 @@ export default function App() {
         />
       );
     }
-    if (screen === "keyword-detail") {
-      return (
-        <KeywordDetail
-          keyword={openKeyword || ''}
-          plans={plans}
-          onBack={() => history.back()}
-          onOpenKeyword={openKeywordDetail}
-          onOpenDate={(ds) => openDetail(ds)}
-          onUpdateDayData={setDayData}
-          uid={authUser?.uid}
-          setToast={setToast}
-          onRequireLogin={() => googleSignIn().catch(() => {})}
-          frequentTags={frequentMemoTags}
-          myTags={myMemoTags}
-          onHideTag={hideMemoTag}
-        />
-      );
-    }
     if (screen === "life-coach") {
       return <LifeCoach
         user={user}
-        onBack={() => changeScreen("home")}
+        onBack={() => changeScreen("settings")}
         onApplyPlan={(plan) => {
           // 할일 등록
           if (plan.tasks?.length) {
@@ -2718,7 +2594,7 @@ export default function App() {
             setHabits(prev => [...(prev || []), ...newHabits]);
           }
           setToast("플랜이 등록됐어요 🎯");
-          changeScreen("home");
+          changeScreen("today");
         }}
       />;
     }
@@ -2767,7 +2643,7 @@ export default function App() {
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
         )}
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "keyword-detail" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}

@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 
 const PORT = 4799;
 const BASE = `http://localhost:${PORT}`;
-const SCREENS = ['today', 'my', 'memo', 'history', 'community', 'settings', 'manager', 'stats', 'knowledge', 'people', 'portfolio', 'battle-arena'];
+const SCREENS = ['today', 'my', 'memo', 'history', 'community', 'settings', 'manager', 'stats', 'people', 'portfolio', 'battle-arena'];
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 if (!existsSync('dist/index.html')) { console.error('dist가 없어요. 먼저 npm run build'); process.exit(1); }
