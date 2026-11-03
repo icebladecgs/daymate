@@ -877,7 +877,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         textDecoration: t.done ? "line-through" : "none", flex: 1, minWidth: 0, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
                         {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
                         <span style={{ minWidth: 0 }}>{t.title}</span>
-                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}</span>}
+                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
                         <TaskDetailBadge task={t} />
                       </div>
                       {/* 오늘 탭과 같이 "언젠가"(미완료만)와 ✕(확인 후 삭제)만 목록에 바로 노출 */}

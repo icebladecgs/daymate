@@ -301,7 +301,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                         style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${t.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         <span>⏰</span>
-                        {t.time && <span style={{ fontWeight: 700 }}>{t.time}</span>}
+                        {t.time && <span style={{ fontWeight: 700 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
                       </button>
                     )}
                     {t.time && (
