@@ -33,7 +33,7 @@ import { newStudyEntry } from "../utils/exam.js";
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
-  onOpenInvest, onOpenVoiceDiary,
+  onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
   onSetTodayTasks,

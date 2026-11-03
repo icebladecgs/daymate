@@ -102,21 +102,6 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
   const today = toDateStr();
 
-  const monthStats = useMemo(() => {
-    let completedDays = 0, memoDays = 0, journalDays = 0, perfectDays = 0;
-    for (let i = 1; i <= daysInMonth; i++) {
-      const ds = `${year}-${pad2(month0 + 1)}-${pad2(i)}`;
-      if (ds > today) continue;
-      const d = plans[ds];
-      if (!d) continue;
-      const tasks = (d.tasks || []).filter(t => t.title.trim());
-      if (tasks.length > 0 && tasks.every(t => t.done)) completedDays++;
-      if (d.memo?.trim() || d.memos?.length) memoDays++;
-      if (d.journal?.body?.trim()) journalDays++;
-      if (isPerfectDay(d)) perfectDays++;
-    }
-    return { completedDays, memoDays, journalDays, perfectDays };
-  }, [plans, year, month0]); // eslint-disable-line
 
   const rateOf = (dateStr) => {
     const d = plans[dateStr];

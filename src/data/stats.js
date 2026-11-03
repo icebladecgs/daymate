@@ -1,4 +1,4 @@
-import { toDateStr, pad2 } from '../utils/date.js';
+import { toDateStr } from '../utils/date.js';
 
 export const isPerfectDay = (dayData) => {
   if (!dayData || !dayData.tasks) return false;

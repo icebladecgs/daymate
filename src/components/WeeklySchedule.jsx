@@ -4,7 +4,7 @@ import S from "../styles.js";
 
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
-export default function WeeklySchedule({ plans, habits, onOpenDate, gcalEvents = {} }) {
+export default function WeeklySchedule({ plans, habits, onOpenDate }) {
   const today = toDateStr();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = getWeekDates(weekOffset);

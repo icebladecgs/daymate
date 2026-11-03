@@ -23,7 +23,7 @@ function MemoHomeInner({
   todayStr, plans, onUpdateDayData,
   onCreateToday, onUpdateToday, onUpdatePhotosToday, onUpdateStarredToday, onUpdateFilesToday,
   onRequireLogin,
-  uid, toast, setToast,
+  uid, setToast,
   frequentTags, myTags, onHideTag,
   onOpenWrong, wrongDue = 0, // 수험생 모드면 오답 노트 열기
 }) {

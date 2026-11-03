@@ -117,7 +117,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
     setEditingNickname(false);
   };
 
-  if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} habits={habits} onDone={(id) => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
+  if (showCreate) return <CreateChallenge authUser={authUser} nickname={nickname} habits={habits} onDone={() => { setShowCreate(false); load(); }} onBack={() => setShowCreate(false)} showToast={showToast} />;
   if (selected) return <ChallengeDetail challenge={selected} authUser={authUser} nickname={nickname} myLevel={calcLevel(myTotalScore)} onBack={() => { setSelected(null); load(); }} onDeleted={() => { setSelected(null); load(); }} showToast={showToast} onToggleHabit={onToggleHabit} habits={habits} />;
 
   return (

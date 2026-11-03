@@ -4,7 +4,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { collection, onSnapshot, orderBy, query, doc } from "firebase/firestore";
-import { db, createCommunity, findCommunityByCode, joinCommunity, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, communitySecretRef, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince, countCommunitySince } from "../firebase.js";
+import { db, createCommunity, findCommunityByCode, addCommunityEvent, deleteCommunityEvent, leaveCommunity, deleteCommunityFull, loadCommunityMembers, syncCommunityMemberCount, transferCommunityAdmin, checkinCommunity, loadPublicCommunities, joinPublicCommunity, loadCommunityData, communitySecretRef, addCommunityNotice, deleteCommunityNotice, addNoticeComment, deleteNoticeComment, syncNoticeCommentCount, toggleCommentLike, updateMemberNickname, setCommunityPassword, addBoardPost, deleteBoardPost, updateBoardPost, addBoardComment, deleteBoardComment, syncBoardCommentCount, toggleBoardCommentLike, deletePhoto, countChatSince, countCommunitySince } from "../firebase.js";
 import { countCommunityNews, markCommunitySeen, getCommunitySeen } from "../utils/communityNews.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
@@ -1937,7 +1937,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   아직 댓글이 없어요. 첫 댓글을 남겨보세요 💬
                 </div>
               ) : (
-                comments.map((c, i) => {
+                comments.map((c) => {
                   const isMine = c.uid === authUser?.uid;
                   const likedBy = c.likedBy || [];
                   const isLiked = likedBy.includes(authUser?.uid);

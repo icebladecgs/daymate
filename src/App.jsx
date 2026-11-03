@@ -9,7 +9,7 @@ import { reportError } from "./utils/errorReport.js";
 import GrowthFortunePanel from "./components/GrowthFortunePanel.jsx";
 import { ensurePushSubscription } from "./utils/pushSubscription.js";
 import { playChatSound } from "./utils/chatNotify.js";
-import { toDateStr, getWeekKey, addDays } from "./utils/date.js";
+import { toDateStr, addDays } from "./utils/date.js";
 import { driveBackup, getDriveFolders, uploadMarkdownFile } from "./api/drive.js";
 import { buildMemoMarkdown, listMonthKeys } from "./utils/memoExport.js";
 import { sendTelegramMessage } from "./api/telegram.js";
@@ -26,7 +26,7 @@ import UnsyncedBar from "./components/UnsyncedBar.jsx";
 import DesktopUpdateBar from "./components/DesktopUpdateBar.jsx";
 import { triggerVibration, sendNotification, getPermission, playNotifSound } from "./utils/notification.js";
 import { collectMemoAlarms, dueAlarms, taskAlarmLead, loadFired, saveFired } from "./utils/alarms.js";
-import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals, setMonthGoals as setGoalsMonth } from "./utils/goals.js";
+import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
 import { getTopKeywords } from "./utils/knowledge.js";
 import S from "./styles.js";
@@ -454,7 +454,7 @@ export default function App() {
       }
       if (task.statXpGrant) {
         grantStatXp(task.statXpGrant.statId, -task.statXpGrant.xp, { silent: true });
-        const { statXpGrant, ...rest } = task;
+        const { statXpGrant, ...rest } = task; // eslint-disable-line no-unused-vars -- 지급 기록만 빼고 복사
         return rest;
       }
       return task;
@@ -915,40 +915,7 @@ export default function App() {
   const [goalChecks, setGoalChecks] = useState(() =>
     store.get(`dm_goal_checks_${todayStr.slice(0, 7)}`, {})
   );
-  const [goalXpGrant, setGoalXpGrant] = useState(() =>
-    store.get(`dm_goal_xp_grant_${todayStr.slice(0, 7)}`, {})
-  );
 
-  const onToggleGoal = (idx) => {
-    const ym = todayStr.slice(0, 7);
-    const monthKey = `dm_goal_checks_${ym}`;
-    setGoalChecks((prev) => {
-      const nowChecked = !prev[idx];
-      const next = { ...prev, [idx]: nowChecked };
-      store.set(monthKey, next);
-      if (nowChecked) {
-        const title = getMonthGoals(goals, ym)[idx];
-        const statId = title ? classifyTodoStat(title) : null;
-        if (statId && statId !== 'NONE') {
-          grantStatXp(statId, STAT_XP_MONTH_GOAL);
-          setGoalXpGrant(g => {
-            const ng = { ...g, [idx]: { statId, xp: STAT_XP_MONTH_GOAL } };
-            store.set(`dm_goal_xp_grant_${ym}`, ng);
-            return ng;
-          });
-        }
-      } else if (goalXpGrant[idx]) {
-        const grant = goalXpGrant[idx];
-        grantStatXp(grant.statId, -grant.xp, { silent: true });
-        setGoalXpGrant(g => {
-          const { [idx]: _, ...rest } = g;
-          store.set(`dm_goal_xp_grant_${ym}`, rest);
-          return rest;
-        });
-      }
-      return next;
-    });
-  };
 
   const todayData = plans[todayStr] || null;
 
@@ -1903,7 +1870,7 @@ export default function App() {
   // 구글 캘린더에서 가져온 일정은 구글 쪽 날짜가 그대로라 다시 가져와지므로 옮기지 않는다(상세 창에서 막음).
   const moveTaskToDate = (task, fromDs, toDs) => {
     if (!task || !toDs || fromDs === toDs || isImportedGcalTask(task)) return false;
-    const { gcalEventId, ...rest } = task;
+    const { gcalEventId, ...rest } = task; // eslint-disable-line no-unused-vars -- 캘린더 연결만 빼고 복사
     const moved = fromDs
       ? rest
       : { id: `t${Date.now()}`, title: task.title, done: false, checkedAt: null, priority: false, ...pickTaskDetail(task) };
@@ -1981,7 +1948,7 @@ export default function App() {
     const normalizedTasks = applyTaskXpGrants(prevTasks, tasks.map((task) => {
       if (task.title?.trim()) return task;
       if (!task.gcalEventId) return task;
-      const { gcalEventId, ...rest } = task;
+      const { gcalEventId, ...rest } = task; // eslint-disable-line no-unused-vars -- 캘린더 연결만 빼고 복사
       return rest;
     }), todayStr);
     setTodayData(prev => ({ ...prev, tasks: normalizedTasks }));
@@ -2009,12 +1976,6 @@ export default function App() {
     onSetTodayTasks(next);
   };
 
-  const onSaveMonthGoals = (monthGoals) => {
-    const nextGoals = setGoalsMonth(goals, currentGoalMonthKey, monthGoals, currentGoalMonthKey);
-    setGoals(nextGoals);
-    store.set("dm_goals", nextGoals);
-    if (authUser && syncReadyRef.current) saveGoals(authUser.uid, nextGoals).catch(() => {});
-  };
 
   const onSaveGoals = (nextGoalsRaw) => {
     const nextGoals = normalizeGoals(nextGoalsRaw, currentGoalMonthKey);

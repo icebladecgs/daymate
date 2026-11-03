@@ -5,7 +5,7 @@ import { getPermission, requestPermission, sendNotification, playNotifSound, tri
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebase.js";
-import { saveSettings, saveGoals, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
+import { saveSettings, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
 import S from "../styles.js";
@@ -153,7 +153,7 @@ function Toggle({ value, onChange, disabled }) {
 export default function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
   telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
-  habits, setHabits, recurringTasks, setRecurringTasks,
+  recurringTasks, setRecurringTasks,
   diaryQuestions, setDiaryQuestions,
   birthDate, setBirthDate, birthTime, setBirthTime,
   installPrompt, handleInstall, setShowInstallBanner, isIOS, isSamsung,
@@ -162,7 +162,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   isDark, setIsDark, fontScale, setFontScale,
   event, setEvent, onAddInviteBonus,
   driveToken, driveTokenExp, onDriveConnect, onDriveBackup, onMemoHistoryBackup, lastDriveBackup,
-  onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied, onChangeScreen,
+  onOpenAdmin, onOpenStats, onOpenLifeCoach, pendingInviteCode, onInviteApplied,
   statWords = [], setStatWords, statAskOff = false, setStatAskOff, exam, setExam }) {
 
   // 다른 화면에서 하위 화면을 바로 열 때 남긴 표시 — 화면이 처음 그려질 때 두 번 읽힐 수 있어서(지연 로딩) 지우기는 다 열린 뒤에
@@ -241,7 +241,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     return true;
   };
 
-  const useInviteCode = () => applyInviteCode(codeInput.trim().toUpperCase());
+  const submitInviteCode = () => applyInviteCode(codeInput.trim().toUpperCase());
 
   // 링크로 접속 시 초대 코드 자동 적용
   useEffect(() => {
@@ -1147,7 +1147,7 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           <button onClick={async () => {
             setDriveStatus('백업 중...');
             try { await onDriveBackup?.(driveToken); setToast('Drive 백업 완료 ✅'); setDriveStatus(''); }
-            catch (e) { setToast('Drive 백업 실패 ❌'); setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
+            catch { setToast('Drive 백업 실패 ❌'); setDriveStatus('✗ 백업 실패'); setTimeout(() => setDriveStatus(''), 3000); }
           }} style={{ ...S.btnGhost, marginTop: 0, fontSize: 13 }}>
             ☁️ 지금 백업하기
           </button>
@@ -1228,11 +1228,11 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             style={{ ...S.input, flex: 1, marginBottom: 0, letterSpacing: 2, textTransform: "uppercase" }}
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && useInviteCode()}
+            onKeyDown={(e) => e.key === "Enter" && submitInviteCode()}
             placeholder="XXXXXX"
             maxLength={8}
           />
-          <button onClick={useInviteCode} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>사용</button>
+          <button onClick={submitInviteCode} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>사용</button>
         </div>
         {codeStatus && (
           <div style={{ fontSize: 13, marginTop: 10, fontWeight: 900, color: codeStatus.startsWith('✅') ? '#4ADE80' : '#F87171' }}>{codeStatus}</div>

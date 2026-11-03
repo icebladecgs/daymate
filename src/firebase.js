@@ -320,7 +320,7 @@ export async function loadMyCommunityIds(uid) {
 
 // 공개 목록에 보여줄 정보 — 옛 문서에 남아 있는 비밀번호·초대 코드는 빼고 넘긴다
 const publicCommunityInfo = (data) => {
-  const { password, inviteCode, ...rest } = data;
+  const { password, inviteCode, ...rest } = data; // eslint-disable-line no-unused-vars -- 비밀 칸을 빼고 넘긴다
   return { ...rest, hasPassword: rest.hasPassword ?? !!password };
 };
 

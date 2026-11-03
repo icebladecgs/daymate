@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { db, loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
+import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";

@@ -4,7 +4,7 @@ import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../d
 import S from "../styles.js";
 import { chatFetch } from "../api/chatFetch.js";
 
-export default function Stats({ plans, habits, authUser, user, onBack }) {
+export default function Stats({ plans, habits, user, onBack }) {
   const nowMonth = new Date().getMonth();
   const nowYear = new Date().getFullYear();
   const [viewMonth, setViewMonth] = useState(nowMonth);
@@ -79,13 +79,6 @@ const last30 = useMemo(() => {
     return days;
   }, [plans]);
 
-  const cellColor = (cell) => {
-    if (!cell || !cell.filled) return 'var(--dm-deep)';
-    if (cell.perfect) return '#4ADE80';
-    if (cell.done === 0) return 'rgba(248,113,113,.25)';
-    if (cell.done === cell.total) return 'rgba(74,222,128,.4)';
-    return 'rgba(252,211,77,.35)';
-  };
 
 
   // 월간 리포트 계산 (현재 보는 달)
@@ -360,7 +353,7 @@ const last30 = useMemo(() => {
       <div style={{ ...S.card, padding: "14px 12px" }}>
         {/* 바 차트 */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 72 }}>
-          {last30.map((day, i) => {
+          {last30.map((day) => {
             const barH = day.filled ? Math.max(8, Math.round(day.rate * 60)) : 4;
             const color = day.perfect ? '#4ADE80' : day.filled ? day.rate >= 0.5 ? '#FCD34D' : '#F87171' : 'var(--dm-deep)';
             const isSelected = barTooltip?.ds === day.ds;
