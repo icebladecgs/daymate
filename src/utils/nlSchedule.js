@@ -122,3 +122,14 @@ export function friendlySchedule(p, baseDs, labelRecurring, now = new Date()) {
   }
   return parts.join(" ");
 }
+
+// 한 번에 여러 개 (2026-11-03) — "내일 3시 치과, 금요일 보고서, 매주 화요일 회의"처럼 쉼표로 나눈 조각 중
+// 둘 이상에 날짜·시간이 있을 때만 여러 개로 본다("사과, 배 사기" 같은 할일 하나는 그대로). 아니면 null.
+// 날짜를 못 알아들은 조각은 { title }만 — 지금 보고 있는 날짜에 들어간다.
+export function parseMany(input, now = new Date()) {
+  const parts = String(input || "").split(/[,，\n]/).map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const parsed = parts.map(raw => ({ raw, p: parseSchedule(raw, now) }));
+  if (parsed.filter(x => x.p).length < 2) return null;
+  return parsed.map(x => x.p || { title: x.raw });
+}

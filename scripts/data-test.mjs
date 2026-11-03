@@ -11,7 +11,7 @@ const { matchGoalsByTitle } = await load('/src/utils/goals.js');
 const { getUpcomingContactEvents, solarToLunar } = await load('/src/data/contacts.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
-const { parseSchedule, friendlySchedule } = await load('/src/utils/nlSchedule.js');
+const { parseSchedule, parseMany, friendlySchedule } = await load('/src/utils/nlSchedule.js');
 const { buildGoalProgress, goalKey, goalProgressLine, weekSummary, onThisDay } = await load('/src/utils/goalProgress.js');
 const { stampMemoUpdates, restoreMemoFromTrash, keepUnsyncedLocal, mergeImportedGcalTasks, restoreLostTaskDetails } = await load('/src/utils/dayMerge.js');
 
@@ -164,6 +164,15 @@ t('반복: 할일 id에서 규칙 id', recurringIdOf('rr100_2026-11-04') === 'r1
   t('반복 넣기: 맞는 날이 아니면 그대로', addRecurringToDay({ tasks: [] }, [rules[0]], '2026-11-05') === null);
 }
 t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && recurringIdOf('gcal_x') === null);
+
+// ── 한 번에 여러 개 (2026-11-03) ──
+{
+  const now = new Date('2026-11-04T10:00:00');
+  const m = parseMany('내일 3시 치과, 금요일 보고서, 우유 사기', now);
+  t('여러 개: 쉼표로 3개', m?.length === 3 && m[0].date === '2026-11-05' && m[0].time === '15:00' && m[2].title === '우유 사기' && !m[2].date, JSON.stringify(m));
+  t('여러 개: 날짜 있는 조각이 하나뿐이면 나누지 않음', parseMany('내일 사과, 배 사기', now) === null);
+  t('여러 개: 날짜 없는 쉼표 글은 그대로', parseMany('사과, 배 사기', now) === null);
+}
 
 // ── 할일 입력 미리보기: 읽기 쉬운 말 (2026-11-03) ──
 {

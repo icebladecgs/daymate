@@ -13,7 +13,7 @@ import { deletePhoto } from "../firebase.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
 import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
-import { parseSchedule, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
+import { parseSchedule, parseMany, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
 import { recurringLabel, recurringIdOf } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
@@ -246,12 +246,32 @@ export default function Today({
   };
   // 문장으로 일정 입력 — "내일 오후 3시 회의"는 그 날짜·시간으로, "매월 둘째 화요일 월례회의"는 반복 할일로 (utils/nlSchedule.js)
   const parsedTask = !nlOff ? parseSchedule(taskInput) : null;
+  // 한 번에 여러 개 (2026-11-03) — 쉼표로 나눈 조각 중 둘 이상에 날짜·시간이 있을 때만 (utils/nlSchedule.js parseMany)
+  const parsedMany = !nlOff ? parseMany(taskInput) : null;
+  const addManyTasks = (list) => {
+    const now = Date.now();
+    let recurringN = 0;
+    list.forEach((p, i) => {
+      if (p.recurring && setRecurringTasks) {
+        recurringN++;
+        setRecurringTasks(prev => [...(prev || []), { id: `r${now}_${i}`, title: p.title.slice(0, 40), days: p.recurring }]);
+        return;
+      }
+      const ds = p.date || targetDs;
+      const task = { id: `t_${now}_${i}`, title: p.title.slice(0, 60), done: false, ...(p.time ? { time: p.time } : {}) };
+      // 같은 날짜에 연달아 넣어도 앞의 것이 덮이지 않게 최신 기록 기준으로
+      onUpdateDayData?.(ds, prev => ({ ...prev, tasks: withNewTask(prev?.tasks, task) }));
+    });
+    setToast(`📋 ${list.length}개를 넣었어요${recurringN ? ` (반복 ${recurringN}개)` : ''}`);
+  };
   const addTargetTask = () => {
     const raw = taskInput.trim();
     if (!raw) return;
     const p = parsedTask;
+    const many = parsedMany;
     setTaskInput('');
     setNlOff(false);
+    if (many) { addManyTasks(many); return; }
     if (p?.recurring && setRecurringTasks) {
       setRecurringTasks(prev => [...(prev || []), { id: `r${Date.now()}`, title: p.title.slice(0, 40), days: p.recurring }]);
       setToast(`🔁 반복 할일로 등록했어요 (${recurringLabel(p.recurring)})`);
@@ -745,12 +765,25 @@ export default function Today({
             onChange={e => { setTaskInput(e.target.value); setNlOff(false); }}
             onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && addTargetTask()}
             placeholder="할 일 추가 (예: 내일 오후 3시 회의)"
-            maxLength={60}
+            maxLength={200}
           />
           <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
         </div>
         {/* 어떻게 들어갈지 저장 전에 보여준다 — 잘못 알아들었으면 "그냥 글자로" (2026-11-03 읽기 쉬운 말로) */}
-        {parsedTask && (
+        {parsedMany && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
+            <div style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '7px 10px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#5B7CFA', marginBottom: 2 }}>📋 {parsedMany.length}개가 들어가요</div>
+              {parsedMany.map((p, i) => (
+                <div key={i} style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                  {p.recurring ? '🔁' : '📅'} <b style={{ color: '#5B7CFA' }}>{friendlySchedule(p, targetDs, recurringLabel) || '이 날'}</b> · {p.title}
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
+          </div>
+        )}
+        {parsedTask && !parsedMany && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <div style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '7px 10px' }}>
               <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
