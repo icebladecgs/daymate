@@ -1,6 +1,6 @@
 // 오늘 탭 🌤 날씨 · 📌 다가오는 날 (2026-11-05)
 import { useEffect, useMemo, useState } from "react";
-import S from "../styles.js";
+import S, { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { addDays } from "../utils/date.js";
 import { getUpcomingDays } from "../data/contacts.js";
@@ -13,7 +13,7 @@ const SHOW_MORE = 10;
 // 새 디자인: 제목과 내용을 둥근 칸 하나로 묶는다 (칸 안에 칸을 또 넣지 않는다). 예전 화면은 그대로
 export function SectionBox({ on, children }) {
   if (!on) return <>{children}</>;
-  return <div style={{ ...S.card, marginBottom: 12 }}>{children}</div>;
+  return <div style={boxCard}>{children}</div>;
 }
 
 export function WeatherCard({ city, dateStr, onSetCity }) {

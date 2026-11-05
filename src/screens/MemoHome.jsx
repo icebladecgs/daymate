@@ -5,6 +5,7 @@ import Toast from "../components/Toast.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
+import { SectionBox } from "../components/TodayExtras.jsx";
 
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
 // 메모 화면은 검색·메모 열기·새 메모 쓰기로 모습이 바뀌므로, 알림(toast)은 바깥에서 한 번 그린다.
@@ -118,15 +119,18 @@ function MemoHomeInner({
   );
 
   const timelineSection = (
-    <div style={{ borderTop: '1px solid var(--dm-border)', marginTop: 8, padding: '18px 20px 28px' }}>
+    <div style={newDesignOn() ? { paddingBottom: 20 } : { borderTop: '1px solid var(--dm-border)', marginTop: 8, padding: '18px 20px 28px' }}>
       {onOpenWrong && (
+        <div style={newDesignOn() ? { padding: '0 16px' } : undefined}>
         <button onClick={onOpenWrong} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 16, borderRadius: 14, border: '1.5px solid rgba(91,124,250,.35)', background: 'rgba(91,124,250,.08)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
           <span style={{ fontSize: 22 }}>📕</span>
           <span style={{ flex: 1, fontSize: 16, fontWeight: 900, color: 'var(--dm-text)' }}>오답 노트</span>
           {wrongDue > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>다시 풀 문제 {wrongDue}개</span>}
           <span style={{ fontSize: 16, color: 'var(--dm-muted)' }}>›</span>
         </button>
+        </div>
       )}
+      <SectionBox on={newDesignOn()}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: newDesignOn() ? 17 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -149,6 +153,7 @@ function MemoHomeInner({
           >{recording ? '⏹' : <span style={{ display: 'inline-block', transform: 'translateX(-2px)' }}>🎤</span>}</button>
         }
       />
+      </SectionBox>
     </div>
   );
 

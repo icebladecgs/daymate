@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import S from "../styles.js";
+import S, { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { toDateStr } from "../utils/date.js";
 import { chatFetch } from "../api/chatFetch.js";
@@ -241,8 +241,8 @@ export default function GrowthFortunePanel({
       {(() => {
         const fl = fortuneLevel(todayFortuneScore);
         return (
-        <div style={{ margin: '0 16px 10px' }}>
-          {nl ? <SectionHeading icon="sparkle">운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
+        <div style={nl ? boxCard : { margin: '0 16px 10px' }}>
+          {nl ? <SectionHeading icon="sparkle" style={{ paddingTop: 0 }}>운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
               style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
@@ -252,7 +252,7 @@ export default function GrowthFortunePanel({
                 <span style={{ fontSize: nl ? 13 : 11, color: 'var(--dm-muted)' }}>{fl.desc}</span>
               </div>
             </button>
-            <div style={{ flex: 1.2, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: '9px 12px' }}>
+            <div style={{ flex: 1.2, background: nl ? 'var(--dm-input)' : 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: nl ? '9px 10px' : '9px 12px', minWidth: 0 }}>
               <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>🎱 오늘의 로또</div>
               {lottoNums ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>

@@ -13,6 +13,7 @@ import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
+import { boxCard } from "../styles.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -32,6 +33,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const fileInputRef = useRef(null);
   const idRef = useRef(initialId);
   const savedTextRef = useRef(initialText);
+  const boxed = newDesignOn() && !!extraContent; // 메모 탭 쓰기 화면: 글쓰기·첨부와 태그를 둥근 칸으로 묶는다 (메모 열어 고치는 화면은 그대로)
   const [newLook] = useState(newDesignOn); // 새 디자인 — 버튼이 잘리지 않게 2줄, 흐린 태그·작은 글씨를 또렷하게
   const [sentTask, setSentTask] = useState(''); // 방금 언젠가로 보낸 제목 (버튼에 잠깐 표시)
   const [showSettings, setShowSettings] = useState(false);
@@ -197,7 +199,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
 
   const tagsAndPhotosBlock = (
-    <div style={{ padding: '0 20px 12px' }}>
+    <div style={{ padding: boxed ? 0 : '0 20px 12px' }}>
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
       {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
       <div style={{ paddingTop: 10 }}><MemoLinks text={text} /></div>
@@ -349,7 +351,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   );
 
   const footerBlock = (
-    <div style={{ padding: '0 20px 20px', fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)' }}>
+    <div style={{ padding: boxed ? '0 14px 12px' : '0 20px 20px', fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)' }}>
       {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
     </div>
   );
@@ -366,7 +368,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       }}
       onPaste={handlePaste}
       placeholder="자유롭게 작성하세요"
-      style={{ width: '100%', minHeight: '35vh', background: 'var(--dm-bg)', border: 'none', outline: 'none', padding: '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
+      style={{ width: '100%', minHeight: boxed ? '28vh' : '35vh', background: boxed ? 'transparent' : 'var(--dm-bg)', border: 'none', outline: 'none', padding: boxed ? '14px' : '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
     />
   );
 
@@ -400,9 +402,18 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         // 기존 사용처(다른 화면들)는 extraContent를 넘기지 않으므로 이 분기를 타지 않고
         // 기존 레이아웃/스크롤 동작이 그대로 유지된다.
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {textareaEl}
-          {tagsAndPhotosBlock}
-          {footerBlock}
+          {boxed ? (
+            <>
+              <div style={{ ...boxCard, marginTop: 12, padding: 0 }}>{textareaEl}{footerBlock}</div>
+              <div style={boxCard}>{tagsAndPhotosBlock}</div>
+            </>
+          ) : (
+            <>
+              {textareaEl}
+              {tagsAndPhotosBlock}
+              {footerBlock}
+            </>
+          )}
           {extraContent}
         </div>
       ) : (

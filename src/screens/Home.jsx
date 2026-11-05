@@ -25,6 +25,7 @@ import { NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
+import { boxCard } from "../styles.js";
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -338,9 +339,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 // eslint-disable-line
 
   const [newLook] = useState(newDesignOn); // 새 디자인 (설정 → 앱 관리, 기기마다)
+  // 새 디자인: 제목과 내용을 둥근 칸 하나로 묶는다 (칸 안에 칸을 또 넣지 않는다)
+  const myBox = newLook ? boxCard : { margin: '0 16px 10px' };
   // My 탭 섹션 제목: 새 디자인은 17px 굵게 + 선 아이콘, 예전은 12px 회색 이름표
   const myLabel = (icon, emoji, text, right, extraOld) => (newLook
-    ? <SectionHeading icon={icon} right={right}>{text}</SectionHeading>
+    ? <SectionHeading icon={icon} right={right} style={{ paddingTop: 0 }}>{text}</SectionHeading>
     : right
       ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingTop: 4 }}><span style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em' }}>{emoji} {text}</span>{right}</div>
       : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 10, paddingTop: 4, ...extraOld }}>{emoji} {text}</div>);
@@ -484,7 +487,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   useEffect(() => { store.set('dm_section_open_yeargoals', yearGoalsOpen); }, [yearGoalsOpen]);
   useEffect(() => { store.set('dm_section_open_monthgoals', monthGoalsOpen); }, [monthGoalsOpen]);
   const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen, onItemClick, itemCount, progressOf }) => (
-    <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
+    <div style={newLook ? { padding: '12px 0', borderTop: '1px solid var(--dm-row)' } : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
         <div>
           <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
@@ -713,7 +716,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {/* My 탭 맨 위: 레벨·성장 능력치·배틀·운세·로또 (오늘 탭에서 옮김, 2026-09-27) */}
             {isMyTab && growthPanel}
             {isMyTab && (
-              <div style={{ margin: '0 16px 10px' }}>
+              <div style={myBox}>
                 {myLabel('target', '🎯', '목표 관리')}
                 {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]), progressOf: (i) => goalProgressLine(goalProgressOf('life', lifeGoals[i]), goalTodayStr) })}
                 {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0, progressOf: (i) => goalProgressLine(goalProgressOf('year', currentYearGoals[i]), goalTodayStr) })}
@@ -721,11 +724,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               </div>
             )}
             {isMyTab && (
-              <div style={{ margin: '0 16px 10px' }}>
+              <div style={myBox}>
                 {myLabel('flag', '🪣', `버킷리스트 (${bucketList.length}/${BUCKET_LIST_MAX})`,
                   <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
                 {bucketOpen && (
-                  <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
+                  <div style={newLook ? {} : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                     {bucketList.map(item => (
                       <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <button onClick={() => toggleBucketItem(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
@@ -755,9 +758,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               </div>
             )}
             {isMyTab && (
-              <div style={{ margin: '0 16px 10px' }}>
+              <div style={myBox}>
                 {myLabel('card', '💳', '내 명함')}
-                <div style={{ borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
+                <div style={newLook ? {} : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                   <input ref={bcFileInputRef} type="file" accept="image/*" onChange={bcHandleFile} style={{ display: 'none' }} />
                   {bcDefault?.photoUrl ? (
                     <div style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, overflow: 'hidden', background: 'var(--dm-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -801,9 +804,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               </div>
             )}
             {isMyTab && (
-              <div style={{ margin: '0 16px 10px' }}>
+              <div style={myBox}>
                 {myLabel('people', '👥', '내 사람들')}
-                <button onClick={onOpenPeople} style={{ width: '100%', borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                <button onClick={onOpenPeople} style={{ width: '100%', ...(newLook ? { borderRadius: 0, border: 'none', background: 'none', padding: '2px 0' } : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '14px' }), display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                   <span style={{ fontSize: 22 }}>🗂️</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{contacts.length > 0 ? `${contacts.length}명 등록됨` : '사람을 등록해보세요'}</div>
@@ -848,8 +851,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       {/* ── 목표 이동 링크 ───────────────────────────────────── */}
 
       {isSectionVisible('portfolio') && (isMyTab || telegramCfg?.holdings?.length > 0 || pfSummary) && (
-        <div style={{ order: getSectionOrder('portfolio') }}>
-          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16 }}>
+        <div style={{ order: getSectionOrder('portfolio'), ...(newLook ? boxCard : {}) }}>
+          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, ...(newLook ? { padding: '0 0 10px' } : {}) }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {newLook ? <SectionIcon name="briefcase" size={20} /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
             </span>
@@ -858,7 +861,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               관리 →
             </button>
           </div>
-          <div style={{ ...S.card, marginBottom: 10 }}>
+          <div style={newLook ? {} : { ...S.card, marginBottom: 10 }}>
             {pfLoading && <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "12px 0" }}>시세 불러오는 중...</div>}
             {!pfLoading && pfSummary && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

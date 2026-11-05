@@ -209,3 +209,7 @@ const S = {
 };
 
 export default S;
+
+// 기능별 둥근 칸 (2026-11-05) — S.card와 같은 모양이지만 쌓임 맥락을 만들지 않는다
+// (backdropFilter·zIndex가 있으면 칸 안의 position: fixed 창이 칸에 갇히거나 아래 메뉴에 가려진다)
+export const boxCard = { ...S.card, backdropFilter: "none", WebkitBackdropFilter: "none", position: "static", zIndex: "auto", marginBottom: 12 };
