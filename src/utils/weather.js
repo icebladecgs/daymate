@@ -25,10 +25,24 @@ export function weatherDayLabel(date, todayStr) {
   return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 }
 
+// 미세먼지 등급 — 환경부 기준(㎍/㎥). PM10·PM2.5 중 나쁜 쪽을 쓴다. Open-Meteo 예측값이라 참고용.
+const AIR_GRADES = [
+  { label: "좋음", color: "#5B7CFA", pm10: 30, pm25: 15 },
+  { label: "보통", color: "#16A34A", pm10: 80, pm25: 35 },
+  { label: "나쁨", color: "#F97316", pm10: 150, pm25: 75 },
+  { label: "매우 나쁨", color: "#EF4444", pm10: Infinity, pm25: Infinity },
+];
+export function airGrade(air) {
+  if (!air || air.pm10 == null || air.pm25 == null) return null;
+  const at = (key, v) => AIR_GRADES.findIndex((g) => v <= g[key]);
+  const i = Math.max(at("pm10", air.pm10), at("pm25", air.pm25));
+  return { ...AIR_GRADES[i], bad: i >= 2 };
+}
+
 const isSnow = (code) => [71, 73, 75, 77, 85, 86].includes(code);
 const isThunder = (code) => [95, 96, 99].includes(code);
 
-export function weatherAdvice(day) {
+export function weatherAdvice(day, air = null) {
   if (!day) return "";
   const rain = day.rain ?? 0;
   const stillComing = day.rain == null || day.rain >= 30; // 이미 지나간 눈·천둥은 안내하지 않는다
@@ -36,6 +50,7 @@ export function weatherAdvice(day) {
   if (isSnow(day.code) && stillComing) return "눈 소식이 있어요. 길 미끄러움 조심하세요";
   if (rain >= 60) return "비 올 가능성이 높아요. 우산 챙기세요";
   if (rain >= 30) return "비가 올 수도 있어요. 작은 우산이 있으면 좋아요";
+  if (airGrade(air)?.bad) return "마스크 챙기세요";
   if (day.max >= 30) return "더운 날이에요. 물 자주 드세요";
   if (day.min <= -5) return "많이 추워요. 따뜻하게 입으세요";
   if (day.max - day.min >= 12) return "일교차가 커요. 겉옷 챙기세요";

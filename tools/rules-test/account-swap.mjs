@@ -87,6 +87,32 @@ t('A 언젠가할일 복원', (await ls('dm_someday') || '').includes('A의'));
 t('B 계정 서버는 여전히 B 메모만', JSON.stringify(await serverMemos(uidB)) === JSON.stringify(['B 메모']), JSON.stringify(await serverMemos(uidB)));
 t('돌아온 안내', seenToasts.includes('back'), JSON.stringify(seenToasts));
 
+// ④ 직접 넣는 D-day — 계정 설정으로 올라가고, 다른 기기에서 보이고, 다른 계정에는 안 보임 (2026-11-05)
+await page.evaluate(() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'today' })));
+await page.waitForTimeout(800);
+await page.getByRole('button', { name: '＋ D-day 추가' }).click();
+await page.getByPlaceholder(/가족 여행/).fill('A의 여행');
+await page.getByLabel('날짜').fill('2030-01-30');
+await page.getByPlaceholder(/가족 여행/).press('Enter');
+await page.waitForTimeout(1500);
+const serverDdays = (await adb.doc(`users/${uidA}/data/settings`).get()).data()?.ddays || [];
+t('D-day가 계정 설정에 저장됨', serverDdays.some(d => d.title === 'A의 여행' && d.date === '2030-01-30'), JSON.stringify(serverDdays));
+const ctx2 = await browser.newContext({ serviceWorkers: 'block' });
+await ctx2.addInitScript(() => { try { localStorage.setItem('dm_first_run_done', 'true'); if (!localStorage.getItem('dm_user')) localStorage.setItem('dm_user', JSON.stringify({ name: '점검' })); } catch { /* 없음 */ } });
+const other = await ctx2.newPage();
+await other.goto('http://localhost:5199/');
+await other.waitForTimeout(3500);
+await other.evaluate(s => window.__dmTestLogin(s, s), 'userA');
+await other.waitForTimeout(5000);
+t('다른 기기에서 로그인하면 D-day가 보임', (await other.evaluate(() => document.body.innerText)).includes('A의 여행'), await other.evaluate(() => localStorage.getItem('dm_ddays')));
+await ctx2.close();
+await page.evaluate(() => window.__dmTestLogout()); await page.waitForTimeout(800);
+await login('userB');
+t('B 계정에는 A의 D-day가 없음', !(await ls('dm_ddays') || '').includes('A의 여행'), await ls('dm_ddays'));
+await page.evaluate(() => window.__dmTestLogout()); await page.waitForTimeout(800);
+await login('userA');
+t('A로 돌아오면 D-day 복원', (await ls('dm_ddays') || '').includes('A의 여행'), await ls('dm_ddays'));
+
 console.log(results.join('\n'));
 console.log('화면 오류', errors);
 const failed = results.filter(r => r.startsWith('❌')).length + errors.length;

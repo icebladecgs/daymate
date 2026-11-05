@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DndContext, KeyboardSensor, MouseSensor, TouchSensor } from "@dnd-kit/core";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { toDateStr, formatKoreanDate } from "../utils/date.js";
+import { toDateStr, formatKoreanDate, formatShortKoreanDate } from "../utils/date.js";
+import { FoldButton } from "../components/TodayExtras.jsx";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
 import { calcDayScore, calcLevel, LEVEL_TITLES, LEVEL_ICONS } from "../data/stats.js";
@@ -493,13 +494,14 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
           <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={onToggleOpen} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12 }}>
+          {!newLook && <button onClick={onToggleOpen} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {open ? '접기 ▲' : '펼치기 ▼'}
-          </button>
+          </button>}
           <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
             {editing ? '저장 ✓' : '편집'}
           </button>
+          {newLook && <FoldButton open={open} onClick={onToggleOpen} />}
         </div>
       </div>
       {!open ? null : editing ? (
@@ -619,9 +621,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
         </div>
       )}
       <div style={S.topbar}>
-        <div>
+        <div style={newLook ? { flex: 1, minWidth: 0 } : undefined}>
           <div style={S.title}>My</div>
-          <div style={S.sub}>{formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
+          <div style={newLook ? { ...S.sub, whiteSpace: 'nowrap' } : S.sub}>{newLook ? formatShortKoreanDate(today) : formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {[
@@ -726,7 +728,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isMyTab && (
               <div style={myBox}>
                 {myLabel('flag', '🪣', `버킷리스트 (${bucketList.length}/${BUCKET_LIST_MAX})`,
-                  <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
+                  newLook ? <FoldButton open={bucketOpen} onClick={() => setBucketOpen(v => !v)} /> : <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
                 {bucketOpen && (
                   <div style={newLook ? {} : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
                     {bucketList.map(item => (

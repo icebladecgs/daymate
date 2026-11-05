@@ -9,7 +9,8 @@ const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
 const { getUpcomingContactEvents, getUpcomingDays, solarToLunar } = await load('/src/data/contacts.js');
-const { weatherAdvice, weatherToday, weatherTodayView, weatherDayLabel } = await load('/src/utils/weather.js');
+const { weatherAdvice, weatherToday, weatherTodayView, weatherDayLabel, airGrade } = await load('/src/utils/weather.js');
+const { buildUpcomingDays, normalizeDdays, ddayDateLabel } = await load('/src/utils/ddays.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, parseMany, friendlySchedule } = await load('/src/utils/nlSchedule.js');
@@ -337,6 +338,15 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('날씨: 비가 지나갔으면 우산 안내 없음', !weatherAdvice(view).includes('우산'));
   t('날씨: 시간 정보가 없으면 하루 값', weatherTodayView({ days: rainy.days }, '2026-11-05').rain === 90);
   t('날씨: 지나간 눈은 안내하지 않음', !weatherAdvice({ code: 73, rain: 0, max: 0, min: -3 }).includes('눈'));
+  t('미세먼지: 나쁜 쪽 기준', airGrade({ pm10: 20, pm25: 40 }).label === '나쁨' && airGrade({ pm10: 200, pm25: 5 }).label === '매우 나쁨' && airGrade({ pm10: 30, pm25: 15 }).label === '좋음');
+  t('미세먼지: 없으면 표시 안 함', airGrade(null) === null);
+  t('미세먼지: 나쁘면 나들이 대신 마스크', weatherAdvice({ code: 0, rain: 0, max: 21, min: 12 }, { pm10: 100, pm25: 20 }).includes('마스크'));
+  t('미세먼지: 비가 더 급하면 우산', weatherAdvice({ code: 61, rain: 80, max: 21, min: 12 }, { pm10: 100, pm25: 20 }).includes('우산'));
+  const dd = [{ id: 'x', title: '가족 여행', date: '2027-01-30' }, { id: 'y', title: '지난 일', date: '2026-10-01' }, { id: 'z', title: '내일', date: '2026-11-06' }, { title: '망가짐' }];
+  const merged = buildUpcomingDays([{ id: 'b', name: '나', birthday: { month: 11, day: 20 } }, { id: 'a', name: '가', birthday: { month: 11, day: 8 } }], dd, '2026-11-05');
+  t('D-day: 사람과 합쳐 가까운 순, 지난 것·7일 안 사람 빼기', same(merged.map(e => [e.title, e.dday]), [['내일', 1], ['나님 생일', 15], ['가족 여행', 86]]), JSON.stringify(merged.map(e => e.title)));
+  t('D-day: 망가진 값은 버림', normalizeDdays(dd).length === 3 && normalizeDdays(null).length === 0);
+  t('D-day: 다른 해는 연도 표시', ddayDateLabel('2027-01-30', '2026-11-05') === '2027.1.30' && ddayDateLabel('2026-11-06', '2026-11-05') === '11/6');
   t('날씨: 요일 표시', weatherDayLabel('2026-11-05', '2026-11-05') === '오늘' && weatherDayLabel('2026-11-06', '2026-11-05') === '내일' && weatherDayLabel('2026-11-08', '2026-11-05') === '일');
 }
 

@@ -4,6 +4,7 @@ import { countCommunityNews } from "./utils/communityNews.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
+import { normalizeDdays } from "./utils/ddays.js";
 import WrongNotes from "./components/WrongNotes.jsx";
 import { reportError } from "./utils/errorReport.js";
 import GrowthFortunePanel from "./components/GrowthFortunePanel.jsx";
@@ -406,6 +407,7 @@ export default function App() {
   const [statAsk, setStatAsk] = useState(null); // { ds, taskId, title, key } | null
   // 수험생 모드 (D-day·과목·켜기) — 계정 설정 exam에 동기화
   const [exam, setExam] = useState(() => normalizeExam(store.get("dm_exam", null)));
+  const [ddays, setDdays] = useState(() => normalizeDdays(store.get("dm_ddays", [])));
   const [wrongNotes, setWrongNotes] = useState(null); // 오답 노트 (null = 아직 안 불러옴) — 수험생 모드일 때 로그인하면 불러옴
   const [showWrongNotes, setShowWrongNotes] = useState(false);
   const statAskedRef = useRef(new Set()); // 이번 실행에서 이미 물어본 제목 (같은 제목을 거듭 묻지 않게)
@@ -1178,6 +1180,7 @@ export default function App() {
       if (!same(nextLifeGoals, lifeGoals)) setLifeGoals(nextLifeGoals);
     }
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
+    if (Array.isArray(s?.ddays) && !same(normalizeDdays(s.ddays), ddays)) setDdays(normalizeDdays(s.ddays));
     if (s?.memoLock && !same(s.memoLock, memoLockCfg)) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
     if (remoteGoals) {
       const nextGoals = normalizeGoals(remoteGoals, currentGoalMonthKey);
@@ -1438,6 +1441,12 @@ export default function App() {
               const localExam = normalizeExam(store.get("dm_exam", null));
               if (localExam.on || localExam.ddays.length) saveSettings(firebaseUser.uid, { exam: localExam }).catch(() => {});
             }
+            if (Array.isArray(s.ddays)) { const d = normalizeDdays(s.ddays); setDdays(d); store.set("dm_ddays", d); }
+            else {
+              // 로그인 전에 이 기기에서 넣은 D-day는 한 번 올린다 (서버에 없을 때)
+              const localDdays = normalizeDdays(store.get("dm_ddays", []));
+              if (localDdays.length) saveSettings(firebaseUser.uid, { ddays: localDdays }).catch(() => {});
+            }
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.birthDate !== undefined) { setBirthDate(s.birthDate); store.set("dm_birth_date", s.birthDate); }
             if (s.birthTime !== undefined) { setBirthTime(s.birthTime); store.set("dm_birth_time", s.birthTime); }
@@ -1599,6 +1608,11 @@ export default function App() {
     store.set("dm_exam", exam);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { exam }).catch(() => {});
   }, [exam, authUser]);
+  useEffect(() => {
+    store.set("dm_ddays", ddays);
+    prefsLocalChangeRef.current = Date.now();
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { ddays }).catch(() => {});
+  }, [ddays, authUser]);
   useEffect(() => {
     if (!authUser) { setWrongNotes(null); return; }
     if (!exam.on) return;
@@ -2311,6 +2325,7 @@ export default function App() {
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
           contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
+          ddays={ddays} setDdays={setDdays}
           weatherCity={telegramCfg?.weatherCity}
           onSetWeatherCity={(city) => {
             const cfg = { ...telegramCfg, weatherCity: city };

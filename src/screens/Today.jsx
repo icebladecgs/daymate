@@ -52,6 +52,8 @@ export default function Today({
   onBonusXp,
   weatherCity,
   onSetWeatherCity,
+  ddays = [],
+  setDdays,
   exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
 }) {
   const tasks = data.tasks || [];
@@ -866,12 +868,12 @@ export default function Today({
             : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
             {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
           </span>
-          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
+          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
         {contactReminders.length > 0 && (
           <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
             {contactReminders.map((it, i) => (
-              <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
+              <div key={it.key} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
             ))}
           </div>
         )}
@@ -879,17 +881,17 @@ export default function Today({
 
       </SectionBox>)}
 
-      {/* 📌 다가오는 날 — 내 사람들의 생일·기념일 D-day. 7일 안은 위 칸에 있으니 뺀다 */}
+      {/* 📌 다가오는 날 — 직접 넣은 D-day + 내 사람들의 생일·기념일 (사람은 7일 안이면 위 칸에 있으니 뺀다) */}
       {!hiddenSec.upcoming && (
-        <UpcomingDays contacts={contacts} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
+        <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
           boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
       )}
 
-      {/* 💪 오늘습관 */}
+      {/* 💪 오늘의 습관 */}
       {!hiddenSec.habits && (<SectionBox on={newLook}>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {secIcon('repeat', '💪')}오늘습관
+          {secIcon('repeat', '💪')}오늘의 습관
           {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>}
@@ -944,7 +946,9 @@ export default function Today({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {visibleHabits.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
+              newLook
+                ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
+                : <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
             )}
             {visibleHabits.map(h => {
               const checked = !!habitChecks[h.id];
@@ -1065,11 +1069,11 @@ export default function Today({
           {/* 할일 헤더와 동일: 제목은 항상 한 줄, 날짜·안내문구는 자리가 없으면 제목 아래로 */}
           <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, minWidth: 0 }}>
             <span style={{ whiteSpace: 'nowrap' }}>{journalDayTitle}</span>
-            {[0, 1, -1].includes(journalDayOffset) && (
+            {[0, 1, -1].includes(journalDayOffset) && !(newLook && journalDayOffset === 0) && (
               <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
             )}
             {journalDayOffset === 0 && (
-              <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>(22:00 이후 추천)</span>
+              <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
             )}
           </span>
         </span>

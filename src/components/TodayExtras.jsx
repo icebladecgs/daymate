@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import S, { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
-import { addDays } from "../utils/date.js";
-import { getUpcomingDays } from "../data/contacts.js";
-import { DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
+import { buildUpcomingDays, ddayDateLabel, newDday } from "../utils/ddays.js";
+import { ddayLabel } from "../utils/exam.js";
+import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
 
 const RAIN_COLOR = "#5B7CFA"; // 밝은·어두운 화면 모두에서 보이는 파랑
 const OPEN_KEY = "dm_weather_open";
@@ -70,7 +70,8 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
   const wx = state.data;
   const today = weatherTodayView(wx, dateStr);
   if (!today) return null;
-  const advice = weatherAdvice(today);
+  const air = airGrade(wx.air);
+  const advice = weatherAdvice(today, wx.air);
 
   return (
     <div style={{ ...S.card, padding: "12px 14px", marginTop: 10 }}>
@@ -84,7 +85,12 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
           </span>
           <span style={{ fontSize: 13, color: "var(--dm-muted)", flexShrink: 0 }}>{open ? "접기 ▲" : "7일 ▼"}</span>
         </div>
-        {advice && <div style={{ fontSize: 14, color: "var(--dm-sub)", marginTop: 6 }}>{advice}</div>}
+        {(air || advice) && (
+          <div style={{ fontSize: 14, color: "var(--dm-sub)", marginTop: 6, wordBreak: "keep-all" }}>
+            {air && <span style={{ color: air.color, fontWeight: 800 }}>미세먼지 {air.label}</span>}
+            {air && advice ? " · " : ""}{advice}
+          </div>
+        )}
       </button>
 
       {open && (
@@ -102,6 +108,12 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
               <span style={{ width: 66, flexShrink: 0, textAlign: "right", fontWeight: 800 }}>{d.max}°/{d.min}°</span>
             </div>
           ); })}
+          {air && (
+            <div style={{ padding: "8px 0", borderTop: "1px solid var(--dm-row)", fontSize: 14, color: "var(--dm-sub)", lineHeight: 1.5, wordBreak: "keep-all" }}>
+              <span style={{ color: air.color, fontWeight: 800 }}>미세먼지 {air.label}</span> · PM10 {wx.air.pm10} · PM2.5 {wx.air.pm25} ㎍/㎥
+              <span style={{ display: "block", fontSize: 13, color: "var(--dm-muted)" }}>예측값이라 공식 측정치와 다를 수 있어요</span>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 8, borderTop: "1px solid var(--dm-row)", fontSize: 14, color: "var(--dm-muted)" }}>
             <span>📍 {wx.city}</span>
             <button onClick={startEdit} style={{ padding: "4px 8px", fontSize: 14, fontWeight: 800, color: RAIN_COLOR, background: "none", border: "none", cursor: "pointer" }}>도시 바꾸기</button>
@@ -113,29 +125,68 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
   );
 }
 
-export function UpcomingDays({ contacts, dateStr, excludeWithin, onOpen, heading, boxed }) {
+// 직접 넣는 D-day 입력 (새로 넣기·고치기 같이 씀)
+function DdayForm({ initial, minDate, onSave, onDelete, onCancel }) {
+  const [title, setTitle] = useState(initial?.title || "");
+  const [date, setDate] = useState(initial?.date || "");
+  const ok = title.trim() && date;
+  const save = () => { if (ok) onSave(title, date); };
+  return (
+    <div style={{ padding: "10px 0", borderTop: "1px solid var(--dm-row)" }}>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="이름 (예: 가족 여행)" maxLength={30} autoFocus
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) save(); }}
+        style={{ ...S.input, marginBottom: 8 }} />
+      <input type="date" value={date} min={initial ? undefined : minDate} onChange={(e) => setDate(e.target.value)} aria-label="날짜" style={{ ...S.input, marginBottom: 8 }} />
+      <div style={{ display: "flex", gap: 8 }}>
+        {onDelete && <button onClick={onDelete} style={{ padding: "0 14px", minHeight: 40, fontSize: 14, fontWeight: 800, borderRadius: 10, border: "1px solid rgba(239,68,68,.4)", background: "none", color: "#EF4444", cursor: "pointer" }}>삭제</button>}
+        <span style={{ flex: 1 }} />
+        <button onClick={onCancel} style={{ padding: "0 14px", minHeight: 40, fontSize: 14, fontWeight: 700, borderRadius: 10, border: "1px solid var(--dm-border)", background: "none", color: "var(--dm-muted)", cursor: "pointer" }}>취소</button>
+        <button onClick={save} disabled={!ok} style={{ padding: "0 16px", minHeight: 40, fontSize: 14, fontWeight: 800, borderRadius: 10, border: "none", background: RAIN_COLOR, color: "#fff", cursor: ok ? "pointer" : "default", opacity: ok ? 1 : 0.5 }}>저장</button>
+      </div>
+    </div>
+  );
+}
+
+export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin, onOpen, heading, boxed }) {
   const [more, setMore] = useState(false);
-  const all = useMemo(() => getUpcomingDays(contacts, dateStr, { excludeWithin }), [contacts, dateStr, excludeWithin]);
-  if (!all.length) return null; // 등록한 생일·기념일이 없으면 칸을 비워 두지 않는다
+  const [editing, setEditing] = useState(null); // 'new' 또는 고치는 D-day id
+  const all = useMemo(() => buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }), [contacts, ddays, dateStr, excludeWithin]);
   const shown = all.slice(0, more ? SHOW_MORE : 3);
   const moreCount = Math.min(all.length, SHOW_MORE) - 3;
+
+  const addDday = (title, date) => { setDdays((prev) => [...prev, newDday(title, date)]); setEditing(null); };
+  const saveDday = (id, title, date) => { setDdays((prev) => prev.map((d) => (d.id === id ? { ...d, title: title.trim(), date } : d))); setEditing(null); };
+  const removeDday = (d) => {
+    if (!window.confirm(`"${d.title}" D-day를 지울까요?`)) return;
+    setDdays((prev) => prev.filter((x) => x.id !== d.id));
+    setEditing(null);
+  };
+
   return (
     <SectionBox on={boxed}>
       {heading}
       <div style={boxed ? {} : { ...S.card, padding: "6px 14px" }}>
-        {shown.map((ev, i) => {
-          const [, m, d] = addDays(dateStr, ev.dday).split("-").map(Number);
-          return (
-            <button key={`${ev.contactId}_${ev.type}_${ev.label}_${i}`} onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", color: "var(--dm-text)", cursor: "pointer" }}>
-              <span style={{ width: 58, flexShrink: 0, fontSize: 15, fontWeight: 900, color: RAIN_COLOR }}>D-{ev.dday}</span>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.name}님 {ev.label}</span>
-              <span style={{ flexShrink: 0, fontSize: 14, color: "var(--dm-muted)" }}>{m}/{d}</span>
+        {shown.map((ev, i) => (
+          editing === ev.id && ev.kind === "dday" ? (
+            <DdayForm key={ev.key} initial={ev} onSave={(t, d) => saveDday(ev.id, t, d)} onDelete={() => removeDday(ev)} onCancel={() => setEditing(null)} />
+          ) : (
+            <button key={ev.key} onClick={ev.kind === "dday" ? () => setEditing(ev.id) : onOpen} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", color: "var(--dm-text)", cursor: "pointer" }}>
+              <span style={{ width: 62, flexShrink: 0, fontSize: 15, fontWeight: 900, color: ev.dday <= 7 ? "#EF4444" : RAIN_COLOR }}>{ddayLabel(ev.dday)}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</span>
+              <span style={{ flexShrink: 0, fontSize: 14, color: "var(--dm-muted)" }}>{ddayDateLabel(ev.date, dateStr)}</span>
             </button>
-          );
-        })}
+          )
+        ))}
         {moreCount > 0 && (
           <button onClick={() => setMore((v) => !v)} style={{ display: "block", width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, fontSize: 14, fontWeight: 800, color: RAIN_COLOR, cursor: "pointer" }}>
             {more ? "접기 ▲" : `${moreCount}개 더 보기 ▼`}
+          </button>
+        )}
+        {editing === "new" ? (
+          <DdayForm minDate={dateStr} onSave={addDday} onCancel={() => setEditing(null)} />
+        ) : (
+          <button onClick={() => setEditing("new")} style={{ display: "block", width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: all.length ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", fontSize: 15, fontWeight: 800, color: RAIN_COLOR, cursor: "pointer" }}>
+            ＋ D-day 추가
           </button>
         )}
       </div>

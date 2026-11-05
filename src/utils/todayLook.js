@@ -19,7 +19,7 @@ export const TODAY_SECTIONS = [
   { id: "weather", label: "🌤 날씨" },
   { id: "people", label: "💌 오늘 챙길 사람" },
   { id: "upcoming", label: "📌 다가오는 날" },
-  { id: "habits", label: "💪 오늘습관" },
+  { id: "habits", label: "💪 오늘의 습관" },
   { id: "someday", label: "📋 언젠가할일" },
   { id: "weekly", label: "📅 주간 일정" },
   { id: "onthisday", label: "🕰 1년 전 오늘" },

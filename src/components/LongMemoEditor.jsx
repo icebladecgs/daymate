@@ -14,6 +14,7 @@ import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
 import { boxCard } from "../styles.js";
+import { store } from "../utils/storage.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -23,6 +24,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
+  const [tagsOpen, setTagsOpen] = useState(() => store.get('dm_section_open_memo_tags', false) === true); // 메모 탭 쓰기 화면의 태그 접기 (기기마다)
   const [savedAt, setSavedAt] = useState(null);
   const [photos, setPhotos] = useState(initialPhotos);
   const [starred, setStarred] = useState(initialStarred);
@@ -264,6 +266,13 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
       </div>
 
+      {boxed && (
+        <button onClick={() => setTagsOpen(v => { store.set('dm_section_open_memo_tags', !v); return !v; })} aria-expanded={tagsOpen}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '6px 0', marginBottom: tagsOpen ? 8 : 0, background: 'none', border: 'none', borderRadius: 0, fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', cursor: 'pointer' }}>
+          <span>🏷 태그</span><span style={{ fontSize: 14, color: 'var(--dm-muted)' }}>{tagsOpen ? '▲' : '▼'}</span>
+        </button>
+      )}
+      {(!boxed || tagsOpen) && (<>
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: newLook ? 14 : 10, color: newLook ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
         <div style={{ fontSize: newLook ? 12 : 10, color: 'var(--dm-muted)', marginBottom: newLook ? 8 : 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
@@ -347,6 +356,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 

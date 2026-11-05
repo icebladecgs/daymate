@@ -189,11 +189,17 @@ export default async function handler(req, res) {
       const loc = await findWeatherPlace(city);
       if (!loc) return res.status(200).json({ ok: false });
 
+      // 미세먼지는 실패하거나 늦어도 날씨는 그대로 보여 준다
+      const airPromise = fetch(
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.latitude}&longitude=${loc.longitude}&current=pm10,pm2_5&timezone=auto`,
+        { headers: { 'User-Agent': 'DayMate/1.0' }, signal: AbortSignal.timeout(4000) }
+      ).then(r => r.json()).catch(() => null);
       const wx = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&forecast_days=7&timezone=auto`,
         { headers: { 'User-Agent': 'DayMate/1.0' } }
       );
       const wj = await wx.json();
+      const aj = await airPromise;
       const c = wj.current;
       const code = c.weathercode;
       const d = wj.daily || {};
@@ -222,6 +228,7 @@ export default async function handler(req, res) {
         wind: Math.round(c.windspeed_10m),
         days,
         rainLeft: leftToday.length ? Math.max(...leftToday) : null,
+        air: aj?.current?.pm10 != null && aj?.current?.pm2_5 != null ? { pm10: Math.round(aj.current.pm10), pm25: Math.round(aj.current.pm2_5) } : null,
       });
     } catch (error) {
       console.error('[market] weather lookup failed:', error);
