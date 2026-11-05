@@ -15,12 +15,13 @@ import MemoSettings from "./MemoSettings.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
 import { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
+export default function LongMemoEditor({ tabScreen = false, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
@@ -184,6 +185,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
   }, []);
 
   const handleClose = () => { flush(text); onClose(); };
+  useBackClose(handleClose, !tabScreen); // 메모 탭의 쓰기 화면은 창이 아니라 탭이다
 
   const handleSaveAndContinue = () => {
     flush(text);

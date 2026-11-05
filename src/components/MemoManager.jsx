@@ -24,6 +24,8 @@ import { MemoLinks } from "./DriveFiles.jsx";
 import LinkOverlay from "./LinkOverlay.jsx";
 import IndentBar from "./IndentBar.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo } from "../utils/useUndo.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
@@ -177,6 +179,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 
   // ☑ 여러 개 한꺼번에 (2026-11-03) — 메모만 고를 수 있다(일정·일기·휴지통 제외). 지우기는 휴지통으로, 태그는 끝에 한 줄,
   // 날짜 옮기기는 새 날짜에 넣고 원래 날짜에서 뺀다(빼면 휴지통에 들어가는 사본은 바로 정리)
+  const undo = useUndo();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const [bulkTag, setBulkTag] = useState("");
@@ -187,9 +190,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const byDayOf = (list) => { const m = new Map(); list.forEach(it => m.set(it.ds, [...(m.get(it.ds) || []), it.id])); return m; };
   const bulkDelete = () => {
     const list = pickedItems();
-    if (!list.length || !window.confirm(`메모 ${list.length}개를 지울까요? (휴지통에 30일 보관)`)) return;
+    if (!list.length) return;
     byDayOf(list).forEach((ids, ds) => onUpdateDayData(ds, prev => { const next = updateMemoIn(prev, "", {}); return { ...next, memos: next.memos.filter(m => !ids.includes(m.id)) }; }));
-    setToast(`메모 ${list.length}개를 휴지통으로 옮겼어요`);
+    undo.offer(`메모 ${list.length}개를 휴지통으로 옮겼어요`, () => list.forEach(it => onUpdateDayData(it.ds, prev => restoreMemoFromTrash(prev, it.id))));
     setSelectedKey(null);
     stopPicking();
   };
@@ -219,12 +222,15 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   };
 
   const deleteMemo = (it) => {
-    if (!window.confirm(`"${it.title}" 메모를 삭제할까요? (휴지통에 30일 보관)`)) return;
     onUpdateDayData(it.ds, prev => {
       const next = updateMemoIn(prev, it.id, {});
       return { ...next, memos: next.memos.filter(m => m.id !== it.id) };
     });
     setSelectedKey(null);
+    undo.offer(`"${(it.title || "메모").slice(0, 14)}" 휴지통으로 옮겼어요`, () => {
+      onUpdateDayData(it.ds, prev => restoreMemoFromTrash(prev, it.id));
+      setSelectedKey(`memo|${it.ds}|${it.id}`);
+    });
   };
 
   const ink = { color: "var(--dm-text)" };
@@ -443,6 +449,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       )}
       {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={910} />
     </div>,
     document.body
   );

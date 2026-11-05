@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import S from "../styles.js";
 import { agoText, fmtFocus } from "../utils/goalProgress.js";
 import { formatShortKoreanDate } from "../utils/date.js";
+import { useBackClose } from "../utils/useBackClose.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 
 // 목표 상세 — 인생목표·올해 목표가 같은 화면 사용.
 // "이루기 위해 할 것들"(실천 항목)을 적고, 항목마다 "언젠가로"를 눌러 언젠가할일로 파생시킨다.
@@ -10,6 +13,10 @@ import { formatShortKoreanDate } from "../utils/date.js";
 // 같은 항목에서 여러 번 파생 가능 (매주 반복하는 일 등)
 // progress: 이 목표에서 나온 할일을 끝낸 기록 (utils/goalProgress.js) — 없으면 진행 칸을 숨긴다
 export default function GoalDetailSheet({ kind, title, actions = [], progress, todayStr, onChangeActions, onSendToSomeday, onClose }) {
+  useBackClose(onClose);
+  const undo = useUndo();
+  const actionsRef = useRef(actions); // 되돌릴 때 그사이 바뀐 항목도 지키려고
+  useEffect(() => { actionsRef.current = actions; });
   const [input, setInput] = useState('');
   const [sentId, setSentId] = useState(null);
   const label = kind === 'life' ? '🌟 인생목표' : '🌱 올해 목표';
@@ -21,8 +28,9 @@ export default function GoalDetailSheet({ kind, title, actions = [], progress, t
     setInput('');
   };
   const remove = (a) => {
-    if (!window.confirm(`"${a.title}" 항목을 지울까요?\n(이미 언젠가할일로 보낸 것은 그대로 남아요)`)) return;
+    const idx = actions.findIndex(x => x.id === a.id);
     onChangeActions(actions.filter(x => x.id !== a.id));
+    undo.offer(`"${a.title.slice(0, 14)}" 지웠어요`, () => onChangeActions(putBack(actionsRef.current, a, idx)));
   };
   const send = (a) => {
     onSendToSomeday(a);

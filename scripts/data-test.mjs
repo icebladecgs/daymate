@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 // 기록 보존 점검 — 할일 이동·목표 편집·메모 휴지통·기기 간 병합에서 기록이 사라지지 않는지 본다.
 //   npm run test:data   (release:prepare가 기본 점검 다음에 실행한다)
 // 화면 없이 실제 앱 코드(src/utils)를 그대로 불러와 계산 결과만 확인한다. 서버·로그인 접속 없음.
@@ -355,6 +356,34 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const { buildBriefingText } = await load('/src/api/telegram.js');
   const text = buildBriefingText([], '점검', { ok: true, city: '서울', temp: 15, desc: '맑음', icon: '☀️', wind: 3 });
   t('텔레그램: 날씨 설명이 들어감', text.includes('서울 15°C · 맑음 · 바람 3km/h'), text.slice(0, 60));
+}
+
+// ── 할일 순서 바꾸기 (상세 창 ▲▼) ──
+{
+  const { moveInList, canMoveInList } = await load('/src/utils/taskOrder.js');
+  const list = [{ id: 'a', title: '가' }, { id: 'b', title: '나', photos: [{ path: 'p' }] }, { id: 'e', title: '' }, { id: 'c', title: '다' }, { id: 't', title: '시간', time: '09:00' }, { id: 'd', title: '끝', done: true }];
+  t('순서: 위로 옮기면 바로 위와 자리를 바꿈', same(moveInList(list, 'b', -1).map(x => x.id), ['b', 'a', 'e', 'c', 't', 'd']));
+  t('순서: 항목 내용(사진 등)은 그대로', moveInList(list, 'b', -1)[0].photos?.[0]?.path === 'p');
+  t('순서: 빈 줄은 건너뜀', same(moveInList(list, 'c', -1).map(x => x.id), ['a', 'c', 'e', 'b', 't', 'd']));
+  t('순서: 맨 위에서는 못 올림', !canMoveInList(list, 'a', -1) && moveInList(list, 'a', -1) === list);
+  t('순서: 시간순 목록에서 시간 있는 할일은 안 움직임', !canMoveInList(list, 't', -1, true) && !canMoveInList(list, 't', 1, true));
+  t('순서: 시간순 목록에서 끝낸 할일과 안 섞임', !canMoveInList(list, 'c', 1, true));
+  t('순서: 시간순 목록에서 시간 없는 것끼리는 움직임', same(moveInList(list, 'c', -1, true).map(x => x.id), ['a', 'c', 'e', 'b', 't', 'd']));
+}
+
+// ── 설정 찾기 ──
+{
+  const { searchSettings, SETTINGS_PAGE_NAMES, ITEMS } = await load('/src/utils/settingsSearch.js');
+  t('설정 찾기: 빈 검색은 메뉴 그대로', searchSettings('  ') === null);
+  t('설정 찾기: 다른 말로도 찾음', searchSettings('지문').some(x => x.label === '앱 잠금'));
+  t('설정 찾기: 띄어쓰기 무시', searchSettings('칸순서').some(x => x.label === '오늘 탭 칸 순서'));
+  t('설정 찾기: 자모 분리 글자도 찾음', searchSettings('백업'.normalize('NFD')).some(x => x.page === 'app'));
+  t('설정 찾기: 없으면 빈 목록', searchSettings('없는말').length === 0);
+  t('설정 찾기: 찾은 항목에 화면 이름이 있음', searchSettings('앱').length > 0 && searchSettings('앱').every(x => SETTINGS_PAGE_NAMES[x.page]));
+  // 고르면 내려갈 칸 제목이 실제 설정 화면에 있어야 한다 (제목을 바꾸면 여기서 잡힌다)
+  const settingsSrc = readFileSync('src/screens/Settings.jsx', 'utf8');
+  const missing = ITEMS.filter(x => x.section && !settingsSrc.includes(x.section)).map(x => x.section);
+  t('설정 찾기: 칸 제목이 설정 화면에 있음', missing.length === 0, missing.join(', '));
 }
 
 await vite.close();

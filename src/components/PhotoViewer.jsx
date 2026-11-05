@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { canSharePhotos, downloadPhoto, fetchPhotoBlob, isIOS, photoFileName, sharePhoto } from "../utils/photoShare.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 5;
@@ -76,20 +77,8 @@ export default function PhotoViewer({ photos = [], index = 0, onClose, onIndexCh
     } catch { photoFail(); } finally { setBusy(false); }
   };
 
-  // 뒤로가기 → 사진만 닫기. 현재 화면 state를 복사해 두어, 앱의 뒤로가기 처리가 같은 화면에 머물게 한다.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  useEffect(() => {
-    history.pushState({ ...(history.state || {}), photoViewer: true }, "");
-    let closedByBack = false;
-    const onPop = () => { closedByBack = true; onCloseRef.current?.(); };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      if (!closedByBack && history.state?.photoViewer) history.back();
-    };
-  }, []);
-  const close = () => history.back(); // popstate에서 onClose 호출
+  useBackClose(onClose); // 뒤로가기 → 사진만 닫기
+  const close = onClose;
 
   const resetView = () => setView({ scale: 1, x: 0, y: 0 });
   const go = (delta) => {

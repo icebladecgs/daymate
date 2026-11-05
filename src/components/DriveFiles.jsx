@@ -3,6 +3,8 @@ import { googleSignInWithDriveScope } from "../firebase.js";
 import { uploadFileToDrive, DRIVE_ATTACH_MAX_BYTES, DRIVE_ATTACH_FOLDER } from "../api/drive.js";
 import { store } from "../utils/storage.js";
 import { externalLinkClick, trimUrl, linkLabels } from "../utils/links.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 
 // 구글 드라이브 첨부 — 파일은 사용자 드라이브("DayMate/첨부파일" 폴더)에, 앱에는 {id,name,link,mimeType,size}만 저장.
 // 목록에서 빼도 드라이브 파일은 지우지 않음 (사용자 결정: 실수 방지).
@@ -125,13 +127,20 @@ export function MemoLinks({ text = '', style, hint = '' }) {
 
 // 첨부된 드라이브 파일 목록 — 누르면 드라이브에서 열기, ✕는 목록에서만 빼기
 export function DriveFileList({ files = [], onChange }) {
-  if (!files.length) return null;
+  const undo = useUndo();
+  const filesRef = useRef(files);
+  useEffect(() => { filesRef.current = files; });
   const remove = (id) => {
-    if (!window.confirm('목록에서 뺄까요? 구글 드라이브의 파일은 그대로 남아요.')) return;
-    onChange(files.filter(f => f.id !== id));
+    const f = files.find(x => x.id === id);
+    const idx = files.findIndex(x => x.id === id);
+    onChange(files.filter(x => x.id !== id));
+    if (f) undo.offer(`"${(f.name || '파일').slice(0, 14)}" 목록에서 뺐어요 (드라이브엔 남아요)`, () => onChange(putBack(filesRef.current, f, idx)));
   };
+  const bar = <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={1300} />;
+  if (!files.length) return bar;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+      {bar}
       {files.map(f => (
         <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, background: 'var(--dm-input)', border: '1px solid var(--dm-border)' }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>{fileIcon(f.mimeType, f.name)}</span>

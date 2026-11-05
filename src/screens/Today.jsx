@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
 import { FoldButton, SectionBox, WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
@@ -20,7 +20,7 @@ import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
 import TodayTaskRow from "../components/TodayTaskRow.jsx";
-import { todayNewLookOn, todayDoneGroupOn, todayHiddenSections } from "../utils/todayLook.js";
+import { todayNewLookOn, todayDoneGroupOn, todayHiddenSections, todaySectionOrder } from "../utils/todayLook.js";
 import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
@@ -32,6 +32,7 @@ import { ExamTodayPanel } from "../components/Exam.jsx";
 import { newStudyEntry } from "../utils/exam.js";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
+import { canMoveInList, moveInList } from "../utils/taskOrder.js";
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
   onOpenVoiceDiary,
@@ -106,6 +107,7 @@ export default function Today({
     return () => clearTimeout(id);
   }, []);
   const [hiddenSec] = useState(todayHiddenSections); // 설정에서 숨긴 칸 (기기마다)
+  const [sectionOrder] = useState(todaySectionOrder); // 설정에서 정한 칸 순서 (기기마다)
   const [newLook] = useState(todayNewLookOn); // 오늘 탭 새 화면 (설정 → 앱 관리에서 기기마다 끔)
   // 새 화면은 분 단위 시계 (초가 계속 바뀌면 "완료 n/m"보다 눈에 띄었다)
   const clockText = () => new Date().toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false });
@@ -587,11 +589,291 @@ export default function Today({
     </>
   );
 
+  // 할일 아래 칸들 — 설정에서 순서를 바꿀 수 있다 (utils/todayLook.js todaySectionOrder)
+  const todaySections = {
+    // 💌 오늘 챙길 사람 — 내 사람들의 생일·기념일(7일 안)과 사람에게 연결된 할일. 없는 날도 한 줄로 보여서
+    // 기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다)
+    people: !hiddenSec.people && (<SectionBox on={newLook}>
+      <div style={newLook ? {} : { margin: '0 16px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: newLook ? 0 : 4 }}>
+          <span onClick={onOpenPeople} style={newLook
+            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
+            : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
+            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
+          </span>
+          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
+        </div>
+        {contactReminders.length > 0 && (
+          <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
+            {contactReminders.map((it, i) => (
+              <div key={it.key} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      </SectionBox>),
+    // 📌 다가오는 날 — 직접 넣은 D-day + 내 사람들의 생일·기념일 (사람은 7일 안이면 위 칸에 있으니 뺀다)
+    upcoming: !hiddenSec.upcoming && (
+        <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
+          boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
+      ),
+    habits: !hiddenSec.habits && (<SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {secIcon('repeat', '💪')}오늘의 습관
+          {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
+          </button>}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button
+          onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
+          style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+        >{editingHabits ? '완료 ✓' : '수정'}</button>
+        {newLook && <FoldButton open={habitsSectionOpen} onClick={() => setHabitsSectionOpen(v => !v)} />}
+        </span>
+      </div>
+      {habitsSectionOpen && (
+      <div style={innerCard}>
+        {editingHabits ? (
+          <>
+            {visibleHabits.map(h => (
+              <div key={h.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  value={h.name || ''} maxLength={20} placeholder="습관 이름"
+                  onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
+                  style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
+                />
+                <StatSelect value={h.statTag} name={h.name}
+                  onChange={v => setHabits?.(prev => prev.map(x => x.id === h.id ? withStatTag(x, v) : x))} />
+                <button onClick={() => { const idx = (habits || []).findIndex(x => x.id === h.id); setHabits?.(prev => prev.filter(x => x.id !== h.id)); undo.offer(`"${shortTitle(h.name || '습관')}" 습관을 지웠어요`, () => setHabits?.(prev => putBack(prev, h, idx))); }}
+                  style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0, padding: '0 2px' }}>✕</button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8, marginTop: visibleHabits.length > 0 ? 4 : 0, alignItems: 'center' }}>
+              <input value={newHabitName} maxLength={20} placeholder="새 습관 이름"
+                onChange={e => setNewHabitName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newHabitName.trim()) {
+                    setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
+                    setNewHabitIcon(''); setNewHabitName('');
+                  }
+                }}
+                style={{ ...S.input, flex: 1, marginBottom: 0 }} />
+              <button
+                onClick={() => {
+                  if (!newHabitName.trim()) return;
+                  setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
+                  setNewHabitIcon(''); setNewHabitName('');
+                }}
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            </div>
+            {visibleHabits.length === 0 && !newHabitName && (
+              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {visibleHabits.length === 0 && (
+              newLook
+                ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
+                : <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
+            )}
+            {visibleHabits.map(h => {
+              const checked = !!habitChecks[h.id];
+              return (
+                <button key={h.id} onClick={() => onToggleHabit?.(h.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
+                  <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
+                  {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      )}
+
+      </SectionBox>),
+    someday: !hiddenSec.someday && (<SectionBox on={newLook}>
+      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
+          {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+            {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
+          </button>}
+        </span>
+        {newLook && <FoldButton open={somedayOpen} onClick={() => setSomedayOpen(v => !v)} />}
+      </div>
+      {somedayOpen && (
+      <div style={innerCard}>
+        {(somedayShowAll ? somedayList : somedayList.slice(0, 3)).map(item => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <button onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+            <span onClick={() => setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
+              {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
+              <TaskStatIcon task={item} />
+              <TaskDetailBadge task={item} />
+            </span>
+            <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
+            <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+          </div>
+        ))}
+        {somedayList.length > 3 && (
+          <button onClick={() => setSomedayShowAll(v => !v)}
+            style={{ display: 'block', width: '100%', margin: '2px 0 10px', padding: '8px 0', borderRadius: 10, border: '1px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)', fontSize: newLook ? 14 : 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {somedayShowAll ? '접기 ▲' : `더 보기 (${somedayList.length - 3}개 더) ▼`}
+          </button>
+        )}
+        {somedayList.length === 0 && (
+          <div style={{ fontSize: newLook ? 13 : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>언젠가 하고 싶은 일을 적어두세요</div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            style={{ ...S.input, flex: 1, marginBottom: 0 }}
+            value={somedayInput}
+            onChange={e => setSomedayInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addSomeday()}
+            placeholder="언젠가 할 일 추가 후 Enter"
+            maxLength={60}
+          />
+          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+        </div>
+      </div>
+      )}
+
+      </SectionBox>),
+    weekly: !hiddenSec.weekly && (<SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(scheduleOpen) }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
+        {newLook ? <FoldButton open={scheduleOpen} onClick={() => setScheduleOpen(v => !v)} /> : <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
+        </button>}
+      </div>
+      {scheduleOpen && (
+        <div style={innerCard}>
+          <WeeklySchedule
+            plans={plans}
+            habits={habits || []}
+            onOpenDate={onOpenDate}
+            gcalEvents={gcalWeekEvents}
+          />
+        </div>
+      )}
+
+      </SectionBox>),
+    // 🕰 1년 전 오늘 — 1~5년 전 같은 날 남긴 기록 한 줄, 누르면 그날 (2026-11-03). 기록이 없으면 안 보임
+    onthisday: !hiddenSec.onthisday && (() => {
+        const otd = onThisDay(plans, dateStr);
+        if (!otd) return null;
+        const line = otd.journal ? `📖 ${otd.journal}` : otd.memo ? `📝 ${otd.memo}${otd.memoCount > 1 ? ` 외 ${otd.memoCount - 1}개` : ''}` : `✅ 할일 ${otd.done}개 끝냄`;
+        return (
+          <div onClick={() => onOpenDate?.(otd.ds)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <span style={{ fontSize: 22 }}>🕰</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-sub)' }}>{otd.years}년 전 오늘 · {otd.ds.slice(0, 4)}년 {Number(otd.ds.slice(5, 7))}월 {Number(otd.ds.slice(8))}일</div>
+              <div style={{ fontSize: 15, color: 'var(--dm-text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line}</div>
+            </div>
+            <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
+          </div>
+        );
+      })(),
+    // 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) — 🌙 하루 마무리는 저녁에만, 일기 바로 위
+    journal: (<>
+      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
+      <SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+          {secIcon('book', '📖')}
+          {/* 할일 헤더와 동일: 제목은 항상 한 줄, 날짜·안내문구는 자리가 없으면 제목 아래로 */}
+          <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, minWidth: 0 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>{journalDayTitle}</span>
+            {[0, 1, -1].includes(journalDayOffset) && !(newLook && journalDayOffset === 0) && (
+              <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
+            )}
+            {journalDayOffset === 0 && (
+              <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
+            )}
+          </span>
+        </span>
+        {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o - 1); }} aria-label="전날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        </div>
+      </div>
+      <div style={innerCard}>
+        {/* {label} 한 일 — done tasks 자동 표시 */}
+        {journalDoneTasks.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{journalDayLabel} 한 일</div>
+            {journalDoneTasks.map(t => (
+              <div key={t.id} style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#4ADE80', fontWeight: 700 }}>✓</span>{t.title}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {journalDayOffset === 0 && onOpenVoiceDiary && (
+          <button
+            onClick={onOpenVoiceDiary}
+            style={{
+              width: '100%', marginBottom: 12, padding: '10px 14px', borderRadius: 12,
+              border: '1.5px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)',
+              color: '#818cf8', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >🎙️ 음성으로 일기 쓰기</button>
+        )}
+
+        <textarea
+          rows={5}
+          style={{ ...S.input, resize: 'none', lineHeight: 1.8 }}
+          value={displayedJournalBody}
+          onChange={e => setDisplayedJournalBody(e.target.value)}
+          placeholder="하루를 자유롭게 기록해보세요"
+          maxLength={2000}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
+            {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={handleManualJournalSave}
+              style={{
+                background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10,
+                padding: '7px 16px', fontSize: 12, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >저장</button>
+            {uid && (
+              <PhotoAttach
+                uid={uid}
+                pathPrefix={`users/${uid}/journal`}
+                photoUrl={journalTargetDay.journal?.photoUrl}
+                photoPath={journalTargetDay.journal?.photoPath}
+                onChange={updateJournalPhotoForTarget}
+                onError={setToast}
+                size={34}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+      </SectionBox>
+    </>),
+  };
+
   return (
     <div style={S.content}>
       {newLook && filledCount > 0 && <CompactBar watchRef={headerRef} done={doneCount} total={filledCount} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-      <UndoBar bar={undo.bar} onUndo={undo.run} />
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
       {focus && (
         <FocusTimerModal
           task={focus.task}
@@ -630,16 +912,20 @@ export default function Today({
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, targetDs, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
           onFocus={(t) => { setDetailTaskId(null); setFocus({ ds: targetDs, task: t }); }}
           onComplete={(t) => toggleRow(t.id)}
+          order={{
+            canUp: canMoveInList(targetTasks, detailTask.id, -1, newLook),
+            canDown: canMoveInList(targetTasks, detailTask.id, 1, newLook),
+            onMove: (dir) => setTargetTasks(moveInList(targetTasks, detailTask.id, dir, newLook)),
+          }}
           recurring={(() => {
             const rule = (recurringTasks || []).find(r => r.id === recurringIdOf(detailTask.id));
             if (!rule || !setRecurringTasks) return null;
             return {
               label: recurringLabel(rule.days),
               onStop: () => {
-                if (!window.confirm(`"${rule.title}" 반복을 그만할까요?
-(이미 만들어진 날의 할일은 그대로 남아요)`)) return false;
+                const idx = (recurringTasks || []).findIndex(r => r.id === rule.id);
                 setRecurringTasks(prev => (prev || []).filter(r => r.id !== rule.id));
-                setToast('반복을 그만했어요');
+                undo.offer(`"${shortTitle(rule.title)}" 반복을 그만했어요`, () => setRecurringTasks(prev => putBack(prev, rule, idx)));
               },
               onManage: () => { store.set('dm_open_settings_subpage', 'recurring'); window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'settings' })); },
             };
@@ -650,6 +936,11 @@ export default function Today({
         <TaskDetailSheet
           key={`sd_${detailSomeday.id}`}
           task={detailSomeday}
+          order={{
+            canUp: canMoveInList(somedayList, detailSomeday.id, -1),
+            canDown: canMoveInList(somedayList, detailSomeday.id, 1),
+            onMove: (dir) => saveSomeday(moveInList(somedayList, detailSomeday.id, dir)),
+          }}
           uid={uid}
           onSave={(patch) => saveSomedayDetail(detailSomeday.id, patch)}
           onClose={() => setDetailSomedayId(null)}
@@ -858,291 +1149,7 @@ export default function Today({
       )}
       </SectionBox>
 
-      {/* 💌 오늘 챙길 사람 — 내 사람들의 생일·기념일(7일 안)과 사람에게 연결된 할일. 없는 날도 한 줄로 보여서
-          기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다) */}
-      {!hiddenSec.people && (<SectionBox on={newLook}>
-      <div style={newLook ? {} : { margin: '0 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: newLook ? 0 : 4 }}>
-          <span onClick={onOpenPeople} style={newLook
-            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
-            : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
-            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
-          </span>
-          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
-        </div>
-        {contactReminders.length > 0 && (
-          <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
-            {contactReminders.map((it, i) => (
-              <div key={it.key} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      </SectionBox>)}
-
-      {/* 📌 다가오는 날 — 직접 넣은 D-day + 내 사람들의 생일·기념일 (사람은 7일 안이면 위 칸에 있으니 뺀다) */}
-      {!hiddenSec.upcoming && (
-        <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
-          boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
-      )}
-
-      {/* 💪 오늘의 습관 */}
-      {!hiddenSec.habits && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {secIcon('repeat', '💪')}오늘의 습관
-          {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
-            {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
-          </button>}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <button
-          onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
-          style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
-        >{editingHabits ? '완료 ✓' : '수정'}</button>
-        {newLook && <FoldButton open={habitsSectionOpen} onClick={() => setHabitsSectionOpen(v => !v)} />}
-        </span>
-      </div>
-      {habitsSectionOpen && (
-      <div style={innerCard}>
-        {editingHabits ? (
-          <>
-            {visibleHabits.map(h => (
-              <div key={h.id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                <input
-                  value={h.name || ''} maxLength={20} placeholder="습관 이름"
-                  onChange={e => setHabits?.(prev => prev.map(x => x.id === h.id ? { ...x, name: e.target.value } : x))}
-                  style={{ ...S.input, flex: 1, minWidth: 0, marginBottom: 0 }}
-                />
-                <StatSelect value={h.statTag} name={h.name}
-                  onChange={v => setHabits?.(prev => prev.map(x => x.id === h.id ? withStatTag(x, v) : x))} />
-                <button onClick={() => { const idx = (habits || []).findIndex(x => x.id === h.id); setHabits?.(prev => prev.filter(x => x.id !== h.id)); undo.offer(`"${shortTitle(h.name || '습관')}" 습관을 지웠어요`, () => setHabits?.(prev => putBack(prev, h, idx))); }}
-                  style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 20, flexShrink: 0, padding: '0 2px' }}>✕</button>
-              </div>
-            ))}
-            <div style={{ display: 'flex', gap: 8, marginTop: visibleHabits.length > 0 ? 4 : 0, alignItems: 'center' }}>
-              <input value={newHabitName} maxLength={20} placeholder="새 습관 이름"
-                onChange={e => setNewHabitName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && newHabitName.trim()) {
-                    setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
-                    setNewHabitIcon(''); setNewHabitName('');
-                  }
-                }}
-                style={{ ...S.input, flex: 1, marginBottom: 0 }} />
-              <button
-                onClick={() => {
-                  if (!newHabitName.trim()) return;
-                  setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
-                  setNewHabitIcon(''); setNewHabitName('');
-                }}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-            </div>
-            {visibleHabits.length === 0 && !newHabitName && (
-              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
-            )}
-          </>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {visibleHabits.length === 0 && (
-              newLook
-                ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
-                : <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
-            )}
-            {visibleHabits.map(h => {
-              const checked = !!habitChecks[h.id];
-              return (
-                <button key={h.id} onClick={() => onToggleHabit?.(h.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                  {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
-                  <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
-                  {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      )}
-
-      </SectionBox>)}
-
-      {/* 📋 언젠가할일 */}
-      {!hiddenSec.someday && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
-          {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
-            {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
-          </button>}
-        </span>
-        {newLook && <FoldButton open={somedayOpen} onClick={() => setSomedayOpen(v => !v)} />}
-      </div>
-      {somedayOpen && (
-      <div style={innerCard}>
-        {(somedayShowAll ? somedayList : somedayList.slice(0, 3)).map(item => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <button onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-            <span onClick={() => setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
-              {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
-              <TaskStatIcon task={item} />
-              <TaskDetailBadge task={item} />
-            </span>
-            <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
-            <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
-          </div>
-        ))}
-        {somedayList.length > 3 && (
-          <button onClick={() => setSomedayShowAll(v => !v)}
-            style={{ display: 'block', width: '100%', margin: '2px 0 10px', padding: '8px 0', borderRadius: 10, border: '1px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)', fontSize: newLook ? 14 : 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {somedayShowAll ? '접기 ▲' : `더 보기 (${somedayList.length - 3}개 더) ▼`}
-          </button>
-        )}
-        {somedayList.length === 0 && (
-          <div style={{ fontSize: newLook ? 13 : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>언젠가 하고 싶은 일을 적어두세요</div>
-        )}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            style={{ ...S.input, flex: 1, marginBottom: 0 }}
-            value={somedayInput}
-            onChange={e => setSomedayInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addSomeday()}
-            placeholder="언젠가 할 일 추가 후 Enter"
-            maxLength={60}
-          />
-          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-        </div>
-      </div>
-      )}
-
-      </SectionBox>)}
-
-      {/* 📅 주간 일정 */}
-      {!hiddenSec.weekly && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(scheduleOpen) }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
-        {newLook ? <FoldButton open={scheduleOpen} onClick={() => setScheduleOpen(v => !v)} /> : <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
-          {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
-        </button>}
-      </div>
-      {scheduleOpen && (
-        <div style={innerCard}>
-          <WeeklySchedule
-            plans={plans}
-            habits={habits || []}
-            onOpenDate={onOpenDate}
-            gcalEvents={gcalWeekEvents}
-          />
-        </div>
-      )}
-
-      </SectionBox>)}
-
-      {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
-      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
-
-      {/* 🕰 1년 전 오늘 — 1~5년 전 같은 날 남긴 기록 한 줄, 누르면 그날 (2026-11-03). 기록이 없으면 안 보임 */}
-      {!hiddenSec.onthisday && (() => {
-        const otd = onThisDay(plans, dateStr);
-        if (!otd) return null;
-        const line = otd.journal ? `📖 ${otd.journal}` : otd.memo ? `📝 ${otd.memo}${otd.memoCount > 1 ? ` 외 ${otd.memoCount - 1}개` : ''}` : `✅ 할일 ${otd.done}개 끝냄`;
-        return (
-          <div onClick={() => onOpenDate?.(otd.ds)} style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <span style={{ fontSize: 22 }}>🕰</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-sub)' }}>{otd.years}년 전 오늘 · {otd.ds.slice(0, 4)}년 {Number(otd.ds.slice(5, 7))}월 {Number(otd.ds.slice(8))}일</div>
-              <div style={{ fontSize: 15, color: 'var(--dm-text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line}</div>
-            </div>
-            <span style={{ color: 'var(--dm-muted)', fontSize: 18 }}>›</span>
-          </div>
-        );
-      })()}
-
-      {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
-      <SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          {secIcon('book', '📖')}
-          {/* 할일 헤더와 동일: 제목은 항상 한 줄, 날짜·안내문구는 자리가 없으면 제목 아래로 */}
-          <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, minWidth: 0 }}>
-            <span style={{ whiteSpace: 'nowrap' }}>{journalDayTitle}</span>
-            {[0, 1, -1].includes(journalDayOffset) && !(newLook && journalDayOffset === 0) && (
-              <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
-            )}
-            {journalDayOffset === 0 && (
-              <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
-            )}
-          </span>
-        </span>
-        {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o - 1); }} aria-label="전날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-        </div>
-      </div>
-      <div style={innerCard}>
-        {/* {label} 한 일 — done tasks 자동 표시 */}
-        {journalDoneTasks.length > 0 && (
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{journalDayLabel} 한 일</div>
-            {journalDoneTasks.map(t => (
-              <div key={t.id} style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: '#4ADE80', fontWeight: 700 }}>✓</span>{t.title}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {journalDayOffset === 0 && onOpenVoiceDiary && (
-          <button
-            onClick={onOpenVoiceDiary}
-            style={{
-              width: '100%', marginBottom: 12, padding: '10px 14px', borderRadius: 12,
-              border: '1.5px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)',
-              color: '#818cf8', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          >🎙️ 음성으로 일기 쓰기</button>
-        )}
-
-        <textarea
-          rows={5}
-          style={{ ...S.input, resize: 'none', lineHeight: 1.8 }}
-          value={displayedJournalBody}
-          onChange={e => setDisplayedJournalBody(e.target.value)}
-          placeholder="하루를 자유롭게 기록해보세요"
-          maxLength={2000}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
-            {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              onClick={handleManualJournalSave}
-              style={{
-                background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10,
-                padding: '7px 16px', fontSize: 12, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >저장</button>
-            {uid && (
-              <PhotoAttach
-                uid={uid}
-                pathPrefix={`users/${uid}/journal`}
-                photoUrl={journalTargetDay.journal?.photoUrl}
-                photoPath={journalTargetDay.journal?.photoPath}
-                onChange={updateJournalPhotoForTarget}
-                onError={setToast}
-                size={34}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-      </SectionBox>
+      {sectionOrder.map(id => <Fragment key={id}>{todaySections[id]}</Fragment>)}
 
       <div style={{ height: 12 }} />
     </div>

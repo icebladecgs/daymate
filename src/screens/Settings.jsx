@@ -17,7 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
-import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection } from "../utils/todayLook.js";
+import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection, TODAY_ORDER_SECTIONS, todaySectionOrder, moveTodaySection, quickAddOn, setQuickAddOn } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
 import { taskAlarmLead, setTaskAlarmLead } from "../utils/alarms.js";
@@ -25,6 +25,8 @@ import { taskAlarmLead, setTaskAlarmLead } from "../utils/alarms.js";
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
 import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
+import { useBackClose } from "../utils/useBackClose.js";
+import { SETTINGS_PAGE_NAMES, searchSettings } from "../utils/settingsSearch.js";
 
 // 하위 화면의 작은 설명 글씨 — 새 디자인일 때 키운다 (첫 화면은 아래 nl로 따로)
 const NL = () => newDesignOn();
@@ -168,11 +170,24 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
   // 다른 화면에서 하위 화면을 바로 열 때 남긴 표시 — 화면이 처음 그려질 때 두 번 읽힐 수 있어서(지연 로딩) 지우기는 다 열린 뒤에
   const [subPage, setSubPage] = useState(() => store.get('dm_open_settings_subpage', null));
   useEffect(() => { store.remove('dm_open_settings_subpage'); }, []);
+  useBackClose(() => setSubPage(null), !!subPage);
   const [pendingSuggestions, setPendingSuggestions] = useState(0);
   useEffect(() => {
     if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
   }, [authUser]); // eslint-disable-line
+  const [sectionOrderList, setSectionOrderList] = useState(todaySectionOrder);
+  const [quickAddEnabled, setQuickAddEnabled] = useState(quickAddOn);
+  const [menuQuery, setMenuQuery] = useState('');
+  const scrollToSection = useRef(null); // 검색에서 고른 항목 — 하위 화면이 열리면 그 제목으로 내려간다
+  useEffect(() => {
+    const label = scrollToSection.current;
+    if (!subPage || !label) return;
+    scrollToSection.current = null;
+    const el = [...document.querySelectorAll('.dm-phone div')].find(d => !d.children.length && d.textContent.includes(label));
+    el?.scrollIntoView({ block: 'center' });
+  }, [subPage]);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
+  useBackClose(() => setSuggestionOpen(false), suggestionOpen);
   const [suggestionText, setSuggestionText] = useState('');
   const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
   const [suggestionDone, setSuggestionDone] = useState(false);
@@ -1350,6 +1365,25 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
         )}
       </div>
 
+      <div style={S.sectionTitle}>📱 오늘 탭 칸 순서</div>
+      <div style={S.card}>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 6, lineHeight: 1.5 }}>머리글·날씨·할일은 위에 고정돼요 · 이 기기에만 적용 · 바꾼 뒤 오늘 탭을 다시 열면 반영돼요</div>
+        {sectionOrderList.map((id, i) => {
+          const sec = TODAY_ORDER_SECTIONS.find(x => x.id === id);
+          const arrow = (dir, label, can) => (
+            <button onClick={() => setSectionOrderList(moveTodaySection(id, dir))} disabled={!can} aria-label={`${sec.label} ${label}`}
+              style={{ width: 40, height: 36, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', opacity: can ? 1 : 0.35, fontSize: 14, cursor: can ? 'pointer' : 'default', flexShrink: 0 }}>{dir < 0 ? '▲' : '▼'}</button>
+          );
+          return (
+            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: '1px solid var(--dm-row)' }}>
+              <div style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: NL() ? 15 : 13 }}>{sec.label}</div>
+              {arrow(-1, '위로', i > 0)}
+              {arrow(1, '아래로', i < sectionOrderList.length - 1)}
+            </div>
+          );
+        })}
+      </div>
+
       <div style={S.sectionTitle}>📱 오늘 탭에 보일 칸</div>
       <div style={S.card}>
         <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginBottom: 6, lineHeight: 1.5 }}>안 쓰는 칸을 끄면 오늘 탭이 짧아져요 · 이 기기에만 적용 · 바꾼 뒤 오늘 탭을 다시 열면 반영돼요</div>
@@ -1359,6 +1393,13 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             <Toggle value={!todayHidden[sec.id]} onChange={(on) => { setTodayHiddenSection(sec.id, !on); setTodayHidden(todayHiddenSections()); }} />
           </div>
         ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: '1px solid var(--dm-row)' }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13 }}>＋ 빠른 추가 버튼</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>어느 탭에서든 할일·메모 넣기</div>
+          </div>
+          <Toggle value={quickAddEnabled} onChange={(on) => { setQuickAddOn(on); setQuickAddEnabled(on); }} />
+        </div>
       </div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
@@ -1507,6 +1548,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     ]},
   ];
 
+  const menuHits = searchSettings(menuQuery);
+
   // ── 메인 메뉴 ──────────────────────────────────────
   return (
     <div style={S.content}>
@@ -1535,6 +1578,25 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
           A+
         </button>
       </div>
+
+      {/* 설정 검색 (2026-11-05) — 찾는 동안에는 아래 메뉴를 가린다 */}
+      <div style={{ padding: '0 16px', marginBottom: 12 }}>
+        <input value={menuQuery} onChange={e => setMenuQuery(e.target.value)} placeholder="🔍 설정 찾기 (예: 잠금, 백업, 알림)" aria-label="설정 찾기"
+          style={{ ...S.input, marginBottom: 0 }} />
+      </div>
+      {menuHits && (
+        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+          {menuHits.length === 0 && <div style={{ fontSize: 15, color: 'var(--dm-muted)', textAlign: 'center', padding: '16px 0' }}>"{menuQuery.trim()}" 설정을 찾지 못했어요</div>}
+          {menuHits.map(hit => (
+            <button key={`${hit.page}_${hit.label}`} onClick={() => { setMenuQuery(''); scrollToSection.current = hit.section || null; setSubPage(hit.page); }}
+              style={{ display: 'block', width: '100%', padding: '12px 14px', marginBottom: 8, borderRadius: 12, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', textAlign: 'left', cursor: 'pointer', color: 'var(--dm-text)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{hit.label}</div>
+              <div style={{ fontSize: 14, color: 'var(--dm-muted)', marginTop: 2 }}>{SETTINGS_PAGE_NAMES[hit.page]}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={menuHits ? { display: 'none' } : undefined}>
 
         <div style={{ ...S.card, marginBottom: 14 }}>
           <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
@@ -1654,6 +1716,8 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: NL() ? 14 : 12 }}>DayMate {APP_VERSION} · {APP_BUILD}</div>
       <div style={{ height: 12 }} />
+
+      </div>
 
       {/* 제안 모달 */}
       {suggestionOpen && (

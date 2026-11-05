@@ -27,6 +27,8 @@ import { newDesignOn } from "../utils/todayLook.js";
 import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
 import { boxCard } from "../styles.js";
+import { useBackClose } from "../utils/useBackClose.js";
+
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: habit.id });
   const dragging = isDragging || isOverlay;
@@ -155,6 +157,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const [bcBusy, setBcBusy] = useState(false);
   const [bcMsg, setBcMsg] = useState('');
   const [bcViewerId, setBcViewerId] = useState(null);
+  useBackClose(() => setBcViewerId(null), !!bcViewerId);
   const [bcLabelDraft, setBcLabelDraft] = useState('');
   const bcFileInputRef = useRef(null);
   const bcDefault = businessCards.find(c => c.isDefault) || businessCards[businessCards.length - 1] || null;
@@ -390,6 +393,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   const goalProgressOf = (kind, title) => goalProgress.get(goalKey(kind, title));
   const lifeActionCount = (title) => (lifeGoalActions || []).find(x => x.title === title)?.actions?.length || 0;
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
+  useBackClose(() => setXpHelpOpen(false), xpHelpOpen);
 
   // ── 포트폴리오 브리핑 ────────────────────────────────────────
   const pfCacheKey = `dm_portfolio_prices_${toDateStr()}`;
@@ -428,15 +432,6 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   }, [pfMarket, pfFxRate, telegramCfg?.holdings]); // eslint-disable-line
 
 
-  // 뒤로가기로 모달 닫기
-  useEffect(() => {
-    const handler = () => {
-      if (xpHelpOpen) { setXpHelpOpen(false); return; }
-      if (focusTask) { setFocusTask(null); return; }
-    };
-    window.addEventListener('popstate', handler);
-    return () => window.removeEventListener('popstate', handler);
-  }, [xpHelpOpen, focusTask]); // eslint-disable-line
 
 
   const [prevAllDone, setPrevAllDone] = useState(false);

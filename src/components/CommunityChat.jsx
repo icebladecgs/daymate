@@ -10,6 +10,7 @@ import PhotoViewer from "./PhotoViewer.jsx";
 import Toast from "./Toast.jsx";
 import ChatNotifySettings from "./ChatNotifySettings.jsx";
 import { requestChatPush } from "../utils/chatNotify.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 const MAX_PHOTOS = 10;
 const hhmm = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
@@ -20,6 +21,7 @@ const touchDevice = () => window.matchMedia?.("(pointer: coarse)").matches;
 // 커뮤니티 단체 채팅방 — 창을 연 동안만 실시간으로 받는다(닫으면 연결 해제).
 // 시트·팝업 원칙대로 .dm-phone에 포털로 그린다(하단 메뉴에 가리지 않게, 큰글씨 zoom 적용).
 export default function CommunityChat({ communityId, communityName, authUser, myNickname, isAdmin, onClose }) {
+  useBackClose(onClose);
   const [live, setLive] = useState([]);   // 최신 50개(실시간)
   const [older, setOlder] = useState([]); // "이전 대화 더 보기"로 불러온 것
   const [exhausted, setExhausted] = useState(false); // 더 불러올 이전 대화가 없음

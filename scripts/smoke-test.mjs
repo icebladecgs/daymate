@@ -45,6 +45,18 @@ try {
     else ok(`${s} 화면`);
   }
 
+  // 뒤로가기는 열린 창·하위 화면부터 닫는다 (utils/useBackClose.js)
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'settings' })));
+  await sleep(700);
+  await page.getByText('앱 관리').first().click();
+  await sleep(400);
+  await page.goBack();
+  await sleep(500);
+  if (await page.getByText('연결 상태와 개인 환경').first().isVisible().catch(() => false)) ok('뒤로가기: 설정 하위 화면 → 설정 첫 화면');
+  else fail('뒤로가기: 설정 하위 화면이 닫히지 않음');
+  if ((await page.evaluate(() => JSON.stringify(history.state))).includes('dmSheetGuard')) fail('뒤로가기: 창을 닫았는데 기록에 칸이 남음');
+  else ok('뒤로가기: 기록 정리');
+
   // 바탕화면 포스트잇 화면(가벼운 화면)
   const sticky = await ctx.newPage();
   const stickyErrors = [];

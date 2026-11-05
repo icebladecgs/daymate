@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 메모 설정 — 메모 창(포스트잇 ⋯ 메뉴, 메모 쓰기 화면, 메모 관리자)에서 바로 연다 (2026-10-07).
 // 목록 자동완성 켜기/끄기 + 편집 단축키 안내 + (데스크탑 앱) 포스트잇 단축키와 단축키 설정 창 열기.
@@ -22,6 +23,7 @@ const GLOBAL_KEY_NAMES = [["memo", "새 메모"], ["quickMemo", "간편 메모(�
 const STICKY_KEY_NAMES = [["stickyFold", "접기/펼치기"], ["stickyNew", "새 포스트잇"], ["stickyClose", "닫기"], ["stickyPin", "항상 위"], ["stickyCopy", "전체 복사"]];
 
 export default function MemoSettings({ onClose, inline = false }) {
+  useBackClose(onClose, !inline);
   const [autoList, setAutoList] = useState(memoAutoListOn);
   const [keys, setKeys] = useState(null);
   const desktop = typeof window !== "undefined" ? window.daymateDesktop : null;

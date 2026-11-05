@@ -8,6 +8,10 @@ import {
   newContact, genSubId, searchContacts, buildImportCandidates,
   getNextSolarOccurrence, daysUntil,
 } from "../data/contacts.js";
+import { useBackClose } from "../utils/useBackClose.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn(); // 새 디자인이면 작은 글씨를 13px 이상으로
 
 const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // 입력 검증용(윤년 여부는 신경쓰지 않고 넉넉하게 29일까지 허용)
 
@@ -39,7 +43,7 @@ function TagPicker({ allTags, selected, onToggle, onAddTag }) {
         <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit}
           onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(""); setAdding(false); } }}
           placeholder="태그 이름" maxLength={12}
-          style={{ ...S.input, width: 100, padding: "6px 10px", fontSize: 12, marginBottom: 0 }} />
+          style={{ ...S.input, width: 100, padding: "6px 10px", fontSize: NL() ? 14 : 12, marginBottom: 0 }} />
       ) : (
         <button type="button" onClick={() => setAdding(true)} style={{ ...S.pill(false), borderStyle: "dashed" }}>＋ 태그</button>
       )}
@@ -68,7 +72,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
   return (
     <div style={{ padding: "0 16px" }}>
       <div style={{ ...S.card, margin: "12px 0" }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>이름 *</div>
+        <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>이름 *</div>
         <input autoFocus value={draft.name} onChange={e => set({ name: e.target.value })} placeholder="이름 (필수)" maxLength={30} style={S.input} />
 
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -76,7 +80,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
           <input value={draft.title} onChange={e => set({ title: e.target.value })} placeholder="직책" maxLength={20} style={{ ...S.input, marginBottom: 0 }} />
         </div>
 
-        <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", margin: "12px 0 6px" }}>관계 태그</div>
+        <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", margin: "12px 0 6px" }}>관계 태그</div>
         <TagPicker allTags={allTags} selected={draft.tags || []} onAddTag={onAddTag}
           onToggle={(t) => set({ tags: (draft.tags || []).includes(t) ? draft.tags.filter(x => x !== t) : [...(draft.tags || []), t] })} />
       </div>
@@ -86,13 +90,13 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
       ) : (
         <>
           <div style={S.card}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>연락처</div>
+            <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>연락처</div>
             <input value={draft.phone} onChange={e => set({ phone: e.target.value })} placeholder="전화번호" maxLength={20} style={S.input} />
             <input value={draft.email} onChange={e => set({ email: e.target.value })} placeholder="이메일" maxLength={60} style={{ ...S.input, marginBottom: 0 }} />
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>생일</div>
+            <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>생일</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
               <button type="button" onClick={() => setBday({ calendar: "solar" })} style={{ ...S.pill(bday.calendar !== "lunar"), flex: 1 }}>양력</button>
               <button type="button" onClick={() => setBday({ calendar: "lunar" })} style={{ ...S.pill(bday.calendar === "lunar"), flex: 1 }}>음력</button>
@@ -103,7 +107,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
               <input type="number" min={1900} max={2100} value={bday.year} onChange={e => setBday({ year: e.target.value ? Number(e.target.value) : "" })} placeholder="연도(선택)" style={{ ...S.input, marginBottom: 0 }} />
             </div>
             {bday.calendar === "lunar" && (
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.5 }}>
                 음력 날짜는 매년 양력으로 변환해 알려드려요. 윤달에 태어난 경우 평달로 계산되어 실제와 하루 이상 어긋날 수 있어요.
               </div>
             )}
@@ -111,8 +115,8 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
 
           <div style={S.card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)" }}>기타 기념일 (제사처럼 음력이면 "음력"을 눌러요)</div>
-              <button type="button" onClick={addAnniversary} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>＋ 추가</button>
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)" }}>기타 기념일 (제사처럼 음력이면 "음력"을 눌러요)</div>
+              <button type="button" onClick={addAnniversary} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 추가</button>
             </div>
             {(draft.anniversaries || []).map(a => (
               <div key={a.id} style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
@@ -120,15 +124,15 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
                 <input type="number" min={1} max={12} value={a.month} onChange={e => updateAnniversary(a.id, { month: e.target.value ? Number(e.target.value) : "" })} placeholder="월" style={{ ...S.input, flex: 1, marginBottom: 0 }} />
                 <input type="number" min={1} max={31} value={a.day} onChange={e => updateAnniversary(a.id, { day: e.target.value ? Number(e.target.value) : "" })} placeholder="일" style={{ ...S.input, flex: 1, marginBottom: 0 }} />
                 <button type="button" onClick={() => updateAnniversary(a.id, { calendar: a.calendar === "lunar" ? "solar" : "lunar" })} title="양력/음력 바꾸기"
-                  style={{ flexShrink: 0, padding: "0 8px", height: 40, borderRadius: 10, border: `1.5px solid ${a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-border)"}`, background: a.calendar === "lunar" ? "rgba(139,92,246,.12)" : "var(--dm-input)", color: a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-sub)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{a.calendar === "lunar" ? "음력" : "양력"}</button>
+                  style={{ flexShrink: 0, padding: "0 8px", height: 40, borderRadius: 10, border: `1.5px solid ${a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-border)"}`, background: a.calendar === "lunar" ? "rgba(139,92,246,.12)" : "var(--dm-input)", color: a.calendar === "lunar" ? "#8B5CF6" : "var(--dm-sub)", fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{a.calendar === "lunar" ? "음력" : "양력"}</button>
                 <button type="button" onClick={() => removeAnniversary(a.id)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer" }}>✕</button>
               </div>
             ))}
-            {(draft.anniversaries || []).length === 0 && <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>등록된 기념일이 없어요</div>}
+            {(draft.anniversaries || []).length === 0 && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>등록된 기념일이 없어요</div>}
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>처음 만난 날 / 장소</div>
+            <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>처음 만난 날 / 장소</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input type="date" value={draft.firstMet?.date || ""} onChange={e => set({ firstMet: { ...draft.firstMet, date: e.target.value } })} style={{ ...S.input, marginBottom: 0, flex: 1 }} />
               <input value={draft.firstMet?.place || ""} onChange={e => set({ firstMet: { ...draft.firstMet, place: e.target.value } })} placeholder="장소" style={{ ...S.input, marginBottom: 0, flex: 1 }} />
@@ -136,7 +140,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>소개해준 사람</div>
+            <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>소개해준 사람</div>
             <select
               value={draft.introducedBy?.personId || "__text__"}
               onChange={e => set({ introducedBy: e.target.value === "__text__" ? { personId: null, text: draft.introducedBy?.text || "" } : { personId: e.target.value, text: "" } })}
@@ -151,17 +155,17 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
           </div>
 
           <div style={S.card}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>자유 메모</div>
+            <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>자유 메모</div>
             <textarea value={draft.memo} onChange={e => set({ memo: e.target.value })} placeholder="취미, 관심사, 좋아하는 음식, 기억할 점 등" rows={4}
               style={{ ...S.input, marginBottom: 0, resize: "vertical", fontFamily: "inherit" }} />
           </div>
 
           <div style={S.card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)" }}>명함 (앞면 · 뒷면)</div>
-              {uid && <button type="button" onClick={addCard} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>＋ 명함 추가</button>}
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)" }}>명함 (앞면 · 뒷면)</div>
+              {uid && <button type="button" onClick={addCard} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 명함 추가</button>}
             </div>
-            {!uid && <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>로그인 후 명함 사진을 첨부할 수 있어요</div>}
+            {!uid && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>로그인 후 명함 사진을 첨부할 수 있어요</div>}
             {(draft.cards || []).map(card => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--dm-row)" }}>
                 <div style={{ textAlign: "center" }}>
@@ -169,14 +173,14 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
                     photoUrl={card.frontUrl} photoPath={card.frontPath}
                     onChange={(r) => updateCard(card.id, { frontUrl: r?.url || null, frontPath: r?.path || null })}
                     onError={onError} />
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>앞면</div>
+                  <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 4 }}>앞면</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <PhotoAttach uid={uid} pathPrefix={`users/${uid}/contacts/${draft.id}`} size={64}
                     photoUrl={card.backUrl} photoPath={card.backPath}
                     onChange={(r) => updateCard(card.id, { backUrl: r?.url || null, backPath: r?.path || null })}
                     onError={onError} />
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>뒷면</div>
+                  <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 4 }}>뒷면</div>
                 </div>
                 <button type="button" onClick={() => removeCard(card.id)} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer" }}>✕</button>
               </div>
@@ -278,14 +282,14 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
 
       {contact.memo && (
         <div style={S.card}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>메모</div>
+          <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 6 }}>메모</div>
           <div style={{ fontSize: 13, color: "var(--dm-text)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{contact.memo}</div>
         </div>
       )}
 
       {(contact.cards || []).length > 0 && (
         <div style={S.card}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>명함 {contact.cards.length > 1 ? `(최근 ${contact.cards.length}장)` : ""}</div>
+          <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>명함 {contact.cards.length > 1 ? `(최근 ${contact.cards.length}장)` : ""}</div>
           <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
             {contact.cards.slice().reverse().flatMap(c => [c.frontUrl, c.backUrl]).filter(Boolean).map((url, i) => (
               <img key={i} src={url} alt="명함" style={{ width: 120, height: 76, objectFit: "cover", borderRadius: 8, border: "1px solid var(--dm-border)", flexShrink: 0 }} />
@@ -296,16 +300,16 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
 
       {(contact.linkedTasks || []).length > 0 && (
         <div style={S.card}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>연결된 할 일</div>
+          <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>연결된 할 일</div>
           {contact.linkedTasks.map(lt => {
             const liveTask = (plans[lt.date]?.tasks || []).find(t => t.id === lt.taskId);
             const done = liveTask ? liveTask.done : false;
             const title = liveTask ? liveTask.title : lt.title;
             return (
               <button key={lt.taskId} onClick={() => onOpenDate(lt.date)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: "6px 0", cursor: "pointer", textAlign: "left" }}>
-                <span onClick={(e) => { e.stopPropagation(); onToggleTaskForDate(lt.date, lt.taskId); }} style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${done ? "rgba(74,222,128,.5)" : "var(--dm-border)"}`, background: done ? "rgba(74,222,128,.15)" : "var(--dm-input)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#4ADE80" }}>{done ? "✓" : ""}</span>
+                <span onClick={(e) => { e.stopPropagation(); onToggleTaskForDate(lt.date, lt.taskId); }} style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${done ? "rgba(74,222,128,.5)" : "var(--dm-border)"}`, background: done ? "rgba(74,222,128,.15)" : "var(--dm-input)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: NL() ? 13 : 11, color: "#4ADE80" }}>{done ? "✓" : ""}</span>
                 <span style={{ flex: 1, fontSize: 13, color: done ? "var(--dm-muted)" : "var(--dm-text)", textDecoration: done ? "line-through" : "none" }}>{title}</span>
-                <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{formatKoreanDate(lt.date)}</span>
+                <span style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>{formatKoreanDate(lt.date)}</span>
               </button>
             );
           })}
@@ -313,23 +317,23 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
       )}
 
       <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>만남 기록</div>
+        <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", marginBottom: 8 }}>만남 기록</div>
         {(contact.meetings || []).slice().reverse().map(m => (
           <div key={m.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--dm-row)" }}>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 3 }}>{formatKoreanDate(m.date)}</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 3 }}>{formatKoreanDate(m.date)}</div>
             <div style={{ fontSize: 13, color: "var(--dm-text)", whiteSpace: "pre-wrap" }}>{m.note}</div>
             {addingFollowup === m.id ? (
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                <input value={followupTitle} onChange={e => setFollowupTitle(e.target.value)} placeholder="할 일 제목" style={{ ...S.input, flex: 1.5, marginBottom: 0, fontSize: 12, padding: "8px 10px" }} />
-                <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)} style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 12, padding: "8px 10px" }} />
-                <button onClick={submitFollowup} style={{ background: "#6C8EFF", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 900, padding: "0 10px", cursor: "pointer" }}>추가</button>
+                <input value={followupTitle} onChange={e => setFollowupTitle(e.target.value)} placeholder="할 일 제목" style={{ ...S.input, flex: 1.5, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: "8px 10px" }} />
+                <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)} style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: "8px 10px" }} />
+                <button onClick={submitFollowup} style={{ background: "#6C8EFF", border: "none", borderRadius: 8, color: "#fff", fontSize: NL() ? 14 : 12, fontWeight: 900, padding: "0 10px", cursor: "pointer" }}>추가</button>
               </div>
             ) : (
-              <button onClick={() => { setAddingFollowup(m.id); setFollowupTitle(""); setFollowupDate(toDateStr()); }} style={{ marginTop: 6, background: "none", border: "none", color: "#6C8EFF", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>＋ 할 일 추가</button>
+              <button onClick={() => { setAddingFollowup(m.id); setFollowupTitle(""); setFollowupDate(toDateStr()); }} style={{ marginTop: 6, background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>＋ 할 일 추가</button>
             )}
           </div>
         ))}
-        {(contact.meetings || []).length === 0 && <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>아직 기록이 없어요</div>}
+        {(contact.meetings || []).length === 0 && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)", marginBottom: 10 }}>아직 기록이 없어요</div>}
 
         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
           <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} style={{ ...S.input, flex: 1, marginBottom: 0 }} />
@@ -351,6 +355,7 @@ export default function People({
   authUser, toast, setToast, onBack,
 }) {
   const [view, setView] = useState("list"); // list | detail | form
+  useBackClose(() => setView("list"), view !== "list");
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [query, setQuery] = useState("");
@@ -468,7 +473,7 @@ export default function People({
       <div style={{ padding: "12px 16px 0" }}>
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="이름·초성·전화번호·회사·태그 검색" style={{ ...S.input, marginBottom: 8 }} />
         {pickerSupported && (
-          <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.5, marginBottom: 8 }}>
+          <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', lineHeight: 1.5, marginBottom: 8 }}>
             💡 아래 "📱 연락처에서"를 누른 뒤 선택 창 맨 위 <b>모두 선택</b>을 누르면, 전체 연락처를 여기서 검색하며 골라 등록할 수 있어요
           </div>
         )}
@@ -482,7 +487,7 @@ export default function People({
       </div>
 
       <div style={{ padding: "0 16px 8px" }}>
-        <button onClick={() => setShowAlarmSettings(v => !v)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+        <button onClick={() => setShowAlarmSettings(v => !v)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
           🔔 생일 알림 설정 {showAlarmSettings ? "▲" : "▼"}
         </button>
         {showAlarmSettings && (
@@ -505,7 +510,7 @@ export default function People({
                 })}
               </div>
             )}
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.5 }}>
               현재는 홈 화면 "오늘 챙길 사람" 영역에만 표시돼요. 앱을 닫아도 오는 알림(푸시·텔레그램) 연동은 다음 단계에서 진행할 예정이에요.
             </div>
           </div>
@@ -517,10 +522,10 @@ export default function People({
           <button key={c.id} onClick={() => { setSelectedId(c.id); setView("detail"); }}
             style={{ width: "100%", textAlign: "left", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 14, padding: "12px 14px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit" }}>
             <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)" }}>{c.name}</div>
-            {(c.company || c.title) && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{[c.company, c.title].filter(Boolean).join(" · ")}</div>}
+            {(c.company || c.title) && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginTop: 2 }}>{[c.company, c.title].filter(Boolean).join(" · ")}</div>}
             {(c.tags || []).length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-                {c.tags.map(t => <span key={t} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: "rgba(108,142,255,.12)", color: "#6C8EFF" }}>{t}</span>)}
+                {c.tags.map(t => <span key={t} style={{ fontSize: NL() ? 13 : 10, padding: "2px 8px", borderRadius: 999, background: "rgba(108,142,255,.12)", color: "#6C8EFF" }}>{t}</span>)}
               </div>
             )}
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useBackClose } from "../../utils/useBackClose.js";
 
 const HOME_MODAL_NAV_CLEARANCE = 100;
 
@@ -9,6 +10,7 @@ export default function HomeCustomizationModal({
   onReset,
   onClose,
 }) {
+  useBackClose(onClose, open);
   const scrollRef = useRef(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
 

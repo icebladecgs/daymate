@@ -7,6 +7,9 @@ import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
 import S from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import HoldingsScanSheet from "../components/HoldingsScanSheet.jsx";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn(); // 새 디자인이면 작은 글씨를 13px 이상으로
 
 const PRESET_ASSETS = [
   { sym: "BTC",  label: "비트코인",       src: "coingecko", coinId: "bitcoin",     currency: "USD" },
@@ -285,13 +288,13 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>총 평가금액</span>
+                    <span style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>총 평가금액</span>
                     {summary.fxOk && (
                       <div style={{ display: "flex", gap: 2 }}>
                         {["USD", "KRW"].map(cur => (
                           <button key={cur} onClick={() => setDisplayCurrencyPersist(cur)}
                             style={{
-                              fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6, cursor: "pointer",
+                              fontSize: NL() ? 13 : 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6, cursor: "pointer",
                               border: `1px solid ${displayCurrency === cur ? "#6C8EFF" : "var(--dm-border)"}`,
                               background: displayCurrency === cur ? "rgba(108,142,255,.14)" : "transparent",
                               color: displayCurrency === cur ? "#6C8EFF" : "var(--dm-muted)",
@@ -303,20 +306,20 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                   <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(stats.value, displayCurrency)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
+                  <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(stats.dailyChange) }}>
                     {stats.dailyChange >= 0 ? "+" : ""}{fmtPrice(stats.dailyChange, displayCurrency)}
                   </div>
-                  <div style={{ fontSize: 12, color: pnlColor(stats.dailyChangePct) }}>{fmtPct(stats.dailyChangePct)}</div>
+                  <div style={{ fontSize: NL() ? 14 : 12, color: pnlColor(stats.dailyChangePct) }}>{fmtPct(stats.dailyChangePct)}</div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12, paddingTop: 10, borderTop: "1px solid var(--dm-row)" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>투자원금</div>
+                  <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>투자원금</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtPrice(stats.cost, displayCurrency)}</div>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>평가손익</div>
+                  <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>평가손익</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(stats.pnl) }}>
                     {stats.pnl >= 0 ? "+" : ""}{fmtPrice(stats.pnl, displayCurrency)} ({fmtPct(stats.pnlPct)})
                   </div>
@@ -327,17 +330,17 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
           {summary.mixed && (
             <div style={{ display: "flex", gap: 12, paddingTop: 10, marginTop: 10, borderTop: "1px solid var(--dm-row)" }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>달러자산</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>달러자산</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.usdNative.value)}</div>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>원화자산</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>원화자산</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtKRW(summary.krwNative.value)}</div>
               </div>
             </div>
           )}
           {summary.mixed && (
-            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 6 }}>
+            <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 6 }}>
               {summary.fxOk
                 ? `현재 환율(1 USD ≈ ${fmtNum(usdKrwRate, 0)}원) 기준으로 환산해 총 평가금액에 반영했습니다`
                 : "환율 조회 실패로 두 자산이 총 평가금액에 정확히 합산되지 않았습니다"}
@@ -348,7 +351,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
       {/* 로딩 */}
       {loading && (
-        <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "12px 0" }}>
+        <div style={{ textAlign: "center", fontSize: NL() ? 14 : 12, color: "var(--dm-muted)", padding: "12px 0" }}>
           시세 불러오는 중...
         </div>
       )}
@@ -368,9 +371,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{h.label || h.sym}</span>
-                      <span style={{ fontSize: 11, color: "var(--dm-muted)" }}>{h.sym}{h.broker ? ` · ${h.broker}` : ""}</span>
+                      <span style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>{h.sym}{h.broker ? ` · ${h.broker}` : ""}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2 }}>
+                    <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 2 }}>
                       {h.qty}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
                       {!h.noData && h.price != null && (
                         <> · 현재 {fmtPrice(h.price, h.marketCurrency || 'USD')}</>
@@ -381,20 +384,20 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                     {!h.noData && h.value != null ? (
                       <>
                         <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(h.value, h.marketCurrency || 'USD')}</div>
-                        <div style={{ fontSize: 11, color: pnlColor(h.pnl) }}>
+                        <div style={{ fontSize: NL() ? 13 : 11, color: pnlColor(h.pnl) }}>
                           {h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} ({fmtPct(h.pnlPct)})
                         </div>
                       </>
                     ) : h.currencyMismatch ? (
-                      <div style={{ fontSize: 11, color: "#F87171", lineHeight: 1.5 }}>통화 불일치<br/>USD로 재입력</div>
+                      <div style={{ fontSize: NL() ? 13 : 11, color: "#F87171", lineHeight: 1.5 }}>통화 불일치<br/>USD로 재입력</div>
                     ) : (
-                      <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>시세 없음</div>
+                      <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>시세 없음</div>
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
                     <button
                       onClick={() => { setMemoOpenId(memoOpen ? null : h.id); setMemoDraft(""); }}
-                      style={{ background: "transparent", border: "none", color: memos.length > 0 ? "#6C8EFF" : "var(--dm-muted)", cursor: "pointer", fontSize: 12, fontWeight: 800, padding: "2px 4px" }}
+                      style={{ background: "transparent", border: "none", color: memos.length > 0 ? "#6C8EFF" : "var(--dm-muted)", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 800, padding: "2px 4px" }}
                     >
                       📝{memos.length > 0 ? ` ${memos.length}` : ""}
                     </button>
@@ -412,11 +415,11 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                         {[...memos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(m => (
                           <div key={m.id} style={{ background: "var(--dm-input)", borderRadius: 10, padding: "8px 10px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                              <div style={{ fontSize: 12, color: "var(--dm-text)", lineHeight: 1.5, flex: 1 }}>{m.text}</div>
+                              <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-text)", lineHeight: 1.5, flex: 1 }}>{m.text}</div>
                               <button onClick={() => handleDeleteMemo(h.id, m.id)}
-                                style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 11, flexShrink: 0 }}>✕</button>
+                                style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: NL() ? 13 : 11, flexShrink: 0 }}>✕</button>
                             </div>
-                            <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>{formatMemoDate(m.createdAt)}</div>
+                            <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 4 }}>{formatMemoDate(m.createdAt)}</div>
                           </div>
                         ))}
                       </div>
@@ -443,7 +446,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       {holdings.length === 0 && !showForm && (
         <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "28px 16px" }}>
           보유 종목을 추가해보세요<br />
-          <span style={{ fontSize: 11, marginTop: 6, display: "block" }}>수량과 평균단가를 입력하면<br />평가금액과 손익을 자동 계산해요</span>
+          <span style={{ fontSize: NL() ? 13 : 11, marginTop: 6, display: "block" }}>수량과 평균단가를 입력하면<br />평가금액과 손익을 자동 계산해요</span>
         </div>
       )}
 
@@ -475,12 +478,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
           {/* 프리셋 빠른 선택 */}
           {!editingId && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 6 }}>빠른 선택</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 6 }}>빠른 선택</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {PRESET_ASSETS.map(p => (
                   <button key={p.sym} onClick={() => pickPreset(p)}
                     style={{
-                      fontSize: 12, padding: "4px 10px", borderRadius: 8, cursor: "pointer",
+                      fontSize: NL() ? 14 : 12, padding: "4px 10px", borderRadius: 8, cursor: "pointer",
                       border: fSym === p.sym ? "1.5px solid #6C8EFF" : "1px solid var(--dm-border)",
                       background: fSym === p.sym ? "rgba(108,142,255,.12)" : "var(--dm-card)",
                       color: fSym === p.sym ? "#6C8EFF" : "var(--dm-text)", fontWeight: 700,
@@ -495,7 +498,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div style={{ position: "relative" }}>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 이름</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 이름</div>
                 <input
                   style={inputStyle}
                   value={fLabel}
@@ -512,7 +515,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                     boxShadow: "0 10px 28px rgba(0,0,0,.18)", maxHeight: 240, overflowY: "auto",
                   }}>
                     {nameSearching && (
-                      <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--dm-muted)" }}>검색 중...</div>
+                      <div style={{ padding: "10px 12px", fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>검색 중...</div>
                     )}
                     {!nameSearching && nameResults.map(r => (
                       <div
@@ -521,8 +524,8 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                         style={{ padding: "10px 12px", cursor: "pointer", borderBottom: "1px solid var(--dm-row)", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}
                       >
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</div>
-                          <div style={{ fontSize: 10, color: "var(--dm-muted)" }}>{r.sym} · {r.exchange}</div>
+                          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</div>
+                          <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)" }}>{r.sym} · {r.exchange}</div>
                         </div>
                       </div>
                     ))}
@@ -530,11 +533,11 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                 )}
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 코드 *</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>종목 코드 *</div>
                 <input style={inputStyle} value={fSym} onChange={e => setFSym(e.target.value.toUpperCase())}
                   placeholder="검색해서 선택하거나 직접 입력" maxLength={20} />
                 {/^\d{6}$/.test(fSym.trim()) && (
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>
+                  <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 4 }}>
                     한국 주식으로 인식했어요 (코스피 기준 .KS 자동 적용, 코스닥은 코드 뒤에 직접 .KQ를 붙여주세요)
                   </div>
                 )}
@@ -542,21 +545,21 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>보유 수량 *</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>보유 수량 *</div>
                 <input style={inputStyle} value={fQty} onChange={e => setFQty(e.target.value)}
                   placeholder="예: 10" inputMode="decimal" />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>평균매수가 *</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>평균매수가 *</div>
                 <input style={inputStyle} value={fAvgPrice} onChange={e => setFAvgPrice(e.target.value)}
                   placeholder="예: 250.00" inputMode="decimal" />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div>
-                <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>통화</div>
+                <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>통화</div>
                 {fSrc !== 'yahoo' ? (
-                  <div style={{ fontSize: 12, color: "var(--dm-sub)", padding: "8px 12px", background: "var(--dm-row)", borderRadius: 10, border: "1px solid var(--dm-border)" }}>
+                  <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", padding: "8px 12px", background: "var(--dm-row)", borderRadius: 10, border: "1px solid var(--dm-border)" }}>
                     USD 고정 (시세 통화)
                   </div>
                 ) : (
@@ -568,7 +571,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               </div>
               {!PRESET_ASSETS.find(p => p.sym === fSym) && fSym && (
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 4 }}>데이터 소스</div>
+                  <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>데이터 소스</div>
                   <select style={{ ...inputStyle, appearance: "none" }} value={fSrc} onChange={e => setFSrc(e.target.value)}>
                     <option value="finnhub">미국 주식/ETF</option>
                     <option value="coingecko">코인 (CoinGecko)</option>
@@ -594,8 +597,8 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
         <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(108,142,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📡</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 900 }}>알트 시즌 레이더</div>
-          <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>알트코인 사이클·상대 강도 분석</div>
-          <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 3 }}>투자 참고용 분석이에요</div>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginTop: 2 }}>알트코인 사이클·상대 강도 분석</div>
+          <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 3 }}>투자 참고용 분석이에요</div>
         </div>
         <span style={{ fontSize: 16, color: "var(--dm-muted)", flexShrink: 0 }}>↗</span>
       </a>

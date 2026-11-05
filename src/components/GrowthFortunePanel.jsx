@@ -7,6 +7,7 @@ import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "../data/stats.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { SectionHeading, SectionIcon } from "./TodayLook.jsx";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // My 탭 위쪽 "나의 성장·운세" — 레벨·XP, 성장 능력치 6개, 배틀, 오늘의 운세·로또(+운세 팝업), XP 도움말.
 // 예전엔 오늘 탭 맨 위에 있었는데, 오늘 탭은 할일·습관·일기 중심으로 하기로 해서 옮김(2026-09-27).
@@ -26,11 +27,13 @@ export default function GrowthFortunePanel({
   }, [scores, todayScore, dateStr]);
   const [nl] = useState(newDesignOn); // 새 디자인 — 작은 글씨·흐린 배틀 버튼을 키우고 또렷하게
   const [xpHelpOpen, setXpHelpOpen] = useState(false);
+  useBackClose(() => setXpHelpOpen(false), xpHelpOpen);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
 
   // ── 운세 · 로또 (마이탭에서 이동) ────────────────────────────
   const [fortuneModalOpen, setFortuneModalOpen] = useState(false);
+  useBackClose(() => setFortuneModalOpen(false), fortuneModalOpen);
   const [fortuneTab, setFortuneTab] = useState('daily'); // daily | saju | tojeong
   const [fortuneData, setFortuneData] = useState(null);
   const [fortuneLoading, setFortuneLoading] = useState(false);
@@ -148,11 +151,6 @@ export default function GrowthFortunePanel({
       return { dateStr: ds, overall: avgFortuneScore(cached), dow };
     });
   }, []); // eslint-disable-line
-  useEffect(() => {
-    const handler = () => { if (fortuneModalOpen) setFortuneModalOpen(false); };
-    window.addEventListener('popstate', handler);
-    return () => window.removeEventListener('popstate', handler);
-  }, [fortuneModalOpen]);
 
   const xpBadge = (
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>

@@ -14,6 +14,7 @@ import { useUndo, putBack } from "../utils/useUndo.js";
 import { holidayName } from "../utils/holidays.js";
 import { solarToLunar } from "../data/contacts.js";
 import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -93,6 +94,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
   useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
   const [preview, setPreview] = useState(null);
+  useBackClose(() => setPreview(null), !!preview);
   const [quickTaskInput, setQuickTaskInput] = useState('');
   // 할일 상세(메모·사진) — 미리보기 중인 날짜의 할일. 구글 캘린더에는 반영하지 않음
   const [detailTaskId, setDetailTaskId] = useState(null);

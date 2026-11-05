@@ -5,6 +5,7 @@ import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import S from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 새 디자인(설정 → 앱 관리)일 때 작은 글씨를 키운다 — 커뮤니티 화면과 같은 방식
 const NL = () => newDesignOn();
@@ -67,7 +68,9 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
   const [publicChallenges, setPublicChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // 선택된 챌린지 상세
+  useBackClose(() => setSelected(null), !!selected);
   const [showCreate, setShowCreate] = useState(false);
+  useBackClose(() => setShowCreate(false), showCreate);
   const [toast, setToast] = useState(null);
   const initialSelectionHandledRef = useRef(false);
 

@@ -160,6 +160,7 @@ function MemoHomeInner({
   return (
     <LongMemoEditor
       key="compose-new"
+      tabScreen
       initialId={null}
       initialText=""
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}

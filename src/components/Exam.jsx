@@ -5,6 +5,9 @@ import { formatShortKoreanDate } from "../utils/date.js";
 import {
   upcomingDdays, daysUntil, ddayLabel, fmtMin, studyOf, studyTotal, studyBySubject, lastWeekStudy, newStudyEntry,
 } from "../utils/exam.js";
+import { useBackClose } from "../utils/useBackClose.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 
 // 수험생 모드 화면 부품 (2026-11-01) — 오늘 탭 패널·D-day 창·공부 기록 창·설정 카드.
 // 계산은 utils/exam.js, 오답 노트는 WrongNotes.jsx.
@@ -23,6 +26,7 @@ const xBtn = { background: 'none', border: 'none', color: 'var(--dm-muted)', cur
 
 // 할일 상세와 같은 이유로 앱 루트(.dm-phone)에 포털 (하단 메뉴에 가려지지 않게)
 export function ExamSheet({ label, title, onClose, children }) {
+  useBackClose(onClose);
   const target = document.querySelector('.dm-phone') || document.body;
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -92,6 +96,7 @@ export function ExamTodayPanel({ exam, setExam, dateStr, plans, todayData, onSta
 }
 
 function DdaySheet({ exam, setExam, todayDs, onClose }) {
+  const undo = useUndo();
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const list = [...exam.ddays].sort((a, b) => a.date.localeCompare(b.date));
@@ -101,11 +106,13 @@ function DdaySheet({ exam, setExam, todayDs, onClose }) {
     setTitle(''); setDate('');
   };
   const remove = (d) => {
-    if (!window.confirm(`"${d.title}" D-day를 지울까요?`)) return;
+    const idx = exam.ddays.findIndex(x => x.id === d.id);
     setExam(e => ({ ...e, ddays: e.ddays.filter(x => x.id !== d.id) }));
+    undo.offer(`"${d.title}" D-day를 지웠어요`, () => setExam(e => ({ ...e, ddays: putBack(e.ddays, d, idx) })));
   };
   return (
     <ExamSheet label="📚 수험생 모드" title="📌 시험 D-day" onClose={onClose}>
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={1300} />
       {list.length === 0 && <div style={{ fontSize: 15, color: 'var(--dm-muted)', lineHeight: 1.6, padding: '4px 0 12px' }}>수능·모의고사·중간고사처럼 기다리는 시험을 넣어 보세요. 가장 가까운 시험이 오늘 탭 맨 앞에 보여요.</div>}
       {list.map(d => {
         const left = daysUntil(d.date, todayDs);
@@ -130,6 +137,7 @@ function DdaySheet({ exam, setExam, todayDs, onClose }) {
 
 const QUICK_MIN = [30, 60, 90, 120, 180];
 function StudySheet({ exam, plans, todayDs, todayData, startAdding, onAdd, onDelete, onClose }) {
+  const undo = useUndo();
   const [adding, setAdding] = useState(startAdding);
   const [sub, setSub] = useState(exam.subjects[0]);
   const [min, setMin] = useState('');
@@ -171,12 +179,13 @@ function StudySheet({ exam, plans, todayDs, todayData, startAdding, onAdd, onDel
       )}
 
       <div style={h3}>오늘 과목별</div>
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={1300} />
       {todayBySub.length === 0 && <div style={{ fontSize: 14, color: 'var(--dm-muted)' }}>아직 기록이 없어요. ▶ 타이머로 공부하거나 직접 넣어 보세요.</div>}
       {todayList.map(s => (
         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--dm-row)' }}>
           <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', minWidth: 56 }}>{s.sub}</span>
           <span style={{ flex: 1, fontSize: 15, color: 'var(--dm-sub)' }}>{fmtMin(s.min)} <span style={{ fontSize: 13, color: 'var(--dm-muted)' }}>· {s.by === 'timer' ? '타이머' : '직접'} {new Date(s.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></span>
-          <button onClick={() => window.confirm(`${s.sub} ${fmtMin(s.min)} 기록을 지울까요?`) && onDelete(s)} aria-label="기록 삭제" style={xBtn}>✕</button>
+          <button onClick={() => { onDelete(s); undo.offer(`${s.sub} ${fmtMin(s.min)} 기록을 지웠어요`, () => onAdd(s)); }} aria-label="기록 삭제" style={xBtn}>✕</button>
         </div>
       ))}
 

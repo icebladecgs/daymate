@@ -17,6 +17,7 @@ import { getChatRead } from "../utils/chatRead.js";
 import S from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { SectionIcon } from "../components/TodayLook.jsx";
+import { useBackClose } from "../utils/useBackClose.js";
 // 새 디자인(설정 → 앱 관리) — 소셜 탭: 섹션 제목 17px 선 아이콘, 작은 글씨 키우기
 const NL = () => newDesignOn();
 
@@ -227,12 +228,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [boardPhotos, setBoardPhotos] = useState([]);
   const [postingBoard, setPostingBoard] = useState(false);
   const [selectedBoardPost, setSelectedBoardPost] = useState(null);
+  useBackClose(() => setSelectedBoardPost(null), !!selectedBoardPost);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [showAllBoard, setShowAllBoard] = useState(false);
   const [editingBoardPost, setEditingBoardPost] = useState(null);
 
   // 댓글
   const [selectedNotice, setSelectedNotice] = useState(null);
+  useBackClose(() => setSelectedNotice(null), !!selectedNotice);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
@@ -313,6 +316,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   // 생성/가입 UI
   const [mode, setMode] = useState(null);
+  useBackClose(() => { setMode(null); setShowHome(true); }, !(showHome && mode === null)); // 커뮤니티 안·만들기·가입 → 목록으로
   const [nameInput, setNameInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [nicknameInput, setNicknameInput] = useState(() => user?.name || '');
@@ -330,6 +334,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   const [passwordEditValue, setPasswordEditValue] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [accessPasswordModal, setAccessPasswordModal] = useState(null);
+  useBackClose(() => closeAccessPasswordModal(), !!accessPasswordModal);
   const [accessPasswordInput, setAccessPasswordInput] = useState('');
 
   const completeCommunityAccess = (id, options = {}) => {

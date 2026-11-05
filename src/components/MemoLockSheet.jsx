@@ -4,11 +4,13 @@ import S from "../styles.js";
 import PhotoViewer from "./PhotoViewer.jsx";
 import { createLockConfig, unlockSession, isUnlocked, lockNow, encryptMemo, decryptMemo, unlockedMemo } from "../utils/memoLock.js";
 import { formatKoreanDate } from "../utils/date.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 메모 잠금 창 — request: { id, action: 'lock' | 'open' }
 //  · 잠금 비밀번호가 없으면 먼저 만들고(잊으면 복구 불가 안내), 있으면 비밀번호 확인(5분간 유지)
 //  · lock: 메모를 암호화해서 바꿔 저장 / open: 풀어서 보여주고 고치기·잠금 풀기
 export default function MemoLockSheet({ request, plans, cfg, onSaveCfg, onUpdateDayData, onClose, setToast }) {
+  useBackClose(onClose);
   const found = (() => {
     for (const [ds, d] of Object.entries(plans || {})) {
       const m = (d?.memos || []).find(x => x.id === request.id);

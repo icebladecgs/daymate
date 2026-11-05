@@ -4,6 +4,7 @@ import S from "../styles.js";
 import { chatFetch } from "../api/chatFetch.js";
 import { compressImage } from "../utils/image.js";
 import { normName, mergeScanResults, planHoldingsUpdate, applyHoldingsPlan, resolveScanSymbol } from "../utils/holdingsScan.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 잔고 캡처로 보유자산 업데이트 — 사진 고르기 → AI가 읽기 → 확인 화면에서 고른 것만 반영
 // 캡처에 없는 종목은 지우지 않는다(사용자가 직접 "삭제"를 고를 때만).
@@ -30,6 +31,7 @@ async function searchMarket(q) {
 }
 
 export default function HoldingsScanSheet({ holdings, usdKrwRate, onApply, onClose }) {
+  useBackClose(onClose);
   const fileRef = useRef(null);
   const [scans, setScans] = useState([]);       // 사진별 읽은 결과 { broker, items, notes }
   const [errors, setErrors] = useState([]);

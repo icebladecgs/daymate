@@ -6,6 +6,7 @@ import TimeSelect from "./TimeSelect.jsx";
 import { GROWTH_STATS, GROWTH_STAT_MAP, classifyTodoStat } from "../data/growthStats.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { formatShortKoreanDate } from "../utils/date.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 const chip = (active) => ({
   fontSize: 12, padding: '5px 10px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -23,7 +24,7 @@ const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).sli
 // - onComplete를 넘긴 화면에서는 작은 단계를 다 끝냈을 때 "할일도 완료" 버튼 (자동 완료는 안 함 — 목록 체크와 같은 경로로 저장)
 // - recurring: 반복으로 생긴 할일이면 { label, onStop, onManage } — 반복 칸을 보여준다 (2026-11-03)
 // - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete, recurring }) {
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete, recurring, order }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -82,6 +83,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
   }, []);
 
   const handleClose = () => { flush(title, note, steps, stepDraft); onClose(); };
+  useBackClose(handleClose);
 
   const addStep = () => {
     const text = (draftRef.current?.value ?? stepDraft).trim();
@@ -312,6 +314,19 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             style={{ width: '100%', padding: '11px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
             {drive.label}
           </button>
+
+          {/* 순서 바꾸기 — 목록은 보기 전용이라 여기서 한다. 옮길 곳이 없으면(시간이 정한 순서 등) 숨긴다 */}
+          {order && (order.canUp || order.canDown) && (
+            <>
+              <div style={{ ...sectionLabel, marginTop: 16 }}>목록 순서</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[[-1, '▲ 위로', order.canUp], [1, '▼ 아래로', order.canDown]].map(([dir, label, can]) => (
+                  <button key={dir} onClick={() => order.onMove(dir)} disabled={!can}
+                    style={{ flex: 1, height: 42, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: can ? 'var(--dm-text)' : 'var(--dm-muted)', opacity: can ? 1 : 0.5, fontSize: 15, fontWeight: 700, cursor: can ? 'pointer' : 'default' }}>{label}</button>
+                ))}
+              </div>
+            </>
+          )}
 
           {onDelete && (
             <button onClick={handleDelete} style={{ width: '100%', marginTop: 18, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#F87171', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

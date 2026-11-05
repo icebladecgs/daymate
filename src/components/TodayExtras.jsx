@@ -5,6 +5,8 @@ import { store } from "../utils/storage.js";
 import { buildUpcomingDays, ddayDateLabel, newDday } from "../utils/ddays.js";
 import { ddayLabel } from "../utils/exam.js";
 import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 
 const RAIN_COLOR = "#5B7CFA"; // 밝은·어두운 화면 모두에서 보이는 파랑
 const OPEN_KEY = "dm_weather_open";
@@ -149,6 +151,7 @@ function DdayForm({ initial, minDate, onSave, onDelete, onCancel }) {
 
 export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin, onOpen, heading, boxed }) {
   const [more, setMore] = useState(false);
+  const undo = useUndo();
   const [editing, setEditing] = useState(null); // 'new' 또는 고치는 D-day id
   const all = useMemo(() => buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }), [contacts, ddays, dateStr, excludeWithin]);
   const shown = all.slice(0, more ? SHOW_MORE : 3);
@@ -157,13 +160,16 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
   const addDday = (title, date) => { setDdays((prev) => [...prev, newDday(title, date)]); setEditing(null); };
   const saveDday = (id, title, date) => { setDdays((prev) => prev.map((d) => (d.id === id ? { ...d, title: title.trim(), date } : d))); setEditing(null); };
   const removeDday = (d) => {
-    if (!window.confirm(`"${d.title}" D-day를 지울까요?`)) return;
+    const saved = (ddays || []).find((x) => x.id === d.id);
+    const idx = (ddays || []).findIndex((x) => x.id === d.id);
     setDdays((prev) => prev.filter((x) => x.id !== d.id));
     setEditing(null);
+    if (saved) undo.offer(`"${d.title}" D-day를 지웠어요`, () => setDdays((prev) => putBack(prev, saved, idx)));
   };
 
   return (
     <SectionBox on={boxed}>
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
       {heading}
       <div style={boxed ? {} : { ...S.card, padding: "6px 14px" }}>
         {shown.map((ev, i) => (

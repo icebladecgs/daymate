@@ -7,6 +7,7 @@ import Linkify from "../utils/linkify.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 import S from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 새 디자인(설정 → 앱 관리)일 때 작은 글씨를 키운다 — 커뮤니티 화면과 같은 방식
 const NL = () => newDesignOn();
@@ -20,6 +21,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
   const [photos, setPhotos] = useState([]);
   const [posting, setPosting] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  useBackClose(() => setSelectedPost(null), !!selectedPost);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [showAll, setShowAll] = useState(false);
   const [editingPost, setEditingPost] = useState(null);

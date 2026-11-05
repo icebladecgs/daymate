@@ -3,6 +3,9 @@ import { toDateStr, pad2, monthLabel, formatKoreanDate } from "../utils/date.js"
 import { isPerfectDay, calcStreak, calcWeeklyStats, calcHabitStreak } from "../data/stats.js";
 import S from "../styles.js";
 import { chatFetch } from "../api/chatFetch.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn(); // 새 디자인이면 작은 글씨를 13px 이상으로
 
 export default function Stats({ plans, habits, user, onBack }) {
   const nowMonth = new Date().getMonth();
@@ -142,7 +145,7 @@ const last30 = useMemo(() => {
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {(viewMonth !== nowMonth || viewYear !== nowYear) && (
             <button onClick={() => { setViewMonth(nowMonth); setViewYear(nowYear); setAiReview(null); }}
-              style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: 11, fontWeight: 900, color: '#6C8EFF', borderColor: 'rgba(108,142,255,.4)' }}>
+              style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', borderColor: 'rgba(108,142,255,.4)' }}>
               오늘
             </button>
           )}
@@ -156,7 +159,7 @@ const last30 = useMemo(() => {
         <div style={{ margin: "0 16px 14px", borderRadius: 16, background: "linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))", border: "1.5px dashed rgba(108,142,255,.3)", padding: "24px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
           <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 6 }}>아직 통계 데이터가 없어요</div>
-          <div style={{ fontSize: 12, color: "var(--dm-muted)", lineHeight: 1.8 }}>
+          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)", lineHeight: 1.8 }}>
             매일 할 일을 완료하고 일기를 쓰면<br/>여기에 나의 성장 기록이 쌓여요 🌱
           </div>
         </div>
@@ -167,13 +170,13 @@ const last30 = useMemo(() => {
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
           <div style={{ textAlign: "center", minWidth: 56 }}>
             <div style={{ fontSize: 36, fontWeight: 900, color: streak > 0 ? "#FCD34D" : "var(--dm-muted)", lineHeight: 1 }}>{streak}</div>
-            <div style={{ fontSize: 11, color: "var(--dm-sub)", marginTop: 4 }}>일 연속</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-sub)", marginTop: 4 }}>일 연속</div>
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 900, color: streak > 0 ? "var(--dm-text)" : "var(--dm-muted)", marginBottom: 4 }}>
               {streak > 0 ? `🔥 ${streak}일 연속 중!` : "연속 기록 없음"}
             </div>
-            <div style={{ fontSize: 12, color: "var(--dm-muted)" }}>이번주 평균 완료율{" "}
+            <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>이번주 평균 완료율{" "}
               <b style={{ color: weeklyAvg >= 80 ? "#4ADE80" : weeklyAvg >= 50 ? "#FCD34D" : "#F87171" }}>{weeklyAvg}%</b>
             </div>
           </div>
@@ -188,11 +191,11 @@ const last30 = useMemo(() => {
                   background: d.isPerfect ? "rgba(74,222,128,.20)" : d.rate >= 80 ? "rgba(252,211,77,.15)" : d.rate > 0 ? "rgba(248,113,113,.12)" : "var(--dm-input)",
                   border: `1.5px solid ${d.isPerfect ? "#4ADE80" : d.rate >= 80 ? "#FCD34D" : d.rate > 0 ? "#F87171" : "var(--dm-card)"}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 900, color: d.isPerfect ? "#4ADE80" : "var(--dm-sub)", marginBottom: 4,
+                  fontSize: NL() ? 13 : 11, fontWeight: 900, color: d.isPerfect ? "#4ADE80" : "var(--dm-sub)", marginBottom: 4,
                 }}>
                   {d.isPerfect ? "✓" : d.rate > 0 ? d.rate : ""}
                 </div>
-                <div style={{ fontSize: 10, color: "var(--dm-muted)", fontWeight: 800 }}>{dow}</div>
+                <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", fontWeight: 800 }}>{dow}</div>
               </div>
             );
           })}
@@ -216,7 +219,7 @@ const last30 = useMemo(() => {
               transition: "width 0.3s",
             }} />
           </div>
-          <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: "#6C8EFF" }}>
             {perfectRate}% 완성도
           </div>
         </div>
@@ -228,18 +231,18 @@ const last30 = useMemo(() => {
           {monthStats.map((m) => (
             <div key={m.month} style={{
               textAlign: "center",
-              padding: 12,
+              padding: NL() ? "12px 4px" : 12,
               background: "var(--dm-input)",
               borderRadius: 10,
               border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid var(--dm-border)",
             }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8 }}>
+              <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8, whiteSpace: "nowrap" }}>
                 {pad2(m.month + 1)}월
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, color: m.rate >= 80 ? "#4ADE80" : m.rate >= 50 ? "#FCD34D" : m.filled > 0 ? "#F87171" : "var(--dm-muted)" }}>
                 {m.filled === 0 ? "-" : m.rate + "%"}
               </div>
-              <div style={{ fontSize: 10, color: "var(--dm-muted)", marginTop: 4 }}>
+              <div style={{ fontSize: NL() ? 13 : 10, color: "var(--dm-muted)", marginTop: 4 }}>
                 {m.perfect}/{m.filled}
               </div>
             </div>
@@ -258,13 +261,13 @@ const last30 = useMemo(() => {
           ].map(item => (
             <div key={item.label} style={{ background: 'var(--dm-input)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: item.color }}>{item.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>{item.label}</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{item.label}</div>
             </div>
           ))}
         </div>
         {monthlyReport.habitStats.length > 0 && (
           <>
-            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 8 }}>🎯 습관 달성률</div>
+            <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-sub)', marginBottom: 8 }}>🎯 습관 달성률</div>
             {monthlyReport.habitStats.map(h => (
               <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <span style={{ fontSize: 16, flexShrink: 0 }}>{h.icon}</span>
@@ -272,7 +275,7 @@ const last30 = useMemo(() => {
                 <div style={{ width: 80, height: 6, background: 'var(--dm-row)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', borderRadius: 3, background: h.rate >= 80 ? '#4ADE80' : h.rate >= 50 ? '#FCD34D' : '#F87171', width: `${h.rate}%` }} />
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-sub)', width: 30, textAlign: 'right' }}>{h.rate}%</div>
+                <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: 'var(--dm-sub)', width: 30, textAlign: 'right' }}>{h.rate}%</div>
               </div>
             ))}
           </>
@@ -320,27 +323,27 @@ const last30 = useMemo(() => {
             <span style={{ fontSize: 28, lineHeight: 1 }}>🤖</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>AI 코치 월간 리뷰</div>
-              <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{viewYear}년 {viewMonth + 1}월</div>
+              <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{viewYear}년 {viewMonth + 1}월</div>
             </div>
             <div style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 900, color: aiReview.grade === 'S' ? '#4ADE80' : aiReview.grade === 'A' ? '#6C8EFF' : aiReview.grade === 'B' ? '#FCD34D' : '#F87171' }}>{aiReview.grade}</div>
           </div>
           {aiReview.summary && <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, marginBottom: 12, padding: '10px 12px', background: 'rgba(108,142,255,.08)', borderRadius: 8 }}>{aiReview.summary}</div>}
           {aiReview.strengths?.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: '#4ADE80', marginBottom: 4 }}>✅ 잘한 점</div>
-              {aiReview.strengths.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#4ADE80', marginBottom: 4 }}>✅ 잘한 점</div>
+              {aiReview.strengths.map((s, i) => <div key={i} style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
             </div>
           )}
           {aiReview.improvements?.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: '#F87171', marginBottom: 4 }}>⚠️ 개선할 점</div>
-              {aiReview.improvements.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#F87171', marginBottom: 4 }}>⚠️ 개선할 점</div>
+              {aiReview.improvements.map((s, i) => <div key={i} style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
             </div>
           )}
           {aiReview.nextMonth?.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 4 }}>🎯 다음 달 집중할 것</div>
-              {aiReview.nextMonth.map((s, i) => <div key={i} style={{ fontSize: 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 4 }}>🎯 다음 달 집중할 것</div>
+              {aiReview.nextMonth.map((s, i) => <div key={i} style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
             </div>
           )}
         </div>
@@ -377,7 +380,7 @@ const last30 = useMemo(() => {
         </div>
         {/* 툴팁 */}
         {barTooltip && (
-          <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--dm-input)", borderRadius: 8, fontSize: 12, color: "var(--dm-text)" }}>
+          <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--dm-input)", borderRadius: 8, fontSize: NL() ? 14 : 12, color: "var(--dm-text)" }}>
             <b>{formatKoreanDate(barTooltip.ds)}</b>
             {barTooltip.perfect && <span style={{ color: "#4ADE80", marginLeft: 8 }}>🌟 완벽한 날</span>}
             {!barTooltip.perfect && barTooltip.filled && <span style={{ color: "#FCD34D", marginLeft: 8 }}>{barTooltip.done}/{barTooltip.total} 완료</span>}
@@ -385,7 +388,7 @@ const last30 = useMemo(() => {
           </div>
         )}
         {/* 범례 */}
-        <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 10, color: "var(--dm-muted)" }}>
+        <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: NL() ? 13 : 10, color: "var(--dm-muted)" }}>
           {[['#4ADE80', '완벽'], ['#FCD34D', '50%↑'], ['#F87171', '50%↓'], ['var(--dm-deep)', '없음']].map(([c, label]) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
@@ -414,12 +417,12 @@ const last30 = useMemo(() => {
                       <span style={{ fontSize: 18 }}>{h.icon}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{h.name}</span>
                       {habitStreaks[h.id] > 0 && (
-                        <span style={{ fontSize: 11, fontWeight: 900, color: "#FCD34D", background: "rgba(252,211,77,0.12)", borderRadius: 6, padding: "1px 6px" }}>
+                        <span style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "#FCD34D", background: "rgba(252,211,77,0.12)", borderRadius: 6, padding: "1px 6px" }}>
                           🔥 {habitStreaks[h.id]}일
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: rate >= 80 ? "#4ADE80" : rate >= 50 ? "#FCD34D" : "#F87171" }}>
+                    <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: rate >= 80 ? "#4ADE80" : rate >= 50 ? "#FCD34D" : "#F87171" }}>
                       {total === 0 ? "-" : `${done}/${total}일 · ${rate}%`}
                     </div>
                   </div>

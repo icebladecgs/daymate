@@ -1,5 +1,7 @@
 import S from "../styles.js";
 import { parseNth, NTH_LABELS, WEEKDAY_LABELS, recurringLabel } from "../utils/recurring.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo, putBack } from "../utils/useUndo.js";
 
 // 반복 할일 관리 (설정 → 🔁 반복 할일, 2026-11-03) — 예전 홈 화면에 있던 편집 칸을 옮겨 왔다.
 // 규칙을 바꾸거나 지우면 앞으로 새로 만들어지는 날짜부터 적용된다(이미 만들어진 날의 할일은 그대로).
@@ -7,15 +9,18 @@ const RECURRING_MAX = 10;
 
 export default function RecurringManager({ recurringTasks = [], setRecurringTasks }) {
   const list = recurringTasks || [];
+  const undo = useUndo();
   const update = (id, patch) => setRecurringTasks(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
   const remove = (t) => {
-    if (!window.confirm(`"${t.title || '이름 없음'}" 반복을 그만할까요?\n(이미 만들어진 날의 할일은 그대로 남아요)`)) return;
+    const idx = list.findIndex(x => x.id === t.id);
     setRecurringTasks(prev => (prev || []).filter(x => x.id !== t.id));
+    undo.offer(`"${t.title || '이름 없음'}" 반복을 그만했어요`, () => setRecurringTasks(prev => putBack(prev, t, idx)));
   };
   const sel = { ...S.input, marginBottom: 0, padding: '9px 6px', fontSize: 15 };
 
   return (
     <div style={S.card}>
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
       <div style={{ fontSize: 14, color: 'var(--dm-sub)', lineHeight: 1.6, marginBottom: 12 }}>
         매일, 특정 요일, 또는 매월 n번째 요일에 자동으로 추가되는 할일이에요. 오늘 탭에 "매주 화요일 회의"처럼 써도 만들어져요.
       </div>

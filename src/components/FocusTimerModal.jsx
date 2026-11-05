@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import S from '../styles.js';
 import { playSound } from '../utils/sound.js';
+import { useBackClose } from "../utils/useBackClose.js";
 
 const TIMER_OPTIONS = [
   { label: '5분',  sec:  5 * 60, xp:  5 },
@@ -34,6 +35,7 @@ export default function FocusTimerModal({ task, onClose: closeModal, onToggleTas
     if (!reported.current && !done && elapsed >= 60) { reported.current = true; onFocusTime?.(Math.floor(elapsed / 60), subject); }
     closeModal();
   };
+  useBackClose(onClose);
   useEffect(() => {
     if (done && !reported.current) { reported.current = true; onFocusTime?.(Math.round(opt.sec / 60), subject); }
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps

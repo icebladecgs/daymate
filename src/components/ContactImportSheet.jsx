@@ -2,11 +2,13 @@ import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import S from "../styles.js";
 import { prepareSearchQuery, matchSearchIndex } from "../data/contacts.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 연락처 가져오기 전·실패 시 안내 창
 // mode 'before': 선택 창을 열기 전에 "허용 → 모두 선택" 순서를 알려줌 (첫 성공 전까지)
 // mode 'empty' : 아무 연락처도 안 넘어왔을 때 크롬 연락처 권한 켜는 방법 + 다시 시도
 export function ContactPermissionGuide({ mode, onContinue, onClose }) {
+  useBackClose(onClose);
   const step = (n, text) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
       <span style={{ width: 22, height: 22, borderRadius: 999, background: '#6C8EFF', color: '#fff', fontSize: 12, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
@@ -80,6 +82,7 @@ const PAGE = 100; // 한 번에 그리는 줄 수 — 나머지는 "더 보기" 
 // 태그는 가져올 사람 전체에 한 번에 적용.
 // 성능: 검색 정보는 buildImportCandidates에서 미리 계산(item.search), 목록은 100줄씩, 입력과 목록 갱신 분리(useDeferredValue)
 export default function ContactImportSheet({ candidates, allTags = [], onImport, onClose }) {
+  useBackClose(onClose);
   const [items, setItems] = useState(candidates);
   const [tags, setTags] = useState([]);
   const [query, setQuery] = useState('');

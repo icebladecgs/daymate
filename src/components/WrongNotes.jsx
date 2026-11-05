@@ -8,6 +8,7 @@ import { ExamSheet } from "./Exam.jsx";
 import { saveWrongNote, deleteWrongNote, deletePhoto } from "../firebase.js";
 import { formatShortKoreanDate } from "../utils/date.js";
 import { WRONG_INTERVALS, WRONG_REASONS, firstDue, reviewWrongNote, isDue, daysUntil } from "../utils/exam.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 오답 노트 (수험생 모드, 2026-11-01) — 문제 사진은 원본 그대로(자르기·보정 없음, 앨범에서 고르기).
 // 다시 풀 날은 utils/exam.js(1·3·7·21일), 4번 연속 맞으면 졸업. 저장은 firebase.js wrongNotes.
@@ -28,6 +29,7 @@ const dueText = (n, todayDs) => {
 const sortNotes = (list) => [...list].sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (b.createdAt || '').localeCompare(a.createdAt || ''));
 
 export default function WrongNotes({ uid, notes, setNotes, exam, todayStr, onClose, onRequireLogin }) {
+  useBackClose(onClose);
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('due'); // due | all | done
   const [sub, setSub] = useState(null);
@@ -149,6 +151,7 @@ export default function WrongNotes({ uid, notes, setNotes, exam, todayStr, onClo
 }
 
 function WrongNoteDetail({ note, todayStr, onClose, onReview, onEdit, onDelete }) {
+  useBackClose(onClose);
   const [showAnswer, setShowAnswer] = useState(false);
   const [viewer, setViewer] = useState(null); // { photos, index }
   const ph = note.photos || [];

@@ -5,6 +5,7 @@ import { addDays, formatShortKoreanDate } from "../utils/date.js";
 import { store } from "../utils/storage.js";
 import { isImportedGcalTask } from "../utils/dayMerge.js";
 import { weekSummary, fmtFocus } from "../utils/goalProgress.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 // 하루 마무리 (2026-11-03) — 저녁에 오늘 탭 일기 위에 한 줄 카드가 뜨고, 누르면 정리 창:
 // 끝낸 일 보기 → 못 한 일은 내일로·언젠가로(또는 그대로) → 한 줄 일기 → 마치기.
@@ -39,6 +40,7 @@ export function DayWrapUpCard({ dateStr, tasks, plans, nowMin, onOpen }) {
 }
 
 export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onMoveTaskDate, setData, setSomeday, pickDetail, onClose, onFinish }) {
+  useBackClose(onClose);
   const [body, setBody] = useState(journalBody || '');
   const done = tasks.filter(t => t.title?.trim() && t.done);
   const left = tasks.filter(t => t.title?.trim() && !t.done);
