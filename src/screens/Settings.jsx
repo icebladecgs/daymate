@@ -17,7 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
-import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection, TODAY_ORDER_SECTIONS, todaySectionOrder, moveTodaySection, quickAddOn, setQuickAddOn } from "../utils/todayLook.js";
+import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection, TODAY_ORDER_SECTIONS, todaySectionOrder, moveTodaySection } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
 import { taskAlarmLead, setTaskAlarmLead } from "../utils/alarms.js";
@@ -176,7 +176,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
     if (authUser) getPendingSuggestionsCount().then(setPendingSuggestions).catch(() => {});
   }, [authUser]); // eslint-disable-line
   const [sectionOrderList, setSectionOrderList] = useState(todaySectionOrder);
-  const [quickAddEnabled, setQuickAddEnabled] = useState(quickAddOn);
   const [menuQuery, setMenuQuery] = useState('');
   const scrollToSection = useRef(null); // 검색에서 고른 항목 — 하위 화면이 열리면 그 제목으로 내려간다
   useEffect(() => {
@@ -1393,13 +1392,6 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             <Toggle value={!todayHidden[sec.id]} onChange={(on) => { setTodayHiddenSection(sec.id, !on); setTodayHidden(todayHiddenSections()); }} />
           </div>
         ))}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: '1px solid var(--dm-row)' }}>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13 }}>＋ 빠른 추가 버튼</div>
-            <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>어느 탭에서든 할일·메모 넣기</div>
-          </div>
-          <Toggle value={quickAddEnabled} onChange={(on) => { setQuickAddOn(on); setQuickAddEnabled(on); }} />
-        </div>
       </div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>

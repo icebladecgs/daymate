@@ -1,9 +1,7 @@
 import { createPortal } from "react-dom";
-import { useBlockFloatingButton } from "../utils/useBackClose.js";
 
 // ↩ 되돌리기 띠 — 상태는 utils/useUndo.js
 export default function UndoBar({ bar, onUndo, zIndex = 250 }) {
-  useBlockFloatingButton(!!bar);
   if (!bar) return null;
   // 화면 본문(zIndex:1) 밖, 앱 루트에 그린다 — 하단 메뉴 위, 기본은 상세 창(300) 아래, 창 안에서 쓸 때는 zIndex를 올려 준다
   const portalTarget = document.querySelector('.dm-phone') || document.body;

@@ -18,8 +18,6 @@ import { scheduler } from "./api/scheduler.js";
 import { gcalDeleteEvent, gcalCreateEvent, gcalUpdateEvent, gcalFetchRangeEvents, gcalSetEventColor } from "./api/gcal.js";
 import { newDay, loadDay, saveDay, listAllDays } from "./data/model.js";
 import { UNSYNCED_DAYS_KEY, markDayUnsynced, isDayUnsynced } from "./utils/daySync.js";
-import QuickAdd from "./components/QuickAdd.jsx";
-import { quickAddOn } from "./utils/todayLook.js";
 import "./utils/useBackClose.js"; // 창 뒤로가기 처리 — 아래 화면 전환 처리보다 먼저 등록되어야 한다
 import { prepareAccount } from "./utils/accountSwap.js";
 import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImportedGcalTask, dedupeDayTasks, mergeTasksIntoDay, mergeImportedGcalTasks } from "./utils/dayMerge.js";
@@ -2681,9 +2679,6 @@ export default function App() {
         {statAsk && (
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
-        )}
-        {["today", "home", "my", "memo", "history", "community", "settings"].includes(screen) && quickAddOn() && (
-          <QuickAdd todayStr={todayStr} setDayData={setDayData} setRecurringTasks={setRecurringTasks} />
         )}
         {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,

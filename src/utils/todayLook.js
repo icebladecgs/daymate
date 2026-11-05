@@ -53,8 +53,3 @@ export const moveTodaySection = (id, dir) => {
   store.set(ORDER_KEY, list);
   return list;
 };
-
-// ＋ 빠른 추가 버튼 (기기마다, 기본 켜짐)
-const QUICK_KEY = "dm_quick_add_off";
-export const quickAddOn = () => store.get(QUICK_KEY, false) !== true;
-export const setQuickAddOn = (on) => store.set(QUICK_KEY, !on);
