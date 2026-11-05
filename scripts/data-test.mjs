@@ -334,6 +334,13 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('날씨: 요일 표시', weatherDayLabel('2026-11-05', '2026-11-05') === '오늘' && weatherDayLabel('2026-11-06', '2026-11-05') === '내일' && weatherDayLabel('2026-11-08', '2026-11-05') === '일');
 }
 
+// ── 텔레그램 브리핑 날씨 설명 (서버는 desc로 보낸다) ──
+{
+  const { buildBriefingText } = await load('/src/api/telegram.js');
+  const text = buildBriefingText([], '점검', { ok: true, city: '서울', temp: 15, desc: '맑음', icon: '☀️', wind: 3 });
+  t('텔레그램: 날씨 설명이 들어감', text.includes('서울 15°C · 맑음 · 바람 3km/h'), text.slice(0, 60));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

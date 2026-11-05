@@ -7,7 +7,7 @@ import { addDays } from "../utils/date.js";
 const DOW = ["월", "화", "수", "목", "금", "토", "일"];
 const dayDiff = (a, b) => Math.round((new Date(`${a}T00:00:00`) - new Date(`${b}T00:00:00`)) / 86400000);
 
-export default function WeekStrip({ todayDs, selectedDs, plans, todayTasks, onSelect }) {
+export default function WeekStrip({ todayDs, selectedDs, plans, todayTasks, onSelect, inBox }) {
   const d = new Date(`${selectedDs}T00:00:00`);
   const monday = addDays(selectedDs, d.getDay() === 0 ? -6 : 1 - d.getDay());
   const days = DOW.map((_, i) => addDays(monday, i));
@@ -31,7 +31,7 @@ export default function WeekStrip({ todayDs, selectedDs, plans, todayTasks, onSe
 
   return (
     <div key={monday} data-week-strip onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
-      style={{ display: "flex", justifyContent: "space-between", gap: 4, margin: "0 16px 10px", touchAction: "pan-y", animation: slide ? `dm-week-${slide} .25s ease-out` : undefined }}>
+      style={{ display: "flex", justifyContent: "space-between", gap: 4, margin: inBox ? "0 0 10px" : "0 16px 10px", touchAction: "pan-y", animation: slide ? `dm-week-${slide} .25s ease-out` : undefined }}>
       {days.map((ds, i) => {
         const selected = ds === selectedDs;
         const isToday = ds === todayDs;

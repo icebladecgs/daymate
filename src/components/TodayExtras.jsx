@@ -10,6 +10,12 @@ const RAIN_COLOR = "#5B7CFA"; // 밝은·어두운 화면 모두에서 보이는
 const OPEN_KEY = "dm_weather_open";
 const SHOW_MORE = 10;
 
+// 새 디자인: 제목과 내용을 둥근 칸 하나로 묶는다 (칸 안에 칸을 또 넣지 않는다). 예전 화면은 그대로
+export function SectionBox({ on, children }) {
+  if (!on) return <>{children}</>;
+  return <div style={{ ...S.card, marginBottom: 12 }}>{children}</div>;
+}
+
 export function WeatherCard({ city, dateStr, onSetCity }) {
   const name = (city || "").trim() || DEFAULT_CITY;
   const [state, setState] = useState({ status: "loading" });
@@ -93,16 +99,16 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
   );
 }
 
-export function UpcomingDays({ contacts, dateStr, excludeWithin, onOpen, heading }) {
+export function UpcomingDays({ contacts, dateStr, excludeWithin, onOpen, heading, boxed }) {
   const [more, setMore] = useState(false);
   const all = useMemo(() => getUpcomingDays(contacts, dateStr, { excludeWithin }), [contacts, dateStr, excludeWithin]);
   if (!all.length) return null; // 등록한 생일·기념일이 없으면 칸을 비워 두지 않는다
   const shown = all.slice(0, more ? SHOW_MORE : 3);
   const moreCount = Math.min(all.length, SHOW_MORE) - 3;
   return (
-    <>
+    <SectionBox on={boxed}>
       {heading}
-      <div style={{ ...S.card, padding: "6px 14px" }}>
+      <div style={boxed ? {} : { ...S.card, padding: "6px 14px" }}>
         {shown.map((ev, i) => {
           const [, m, d] = addDays(dateStr, ev.dday).split("-").map(Number);
           return (
@@ -119,6 +125,6 @@ export function UpcomingDays({ contacts, dateStr, excludeWithin, onOpen, heading
           </button>
         )}
       </div>
-    </>
+    </SectionBox>
   );
 }

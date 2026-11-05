@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
-import { WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
+import { SectionBox, WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
 import Toast from "../components/Toast.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
@@ -430,7 +430,9 @@ export default function Today({
   };
   const remainCount = filledCount - doneCount;
   // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘. 글씨는 할 일과 같은 17px·진하게(사용자 요청 — 섹션이 잘 보여야 함)
-  const secTitle = S.sectionTitle;
+  // 새 디자인은 제목과 내용을 칸 하나(SectionBox)로 묶으므로 제목의 바깥 여백·안쪽 칸 모양을 뺀다
+  const secTitle = newLook ? { ...S.sectionTitle, padding: '0 0 10px' } : S.sectionTitle;
+  const innerCard = newLook ? { position: 'relative' } : S.card;
   const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
 
@@ -509,6 +511,78 @@ export default function Today({
       return list;
     }), () => (item.photos || []).forEach(p => p?.path && deletePhoto(p.path)));
   };
+
+  const introCards = (
+    <>
+      {onboard === 'show' && (() => {
+        const step1 = onboardStep1, step2 = onboardStep2;
+        const row = (done, n, label, sub, onClick) => (
+          <button onClick={done ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 4px', border: 'none', borderTop: '1px solid var(--dm-row)', background: 'none', cursor: done ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: done ? '#4ADE80' : 'rgba(91,124,250,.15)', color: done ? '#fff' : '#5B7CFA' }}>{done ? '✓' : n}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
+              {!done && <span style={{ display: 'block', fontSize: 13, color: 'var(--dm-sub)', marginTop: 1 }}>{sub}</span>}
+            </span>
+            {!done && <span style={{ color: '#5B7CFA', fontSize: 18 }}>›</span>}
+          </button>
+        );
+        return (
+          <div style={{ ...S.card, border: '1.5px solid rgba(91,124,250,.4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>👋 처음이세요? 두 가지만 해 봐요</span>
+              <button onClick={closeOnboard} aria-label="안내 닫기" style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+            {row(step1, 1, '오늘 할 일 하나 넣기', '"내일 오후 3시 회의"처럼 쓰면 날짜·시간도 알아들어요', () => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); })}
+            {row(step2, 2, '이루고 싶은 목표 하나 적기', 'My 탭 → 목표 관리. 목표에서 할 일을 만들면 진행이 쌓여요', () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'my' })))}
+          </div>
+        );
+      })()}
+      {tasksOpen && taskDayOffset === 0 && showPlanCard && (
+        <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
+            <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
+            {!morning && <button onClick={() => carryToToday(carryTasks)}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
+            <button onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
+              style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+          </div>
+          {morning && (
+            <div style={{ fontSize: 14, color: 'var(--dm-sub)', marginBottom: 10 }}>
+              {timedToday.length ? `⏰ 시간 정한 일 ${timedToday.length}개 · 첫 일정 ${timedToday[0].time} ${timedToday[0].title}` : '⏰ 오늘은 시간 정한 일이 없어요'}
+            </div>
+          )}
+          {morning && carryTasks.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 2px' }}>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 일 {carryTasks.length}개</span>
+              <button onClick={() => carryToToday(carryTasks)}
+                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#5B7CFA', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
+            </div>
+          )}
+          {carryTasks.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {t.title}{t.time ? <span style={{ fontSize: 11, color: '#6C8EFF', marginLeft: 6 }}>{t.time}</span> : null}
+              </span>
+              <button onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+              <button onClick={() => carryToSomeday(t)} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+              <button onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+            </div>
+          ))}
+          {morningSomeday.length > 0 && (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dm-text)', padding: '10px 0 2px' }}>📋 언젠가에서 오늘 할 것 고르기</div>
+              {morningSomeday.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                  <button onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div style={S.content}>
@@ -642,8 +716,11 @@ export default function Today({
         </div>
       )}
 
+      {newLook && introCards}
+
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
           {secIcon('today', '✅')}
           {/* 제목: "오늘의 할일"은 항상 한 줄, "9월 26일 (토) 할일"은 아주 좁은 화면에서만 줄바꿈.
@@ -670,77 +747,11 @@ export default function Today({
         </div>
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
-      {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} />}
+      {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} inBox={newLook} />}
       {tasksOpen && taskDayOffset === 0 && !newLook && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
-      {onboard === 'show' && (() => {
-        const step1 = onboardStep1, step2 = onboardStep2;
-        const row = (done, n, label, sub, onClick) => (
-          <button onClick={done ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 4px', border: 'none', borderTop: '1px solid var(--dm-row)', background: 'none', cursor: done ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-            <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: done ? '#4ADE80' : 'rgba(91,124,250,.15)', color: done ? '#fff' : '#5B7CFA' }}>{done ? '✓' : n}</span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
-              {!done && <span style={{ display: 'block', fontSize: 13, color: 'var(--dm-sub)', marginTop: 1 }}>{sub}</span>}
-            </span>
-            {!done && <span style={{ color: '#5B7CFA', fontSize: 18 }}>›</span>}
-          </button>
-        );
-        return (
-          <div style={{ ...S.card, border: '1.5px solid rgba(91,124,250,.4)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>👋 처음이세요? 두 가지만 해 봐요</span>
-              <button onClick={closeOnboard} aria-label="안내 닫기" style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
-            </div>
-            {row(step1, 1, '오늘 할 일 하나 넣기', '"내일 오후 3시 회의"처럼 쓰면 날짜·시간도 알아들어요', () => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); })}
-            {row(step2, 2, '이루고 싶은 목표 하나 적기', 'My 탭 → 목표 관리. 목표에서 할 일을 만들면 진행이 쌓여요', () => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'my' })))}
-          </div>
-        );
-      })()}
-      {tasksOpen && taskDayOffset === 0 && showPlanCard && (
-        <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
-            <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
-            {!morning && <button onClick={() => carryToToday(carryTasks)}
-              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
-            <button onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
-              style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
-          </div>
-          {morning && (
-            <div style={{ fontSize: 14, color: 'var(--dm-sub)', marginBottom: 10 }}>
-              {timedToday.length ? `⏰ 시간 정한 일 ${timedToday.length}개 · 첫 일정 ${timedToday[0].time} ${timedToday[0].title}` : '⏰ 오늘은 시간 정한 일이 없어요'}
-            </div>
-          )}
-          {morning && carryTasks.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 2px' }}>
-              <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 일 {carryTasks.length}개</span>
-              <button onClick={() => carryToToday(carryTasks)}
-                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#5B7CFA', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
-            </div>
-          )}
-          {carryTasks.map(t => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {t.title}{t.time ? <span style={{ fontSize: 11, color: '#6C8EFF', marginLeft: 6 }}>{t.time}</span> : null}
-              </span>
-              <button onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
-              <button onClick={() => carryToSomeday(t)} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
-              <button onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
-            </div>
-          ))}
-          {morningSomeday.length > 0 && (
-            <>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dm-text)', padding: '10px 0 2px' }}>📋 언젠가에서 오늘 할 것 고르기</div>
-              {morningSomeday.map(item => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
-                  <button onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      {!newLook && introCards}
       {tasksOpen && (
-      <div style={S.card}>
+      <div style={innerCard}>
         {/* 목록은 보기 전용 — 체크·언젠가·삭제만 바로 하고, 시간·스탯·메모·사진 등 편집은 할일 상세(줄 누르기)에서 */}
         {newLook && (
           // 줄 순서가 바뀌면 미끄러지게(useFlip) — offsetTop 기준이 이 상자가 되도록 position: relative
@@ -841,12 +852,13 @@ export default function Today({
         )}
       </div>
       )}
+      </SectionBox>
 
       {/* 💌 오늘 챙길 사람 — 내 사람들의 생일·기념일(7일 안)과 사람에게 연결된 할일. 없는 날도 한 줄로 보여서
           기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다) */}
-      {!hiddenSec.people && (<>
-      <div style={{ margin: '0 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: 4 }}>
+      {!hiddenSec.people && (<SectionBox on={newLook}>
+      <div style={newLook ? {} : { margin: '0 16px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: newLook ? 0 : 4 }}>
           <span onClick={onOpenPeople} style={newLook
             ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
@@ -855,7 +867,7 @@ export default function Today({
           {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
         {contactReminders.length > 0 && (
-          <div style={{ ...S.card, margin: 0, padding: '10px 14px' }}>
+          <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
             {contactReminders.map((it, i) => (
               <div key={it.key} style={{ fontSize: 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
             ))}
@@ -863,17 +875,17 @@ export default function Today({
         )}
       </div>
 
-      </>)}
+      </SectionBox>)}
 
       {/* 📌 다가오는 날 — 내 사람들의 생일·기념일 D-day. 7일 안은 위 칸에 있으니 뺀다 */}
       {!hiddenSec.upcoming && (
         <UpcomingDays contacts={contacts} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
-          heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
+          boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
       )}
 
       {/* 💪 오늘습관 */}
-      {!hiddenSec.habits && (<>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      {!hiddenSec.habits && (<SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘습관
           <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -886,7 +898,7 @@ export default function Today({
         >{editingHabits ? '완료 ✓' : '수정'}</button>
       </div>
       {habitsSectionOpen && (
-      <div style={S.card}>
+      <div style={innerCard}>
         {editingHabits ? (
           <>
             {visibleHabits.map(h => (
@@ -946,10 +958,10 @@ export default function Today({
       </div>
       )}
 
-      </>)}
+      </SectionBox>)}
 
       {/* 📋 언젠가할일 */}
-      {!hiddenSec.someday && (<>
+      {!hiddenSec.someday && (<SectionBox on={newLook}>
       <div style={secTitle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
@@ -959,7 +971,7 @@ export default function Today({
         </span>
       </div>
       {somedayOpen && (
-      <div style={S.card}>
+      <div style={innerCard}>
         {(somedayShowAll ? somedayList : somedayList.slice(0, 3)).map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <button onClick={() => toggleSomeday(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
@@ -996,18 +1008,18 @@ export default function Today({
       </div>
       )}
 
-      </>)}
+      </SectionBox>)}
 
       {/* 📅 주간 일정 */}
-      {!hiddenSec.weekly && (<>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      {!hiddenSec.weekly && (<SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
         <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
           {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
         </button>
       </div>
       {scheduleOpen && (
-        <div style={S.card}>
+        <div style={innerCard}>
           <WeeklySchedule
             plans={plans}
             habits={habits || []}
@@ -1017,7 +1029,7 @@ export default function Today({
         </div>
       )}
 
-      </>)}
+      </SectionBox>)}
 
       {/* 🌙 하루 마무리 — 저녁에만, 일기 바로 위 */}
       <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
@@ -1040,7 +1052,8 @@ export default function Today({
       })()}
 
       {/* 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <SectionBox on={newLook}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
           {secIcon('book', '📖')}
           {/* 할일 헤더와 동일: 제목은 항상 한 줄, 날짜·안내문구는 자리가 없으면 제목 아래로 */}
@@ -1060,7 +1073,7 @@ export default function Today({
           <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
-      <div style={S.card}>
+      <div style={innerCard}>
         {/* {label} 한 일 — done tasks 자동 표시 */}
         {journalDoneTasks.length > 0 && (
           <div style={{ marginBottom: 18 }}>
@@ -1119,6 +1132,7 @@ export default function Today({
           </div>
         </div>
       </div>
+      </SectionBox>
 
       <div style={{ height: 12 }} />
     </div>

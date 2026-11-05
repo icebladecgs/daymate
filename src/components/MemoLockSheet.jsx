@@ -151,7 +151,7 @@ export default function MemoLockSheet({ request, plans, cfg, onSaveCfg, onUpdate
             </button>
           </>
         )}
-        {viewer !== null && <PhotoViewer photos={data.photos} index={viewer} onClose={() => setViewer(null)} />}
+        {viewer !== null && <PhotoViewer photos={data.photos} index={viewer} sensitive onClose={() => setViewer(null)} />}
       </div>
     </div>,
     portalTarget,

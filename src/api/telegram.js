@@ -30,7 +30,7 @@ export function buildBriefingText(marketData, userName, weather = null) {
   if (weather) {
     const icon = weather.icon || '☀️';
     const temp = weather.temp != null ? `${Math.round(weather.temp)}°C` : '';
-    const desc = weather.description || '';
+    const desc = weather.desc || weather.description || '';
     const wind = weather.wind != null ? ` · 바람 ${weather.wind}km/h` : '';
     text = `${icon} ${weather.city || '서울'} ${temp} · ${desc}${wind}\n` + text;
   }
