@@ -529,7 +529,7 @@ export default function Today({
         return (
           <div style={{ ...S.card, border: '1.5px solid rgba(91,124,250,.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>👋 처음이세요? 두 가지만 해 봐요</span>
+              <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', wordBreak: 'keep-all' }}>👋 처음이세요? 두 가지만 해 봐요</span>
               <button onClick={closeOnboard} aria-label="안내 닫기" style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
             </div>
             {row(step1, 1, '오늘 할 일 하나 넣기', '"내일 오후 3시 회의"처럼 쓰면 날짜·시간도 알아들어요', () => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); })}
@@ -672,9 +672,9 @@ export default function Today({
           // 새 화면 머리글: 날짜·시각은 작게, 남은 할 일 수를 크게 + 할 일 수만큼 칸
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: 'var(--dm-sub)', fontWeight: 600 }}>{formatKoreanDate(dateStr)} · {clock}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 8px', lineHeight: 1.3 }}>
-              {!filledCount ? '오늘 할 일 없음' : remainCount ? `${remainCount}개 남았어요` : '모두 끝냈어요 🎉'}
-              {filledCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', marginLeft: 8 }}>완료 {doneCount}/{filledCount}</span>}
+            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 8px', lineHeight: 1.3, wordBreak: 'keep-all', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }}>
+              {!filledCount ? '오늘 할 일 없음' : remainCount ? <span style={{ whiteSpace: 'nowrap' }}>{remainCount}개 남았어요</span> : '모두 끝냈어요 🎉'}
+              {filledCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', whiteSpace: 'nowrap' }}>완료 {doneCount}/{filledCount}</span>}
             </div>
             <DoneSegments done={doneCount} total={filledCount} />
           </div>
