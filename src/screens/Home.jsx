@@ -751,7 +751,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                         maxLength={60}
                         disabled={bucketList.length >= BUCKET_LIST_MAX}
                       />
-                      <button onClick={addBucketItem} disabled={bucketList.length >= BUCKET_LIST_MAX} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: bucketList.length >= BUCKET_LIST_MAX ? 'default' : 'pointer', color: '#6C8EFF', flexShrink: 0, opacity: bucketList.length >= BUCKET_LIST_MAX ? 0.5 : 1 }}>+</button>
+                      <button onClick={addBucketItem} disabled={bucketList.length >= BUCKET_LIST_MAX} style={{ padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: bucketList.length >= BUCKET_LIST_MAX ? 'default' : 'pointer', color: '#6C8EFF', flexShrink: 0, opacity: bucketList.length >= BUCKET_LIST_MAX ? 0.5 : 1 }}>+</button>
                     </div>
                   </div>
                 )}
@@ -768,9 +768,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     </div>
                   ) : (
                     <button onClick={bcPickPhoto} disabled={bcUploading || !authUser}
-                      style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, border: '1.5px dashed var(--dm-border)', background: 'var(--dm-input)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: authUser ? 'pointer' : 'default', color: 'var(--dm-muted)', opacity: authUser ? 1 : 0.5 }}>
-                      <span style={{ fontSize: 26 }}>{bcUploading ? '⏳' : '📇'}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700 }}>{bcUploading ? '업로드 중...' : authUser ? '명함 사진 추가' : '로그인 후 사용 가능해요'}</span>
+                      style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, border: '1.5px dashed var(--dm-border)', background: 'var(--dm-input)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: authUser ? 'pointer' : 'default', color: 'var(--dm-muted)', opacity: authUser ? 1 : 0.5, ...(newLook ? { aspectRatio: 'auto', flexDirection: 'row', gap: 8, padding: '12px 14px', color: authUser ? '#5B7CFA' : 'var(--dm-muted)' } : {}) }}>
+                      <span style={{ fontSize: newLook ? 18 : 26 }}>{bcUploading ? '⏳' : '📇'}</span>
+                      <span style={{ fontSize: newLook ? 15 : 12, fontWeight: 700 }}>{bcUploading ? '업로드 중...' : authUser ? '명함 사진 추가' : '로그인 후 사용 가능해요'}</span>
                     </button>
                   )}
 

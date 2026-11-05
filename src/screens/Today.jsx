@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
-import { SectionBox, WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
+import { FoldButton, SectionBox, WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
 import Toast from "../components/Toast.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
@@ -433,6 +433,7 @@ export default function Today({
   // 새 디자인은 제목과 내용을 칸 하나(SectionBox)로 묶으므로 제목의 바깥 여백·안쪽 칸 모양을 뺀다
   const secTitle = newLook ? { ...S.sectionTitle, padding: '0 0 10px' } : S.sectionTitle;
   const innerCard = newLook ? { position: 'relative' } : S.card;
+  const foldPad = (open) => (newLook && !open ? { paddingBottom: 0 } : {}); // 접힌 칸은 제목 아래 여백을 뺀다
   const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
 
@@ -720,7 +721,7 @@ export default function Today({
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(tasksOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
           {secIcon('today', '✅')}
           {/* 제목: "오늘의 할일"은 항상 한 줄, "9월 26일 (토) 할일"은 아주 좁은 화면에서만 줄바꿈.
@@ -728,22 +729,23 @@ export default function Today({
           <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6 }}>
               <span style={{ whiteSpace: [0, 1, -1].includes(taskDayOffset) ? 'nowrap' : 'normal', wordBreak: 'keep-all' }}>{taskDayTitle}</span>
-              <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {!newLook && <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {tasksOpen ? '접기 ▲' : '펼치기 ▼'}
-              </button>
+              </button>}
             </span>
-            {[0, 1, -1].includes(taskDayOffset) && (
+            {[0, 1, -1].includes(taskDayOffset) && !(newLook && taskDayOffset === 0) && (
               <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{taskDayDateLabel}</span>
             )}
           </span>
         </span>
         {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12, flexShrink: 0 }}>
           {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
             <button onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
           )}
           <button onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
           <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          {newLook && <FoldButton open={tasksOpen} onClick={() => setTasksOpen(v => !v)} />}
         </div>
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
@@ -821,7 +823,7 @@ export default function Today({
             placeholder="할 일 추가 (예: 내일 오후 3시 회의)"
             maxLength={200}
           />
-          <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
+          <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
         </div>
         {/* 어떻게 들어갈지 저장 전에 보여준다 — 잘못 알아들었으면 "그냥 글자로" (2026-11-03 읽기 쉬운 말로) */}
         {parsedMany && (
@@ -885,17 +887,20 @@ export default function Today({
 
       {/* 💪 오늘습관 */}
       {!hiddenSec.habits && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘습관
-          <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
-          </button>
+          </button>}
         </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
           onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
-          style={{ fontSize: 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+          style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
         >{editingHabits ? '완료 ✓' : '수정'}</button>
+        {newLook && <FoldButton open={habitsSectionOpen} onClick={() => setHabitsSectionOpen(v => !v)} />}
+        </span>
       </div>
       {habitsSectionOpen && (
       <div style={innerCard}>
@@ -930,7 +935,7 @@ export default function Today({
                   setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
                   setNewHabitIcon(''); setNewHabitName('');
                 }}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
             {visibleHabits.length === 0 && !newHabitName && (
               <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
@@ -962,19 +967,20 @@ export default function Today({
 
       {/* 📋 언젠가할일 */}
       {!hiddenSec.someday && (<SectionBox on={newLook}>
-      <div style={secTitle}>
+      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
-          <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
-          </button>
+          </button>}
         </span>
+        {newLook && <FoldButton open={somedayOpen} onClick={() => setSomedayOpen(v => !v)} />}
       </div>
       {somedayOpen && (
       <div style={innerCard}>
         {(somedayShowAll ? somedayList : somedayList.slice(0, 3)).map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <button onClick={() => toggleSomeday(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+            <button onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
             <span onClick={() => setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
               {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
@@ -1003,7 +1009,7 @@ export default function Today({
             placeholder="언젠가 할 일 추가 후 Enter"
             maxLength={60}
           />
-          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
+          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
         </div>
       </div>
       )}
@@ -1012,11 +1018,11 @@ export default function Today({
 
       {/* 📅 주간 일정 */}
       {!hiddenSec.weekly && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(scheduleOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
-        <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+        {newLook ? <FoldButton open={scheduleOpen} onClick={() => setScheduleOpen(v => !v)} /> : <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
           {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
-        </button>
+        </button>}
       </div>
       {scheduleOpen && (
         <div style={innerCard}>

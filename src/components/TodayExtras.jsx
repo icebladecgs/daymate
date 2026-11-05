@@ -4,11 +4,21 @@ import S, { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { addDays } from "../utils/date.js";
 import { getUpcomingDays } from "../data/contacts.js";
-import { DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherToday } from "../utils/weather.js";
+import { DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
 
 const RAIN_COLOR = "#5B7CFA"; // 밝은·어두운 화면 모두에서 보이는 파랑
 const OPEN_KEY = "dm_weather_open";
 const SHOW_MORE = 10;
+
+// 새 디자인의 칸 접기·펼치기 — 칸 오른쪽 끝 화살표 하나
+export function FoldButton({ open, onClick }) {
+  return (
+    <button onClick={onClick} aria-expanded={open} aria-label={open ? "접기" : "펼치기"} title={open ? "접기" : "펼치기"}
+      style={{ width: 28, height: 32, padding: 0, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "var(--dm-muted)", fontSize: 14, cursor: "pointer" }}>
+      {open ? "▲" : "▼"}
+    </button>
+  );
+}
 
 // 새 디자인: 제목과 내용을 둥근 칸 하나로 묶는다 (칸 안에 칸을 또 넣지 않는다). 예전 화면은 그대로
 export function SectionBox({ on, children }) {
@@ -58,7 +68,7 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
   if (state.status !== "ok") return null;
 
   const wx = state.data;
-  const today = weatherToday(wx, dateStr);
+  const today = weatherTodayView(wx, dateStr);
   if (!today) return null;
   const advice = weatherAdvice(today);
 
@@ -79,7 +89,7 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
 
       {open && (
         <div style={{ marginTop: 10 }}>
-          {wx.days.map((d) => (
+          {wx.days.map((row) => { const d = row.date === dateStr ? today : row; return (
             <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid var(--dm-row)", fontSize: 15, color: "var(--dm-text)" }}>
               {/* 요일 아래 날짜 — 한 줄에 나란히 두면 좁은 화면에서 날씨 설명이 잘린다 */}
               <span style={{ width: 42, flexShrink: 0, lineHeight: 1.25 }}>
@@ -91,7 +101,7 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
               {d.rain != null && <span style={{ flexShrink: 0, fontSize: 14, color: d.rain >= 30 ? RAIN_COLOR : "var(--dm-muted)", fontWeight: d.rain >= 30 ? 800 : 400 }}>비 {d.rain}%</span>}
               <span style={{ width: 66, flexShrink: 0, textAlign: "right", fontWeight: 800 }}>{d.max}°/{d.min}°</span>
             </div>
-          ))}
+          ); })}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 8, borderTop: "1px solid var(--dm-row)", fontSize: 14, color: "var(--dm-muted)" }}>
             <span>📍 {wx.city}</span>
             <button onClick={startEdit} style={{ padding: "4px 8px", fontSize: 14, fontWeight: 800, color: RAIN_COLOR, background: "none", border: "none", cursor: "pointer" }}>도시 바꾸기</button>

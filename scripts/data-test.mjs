@@ -9,7 +9,7 @@ const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
 const { getUpcomingContactEvents, getUpcomingDays, solarToLunar } = await load('/src/data/contacts.js');
-const { weatherAdvice, weatherToday, weatherDayLabel } = await load('/src/utils/weather.js');
+const { weatherAdvice, weatherToday, weatherTodayView, weatherDayLabel } = await load('/src/utils/weather.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, parseMany, friendlySchedule } = await load('/src/utils/nlSchedule.js');
@@ -331,6 +331,12 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('날씨: 비 확률이 없어도 오류 없음', typeof weatherAdvice({ code: 3, rain: null, max: 10, min: 3 }) === 'string');
   const wx = { days: [{ date: '2026-11-05', max: 21 }, { date: '2026-11-06', max: 22 }] };
   t('날씨: 오늘 예보 찾기', weatherToday(wx, '2026-11-06')?.max === 22 && weatherToday(wx, '2026-11-09') === null);
+  const rainy = { rainLeft: 10, desc: '맑음', icon: '☀️', days: [{ date: '2026-11-05', rain: 90, code: 63, desc: '보통 비', icon: '🌧', max: 16, min: 9 }, { date: '2026-11-06', rain: 40 }] };
+  const view = weatherTodayView(rainy, '2026-11-05');
+  t('날씨: 오늘은 남은 시간의 비 확률과 지금 하늘', view.rain === 10 && view.desc === '맑음');
+  t('날씨: 비가 지나갔으면 우산 안내 없음', !weatherAdvice(view).includes('우산'));
+  t('날씨: 시간 정보가 없으면 하루 값', weatherTodayView({ days: rainy.days }, '2026-11-05').rain === 90);
+  t('날씨: 지나간 눈은 안내하지 않음', !weatherAdvice({ code: 73, rain: 0, max: 0, min: -3 }).includes('눈'));
   t('날씨: 요일 표시', weatherDayLabel('2026-11-05', '2026-11-05') === '오늘' && weatherDayLabel('2026-11-06', '2026-11-05') === '내일' && weatherDayLabel('2026-11-08', '2026-11-05') === '일');
 }
 

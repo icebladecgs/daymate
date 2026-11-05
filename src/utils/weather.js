@@ -8,6 +8,14 @@ export const DEFAULT_CITY = "서울";
 
 export const weatherToday = (wx, dateStr) => (wx?.days || []).find((d) => d.date === dateStr) || null;
 
+// 오늘 줄: 비 확률은 남은 시간 기준, 하늘 상태는 지금 날씨 (지나간 비 때문에 맑은 오후에 우산 안내가 뜨지 않게)
+export function weatherTodayView(wx, dateStr) {
+  const today = weatherToday(wx, dateStr);
+  if (!today) return null;
+  if (wx.days[0]?.date !== dateStr) return today;
+  return { ...today, rain: wx.rainLeft ?? today.rain, desc: wx.desc ?? today.desc, icon: wx.icon ?? today.icon };
+}
+
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 export function weatherDayLabel(date, todayStr) {
   if (date === todayStr) return "오늘";
@@ -23,8 +31,9 @@ const isThunder = (code) => [95, 96, 99].includes(code);
 export function weatherAdvice(day) {
   if (!day) return "";
   const rain = day.rain ?? 0;
-  if (isThunder(day.code)) return "천둥·번개 소식이 있어요. 외출 때 조심하세요";
-  if (isSnow(day.code)) return "눈 소식이 있어요. 길 미끄러움 조심하세요";
+  const stillComing = day.rain == null || day.rain >= 30; // 이미 지나간 눈·천둥은 안내하지 않는다
+  if (isThunder(day.code) && stillComing) return "천둥·번개 소식이 있어요. 외출 때 조심하세요";
+  if (isSnow(day.code) && stillComing) return "눈 소식이 있어요. 길 미끄러움 조심하세요";
   if (rain >= 60) return "비 올 가능성이 높아요. 우산 챙기세요";
   if (rain >= 30) return "비가 올 수도 있어요. 작은 우산이 있으면 좋아요";
   if (day.max >= 30) return "더운 날이에요. 물 자주 드세요";

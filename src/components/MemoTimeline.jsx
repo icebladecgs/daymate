@@ -94,7 +94,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <div
         onClick={() => isLong ? setMode('expanded') : setMode('editing')}
-        style={{ flex: 1, minWidth: 0, fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}
+        style={{ flex: 1, minWidth: 0, fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)', borderRadius: 8, cursor: 'pointer', ...(NL() ? { background: 'none', border: 'none', borderRadius: 0, padding: '8px 2px' } : {}) }}
       >
         {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}
         {item.photos?.length > 0 && <span style={{ marginRight: 4 }}>📷</span>}
@@ -155,7 +155,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
     <div>
       <div ref={listRef}>
         {memos.map(memo => (
-          <div key={memo.id} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
+          <div key={memo.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", ...(NL() ? { padding: "2px 0", borderBottom: "1px solid var(--dm-row)" } : { marginBottom: 10 }) }}>
             <div style={{ fontSize: NL() ? 13 : 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: NL() ? 44 : 34, flexShrink: 0 }}>
               {memo.createdAt || ""}
             </div>

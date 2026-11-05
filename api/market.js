@@ -190,7 +190,7 @@ export default async function handler(req, res) {
       if (!loc) return res.status(200).json({ ok: false });
 
       const wx = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=7&timezone=auto`,
+        `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=precipitation_probability&forecast_days=7&timezone=auto`,
         { headers: { 'User-Agent': 'DayMate/1.0' } }
       );
       const wj = await wx.json();
@@ -206,6 +206,12 @@ export default async function handler(req, res) {
         desc: WX_DESC[d.weathercode?.[i]] || '날씨 정보',
         icon: WX_ICON[d.weathercode?.[i]] || '🌡️',
       }));
+      // 오늘 비 확률은 지나간 시간을 빼고 계산한다 — 하루 최고값이면 맑은 오후에도 "비 90%"로 나온다
+      const nowHour = String(c.time || '').slice(0, 13);
+      const leftToday = (wj.hourly?.time || [])
+        .map((t, i) => ({ t: String(t).slice(0, 13), p: wj.hourly?.precipitation_probability?.[i] }))
+        .filter(h => h.t.slice(0, 10) === nowHour.slice(0, 10) && h.t >= nowHour && h.p != null)
+        .map(h => h.p);
       res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=3600');
       return res.status(200).json({
         ok: true,
@@ -215,6 +221,7 @@ export default async function handler(req, res) {
         icon: WX_ICON[code] || '🌡️',
         wind: Math.round(c.windspeed_10m),
         days,
+        rainLeft: leftToday.length ? Math.max(...leftToday) : null,
       });
     } catch (error) {
       console.error('[market] weather lookup failed:', error);

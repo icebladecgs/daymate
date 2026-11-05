@@ -154,12 +154,20 @@ export default function GrowthFortunePanel({
     return () => window.removeEventListener('popstate', handler);
   }, [fortuneModalOpen]);
 
+  const xpBadge = (
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: nl ? 20 : 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
+              <span style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
+              <button onClick={() => setXpHelpOpen(true)} style={{ background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
+            </div>
+  );
+
   return (
     <>
       {/* 🌱 나의 성장 능력치 (+ My탭과 동일한 레벨/XP 요약) */}
       {statXp && (
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05))", border: "1.5px solid rgba(108,142,255,.3)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: nl ? "wrap" : "nowrap" }}>
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
             <span style={{ fontSize: nl ? 16 : 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
             <span style={{ fontSize: nl ? 14 : 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
@@ -172,7 +180,12 @@ export default function GrowthFortunePanel({
                 <span style={{ fontSize: nl ? 12 : 10, color: nl ? "#8B5CF6" : "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
               </button>
             )}
-            {streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
+            {nl ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                {streak > 0 && <span style={{ fontSize: 13, color: "#F97316", fontWeight: 900 }}>🔥{streak}</span>}
+                {xpBadge}
+              </span>
+            ) : streak > 0 && <span style={{ fontSize: 11, color: "#F97316", fontWeight: 900, marginLeft: "auto" }}>🔥{streak}</span>}
           </div>
           {editingNickname && (
             <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
@@ -193,6 +206,7 @@ export default function GrowthFortunePanel({
               >취소</button>
             </div>
           )}
+          {(!nl || myRank) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             {myRank ? (
               <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
@@ -200,12 +214,9 @@ export default function GrowthFortunePanel({
                 <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
               </button>
             ) : <span />}
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ fontSize: nl ? 20 : 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
-              <span style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
-              <button onClick={() => setXpHelpOpen(true)} style={{ background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
-            </div>
+            {!nl && xpBadge}
           </div>
+          )}
           <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
             <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
           </div>

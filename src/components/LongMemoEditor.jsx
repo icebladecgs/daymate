@@ -377,7 +377,7 @@ export default function LongMemoEditor({ initialId = null, initialText = '', sub
       <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
         <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>긴 메모</div>
+          <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{extraContent ? '새 메모' : '긴 메모'}</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
         <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
