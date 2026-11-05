@@ -81,8 +81,12 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
         <div style={{ marginTop: 10 }}>
           {wx.days.map((d) => (
             <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid var(--dm-row)", fontSize: 15, color: "var(--dm-text)" }}>
-              <span style={{ width: 40, flexShrink: 0, fontWeight: d.date === dateStr ? 900 : 700 }}>{weatherDayLabel(d.date, dateStr)}</span>
-              <span style={{ width: 28, flexShrink: 0, fontSize: 18, textAlign: "center" }}>{d.icon}</span>
+              {/* 요일 아래 날짜 — 한 줄에 나란히 두면 좁은 화면에서 날씨 설명이 잘린다 */}
+              <span style={{ width: 42, flexShrink: 0, lineHeight: 1.25 }}>
+                <span style={{ display: "block", fontWeight: d.date === dateStr ? 900 : 700 }}>{weatherDayLabel(d.date, dateStr)}</span>
+                <span style={{ display: "block", fontSize: 13, color: "var(--dm-sub)" }}>{Number(d.date.slice(5, 7))}/{Number(d.date.slice(8, 10))}</span>
+              </span>
+              <span style={{ width: 26, flexShrink: 0, fontSize: 18, textAlign: "center" }}>{d.icon}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--dm-sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.desc}</span>
               {d.rain != null && <span style={{ flexShrink: 0, fontSize: 14, color: d.rain >= 30 ? RAIN_COLOR : "var(--dm-muted)", fontWeight: d.rain >= 30 ? 800 : 400 }}>비 {d.rain}%</span>}
               <span style={{ width: 66, flexShrink: 0, textAlign: "right", fontWeight: 800 }}>{d.max}°/{d.min}°</span>
