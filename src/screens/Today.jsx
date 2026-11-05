@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
 import S from "../styles.js";
+import { WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
 import Toast from "../components/Toast.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
@@ -49,6 +50,8 @@ export default function Today({
   contacts,
   onOpenPeople,
   onBonusXp,
+  weatherCity,
+  onSetWeatherCity,
   exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
 }) {
   const tasks = data.tasks || [];
@@ -618,6 +621,9 @@ export default function Today({
         <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
       </div>
 
+      {/* 🌤 날씨 — 평소 한 줄, 누르면 7일 (설정에서 끌 수 있음) */}
+      {!hiddenSec.weather && <WeatherCard city={weatherCity} dateStr={dateStr} onSetCity={onSetWeatherCity} />}
+
       {/* 📚 수험생 모드: D-day · 오늘 공부 (설정에서 켰을 때만) */}
       {examOn && (
         <ExamTodayPanel exam={exam} setExam={setExam} dateStr={dateStr} plans={plans} todayData={data}
@@ -858,6 +864,12 @@ export default function Today({
       </div>
 
       </>)}
+
+      {/* 📌 다가오는 날 — 내 사람들의 생일·기념일 D-day. 7일 안은 위 칸에 있으니 뺀다 */}
+      {!hiddenSec.upcoming && (
+        <UpcomingDays contacts={contacts} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
+          heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
+      )}
 
       {/* 💪 오늘습관 */}
       {!hiddenSec.habits && (<>

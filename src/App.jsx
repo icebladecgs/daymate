@@ -2311,6 +2311,13 @@ export default function App() {
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
           contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
+          weatherCity={telegramCfg?.weatherCity}
+          onSetWeatherCity={(city) => {
+            const cfg = { ...telegramCfg, weatherCity: city };
+            setTelegramCfg(cfg);
+            store.set("dm_telegram", cfg);
+            if (authUser) saveSettings(authUser.uid, { telegram: cfg }).catch(() => {});
+          }}
           exam={exam} setExam={setExam}
           wrongDue={wrongDueCount} onOpenWrong={() => setShowWrongNotes(true)}
           onStudyXp={(min) => grantStatXp('INT', Math.sign(min) * studyXp(Math.abs(min)), { silent: min < 0 })} />

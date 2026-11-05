@@ -132,6 +132,11 @@ export function getUpcomingContactEvents(contacts, windowDays, todayStr = toDate
   return events.sort((a, b) => a.dday - b.dday);
 }
 
+// 오늘 탭 "다가오는 날" — excludeWithin일까지는 "오늘 챙길 사람" 칸에 이미 보이므로 뺀다 (그 칸을 숨겼으면 -1)
+export function getUpcomingDays(contacts, todayStr = toDateStr(), { excludeWithin = 7, maxDays = 100 } = {}) {
+  return getUpcomingContactEvents(contacts, maxDays, todayStr).filter((ev) => ev.dday > excludeWithin);
+}
+
 // 홈 위젯 "오늘 챙길 사람" 조합 — 생일·기념일(window일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일.
 // 완료 여부는 사람 쪽에 복제하지 않고 그 날짜의 실제 task(plans)를 그때그때 조회해서 판단한다.
 export function getContactReminders(contacts, plans, windowDays = 7, todayStr = toDateStr()) {

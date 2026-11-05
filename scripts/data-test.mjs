@@ -8,7 +8,8 @@ const vite = await createServer({ server: { middlewareMode: true }, appType: 'cu
 const load = (p) => vite.ssrLoadModule(p);
 const { pickTaskDetail } = await load('/src/utils/taskDetail.js');
 const { matchGoalsByTitle } = await load('/src/utils/goals.js');
-const { getUpcomingContactEvents, solarToLunar } = await load('/src/data/contacts.js');
+const { getUpcomingContactEvents, getUpcomingDays, solarToLunar } = await load('/src/data/contacts.js');
+const { weatherAdvice, weatherToday, weatherDayLabel } = await load('/src/utils/weather.js');
 const { alarmOccursOn, dueAlarms, collectMemoAlarms, nextOnceDate } = await load('/src/utils/alarms.js');
 const { recurringIdOf, addRecurringToDay } = await load('/src/utils/recurring.js');
 const { parseSchedule, parseMany, friendlySchedule } = await load('/src/utils/nlSchedule.js');
@@ -311,6 +312,26 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('오답: 세 번째 맞으면 21일 뒤', n.step === 3 && n.due === '2026-12-03');
   n = { ...n, ...reviewWrongNote(n, true, '2026-12-03') };
   t('오답: 네 번 연속 맞으면 졸업', n.done === true && n.due === null && !isDue(n, '2027-01-01') && n.reviews.length === 4);
+}
+
+// ── 다가오는 날·날씨 조언 ──
+{
+  const people = [
+    { id: 'a', name: '가', birthday: { month: 11, day: 8 } },
+    { id: 'b', name: '나', birthday: { month: 11, day: 20 } },
+    { id: 'c', name: '다', anniversaries: [{ name: '결혼', month: 12, day: 4 }] },
+    { id: 'd', name: '라', birthday: { month: 8, day: 1 } },
+  ];
+  const up = getUpcomingDays(people, '2026-11-05');
+  t('다가오는 날: 7일 안은 빼고 가까운 순', same(up.map(e => [e.name, e.dday]), [['나', 15], ['다', 29]]), JSON.stringify(up));
+  t('다가오는 날: 챙길 사람 칸을 숨기면 7일 안도 보임', getUpcomingDays(people, '2026-11-05', { excludeWithin: -1 })[0]?.name === '가');
+  t('날씨: 비 확률 높으면 우산', weatherAdvice({ code: 61, rain: 70, max: 15, min: 8 }).includes('우산'));
+  t('날씨: 눈이 비보다 먼저', weatherAdvice({ code: 73, rain: 80, max: 0, min: -5 }).includes('눈'));
+  t('날씨: 맑고 선선하면 나들이', weatherAdvice({ code: 0, rain: 0, max: 21, min: 12 }).includes('나들이'));
+  t('날씨: 비 확률이 없어도 오류 없음', typeof weatherAdvice({ code: 3, rain: null, max: 10, min: 3 }) === 'string');
+  const wx = { days: [{ date: '2026-11-05', max: 21 }, { date: '2026-11-06', max: 22 }] };
+  t('날씨: 오늘 예보 찾기', weatherToday(wx, '2026-11-06')?.max === 22 && weatherToday(wx, '2026-11-09') === null);
+  t('날씨: 요일 표시', weatherDayLabel('2026-11-05', '2026-11-05') === '오늘' && weatherDayLabel('2026-11-06', '2026-11-05') === '내일' && weatherDayLabel('2026-11-08', '2026-11-05') === '일');
 }
 
 await vite.close();

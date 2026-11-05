@@ -16,7 +16,9 @@ export const setTodayDoneGroup = (on) => store.set(DONE_KEY, !!on);
 // 오늘 탭에서 안 쓰는 칸 숨기기 (2026-11-03, 기기마다) — 설정 → 앱 관리 → 오늘 탭에 보일 칸
 const HIDDEN_KEY = "dm_today_hidden";
 export const TODAY_SECTIONS = [
+  { id: "weather", label: "🌤 날씨" },
   { id: "people", label: "💌 오늘 챙길 사람" },
+  { id: "upcoming", label: "📌 다가오는 날" },
   { id: "habits", label: "💪 오늘습관" },
   { id: "someday", label: "📋 언젠가할일" },
   { id: "weekly", label: "📅 주간 일정" },

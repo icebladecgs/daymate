@@ -53,6 +53,7 @@ const KR_STOCK_LIST = [
 ];
 
 const WX_DESC = {
+  56:'어는 비',57:'어는 비',66:'어는 비',67:'어는 비',77:'싸락눈',85:'소낙눈',86:'소낙눈',
   0:'맑음',1:'주로 맑음',2:'구름 조금',3:'흐림',
   45:'안개',48:'서리 안개',51:'가랑비',53:'보통 비',55:'강한 비',
   61:'약한 비',63:'보통 비',65:'강한 비',
@@ -61,6 +62,7 @@ const WX_DESC = {
   95:'뇌우',96:'우박 뇌우',99:'강한 우박 뇌우',
 };
 const WX_ICON = {
+  56:'🌧',57:'🌧',66:'🌧',67:'🌧',77:'🌨',85:'🌨',86:'❄️',
   0:'☀️',1:'🌤',2:'⛅',3:'☁️',
   45:'🌫',48:'🌫',51:'🌦',53:'🌧',55:'🌧',
   61:'🌧',63:'🌧',65:'🌧',
@@ -68,6 +70,30 @@ const WX_ICON = {
   80:'🌦',81:'🌧',82:'⛈',
   95:'⛈',96:'⛈',99:'⛈',
 };
+
+// 한국 주요 도시는 좌표를 직접 둔다 — 지명 검색은 "서울"을 못 찾고 "부산"은 같은 이름의 산을 돌려준다 (2026-11-05 확인)
+const KR_CITIES = {
+  서울: [37.566, 126.978], 부산: [35.102, 129.03], 대구: [35.871, 128.601], 인천: [37.456, 126.705],
+  광주: [35.16, 126.852], 대전: [36.35, 127.385], 울산: [35.539, 129.311], 세종: [36.48, 127.289],
+  수원: [37.263, 127.029], 성남: [37.42, 127.127], 분당: [37.382, 127.119], 용인: [37.241, 127.178],
+  고양: [37.658, 126.832], 일산: [37.658, 126.77], 부천: [37.503, 126.766], 안양: [37.394, 126.957],
+  안산: [37.322, 126.831], 화성: [37.2, 126.831], 평택: [36.992, 127.113], 의정부: [37.738, 127.034],
+  파주: [37.76, 126.78], 김포: [37.615, 126.716], 남양주: [37.636, 127.216], 청주: [36.642, 127.489],
+  천안: [36.815, 127.114], 전주: [35.824, 127.148], 창원: [35.228, 128.681], 김해: [35.228, 128.889],
+  포항: [36.019, 129.343], 경주: [35.856, 129.225], 제주: [33.5, 126.531], 서귀포: [33.254, 126.56],
+  춘천: [37.881, 127.73], 원주: [37.342, 127.92], 강릉: [37.752, 128.876], 여수: [34.76, 127.662],
+  순천: [34.951, 127.487], 목포: [34.812, 126.392],
+};
+async function findWeatherPlace(city) {
+  const short = city.replace(/\s+/g, '').replace(/(특별자치시|특별자치도|특별시|광역시|시)$/, '');
+  if (KR_CITIES[short]) return { name: short, latitude: KR_CITIES[short][0], longitude: KR_CITIES[short][1] };
+  const geo = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&language=ko`,
+    { headers: { 'User-Agent': 'DayMate/1.0' } }
+  );
+  const list = (await geo.json()).results || [];
+  return list.find(p => String(p.feature_code || '').startsWith('PPL')) || list[0] || null;
+}
 
 export default async function handler(req, res) {
   // ?type=search&q=삼성전자 → 종목 이름 검색 (한국 주식은 로컬 목록, 나머지는 Yahoo/CoinGecko 실시간 검색)
@@ -160,21 +186,27 @@ export default async function handler(req, res) {
   if (req.query.type === 'weather') {
     const city = (req.query.city || '').trim() || 'Seoul';
     try {
-      const geo = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=ko`,
-        { headers: { 'User-Agent': 'DayMate/1.0' } }
-      );
-      const gj = await geo.json();
-      const loc = gj.results?.[0];
+      const loc = await findWeatherPlace(city);
       if (!loc) return res.status(200).json({ ok: false });
 
       const wx = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode,windspeed_10m&timezone=auto`,
+        `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weathercode,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=7&timezone=auto`,
         { headers: { 'User-Agent': 'DayMate/1.0' } }
       );
       const wj = await wx.json();
       const c = wj.current;
       const code = c.weathercode;
+      const d = wj.daily || {};
+      const days = (d.time || []).map((date, i) => ({
+        date,
+        max: Math.round(d.temperature_2m_max?.[i]),
+        min: Math.round(d.temperature_2m_min?.[i]),
+        rain: d.precipitation_probability_max?.[i] ?? null,
+        code: d.weathercode?.[i],
+        desc: WX_DESC[d.weathercode?.[i]] || '날씨 정보',
+        icon: WX_ICON[d.weathercode?.[i]] || '🌡️',
+      }));
+      res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=3600');
       return res.status(200).json({
         ok: true,
         city: loc.name,
@@ -182,6 +214,7 @@ export default async function handler(req, res) {
         desc: WX_DESC[code] || '날씨 정보',
         icon: WX_ICON[code] || '🌡️',
         wind: Math.round(c.windspeed_10m),
+        days,
       });
     } catch (error) {
       console.error('[market] weather lookup failed:', error);
