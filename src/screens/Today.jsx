@@ -683,7 +683,7 @@ export default function Today({
           boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
       ),
     habits: !hiddenSec.habits && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...(newLook ? { paddingBottom: 16 } : {}), ...foldPad(habitsSectionOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘의 습관
           {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -738,7 +738,7 @@ export default function Today({
             )}
           </>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: newLook ? 10 : 8 }}>
             {visibleHabits.length === 0 && (
               newLook
                 ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
@@ -771,7 +771,16 @@ export default function Today({
             {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>}
         </span>
-        {newLook && <FoldButton open={somedayOpen} onClick={() => setSomedayOpen(v => !v)} />}
+        {/* 순서 바꾸기는 제목 줄 오른쪽 빈자리에 (맨 아래에 두면 답답하다는 사용자 의견, 2026-11-07) */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          {somedayOpen && (somedayList.length > 1 || reorder === 'someday') && (
+            <button onClick={() => setReorder(reorder === 'someday' ? null : 'someday')}
+              style={{ height: 32, padding: '0 10px', borderRadius: 10, border: `1.5px solid ${reorder === 'someday' ? '#5B7CFA' : 'var(--dm-border)'}`, background: reorder === 'someday' ? 'rgba(91,124,250,.12)' : 'transparent', color: reorder === 'someday' ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              {reorder === 'someday' ? '✓ 완료' : '↕ 순서'}
+            </button>
+          )}
+          {newLook && <FoldButton open={somedayOpen} onClick={() => setSomedayOpen(v => !v)} />}
+        </span>
       </div>
       {somedayOpen && (
       <div style={innerCard}>
@@ -790,7 +799,6 @@ export default function Today({
             </>)}
           </div>
         ))}
-        {somedayList.length > 1 && <div style={{ marginTop: newLook ? 6 : 0 }}><ReorderToggle on={reorder === 'someday'} onClick={() => setReorder(reorder === 'someday' ? null : 'someday')} /></div>}
         {somedayList.length > 3 && reorder !== 'someday' && (
           <button onClick={() => setSomedayShowAll(v => !v)}
             style={{ display: 'block', width: '100%', margin: '2px 0 10px', padding: '8px 0', borderRadius: 10, border: '1px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)', fontSize: newLook ? 14 : 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
