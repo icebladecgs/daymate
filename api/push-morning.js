@@ -1,7 +1,8 @@
-// Vercel Cron — 아침 할일 잠금화면 알림 (30분 간격, 사용자 설정 시간에 발송)
+// Vercel Cron — 아침 잠금화면 알림: 날씨·우산, 첫 일정, 남은 할일 (하루 1번 07:00 KST, 문구는 src/utils/morningBrief.js)
 import webpush from 'web-push';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { buildMorningPush } from '../src/utils/morningBrief.js';
 
 if (!getApps().length) {
   initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
@@ -66,16 +67,11 @@ export default async function handler(req, res) {
     const daySnap = await db.doc(`users/${uid}/days/${dateStr}`).get();
     const tasks = (daySnap.data()?.tasks || []).filter(t => t.title?.trim());
 
-    let title, body;
-    if (tasks.length === 0) {
-      title = `☀️ 좋은 아침! ${dateLabel}`;
-      body = '오늘 할일을 아직 설정하지 않았어요. DayMate에서 계획해보세요 📝';
-    } else {
-      const done = tasks.filter(t => t.done).length;
-      title = `☀️ ${dateLabel} · 할일 ${tasks.length}개`;
-      const lines = tasks.map(t => `${t.done ? '✅' : '⬜'} ${t.title}`).join('\n');
-      body = done > 0 ? `${done}/${tasks.length} 완료\n${lines}` : lines;
-    }
+    // 날씨를 못 받아도 알림은 그대로 보낸다 (도시는 오늘 탭 날씨 칸과 같은 값)
+    const city = settings.telegram?.weatherCity || '서울';
+    const wx = await fetch(`https://daymate-beta.vercel.app/api/market?type=weather&city=${encodeURIComponent(city)}`, { signal: AbortSignal.timeout(4000) })
+      .then(r => r.json()).then(j => (j?.ok ? j : null)).catch(() => null);
+    const { title, body } = buildMorningPush({ tasks, wx, dateStr, dateLabel });
 
     await webpush.sendNotification(sub, JSON.stringify({
       title,

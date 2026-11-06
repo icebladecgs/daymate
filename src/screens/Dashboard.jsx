@@ -10,6 +10,7 @@ const CSS = `
 .dm-dash-col { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; border-right: 1px solid var(--dm-border); }
 .dm-dash-col:last-child { border-right: none; }
 .dm-dash-col > * { z-index: auto !important; }
+.dm-dash .dm-cal-sheet { max-width: 560px; margin: 0 auto; }
 .dm-dash-week { flex: 0 1 auto; max-height: 58%; min-height: 0; overflow-y: auto; padding: 14px 16px; border-bottom: 1px solid var(--dm-border); box-sizing: border-box; }
 .dm-dash-memo { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .dm-dash-memo .dm-memo-panel { position: static !important; transform: none !important; max-width: none !important; flex: 1; min-height: 0; z-index: auto !important; }

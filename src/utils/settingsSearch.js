@@ -15,6 +15,7 @@ export const ITEMS = [
   { page: "profile", label: "이름", section: "이름", words: "닉네임 프로필" },
   { page: "profile", label: "생년월일시", section: "생년월일시", words: "운세 사주 생일 출생시간" },
   { page: "profile", label: "연간 목표", section: "연간 목표", words: "올해 목표" },
+  { page: "app", label: "출퇴근 시간", section: "출퇴근 시간", words: "출근 퇴근 근무 시간 퇴근 전 체크 오늘 양 나중에" },
   { page: "recurring", label: "반복 할일", words: "매일 요일 매주 매월 그만하기" },
   { page: "voiceDiaryQuestions", label: "음성 일기 질문", words: "녹음 말 일기" },
   { page: "notifications", label: "할일·메모 알람", section: "할일·메모 알람", words: "알람 시간 정각 5분 전 10분 전" },

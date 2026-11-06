@@ -18,14 +18,15 @@ import { getContactReminders } from "../data/contacts.js";
 import { parseSchedule, parseMany, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
 import { recurringLabel, recurringIdOf } from "../utils/recurring.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
-import { findNowTask, useNowMinutes } from "../utils/nowTask.js";
+import { findNowTask, useNowMinutes, leftText } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
 import TodayTaskRow from "../components/TodayTaskRow.jsx";
 import { todayNewLookOn, todayDoneGroupOn, todayHiddenSections, todaySectionOrder } from "../utils/todayLook.js";
 import { SectionIcon, DoneSegments, CompactBar } from "../components/TodayLook.jsx";
 import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
-import DayWrapUpSheet, { DayWrapUpCard } from "../components/DayWrapUp.jsx";
+import DayWrapUpSheet, { DayWrapUpCard, LeaveCheckCard } from "../components/DayWrapUp.jsx";
+import { normalizeWorkHours, isWorkday, planUntilMin, leaveCheckFrom, wrapFromMin, workload } from "../utils/workHours.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { onThisDay } from "../utils/goalProgress.js";
 import { useUndo, putBack } from "../utils/useUndo.js";
@@ -57,6 +58,7 @@ export default function Today({
   ddays = [],
   setDdays,
   exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
+  workHours,
   dashboard = false, // PC 대시보드 안: 머리글과 오늘의 할일만 보여 줌 (나머지 칸은 오늘 탭에 그대로)
 }) {
   const tasks = data.tasks || [];
@@ -77,6 +79,8 @@ export default function Today({
   const [nlOff, setNlOff] = useState(false); // 문장 해석 끄기 ("그냥 글자로") — 입력이 바뀌면 다시 켬
   const [taskDayOffset, setTaskDayOffset] = useState(0); // 오늘의 할일 섹션만 다른 날짜로 미리보기
   const nowMin = useNowMinutes(); // "지금 할 일" 카드·목록의 "지금" 표시용 (30초마다)
+  const wh = normalizeWorkHours(workHours); // 출퇴근 시간 (설정 → 앱 관리)
+  const [planMore, setPlanMore] = useState(false); // 아침 계획: 언젠가할일 더 보기
   const [focus, setFocus] = useState(null); // 집중 타이머 { ds, task } — 지금 할 일 카드·할일 상세에서 시작
   const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
@@ -500,9 +504,11 @@ export default function Today({
   };
   // ☀️ 아침 "오늘 계획" (2026-11-03) — 정오 전에는 어제 못 한 할일 카드에 오늘 첫 일정 한 줄과 언젠가할일 3개(오늘로)를 같이 보여준다.
   // 시간 있는 할일 목록은 바로 아래 할일 목록에 있으므로 다시 늘어놓지 않고 한 줄로만.
-  const morning = nowMin < 12 * 60;
+  const morning = nowMin < planUntilMin(wh);
   const timedToday = tasks.filter(t => t.title?.trim() && t.time && !t.done).sort((a, b) => a.time.localeCompare(b.time));
-  const morningSomeday = morning ? (someday || []).filter(x => !x.done && x.title?.trim()).slice(0, 3) : [];
+  // 목표에서 나온 언젠가할일을 먼저 (2026-11-06) — 3개 + 더 보기
+  const planSomeday = morning ? (someday || []).filter(x => !x.done && x.title?.trim()).sort((a, b) => (b.goalRef ? 1 : 0) - (a.goalRef ? 1 : 0)) : [];
+  const morningSomeday = planMore ? planSomeday : planSomeday.slice(0, 3);
   const showPlanCard = !carryDismissed && (carryTasks.length > 0 || morningSomeday.length > 0);
   const dismissCarry = () => { store.set('dm_carry_dismissed', dateStr); setCarryDismissed(true); };
 
@@ -521,6 +527,7 @@ export default function Today({
 
   const introCards = (
     <>
+      {isWorkday(dateStr) && <LeaveCheckCard key={`leave_${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} nowMin={nowMin} fromMin={leaveCheckFrom(wh)} toMin={wrapFromMin(wh, dateStr)} onOpen={() => setWrapOpen('leave')} />}
       {onboard === 'show' && (() => {
         const step1 = onboardStep1, step2 = onboardStep2;
         const row = (done, n, label, sub, onClick) => (
@@ -580,10 +587,15 @@ export default function Today({
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dm-text)', padding: '10px 0 2px' }}>📋 언젠가에서 오늘 할 것 고르기</div>
               {morningSomeday.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.goalRef ? '🎯 ' : ''}{item.title}</span>
                   <button onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
                 </div>
               ))}
+              {planSomeday.length > 3 && (
+                <button onClick={() => setPlanMore(v => !v)} style={{ display: 'block', width: '100%', padding: '8px 0 2px', marginTop: 0, background: 'none', border: 'none', borderTop: '1px solid var(--dm-row)', borderRadius: 0, color: 'var(--dm-sub)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {planMore ? '접기 ▲' : `${planSomeday.length - 3}개 더 보기 ▼`}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -786,7 +798,7 @@ export default function Today({
       })(),
     // 📖 일기 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) — 🌙 하루 마무리는 저녁에만, 일기 바로 위
     journal: (<>
-      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} onOpen={() => setWrapOpen(true)} />
+      <DayWrapUpCard key={`${dateStr}_${wrapOpen}`} dateStr={dateStr} tasks={tasks} plans={plans} nowMin={nowMin} fromMin={wrapFromMin(wh, dateStr)} onOpen={() => setWrapOpen(true)} />
       <SectionBox on={newLook}>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
@@ -896,10 +908,10 @@ export default function Today({
         />
       )}
       {wrapOpen && (
-        <DayWrapUpSheet dateStr={dateStr} tasks={tasks} plans={plans} journalBody={bodyText}
+        <DayWrapUpSheet leave={wrapOpen === 'leave'} dateStr={dateStr} tasks={tasks} plans={plans} journalBody={bodyText}
           onMoveTaskDate={onMoveTaskDate} setData={setData} setSomeday={setSomeday} pickDetail={pickTaskDetail}
           onClose={() => setWrapOpen(false)}
-          onFinish={() => { setWrapOpen(false); setToast('오늘 하루 수고했어요 🌙'); }} />
+          onFinish={() => { const leaving = wrapOpen === 'leave'; setWrapOpen(false); setToast(leaving ? '오늘도 수고했어요 🏁' : '오늘 하루 수고했어요 🌙'); }} />
       )}
       {detailTask && (
         <TaskDetailSheet
@@ -1048,6 +1060,12 @@ export default function Today({
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
       {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} inBox={newLook} />}
+      {/* 오늘 양 경고 — 근무 시간 안에 잡힌 일이 근무 시간보다 많으면 (평일만) */}
+      {tasksOpen && isWorkday(targetDs) && (() => {
+        const load = workload(targetTasks, wh);
+        if (!load.over) return null;
+        return <div style={{ margin: newLook ? '8px 0 2px' : '8px 16px 2px', fontSize: 14, fontWeight: 700, color: '#F97316', lineHeight: 1.45, wordBreak: 'keep-all' }}>⚠️ 시간 정한 일이 {leftText(load.planned)}이에요. 근무 시간 {leftText(load.work)}을 넘어요</div>;
+      })()}
       {tasksOpen && taskDayOffset === 0 && !newLook && <NowTaskCard tasks={tasks} nowMin={nowMin} onToggle={toggleTargetTask} onOpen={setDetailTaskId} onFocus={(t) => setFocus({ ds: dateStr, task: t })} />}
       {!newLook && introCards}
       {tasksOpen && (

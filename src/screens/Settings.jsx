@@ -152,7 +152,7 @@ function Toggle({ value, onChange, disabled }) {
   );
 }
 
-export default function Settings({ user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
+export default function Settings({ workHours, setWorkHours, user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
   telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
   recurringTasks, setRecurringTasks,
@@ -1362,6 +1362,17 @@ export default function Settings({ user, setUser, goals, setGoals, notifEnabled,
             </div>
           </div>
         )}
+      </div>
+
+      <div style={S.sectionTitle}>🕘 출퇴근 시간</div>
+      <div style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <input type="time" step="300" aria-label="출근 시간" value={workHours?.start || '09:00'} onChange={e => e.target.value && setWorkHours?.(w => ({ ...w, start: e.target.value }))} style={{ ...S.input, width: 130, marginBottom: 0 }} />
+          <span style={{ color: 'var(--dm-sub)', fontSize: 15 }}>~</span>
+          <input type="time" step="300" aria-label="퇴근 시간" value={workHours?.end || '18:00'} onChange={e => e.target.value && setWorkHours?.(w => ({ ...w, end: e.target.value }))} style={{ ...S.input, width: 130, marginBottom: 0 }} />
+        </div>
+        {(workHours?.end || '18:00') <= (workHours?.start || '09:00') && <div style={{ fontSize: 13, color: '#F97316', marginTop: 8 }}>퇴근 시간은 출근 시간보다 늦어야 해요. 그때까지는 09:00~18:00으로 계산해요.</div>}
+        <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 8, lineHeight: 1.5 }}>평일 퇴근 30분 전에 "퇴근 전 체크"가 뜨고, 시간 정한 일이 근무 시간을 넘으면 알려 줘요. 아침 계획 카드와 할일 알림의 "퇴근 전"도 이 시간을 써요.</div>
       </div>
 
       <div style={S.sectionTitle}>📱 오늘 탭 칸 순서</div>

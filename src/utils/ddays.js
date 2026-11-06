@@ -23,6 +23,14 @@ export function buildUpcomingDays(contacts, ddays, todayStr, { excludeWithin = 7
   return [...mine, ...people].sort((a, b) => a.dday - b.dday);
 }
 
+// 지난 D-day — 최근 것부터 (다가오는 날 칸 아래 "지난 D-day"에서 고치거나 지운다)
+export function pastDdays(ddays, todayStr) {
+  return normalizeDdays(ddays)
+    .map((d) => ({ key: d.id, kind: "dday", id: d.id, title: d.title, date: d.date, dday: daysUntil(d.date, todayStr) }))
+    .filter((d) => d.dday < 0)
+    .sort((a, b) => b.dday - a.dday);
+}
+
 export function ddayDateLabel(date, todayStr) {
   const [y, m, d] = date.split("-").map(Number);
   return y === Number(todayStr.slice(0, 4)) ? `${m}/${d}` : `${y}.${m}.${d}`;

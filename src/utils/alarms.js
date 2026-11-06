@@ -3,6 +3,7 @@
 // PC 절전에서 깨어나면 늦거나 빠졌다. 놓친 알람은 10분 안이면 늦게라도 울린다.
 // 휴대폰은 앱이 꺼져 있으면 울리지 않는다(할일은 구글 캘린더 알림으로, CLAUDE.md 14.7).
 import { store } from "./storage.js";
+import { isWorkday } from "./workHours.js";
 
 export const ALARM_REPEATS = [
   { id: "once", label: "한 번" },
@@ -86,6 +87,38 @@ export function dueAlarms({ memoAlarms = [], tasks = [], lead = 0, todayStr, now
   }
   return due;
 }
+
+// "나중에" (2026-11-06) — 울린 할일 알림을 다시 울릴 시각. 퇴근 전은 오늘이 평일이고 아직 그 시각 전일 때만.
+export function snoozeOptions(wh, now = new Date()) {
+  const ms = (dayOffset, hhmm) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + dayOffset);
+    const m = toMin(hhmm);
+    d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+    return d.getTime();
+  };
+  const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const leaveAt = ms(0, wh.end) - 30 * 60000;
+  const out = [{ id: "hour", label: "1시간 뒤", at: now.getTime() + 3600000 }];
+  if (isWorkday(ymd) && leaveAt > now.getTime() + 5 * 60000) out.push({ id: "leave", label: "퇴근 전", at: leaveAt });
+  out.push({ id: "morning", label: "내일 아침", at: ms(1, wh.start) });
+  return out;
+}
+
+// 미룬 알림 — 기기마다 켜 둔 앱이 울린다. 앱이 꺼져 있었으면 다음에 켤 때 울린다.
+// 끝냈거나 없어진(지웠거나 다른 날로 옮긴) 할일은 조용히 뺀다.
+export function dueSnoozes(list, plans, now = Date.now()) {
+  const due = [], rest = [];
+  for (const s of list) {
+    const alive = (plans?.[s.ds]?.tasks || []).some((t) => String(t.id) === String(s.id) && !t.done);
+    if (!alive) continue;
+    (s.at <= now ? due : rest).push(s);
+  }
+  return { due, rest };
+}
+const SNOOZE_KEY = "dm_alarm_snooze";
+export const loadSnoozes = () => { const v = store.get(SNOOZE_KEY, []); return Array.isArray(v) ? v : []; };
+export const saveSnoozes = (list) => store.set(SNOOZE_KEY, list);
 
 // 할일 알림 — 기기마다: 'off' | 0(정각) | 5 | 10 (기본 정각, 예전과 같음)
 const LEAD_KEY = "dm_task_alarm_lead";

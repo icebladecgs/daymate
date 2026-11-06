@@ -6,12 +6,16 @@ import { withMemoList } from "../components/MemoTimeline.jsx";
 // 또 메모가 목록에서 사라지면(어느 화면에서 지웠든) 날짜 기록의 memoTrash(휴지통)로 옮기고, 30일 지난 것은 비운다.
 // 모든 날짜 저장이 여기(setDayData/setTodayData)를 거치므로 삭제 화면마다 따로 처리하지 않아도 된다.
 const MEMO_TRASH_DAYS = 30;
+// 글 없이 사진부터 넣은 메모의 자동 글자. 사진을 다 지워 이 글자만 남으면 뜻 없는 메모라 휴지통으로 보낸다 (2026-11-06)
+// (사진이 있다가 없어지는 순간에만 — 이미 남아 있는 메모나 직접 쓴 글은 건드리지 않는다)
+export const PHOTO_MEMO_LABEL = '📷 사진';
 export function stampMemoUpdates(prevDay, nextDay) {
-  const nextMemos = nextDay?.memos;
-  if (!Array.isArray(nextMemos) || nextMemos === prevDay?.memos) return nextDay;
+  if (!Array.isArray(nextDay?.memos) || nextDay.memos === prevDay?.memos) return nextDay;
   const prevMap = new Map((prevDay?.memos || []).map(m => [m.id, m]));
+  const emptied = new Set(nextDay.memos.filter(m => prevMap.get(m.id)?.photos?.length && !m.photos?.length && m.text?.trim() === PHOTO_MEMO_LABEL && !m.files?.length && !m.locked).map(m => m.id));
+  const nextMemos = emptied.size ? nextDay.memos.filter(m => !emptied.has(m.id)) : nextDay.memos;
   const now = new Date().toISOString();
-  let changed = false;
+  let changed = emptied.size > 0;
   const memos = nextMemos.map(m => {
     const p = prevMap.get(m.id);
     if (p && p.text === m.text && p.photos === m.photos && p.files === m.files && p.locked === m.locked) return m;
@@ -23,7 +27,8 @@ export function stampMemoUpdates(prevDay, nextDay) {
   const removed = (prevDay?.memos || []).filter(m => !nextIds.has(m.id) && (m.text?.trim() || m.photos?.length || m.files?.length || m.locked));
   const cutoff = Date.now() - MEMO_TRASH_DAYS * 86400000;
   const oldTrash = nextDay.memoTrash || [];
-  const trash = [...oldTrash, ...removed.map(m => ({ ...m, deletedAt: now }))].filter(t => Date.parse(t.deletedAt) > cutoff);
+  const trash = [...oldTrash, ...removed.map(m => ({ ...m, ...(emptied.has(m.id) ? { photos: [] } : {}), deletedAt: now }))] // 지운 사진은 파일도 없어 함께 비운다
+   .filter(t => Date.parse(t.deletedAt) > cutoff);
   const trashChanged = removed.length > 0 || trash.length !== oldTrash.length;
   if (!changed && !trashChanged) return nextDay;
   return { ...nextDay, ...(changed ? { memos } : {}), ...(trashChanged ? { memoTrash: trash } : {}) };

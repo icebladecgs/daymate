@@ -153,6 +153,7 @@ export default function StickyMemo() {
 
   // 캡처한 이미지 Ctrl+V → 사진으로 첨부
   const onPaste = async (e) => {
+    if (e.clipboardData?.getData("text/plain")?.trim()) return; // 엑셀·워드처럼 글자와 그림이 함께 복사되면 글자를 붙인다
     const files = [...(e.clipboardData?.items || [])].filter(it => it.type.startsWith("image/")).map(it => it.getAsFile()).filter(Boolean);
     if (!files.length) return;
     e.preventDefault();

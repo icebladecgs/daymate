@@ -5,6 +5,8 @@ import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
 import { normalizeDdays } from "./utils/ddays.js";
+import { normalizeWorkHours } from "./utils/workHours.js";
+import AlarmSnoozeBar from "./components/AlarmSnoozeBar.jsx";
 import WrongNotes from "./components/WrongNotes.jsx";
 import { reportError } from "./utils/errorReport.js";
 import GrowthFortunePanel from "./components/GrowthFortunePanel.jsx";
@@ -27,7 +29,7 @@ import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
 import DesktopUpdateBar from "./components/DesktopUpdateBar.jsx";
 import { triggerVibration, sendNotification, getPermission, playNotifSound } from "./utils/notification.js";
-import { collectMemoAlarms, dueAlarms, taskAlarmLead, loadFired, saveFired } from "./utils/alarms.js";
+import { collectMemoAlarms, dueAlarms, taskAlarmLead, loadFired, saveFired, loadSnoozes, saveSnoozes, dueSnoozes } from "./utils/alarms.js";
 import { getCurrentGoalMonthKey, getMonthGoals, normalizeGoals } from "./utils/goals.js";
 import { DEFAULT_DIARY_QUESTIONS } from "./utils/diary.js";
 import { getTopKeywords } from "./utils/knowledge.js";
@@ -411,6 +413,8 @@ export default function App() {
   // 수험생 모드 (D-day·과목·켜기) — 계정 설정 exam에 동기화
   const [exam, setExam] = useState(() => normalizeExam(store.get("dm_exam", null)));
   const [ddays, setDdays] = useState(() => normalizeDdays(store.get("dm_ddays", [])));
+  const [workHours, setWorkHours] = useState(() => store.get("dm_work_hours", null) || { start: "09:00", end: "18:00" });
+  const [alarmBar, setAlarmBar] = useState([]); // 할일 알림의 "나중에" 띠
   const [wrongNotes, setWrongNotes] = useState(null); // 오답 노트 (null = 아직 안 불러옴) — 수험생 모드일 때 로그인하면 불러옴
   const [showWrongNotes, setShowWrongNotes] = useState(false);
   const statAskedRef = useRef(new Set()); // 이번 실행에서 이미 물어본 제목 (같은 제목을 거듭 묻지 않게)
@@ -1184,6 +1188,7 @@ export default function App() {
     }
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
     if (Array.isArray(s?.ddays) && !same(normalizeDdays(s.ddays), ddays)) setDdays(normalizeDdays(s.ddays));
+    if (s?.workHours && !same(s.workHours, workHours)) setWorkHours(s.workHours);
     if (Array.isArray(s?.habits) && !same(s.habits, habits)) setHabits(s.habits);
     if (s?.memoLock && !same(s.memoLock, memoLockCfg)) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
     if (remoteGoals) {
@@ -1445,6 +1450,8 @@ export default function App() {
               const localExam = normalizeExam(store.get("dm_exam", null));
               if (localExam.on || localExam.ddays.length) saveSettings(firebaseUser.uid, { exam: localExam }).catch(() => {});
             }
+            if (s.workHours) { setWorkHours(s.workHours); store.set("dm_work_hours", s.workHours); }
+            else if (store.get("dm_work_hours", null)) saveSettings(firebaseUser.uid, { workHours: store.get("dm_work_hours", null) }).catch(() => {});
             if (Array.isArray(s.ddays)) { const d = normalizeDdays(s.ddays); setDdays(d); store.set("dm_ddays", d); }
             else {
               // 로그인 전에 이 기기에서 넣은 D-day는 한 번 올린다 (서버에 없을 때)
@@ -1613,6 +1620,11 @@ export default function App() {
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { exam }).catch(() => {});
   }, [exam, authUser]);
   useEffect(() => {
+    store.set("dm_work_hours", workHours);
+    prefsLocalChangeRef.current = Date.now();
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { workHours }).catch(() => {});
+  }, [workHours, authUser]);
+  useEffect(() => {
     store.set("dm_ddays", ddays);
     prefsLocalChangeRef.current = Date.now();
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { ddays }).catch(() => {});
@@ -1696,14 +1708,21 @@ export default function App() {
   // 30초마다 "지금 울릴 것"을 확인한다(예전엔 한 번 예약해서 PC 절전 뒤에 빠졌다). 알림을 켠 기기에서만.
   const memoAlarms = useMemo(() => collectMemoAlarms(plans), [plans]);
   const alarmRef = useRef({});
-  alarmRef.current = { memoAlarms, tasks: todayData?.tasks || [], notifEnabled };
+  alarmRef.current = { memoAlarms, tasks: todayData?.tasks || [], notifEnabled, plans };
   useEffect(() => {
     const tick = () => {
-      const { memoAlarms: ma, tasks, notifEnabled: on } = alarmRef.current;
+      const { memoAlarms: ma, tasks, notifEnabled: on, plans: curPlans } = alarmRef.current;
       if (!on || getPermission() !== 'granted') return;
       const fired = loadFired();
       const due = dueAlarms({ memoAlarms: ma, tasks, lead: taskAlarmLead(), todayStr: toDateStr(), fired });
-      if (!due.length) return;
+      // "나중에"로 미룬 할일 — 때가 됐거나, 끝냈거나 없어진 것은 목록에서 뺀다
+      const snoozes = loadSnoozes();
+      const { due: snoozed, rest } = dueSnoozes(snoozes, curPlans);
+      if (rest.length !== snoozes.length) saveSnoozes(rest);
+      if (!due.length && !snoozed.length) return;
+      snoozed.forEach(s => sendNotification('DayMate ⏰ 다시 알림', s.body, '⏰'));
+      const toBar = [...due.filter(a => a.kind === 'task'), ...snoozed].map(a => ({ ds: a.ds, id: a.id, body: a.body }));
+      if (toBar.length) setAlarmBar(prev => [...prev.filter(x => !toBar.some(y => y.ds === x.ds && y.id === x.id)), ...toBar]);
       for (const a of due) {
         fired[a.key] = Date.now();
         const n = sendNotification(a.title, a.body, a.kind === 'memo' ? '📝' : '⏰');
@@ -2313,7 +2332,7 @@ export default function App() {
     const renderToday = (extra) => {
       const d = plans[todayStr] || newDay(todayStr);
       return (
-        <Today {...extra} hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+        <Today {...extra} workHours={workHours} hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
@@ -2496,7 +2515,7 @@ export default function App() {
     if (screen === "settings") {
       return (
         <Settings
-          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam}
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser} goals={goals} setGoals={setGoals}
           notifEnabled={notifEnabled} setNotifEnabled={setNotifEnabled}
           telegramCfg={telegramCfg} setTelegramCfg={setTelegramCfg}
@@ -2537,7 +2556,7 @@ export default function App() {
       return canOpenAdmin
         ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
         : <Settings
-          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam}
+          statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser}
           goals={goals} setGoals={setGoals}
           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
@@ -2691,6 +2710,16 @@ export default function App() {
           <UnsyncedBar count={unsynced.n} offline={unsynced.offline} onRetry={() => retryUnsyncedRef.current?.()} onClose={() => setUnsyncedHidden(unsynced.n)} />
         )}
         {!statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <DesktopUpdateBar />}
+        <AlarmSnoozeBar
+          items={alarmBar.filter(x => (plans[x.ds]?.tasks || []).some(t => String(t.id) === String(x.id) && !t.done))}
+          workHours={normalizeWorkHours(workHours)}
+          onSnooze={(item, at) => {
+            saveSnoozes([...loadSnoozes().filter(s => !(s.ds === item.ds && s.id === item.id)), { ...item, at }]);
+            setAlarmBar(prev => prev.filter(x => x !== item));
+            setToast('다시 알려 드릴게요 ⏰');
+          }}
+          onClose={(item) => setAlarmBar(prev => prev.filter(x => x !== item))}
+        />
         {statAsk && (
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />

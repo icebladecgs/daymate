@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import S, { boxCard } from "../styles.js";
 import { store } from "../utils/storage.js";
-import { buildUpcomingDays, ddayDateLabel, newDday } from "../utils/ddays.js";
+import { buildUpcomingDays, ddayDateLabel, newDday, pastDdays } from "../utils/ddays.js";
 import { ddayLabel } from "../utils/exam.js";
 import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
 import UndoBar from "./UndoBar.jsx";
@@ -153,6 +153,8 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
   const [more, setMore] = useState(false);
   const undo = useUndo();
   const [editing, setEditing] = useState(null); // 'new' 또는 고치는 D-day id
+  const [pastOpen, setPastOpen] = useState(false);
+  const past = useMemo(() => pastDdays(ddays, dateStr), [ddays, dateStr]);
   const all = useMemo(() => buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }), [contacts, ddays, dateStr, excludeWithin]);
   const shown = all.slice(0, more ? SHOW_MORE : 3);
   const moreCount = Math.min(all.length, SHOW_MORE) - 3;
@@ -195,6 +197,22 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
             ＋ D-day 추가
           </button>
         )}
+        {past.length > 0 && (
+          <button onClick={() => setPastOpen((v) => !v)} style={{ display: "block", width: "100%", padding: "9px 0", marginTop: 0, background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, color: "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {pastOpen ? "지난 D-day 접기 ▲" : `지난 D-day ${past.length}개 ▼`}
+          </button>
+        )}
+        {pastOpen && past.map((ev) => (
+          editing === ev.id ? (
+            <DdayForm key={ev.key} initial={ev} onSave={(t, d) => saveDday(ev.id, t, d)} onDelete={() => removeDday(ev)} onCancel={() => setEditing(null)} />
+          ) : (
+            <button key={ev.key} onClick={() => setEditing(ev.id)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", marginTop: 0, background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, color: "var(--dm-sub)", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <span style={{ width: 62, flexShrink: 0, fontSize: 15, fontWeight: 900, color: "var(--dm-muted)" }}>{ddayLabel(ev.dday)}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</span>
+              <span style={{ flexShrink: 0, fontSize: 14, color: "var(--dm-muted)" }}>{ddayDateLabel(ev.date, dateStr)}</span>
+            </button>
+          )
+        ))}
       </div>
     </SectionBox>
   );

@@ -9,21 +9,39 @@ import { useBackClose } from "../utils/useBackClose.js";
 
 // 하루 마무리 (2026-11-03) — 저녁에 오늘 탭 일기 위에 한 줄 카드가 뜨고, 누르면 정리 창:
 // 끝낸 일 보기 → 못 한 일은 내일로·언젠가로(또는 그대로) → 한 줄 일기 → 마치기.
-// - 카드는 18시부터, 오늘 마무리했거나 ✕로 닫으면 그날은 안 보인다 (기기마다 dm_wrap_done / dm_wrap_dismissed)
+// - 카드는 자기 전(기본 21시, utils/workHours.js)부터, 오늘 마무리했거나 ✕로 닫으면 그날은 안 보인다 (기기마다 dm_wrap_done / dm_wrap_dismissed)
 // - 반복 할일·구글 캘린더에서 가져온 일정은 옮기지 않는다 (어제 못 한 할일 넘기기와 같은 기준)
 // - 정리는 누를 때마다 바로 저장된다 — 중간에 닫아도 옮긴 것은 그대로
 // - 일요일에는 "이번 주 돌아보기"로 — 창 맨 위에 이번 주(월~일) 요약이 붙는다 (오늘 할일이 없어도 이번 주 기록이 있으면 뜸)
-export const WRAP_FROM_MIN = 18 * 60;
 
 const isRecurringInstance = (t) => /^r.+_\d{4}-\d{2}-\d{2}$/.test(String(t.id));
 const movable = (t) => !isRecurringInstance(t) && !isImportedGcalTask(t);
 const isSunday = (ds) => new Date(`${ds}T00:00:00`).getDay() === 0;
 
-export function DayWrapUpCard({ dateStr, tasks, plans, nowMin, onOpen }) {
+// 🏁 퇴근 전 체크 (2026-11-06) — 평일 퇴근 30분 전부터 하루 마무리 시작 전까지, 남은 일이 있을 때만. 같은 창에서 일기만 뺀다.
+export function LeaveCheckCard({ dateStr, tasks, nowMin, fromMin, toMin, onOpen }) {
+  const [hidden, setHidden] = useState(() => store.get('dm_leave_done', '') === dateStr);
+  const left = tasks.filter(t => t.title?.trim() && !t.done).length;
+  if (hidden || !left || nowMin < fromMin || nowMin >= toMin) return null;
+  return (
+    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(91,124,250,.45)', background: 'rgba(91,124,250,.08)', cursor: 'pointer' }}
+      onClick={onOpen}>
+      <span style={{ fontSize: 22 }}>🏁</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--dm-text)' }}>퇴근 전 체크</div>
+        <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginTop: 2 }}>남은 일 {left}개 정리하기</div>
+      </div>
+      <button onClick={(e) => { e.stopPropagation(); store.set('dm_leave_done', dateStr); setHidden(true); }} aria-label="오늘은 닫기" title="오늘은 그만 보기"
+        style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>✕</button>
+    </div>
+  );
+}
+
+export function DayWrapUpCard({ dateStr, tasks, plans, nowMin, fromMin, onOpen }) {
   const [hidden, setHidden] = useState(() => store.get('dm_wrap_done', '') === dateStr || store.get('dm_wrap_dismissed', '') === dateStr);
   const real = tasks.filter(t => t.title?.trim());
   const weekly = isSunday(dateStr) ? weekSummary(plans, dateStr) : null;
-  if (hidden || nowMin < WRAP_FROM_MIN || !(real.length || weekly?.total)) return null;
+  if (hidden || nowMin < fromMin || !(real.length || weekly?.total)) return null;
   const left = real.filter(t => !t.done).length;
   return (
     <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(139,92,246,.4)', background: 'rgba(139,92,246,.08)', cursor: 'pointer' }}
@@ -39,14 +57,14 @@ export function DayWrapUpCard({ dateStr, tasks, plans, nowMin, onOpen }) {
   );
 }
 
-export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onMoveTaskDate, setData, setSomeday, pickDetail, onClose, onFinish }) {
+export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onMoveTaskDate, setData, setSomeday, pickDetail, onClose, onFinish, leave = false }) {
   useBackClose(onClose);
   const [body, setBody] = useState(journalBody || '');
   const done = tasks.filter(t => t.title?.trim() && t.done);
   const left = tasks.filter(t => t.title?.trim() && !t.done);
   const leftMovable = left.filter(movable);
   const tomorrow = addDays(dateStr, 1);
-  const weekly = isSunday(dateStr) ? weekSummary(plans, dateStr) : null;
+  const weekly = !leave && isSunday(dateStr) ? weekSummary(plans, dateStr) : null;
 
   const toTomorrow = (list) => list.forEach(t => onMoveTaskDate?.(t, dateStr, tomorrow));
   const toSomeday = (t) => {
@@ -58,7 +76,7 @@ export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onM
     setData(prev => ({ ...prev, journal: { ...prev.journal, body } }));
   };
   const close = () => { saveJournal(); onClose(); };
-  const finish = () => { saveJournal(); store.set('dm_wrap_done', dateStr); onFinish(); };
+  const finish = () => { saveJournal(); store.set(leave ? 'dm_leave_done' : 'dm_wrap_done', dateStr); onFinish(); };
 
   const smallBtn = (color) => ({ height: 34, padding: '0 10px', borderRadius: 9, border: `1px solid ${color}55`, background: `${color}14`, color, fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 });
   const label = { fontSize: 15, fontWeight: 900, color: 'var(--dm-text)', margin: '4px 0 8px' };
@@ -70,7 +88,7 @@ export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onM
       <div onClick={e => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 430, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--dm-bg)', borderRadius: '20px 20px 0 0', border: '1px solid var(--dm-border)', borderBottom: 'none', boxShadow: '0 -8px 32px rgba(0,0,0,.35)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 8px' }}>
-          <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>{weekly ? '🗓 이번 주 돌아보기' : '🌙 하루 마무리'} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--dm-muted)' }}>{formatShortKoreanDate(dateStr)}</span></div>
+          <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' }}>{leave ? '🏁 퇴근 전 체크' : weekly ? '🗓 이번 주 돌아보기' : '🌙 하루 마무리'} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--dm-muted)' }}>{formatShortKoreanDate(dateStr)}</span></div>
           <button onClick={close} aria-label="닫기" style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>✕</button>
         </div>
 
@@ -137,14 +155,18 @@ export default function DayWrapUpSheet({ dateStr, tasks, plans, journalBody, onM
             </>
           )}
 
+          {leave ? (
+            <div style={{ fontSize: 14, color: 'var(--dm-muted)', lineHeight: 1.5 }}>{left.length ? '그대로 두면 오늘 할일에 남아요. 일기는 자기 전에 "하루 마무리"에서 써요.' : '오늘 할 일을 모두 끝냈어요 🎉'}</div>
+          ) : (<>
           <div style={label}>📖 한 줄 일기</div>
           <textarea value={body} onChange={e => setBody(e.target.value)} rows={4} maxLength={5000}
             placeholder="오늘 어땠나요? 한 줄이면 충분해요"
             style={{ ...S.input, resize: 'vertical', lineHeight: 1.6, fontSize: 15 }} />
+          </>)}
         </div>
 
         <div style={{ padding: '10px 20px 18px', borderTop: '1px solid var(--dm-border)' }}>
-          <button onClick={finish} style={{ ...S.btn, marginBottom: 0 }}>마치기</button>
+          <button onClick={finish} style={{ ...S.btn, marginBottom: 0 }}>{leave ? '확인했어요' : '마치기'}</button>
         </div>
       </div>
     </div>,

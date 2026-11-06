@@ -813,7 +813,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
             zIndex: 200, display: "flex", alignItems: "flex-end",
           }}>
-            <div onClick={e => e.stopPropagation()} style={{
+            <div className="dm-cal-sheet" onClick={e => e.stopPropagation()} style={{
               background: "var(--dm-bg)",
               border: "1px solid var(--dm-border2)",
               borderRadius: "24px 24px 0 0",

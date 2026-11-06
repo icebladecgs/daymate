@@ -386,6 +386,66 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('설정 찾기: 칸 제목이 설정 화면에 있음', missing.length === 0, missing.join(', '));
 }
 
+// ── 하루 흐름: 출퇴근 시간·퇴근 전 체크·오늘 양·나중에·아침 알림·빈 사진 메모·지난 D-day (2026-11-06) ──
+{
+  const { normalizeWorkHours, isWorkday, planUntilMin, leaveCheckFrom, wrapFromMin, workload, DEFAULT_WORK_HOURS } = await load('/src/utils/workHours.js');
+  const { snoozeOptions, dueSnoozes } = await load('/src/utils/alarms.js');
+  const { buildMorningPush, morningWeatherLine } = await load('/src/utils/morningBrief.js');
+  const { pastDdays } = await load('/src/utils/ddays.js');
+  const { PHOTO_MEMO_LABEL } = await load('/src/utils/dayMerge.js');
+
+  t('출퇴근: 퇴근이 출근보다 빠르면 기본값', same(normalizeWorkHours({ start: '18:00', end: '09:00' }), DEFAULT_WORK_HOURS));
+  t('출퇴근: 값이 없으면 기본값', same(normalizeWorkHours(null), DEFAULT_WORK_HOURS));
+  t('평일/주말/공휴일', isWorkday('2026-11-06') && !isWorkday('2026-11-07') && !isWorkday('2026-12-25'));
+  const wh = { start: '09:00', end: '18:00' };
+  t('아침 계획: 기본 정오까지, 늦은 출근은 3시간 뒤까지', planUntilMin(wh) === 720 && planUntilMin({ start: '10:30', end: '19:00' }) === 810);
+  t('퇴근 전 체크: 퇴근 30분 전부터', leaveCheckFrom(wh) === 17 * 60 + 30);
+  t('하루 마무리: 21시, 늦은 퇴근은 1시간 뒤, 일요일은 18시', wrapFromMin(wh, '2026-11-06') === 1260 && wrapFromMin({ start: '13:00', end: '22:00' }, '2026-11-06') === 1380 && wrapFromMin(wh, '2026-11-08') === 1080);
+
+  const task = (time, endTime, title = '일') => ({ title, time, endTime });
+  t('오늘 양: 근무 시간 안이면 경고 없음', !workload([task('09:00', '12:00'), task('13:00', '18:00')], wh).over);
+  t('오늘 양: 넘으면 경고', workload([task('09:00', '14:00'), task('13:00', '18:00')], wh).over);
+  t('오늘 양: 근무 시간 밖의 저녁 약속은 안 셈', !workload([task('09:00', '18:00'), task('19:00', '21:00')], wh).over);
+  t('오늘 양: 끝 시간 없으면 최대 1시간', workload([task('09:00')], wh).planned === 60);
+  t('오늘 양: 끝 시간 없으면 다음 일까지', workload([task('09:00'), task('09:30')], wh).planned === 90);
+  t('오늘 양: 시간 없는 할일은 안 셈', workload([{ title: '시간 없음' }], wh).planned === 0);
+
+  const morning = new Date('2026-11-06T10:00:00');
+  const opts = snoozeOptions(wh, morning);
+  t('나중에: 평일 오전 3가지', opts.map(o => o.id).join() === 'hour,leave,morning');
+  t('나중에: 퇴근 전은 17:30', new Date(opts[1].at).getHours() === 17 && new Date(opts[1].at).getMinutes() === 30);
+  t('나중에: 내일 아침은 다음 날 출근 시간', new Date(opts[2].at).getDate() === 7 && new Date(opts[2].at).getHours() === 9);
+  t('나중에: 퇴근 뒤·주말엔 퇴근 전 없음', !snoozeOptions(wh, new Date('2026-11-06T19:00:00')).some(o => o.id === 'leave') && !snoozeOptions(wh, new Date('2026-11-07T10:00:00')).some(o => o.id === 'leave'));
+  const snz = [{ ds: 'd', id: 'a', at: 100 }, { ds: 'd', id: 'b', at: 900 }, { ds: 'd', id: 'c', at: 100 }, { ds: 'd', id: 'gone', at: 100 }];
+  const r = dueSnoozes(snz, { d: { tasks: [{ id: 'a' }, { id: 'b' }, { id: 'c', done: true }] } }, 500);
+  t('나중에: 때가 된 것만 울림', r.due.map(x => x.id).join() === 'a');
+  t('나중에: 끝냈거나 없어진 할일은 뺌', r.rest.map(x => x.id).join() === 'b');
+
+  const wx = { city: '서울', icon: '🌧️', rainLeft: 70, days: [{ date: '2026-11-06', min: 5, max: 12, rain: 90 }] };
+  const base = { dateStr: '2026-11-06', dateLabel: '11월 6일 금' };
+  t('아침 알림: 날씨 줄에 우산', morningWeatherLine(wx, base.dateStr).includes('5~12°') && morningWeatherLine(wx, base.dateStr).includes('비 70%') && morningWeatherLine(wx, base.dateStr).includes('우산 챙기세요'));
+  t('아침 알림: 날씨를 못 받아도 보냄', buildMorningPush({ ...base, tasks: [{ title: '일' }] }).body === '⬜ 일');
+  const brief = buildMorningPush({ ...base, wx, tasks: [{ title: '늦은 일', time: '14:00' }, { title: '첫 일', time: '09:00' }, { title: '끝낸 일', time: '08:00', done: true }, { title: 'a' }, { title: 'b' }, { title: 'c' }, { title: 'd' }] });
+  t('아침 알림: 끝낸 일 빼고 첫 일정', brief.body.includes('첫 일정 09:00 첫 일') && !brief.body.includes('끝낸 일'));
+  t('아침 알림: 남은 수와 "외 n개"', brief.title.includes('6개 남음') && brief.body.includes('외 2개'));
+  t('아침 알림: 할일 없음', buildMorningPush({ ...base }).body.includes('아직 정하지'));
+
+  const photoMemo = { id: 'p', text: PHOTO_MEMO_LABEL, photos: [{ url: 'u', path: 'x' }] };
+  const emptied = stampMemoUpdates({ memos: [photoMemo] }, { memos: [{ ...photoMemo, photos: [] }] });
+  t('빈 사진 메모: 사진을 다 지우면 휴지통으로', !emptied.memos.length && emptied.memoTrash?.[0]?.id === 'p');
+  t('빈 사진 메모: 휴지통 사본에 지운 사진 없음', emptied.memoTrash?.[0]?.photos?.length === 0);
+  const typedMemo = { id: 'p', text: '직접 쓴 글', photos: [{ url: 'u' }] };
+  t('빈 사진 메모: 직접 쓴 글은 그대로', stampMemoUpdates({ memos: [typedMemo] }, { memos: [{ ...typedMemo, photos: [] }] }).memos.length === 1);
+  t('빈 사진 메모: 사진이 남으면 그대로', stampMemoUpdates({ memos: [{ ...photoMemo, photos: [{ url: 'a' }, { url: 'b' }] }] }, { memos: [photoMemo] }).memos.length === 1);
+  const oldEmpty = { id: 'p', text: PHOTO_MEMO_LABEL, photos: [] };
+  t('빈 사진 메모: 이미 남아 있는 메모는 안 건드림', stampMemoUpdates({ memos: [oldEmpty] }, { memos: [{ ...oldEmpty, starred: true }] }).memos.length === 1);
+  t('빈 사진 메모: 파일이 있으면 그대로', stampMemoUpdates({ memos: [{ ...photoMemo, files: [{ id: 'f' }] }] }, { memos: [{ ...photoMemo, photos: [], files: [{ id: 'f' }] }] }).memos.length === 1);
+
+  const dd = [{ id: '1', title: '옛날', date: '2026-01-01' }, { id: '2', title: '최근', date: '2026-11-01' }, { id: '3', title: '오늘', date: '2026-11-06' }, { id: '4', title: '다음', date: '2026-12-01' }];
+  t('지난 D-day: 지난 것만 최근 순', pastDdays(dd, '2026-11-06').map(d => d.title).join() === '최근,옛날');
+  t('지난 D-day: 다가오는 날과 겹치지 않음', !buildUpcomingDays([], dd, '2026-11-06').some(d => d.title === '최근'));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

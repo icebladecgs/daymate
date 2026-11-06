@@ -3,6 +3,7 @@ import PhotoViewer from "./PhotoViewer.jsx";
 import S from "../styles.js";
 import { getMemoTimeStr } from "./MemoTimeline.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
+import { PHOTO_MEMO_LABEL } from "../utils/dayMerge.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey } from "../utils/editorAssist.js";
@@ -42,7 +43,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, in
   const [showSettings, setShowSettings] = useState(false);
 
   // 아직 저장 전(id 없음)인데 사진·파일을 먼저 추가하면, 지금까지 쓴 텍스트(없으면 플레이스홀더)로 즉시 메모를 생성
-  const ensureId = (emptyLabel = '📷 사진') => {
+  const ensureId = (emptyLabel = PHOTO_MEMO_LABEL) => {
     if (idRef.current) return idRef.current;
     const placeholder = text.trim() || emptyLabel;
     idRef.current = onCreate(placeholder);
@@ -131,6 +132,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, in
   };
 
   const handlePaste = (e) => {
+    if (e.clipboardData?.getData('text/plain')?.trim()) return; // 엑셀·워드처럼 글자와 그림이 함께 복사되면 글자를 붙인다
     const item = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/'));
     if (!item) return;
     e.preventDefault();
@@ -144,7 +146,17 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, in
     if (!window.confirm('사진을 삭제할까요?')) return;
     const target = photos[idx];
     if (target?.path) deletePhoto(target.path);
-    commitPhotos(photos.filter((_, i) => i !== idx));
+    const next = photos.filter((_, i) => i !== idx);
+    flush(text); // 쓰던 글을 먼저 저장 — 사진을 지운 메모가 빈 메모로 치워지지 않게
+    commitPhotos(next);
+    // 사진을 다 지운 자동 글자 메모는 저장 때 치워진다(stampMemoUpdates) — 이 화면은 새 메모로 이어 쓴다
+    const typed = text.trim();
+    if (!next.length && !files.length && savedTextRef.current === PHOTO_MEMO_LABEL && (!typed || typed === PHOTO_MEMO_LABEL)) {
+      idRef.current = null;
+      savedTextRef.current = '';
+      setText('');
+      setSavedAt('');
+    }
   };
 
   useEffect(() => {
