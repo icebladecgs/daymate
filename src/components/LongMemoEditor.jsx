@@ -22,7 +22,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ tabScreen = false, hideBack = false, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
+export default function LongMemoEditor({ tabScreen = false, hideBack = false, memoExists, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
@@ -195,6 +195,24 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, in
       flushLatest();
     };
   }, []);
+
+  // 쓰던 메모가 아래 목록에서 지워지면 입력칸을 새 메모로 — 그대로 두면 없는 메모에 저장돼 이어 쓴 글이 사라진다 (2026-11-06)
+  // 아직 저장 안 된 글이 있으면 남겨서 새 메모로 저장한다
+  const seenIdRef = useRef(null);
+  useEffect(() => {
+    const id = idRef.current;
+    if (!memoExists || !id) return;
+    if (memoExists(id)) { seenIdRef.current = id; return; }
+    if (seenIdRef.current !== id) return; // 방금 만들어 아직 목록에 안 들어온 메모
+    const unsaved = text.trim() !== savedTextRef.current;
+    idRef.current = null;
+    savedTextRef.current = '';
+    setSavedAt('');
+    setPhotos([]);
+    setFiles([]);
+    setStarred(false);
+    if (!unsaved) setText('');
+  });
 
   const handleClose = () => { flush(text); onClose(); };
   useBackClose(handleClose, !tabScreen); // 메모 탭의 쓰기 화면은 창이 아니라 탭이다

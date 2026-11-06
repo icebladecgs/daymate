@@ -164,6 +164,7 @@ function MemoHomeInner({
       key={`compose-new-${composeKey}`}
       tabScreen
       hideBack={embedded}
+      memoExists={(id) => (plans[todayStr]?.memos || []).some(m => m.id === id)}
       initialId={null}
       initialText=""
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}
