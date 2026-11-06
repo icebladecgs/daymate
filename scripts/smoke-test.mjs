@@ -57,6 +57,15 @@ try {
   if ((await page.evaluate(() => JSON.stringify(history.state))).includes('dmSheetGuard')) fail('뒤로가기: 창을 닫았는데 기록에 칸이 남음');
   else ok('뒤로가기: 기록 정리');
 
+  // 대시보드 ✕ 닫기: 주소로 바로 열어 돌아갈 화면이 없어도 닫힌다 ("앱을 종료하시겠습니까?"가 뜨던 문제)
+  await page.goto(`${BASE}/?screen=dashboard`);
+  await page.waitForSelector('.dm-dash', { timeout: 15000 });
+  await sleep(700);
+  await page.locator('.dm-dash button', { hasText: '닫기' }).first().click();
+  await sleep(600);
+  if (await page.locator('.dm-dash').count()) fail('대시보드: 바로 연 뒤 닫기가 안 닫힘');
+  else ok('대시보드: 바로 연 뒤 닫기');
+
   // 바탕화면 포스트잇 화면(가벼운 화면)
   const sticky = await ctx.newPage();
   const stickyErrors = [];

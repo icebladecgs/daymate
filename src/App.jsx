@@ -129,7 +129,7 @@ export default function App() {
         if (confirmed) {
           history.go(-1); // 히스토리 바닥 이전으로 → Android PWA 종료
         } else {
-          history.pushState({ screen: screenRef.current, isRoot: false }, '', `?screen=${screenRef.current}`);
+          history.pushState({ screen: screenRef.current, isRoot: false, rootBelow: true }, '', `?screen=${screenRef.current}`);
         }
       } else {
         setScreen(e.state.screen === 'home' ? 'today' : e.state.screen);
@@ -2448,9 +2448,15 @@ export default function App() {
         <Dashboard
           today={renderToday({ dashboard: true })}
           calendar={renderHistory()}
-          week={<WeeklySchedule plans={plans} habits={habits} onOpenDate={openDetail} showAll />}
+          week={<WeeklySchedule plans={plans} habits={habits} onOpenDate={(ds) => window.dispatchEvent(new CustomEvent('dm:calendar-preview', { detail: ds }))} showAll />}
           memo={renderMemo({ toast: null, embedded: true })}
-          onClose={() => history.back()}
+          onClose={() => {
+            // 새로고침·주소로 바로 열었으면 돌아갈 화면이 없다 — 뒤로 가면 "앱을 종료하시겠습니까?"가 뜨므로 오늘 탭으로 바꾼다
+            const st = history.state;
+            if (st?.screen === "dashboard" && !st.rootBelow) { history.back(); return; }
+            setScreen("today");
+            history.replaceState({ screen: "today", isRoot: false }, "", window.location.pathname);
+          }}
           onOpenManager={() => changeScreen("manager")}
         />
       );

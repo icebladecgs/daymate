@@ -95,6 +95,16 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   useEffect(() => { fetchGcal(); }, [year, month0]); // eslint-disable-line
   const [preview, setPreview] = useState(null);
   useBackClose(() => setPreview(null), !!preview);
+  // PC 대시보드의 이번 주 할일 줄 → 대시보드를 벗어나지 않고 미리보기로 (달력도 그 달로 옮겨 구글 일정을 받는다)
+  useEffect(() => {
+    const open = (e) => {
+      const [y, m] = e.detail.split('-').map(Number);
+      setYear(y); setMonth0(m - 1);
+      setPreview(e.detail); setQuickTaskInput('');
+    };
+    window.addEventListener('dm:calendar-preview', open);
+    return () => window.removeEventListener('dm:calendar-preview', open);
+  }, []);
   const [quickTaskInput, setQuickTaskInput] = useState('');
   // 할일 상세(메모·사진) — 미리보기 중인 날짜의 할일. 구글 캘린더에는 반영하지 않음
   const [detailTaskId, setDetailTaskId] = useState(null);
