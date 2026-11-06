@@ -615,6 +615,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             return (
               <div
                 key={ds}
+                className="dm-cal-cell"
                 onClick={() => { setPreview(ds); setQuickTaskInput(''); }}
                 style={{
                   minHeight: 80,
@@ -634,14 +635,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               >
                 {/* 날짜 숫자 + 별 */}
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, marginBottom: 2, minHeight: 18 }}>
-                  <span style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1, ...(redDay ? { color: "#EF4444" } : {}) }}>{day}</span>
+                  <span className="dm-cal-day" style={{ fontSize: 12, fontWeight: st.fontWeight, lineHeight: 1, ...(redDay ? { color: "#EF4444" } : {}) }}>{day}</span>
                   {perfect && <span style={{ fontSize: 7, color: "#FBBF24", lineHeight: 1 }}>★</span>}
                 </div>
                 {/* 음력 초하루·보름만 작게 (2026-11-03) — 날짜마다 넣으면 칸이 복잡해서. 다른 날은 누르면 미리보기에 */}
                 {(() => { const l = solarToLunar(ds); return l && (l.day === 1 || l.day === 15) ? <div style={{ fontSize: 8, lineHeight: 1, textAlign: 'center', color: 'var(--dm-muted)', marginTop: -1, marginBottom: 2 }}>음{l.leap ? '윤' : ''}{l.month}.{l.day}</div> : null; })()}
                 {/* 이벤트 칩 */}
                 {visibleItems.map((item, idx) => (
-                  <div key={idx} style={{
+                  <div key={idx} className="dm-cal-chip" style={{
                     fontSize: 7,
                     lineHeight: 1.25,
                     padding: '1px 2px',
@@ -658,7 +659,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </div>
                 ))}
                 {moreCount > 0 && (
-                  <div style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 2, lineHeight: 1.3 }}>+{moreCount}</div>
+                  <div className="dm-cal-more" style={{ fontSize: 8, color: 'var(--dm-muted)', paddingLeft: 2, lineHeight: 1.3 }}>+{moreCount}</div>
                 )}
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (

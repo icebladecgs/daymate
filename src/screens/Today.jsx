@@ -1059,7 +1059,7 @@ export default function Today({
         </div>
       </div>
       {/* 월~일 동그라미(누르면 그 날짜 할일) + 지금 할 일(오늘만) */}
-      {tasksOpen && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} inBox={newLook} />}
+      {tasksOpen && !dashboard && <WeekStrip todayDs={dateStr} selectedDs={targetDs} plans={plans} todayTasks={tasks} onSelect={setTaskDayOffset} inBox={newLook} />}
       {/* 오늘 양 경고 — 근무 시간 안에 잡힌 일이 근무 시간보다 많으면 (평일만) */}
       {tasksOpen && isWorkday(targetDs) && (() => {
         const load = workload(targetTasks, wh);
