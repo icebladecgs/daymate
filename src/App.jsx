@@ -42,6 +42,7 @@ import { APP_COMMIT, APP_VERSION } from "./version.js";
 import { addRecurringToDay } from "./utils/recurring.js";
 import { pickTaskDetail } from "./utils/taskDetail.js";
 
+import WeeklySchedule from "./components/WeeklySchedule.jsx";
 const Home = lazy(() => import("./screens/Home.jsx"));
 const Today = lazy(() => import("./screens/Today.jsx"));
 const History = lazy(() => import("./screens/History.jsx"));
@@ -60,6 +61,7 @@ const MemoLockSheet = lazy(() => import("./components/MemoLockSheet.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
 const People = lazy(() => import("./screens/People.jsx"));
+const Dashboard = lazy(() => import("./screens/Dashboard.jsx"));
 
 // 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
 const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
@@ -1245,7 +1247,7 @@ export default function App() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   // 데스크탑 앱: 메모 관리자일 때만 창을 넓게
-  useEffect(() => { window.daymateDesktop?.setWideMode?.(screen === 'manager'); }, [screen]);
+  useEffect(() => { window.daymateDesktop?.setWideMode?.(screen === 'manager' || screen === 'dashboard'); }, [screen]);
 
   // 휴대폰 공유 → DayMate ("나와의 채팅"처럼 던져두기). sw.js의 share-target이 ?share-target=1 로 앱을 연다.
   // 글·링크는 주소에서, 사진은 서비스워커 임시 보관함(dm-share)에서 가져와 오늘 메모로 저장한다.
@@ -1717,7 +1719,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (screen === "today") ensureToday();
+    if (screen === "today" || screen === "dashboard") ensureToday();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
@@ -2307,10 +2309,11 @@ export default function App() {
         />
       );
     }
-    if (screen === "today") {
+    // 오늘·메모·달력은 대시보드에서도 같은 화면을 쓴다 — 넘기는 값을 한 곳에만 두어 기본 화면과 어긋나지 않게
+    const renderToday = (extra) => {
       const d = plans[todayStr] || newDay(todayStr);
       return (
-        <Today hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+        <Today {...extra} hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
@@ -2340,9 +2343,9 @@ export default function App() {
           wrongDue={wrongDueCount} onOpenWrong={() => setShowWrongNotes(true)}
           onStudyXp={(min) => grantStatXp('INT', Math.sign(min) * studyXp(Math.abs(min)), { silent: min < 0 })} />
       );
-    }
-    if (screen === "memo") {
-      return (
+    };
+    if (screen === "today") return renderToday();
+    const renderMemo = (extra) => (
         <MemoHome
           todayStr={todayStr} plans={plans} onUpdateDayData={setDayData}
           onCreateToday={addFabMemo}
@@ -2359,9 +2362,10 @@ export default function App() {
           hiddenTags={hiddenTags}
           onHideTag={hideMemoTag}
           onOpenWrong={exam.on ? () => setShowWrongNotes(true) : null} wrongDue={wrongDueCount}
+          {...extra}
         />
-      );
-    }
+    );
+    if (screen === "memo") return renderMemo();
     if (screen === "voice-diary") {
       return (
         <VoiceDiary
@@ -2418,8 +2422,19 @@ export default function App() {
         />
       );
     }
-    if (screen === "history") {
-      return <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} />;
+    const renderHistory = () => <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} />;
+    if (screen === "history") return renderHistory();
+    if (screen === "dashboard") {
+      return (
+        <Dashboard
+          today={renderToday({ dashboard: true })}
+          calendar={renderHistory()}
+          week={<WeeklySchedule plans={plans} habits={habits} onOpenDate={openDetail} showAll />}
+          memo={renderMemo({ toast: null, embedded: true })}
+          onClose={() => history.back()}
+          onOpenManager={() => changeScreen("manager")}
+        />
+      );
     }
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
@@ -2680,7 +2695,7 @@ export default function App() {
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
         )}
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "dashboard" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}

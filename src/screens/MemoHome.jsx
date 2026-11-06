@@ -27,7 +27,9 @@ function MemoHomeInner({
   uid, setToast,
   frequentTags, myTags, onHideTag,
   onOpenWrong, wrongDue = 0, // 수험생 모드면 오답 노트 열기
+  embedded = false, // PC 대시보드 칸 안: 쓰기를 닫아도 화면을 벗어나지 않고 새 메모로
 }) {
+  const [composeKey, setComposeKey] = useState(0);
   const [dayOffset, setDayOffset] = useState(0);
   const [longMemo, setLongMemo] = useState(null); // 목록에서 특정 메모를 열어 편집할 때만 사용
   const [recording, setRecording] = useState(false);
@@ -159,8 +161,9 @@ function MemoHomeInner({
 
   return (
     <LongMemoEditor
-      key="compose-new"
+      key={`compose-new-${composeKey}`}
       tabScreen
+      hideBack={embedded}
       initialId={null}
       initialText=""
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}
@@ -168,7 +171,7 @@ function MemoHomeInner({
       onUpdatePhotos={onUpdatePhotosToday}
       onUpdateFiles={onUpdateFilesToday}
       onUpdateStarred={onUpdateStarredToday}
-      onClose={() => window.history.back()}
+      onClose={embedded ? () => setComposeKey(k => k + 1) : () => window.history.back()}
       onSearch={openMemoManager}
       uid={uid}
       pathPrefix={uid ? `users/${uid}/memos` : undefined}

@@ -21,7 +21,7 @@ function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
 
-export default function LongMemoEditor({ tabScreen = false, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
+export default function LongMemoEditor({ tabScreen = false, hideBack = false, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
   const isNewEntry = initialId === null;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
@@ -385,9 +385,9 @@ export default function LongMemoEditor({ tabScreen = false, initialId = null, in
   );
 
   return (
-    <div style={S.fullScreenPanel(90)}>
+    <div className="dm-memo-panel" style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
-        <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+        {!hideBack && <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{extraContent ? '새 메모' : '긴 메모'}</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}

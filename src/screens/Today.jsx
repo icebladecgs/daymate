@@ -5,6 +5,7 @@ import { FoldButton, SectionBox, WeatherCard, UpcomingDays } from "../components
 import Toast from "../components/Toast.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
 import WeeklySchedule from "../components/WeeklySchedule.jsx";
+import { canOpenDashboard } from "../utils/device.js";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import { gcalFetchWeekEvents } from "../api/gcal.js";
 import PhotoAttach from "../components/PhotoAttach.jsx";
@@ -56,6 +57,7 @@ export default function Today({
   ddays = [],
   setDdays,
   exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
+  dashboard = false, // PC 대시보드 안: 머리글과 오늘의 할일만 보여 줌 (나머지 칸은 오늘 탭에 그대로)
 }) {
   const tasks = data.tasks || [];
   const examOn = !!exam?.on; // 수험생 모드 (설정 → 수험생 모드)
@@ -871,7 +873,7 @@ export default function Today({
 
   return (
     <div style={S.content}>
-      {newLook && filledCount > 0 && <CompactBar watchRef={headerRef} done={doneCount} total={filledCount} />}
+      {!dashboard && newLook && filledCount > 0 && <CompactBar watchRef={headerRef} done={doneCount} total={filledCount} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
       {focus && (
@@ -979,21 +981,24 @@ export default function Today({
         </div>
         )}
         {/* 수험생 모드 바로 켜고 끄기 (2026-11-01 사용자 결정 — 모든 사람에게 보임, 설정 → 수험생 모드와 같은 값). 꺼도 D-day·기록은 그대로 */}
-        {setExam && (
+        {setExam && !dashboard && (
           <button onClick={() => { setExam(e => ({ ...e, on: !e.on })); setToast(examOn ? '수험생 모드를 껐어요 (기록은 그대로예요)' : '📚 수험생 모드를 켰어요'); }}
             role="switch" aria-checked={examOn} aria-label="수험생 모드" title="수험생 모드 (D-day·공부 시간·오답 노트)"
             style={{ flexShrink: 0, alignSelf: 'center', padding: '6px 10px', borderRadius: 999, border: `1.5px solid ${examOn ? '#5B7CFA' : 'var(--dm-border)'}`, background: examOn ? 'rgba(91,124,250,.14)' : 'var(--dm-input)', color: examOn ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
             📚 시험 {examOn ? 'ON' : 'OFF'}
           </button>
         )}
-        <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>
+        {!dashboard && canOpenDashboard() && (
+          <button onClick={() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'dashboard' }))} aria-label="대시보드" title="대시보드 (넓은 화면으로 보기)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)', marginTop: 0 }}>🖥️</button>
+        )}
+        {!dashboard && <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>}
       </div>
 
       {/* 🌤 날씨 — 평소 한 줄, 누르면 7일 (설정에서 끌 수 있음) */}
-      {!hiddenSec.weather && <WeatherCard city={weatherCity} dateStr={dateStr} onSetCity={onSetWeatherCity} />}
+      {!dashboard && !hiddenSec.weather && <WeatherCard city={weatherCity} dateStr={dateStr} onSetCity={onSetWeatherCity} />}
 
       {/* 📚 수험생 모드: D-day · 오늘 공부 (설정에서 켰을 때만) */}
-      {examOn && (
+      {examOn && !dashboard && (
         <ExamTodayPanel exam={exam} setExam={setExam} dateStr={dateStr} plans={plans} todayData={data}
           onStartStudy={() => setFocus({ ds: dateStr, task: { id: null, title: '📚 공부' } })}
           onAddStudy={(entry) => { onUpdateDayData?.(dateStr, prev => ({ ...prev, study: [...(prev.study || []), entry] })); onStudyXp?.(entry.min); setToast(`📚 ${entry.sub} ${entry.min}분 기록했어요`); }}
@@ -1149,7 +1154,7 @@ export default function Today({
       )}
       </SectionBox>
 
-      {sectionOrder.map(id => <Fragment key={id}>{todaySections[id]}</Fragment>)}
+      {!dashboard && sectionOrder.map(id => <Fragment key={id}>{todaySections[id]}</Fragment>)}
 
       <div style={{ height: 12 }} />
     </div>

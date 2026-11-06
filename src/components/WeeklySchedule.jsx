@@ -4,7 +4,8 @@ import S from "../styles.js";
 
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
-export default function WeeklySchedule({ plans, habits, onOpenDate }) {
+// showAll: 첫 할일 "외 n건" 대신 그날 할일을 모두 보여 줌 (PC 대시보드)
+export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
   const today = toDateStr();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = getWeekDates(weekOffset);
@@ -18,7 +19,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate }) {
   })();
 
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: showAll ? 5 : 10 }}>
       {/* 주간 네비게이션 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
         <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>‹</button>
@@ -59,7 +60,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate }) {
               cursor: 'pointer',
               fontFamily: 'inherit',
               borderRadius: 12,
-              padding: '10px 12px',
+              padding: showAll ? '5px 10px' : '10px 12px',
               border: isToday ? '1.5px solid rgba(108,142,255,.5)' : '1px solid var(--dm-border)',
               background: isToday ? 'rgba(108,142,255,.08)' : 'rgba(255,255,255,.02)',
             }}>
@@ -71,10 +72,18 @@ export default function WeeklySchedule({ plans, habits, onOpenDate }) {
               {isToday && (
                 <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
               )}
-              <span style={{
-                fontSize: 12.5, fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
+              {showAll && tasks.length > 0 ? (
+                <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 3 }}>
+                  {sortedTasks.map(t => (
+                    <span key={t.id} style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, wordBreak: 'keep-all', overflowWrap: 'anywhere', color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: t.done ? 'line-through' : 'none' }}>
+                      {t.time ? `${t.time} ` : ''}{t.title}
+                    </span>
+                  ))}
+                </span>
+              ) : <span style={{
+                fontSize: showAll ? 14 : 12.5, fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
                 overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-              }}>{previewLabel}</span>
+              }}>{previewLabel}</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {tasks.length > 0 && (
