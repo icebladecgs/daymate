@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
 import PhotoWall from "./PhotoWall.jsx";
-import { deletePhoto } from "../firebase.js";
+import { deletePhoto, uploadPhoto } from "../firebase.js";
+import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts } from "../utils/memoManager.js";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
@@ -518,6 +519,30 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
 
   const memo = item.kind === "memo" ? (day?.memos?.length ? day.memos : []).find(m => m.id === item.id) : null;
   const photos = item.kind === "memo" ? (memo?.photos || []) : item.kind === "task" ? (task?.photos || []) : [];
+  // 캡처한 이미지 Ctrl+V → 아래 사진 칸에 추가 (＋ 버튼과 같은 곳에 저장). 일기는 사진 칸이 없어 그대로 둔다.
+  // 엑셀·워드처럼 글자와 그림이 함께 복사되면 글자를 붙인다 — 표를 붙이려다 사진이 되면 안 되므로
+  const pastePhotos = async (e) => {
+    if (item.kind !== "memo" && item.kind !== "task") return;
+    if (e.clipboardData?.getData("text/plain")?.trim()) return;
+    const files = [...(e.clipboardData?.items || [])].filter(it => it.type.startsWith("image/")).map(it => it.getAsFile()).filter(Boolean);
+    if (!files.length) return;
+    e.preventDefault();
+    if (!uid) { onError?.("사진은 로그인 후 붙일 수 있어요"); return; }
+    onError?.("사진 올리는 중…");
+    try {
+      const uploaded = await Promise.all(files.map(async (f) => {
+        const blob = await compressImage(f);
+        return uploadPhoto(`users/${uid}/memos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`, blob, uid);
+      }));
+      // 올리는 동안 다른 메모로 옮겨 가거나 또 붙여도 빠지지 않게, 그 메모의 최신 사진 목록에 더한다
+      onUpdateDayData(item.ds, prev => item.kind === "memo"
+        ? updateMemoIn(prev, item.id, { photos: [...((prev.memos || []).find(m => m.id === item.id)?.photos || []), ...uploaded] })
+        : { ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: [...(x.photos || []), ...uploaded] } : x)) });
+      onError?.("사진을 붙였어요");
+    } catch (err) {
+      onError?.(photoErrorMessage(err));
+    }
+  };
   const setPhotos = (next) => {
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { photos: next }));
     else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: next } : x)) }));
@@ -585,6 +610,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
       ) : (
       <div style={{ position: "relative", flex: 1, minHeight: 80, display: "flex" }}>
         <textarea ref={textRef} value={text} onChange={e => setText(e.target.value)}
+          onPaste={pastePhotos}
           onClick={openLinkOnCtrlClick}
           onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
           placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
