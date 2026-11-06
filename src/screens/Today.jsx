@@ -35,6 +35,36 @@ import { newStudyEntry } from "../utils/exam.js";
 
 import StatSelect, { withStatTag } from "../components/StatSelect.jsx";
 import { canMoveInList, moveInList } from "../utils/taskOrder.js";
+import { habitStreak } from "../utils/habitStreak.js";
+import { canAutoFocus } from "../utils/device.js";
+// 할 일 입력 빠른 칩 — 맨 앞에 붙은 같은 종류의 말만 바꿔 넣는다
+const LEAD_CHIPS_RE = /^((?:오늘|내일|모레|(?:오전|오후)\s*\d{1,2}시)\s+)+/;
+const applyChip = (input, word) => {
+  const lead = (input.match(LEAD_CHIPS_RE) || [''])[0];
+  const rest = input.slice(lead.length).trimStart();
+  const isTime = /시$/.test(word);
+  const date = isTime ? (lead.match(/오늘|내일|모레/) || [''])[0] : word;
+  const time = isTime ? word : (lead.match(/(?:오전|오후)\s*\d{1,2}시/) || [''])[0];
+  return [date, time, rest].filter(Boolean).join(' ');
+};
+// 순서 편집용 작은 부품 (padding: 0 — 전역 button padding 때문)
+function ReorderButtons({ r }) {
+  return [[-1, '▲', '위로', r.canUp], [1, '▼', '아래로', r.canDown]].map(([dir, ch, label, can]) => (
+    <button key={dir} onClick={() => r.onMove(dir)} disabled={!can} aria-label={label}
+      style={{ width: 36, height: 36, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? '#5B7CFA' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
+  ));
+}
+function ReorderToggle({ on, onClick }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '2px 0 10px' }}>
+      <button onClick={onClick}
+        style={{ height: 34, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? '#5B7CFA' : 'var(--dm-border)'}`, background: on ? 'rgba(91,124,250,.12)' : 'transparent', color: on ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+        {on ? '✓ 순서 완료' : '↕ 순서 바꾸기'}
+      </button>
+    </div>
+  );
+}
+
 export default function Today({
   dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
   onOpenVoiceDiary,
@@ -86,6 +116,7 @@ export default function Today({
   const [gcalConnecting, setGcalConnecting] = useState(false);
   const [somedayInput, setSomedayInput] = useState('');
   const [somedayShowAll, setSomedayShowAll] = useState(false); // 언젠가할일은 처음 3개만, "더 보기"로 전체
+  const [reorder, setReorder] = useState(null); // 순서 편집 중인 목록: 'tasks' | 'someday' (2026-11-07, 줄마다 ▲▼)
   const [editingHabits, setEditingHabits] = useState(false);
   const [newHabitIcon, setNewHabitIcon] = useState('');
   const [newHabitName, setNewHabitName] = useState('');
@@ -312,7 +343,16 @@ export default function Today({
     }
     setTargetTasks(withNewTask(targetTasks, newTask));
   };
-  const toggleTargetTask = (id) => setTargetTasks(targetTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const toggleTargetTask = (id) => {
+    const was = targetTasks.find(t => t.id === id);
+    setTargetTasks(targetTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    // 완료로 체크한 직후 5초 "↩ 되돌리기" (2026-11-07) — 체크 실수 방지. 되돌리기는 날짜 기록 저장 경로(능력치 회수 포함)를 거친다
+    if (was && !was.done && was.title?.trim()) {
+      undo.offer(`"${shortTitle(was.title)}" 완료했어요`, () => {
+        onUpdateDayData?.(targetDs, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, done: false } : t) }));
+      });
+    }
+  };
   const deleteTargetTask = (id, { keepPhotos = false } = {}) => {
     // 할일을 지우면 첨부 사진도 저장소에서 정리 (언젠가로 옮길 때는 사진을 그대로 가져가므로 유지)
     if (!keepPhotos) (targetTasks.find(t => t.id === id)?.photos || []).forEach(p => p?.path && deletePhoto(p.path));
@@ -474,6 +514,16 @@ export default function Today({
   const habitChecks = data.habitChecks || {};
   const visibleHabits = habits || [];
   const somedayList = someday || [];
+  // 순서 편집 (2026-11-07) — 목록 옆 "↕ 순서 바꾸기"를 누르면 줄마다 ▲▼만 보인다. 옮기는 규칙은 상세 창과 같은 taskOrder.js
+  const taskReorder = (id) => ({
+    canUp: canMoveInList(targetTasks, id, -1, newLook), canDown: canMoveInList(targetTasks, id, 1, newLook),
+    onMove: (dir) => setTargetTasks(moveInList(targetTasks, id, dir, newLook)),
+  });
+  const somedayReorder = (id) => ({
+    canUp: canMoveInList(somedayList, id, -1), canDown: canMoveInList(somedayList, id, 1),
+    onMove: (dir) => saveSomeday(moveInList(somedayList, id, dir)),
+  });
+  const anyTaskMovable = targetTasks.some(t => t.title?.trim() && (canMoveInList(targetTasks, t.id, -1, newLook) || canMoveInList(targetTasks, t.id, 1, newLook)));
   // 언젠가할일도 할일과 같은 상세 창 사용 (최신 목록 기준으로 병합 저장)
   const detailSomeday = detailSomedayId ? somedayList.find(x => x.id === detailSomedayId) : null;
   // 어제 못 한 할일 넘기기 (Microsoft To Do·Sunsama 참고) — 오늘로 옮기면 어제 기록에서는 빠지고 상세 정보도 함께 옮김.
@@ -702,6 +752,7 @@ export default function Today({
                   {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
                   <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
                   <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
+                  {(() => { const n = habitStreak(plans, h.id, dateStr, checked); return n >= 2 ? <span style={{ fontSize: 14, fontWeight: 800, color: '#F97316', flexShrink: 0 }}>🔥 {n}일</span> : null; })()}
                   {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
                 </button>
               );
@@ -713,7 +764,7 @@ export default function Today({
 
       </SectionBox>),
     someday: !hiddenSec.someday && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
+      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between', paddingBottom: 16 } : {}), ...foldPad(somedayOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
           {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -724,20 +775,23 @@ export default function Today({
       </div>
       {somedayOpen && (
       <div style={innerCard}>
-        {(somedayShowAll ? somedayList : somedayList.slice(0, 3)).map(item => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <button onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-            <span onClick={() => setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {(somedayShowAll || reorder === 'someday' ? somedayList : somedayList.slice(0, 3)).map((item, i, shown) => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: '10px 0', borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 12 }) }}>
+            <button disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+            <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
               {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
               <TaskStatIcon task={item} />
               <TaskDetailBadge task={item} />
             </span>
-            <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
-            <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+            {reorder === 'someday' ? <ReorderButtons r={somedayReorder(item.id)} /> : (<>
+              <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
+              <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+            </>)}
           </div>
         ))}
-        {somedayList.length > 3 && (
+        {somedayList.length > 1 && <div style={{ marginTop: newLook ? 6 : 0 }}><ReorderToggle on={reorder === 'someday'} onClick={() => setReorder(reorder === 'someday' ? null : 'someday')} /></div>}
+        {somedayList.length > 3 && reorder !== 'someday' && (
           <button onClick={() => setSomedayShowAll(v => !v)}
             style={{ display: 'block', width: '100%', margin: '2px 0 10px', padding: '8px 0', borderRadius: 10, border: '1px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)', fontSize: newLook ? 14 : 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
             {somedayShowAll ? '접기 ▲' : `더 보기 (${somedayList.length - 3}개 더) ▼`}
@@ -1083,6 +1137,7 @@ export default function Today({
                 now={task.id === nowTaskId ? { start: nowFound.current.start, end: nowFound.current.end, nowMin } : null}
                 next={task.id === nowFound.next?.task.id ? nowFound.next.start - nowMin : null}
                 onToggle={toggleRow} onOpen={setDetailTaskId}
+                reorder={reorder === 'tasks' ? taskReorder(task.id) : null}
                 onSomeday={somedayWithUndo}
                 onDelete={confirmDeleteTargetTask}
                 onFocus={(t) => setFocus({ ds: dateStr, task: t })} />,
@@ -1093,6 +1148,7 @@ export default function Today({
         {!newLook && targetTasks.filter(t => t.title.trim()).map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <button
+              disabled={reorder === 'tasks'}
               onClick={() => toggleTargetTask(task.id)}
               aria-label={task.done ? '완료 취소' : '완료'}
               style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
@@ -1111,21 +1167,23 @@ export default function Today({
                 </div>
               )}
             </div>
+            {reorder === 'tasks' && <ReorderButtons r={taskReorder(task.id)} />}
             {/* 자주 쓰는 "언젠가로 미루기"(미완료만)와 삭제(확인창)만 목록에 바로 노출. 나머지 편집은 상세에서 */}
-            {!task.done && (
+            {reorder !== 'tasks' && !task.done && (
               <button
                 onClick={() => somedayWithUndo(task)}
                 style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
             {/* 언젠가할일 목록의 ✕와 같은 모양 */}
-            <button
+            {reorder !== 'tasks' && <button
               onClick={() => confirmDeleteTargetTask(task)}
               aria-label="삭제"
               style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}
-            >✕</button>
+            >✕</button>}
           </div>
         ))}
+        {(reorder === 'tasks' || anyTaskMovable) && <ReorderToggle on={reorder === 'tasks'} onClick={() => setReorder(reorder === 'tasks' ? null : 'tasks')} />}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
           <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>{taskDayLabel} 할 일을 추가해보세요</div>
         )}
@@ -1141,6 +1199,15 @@ export default function Today({
           />
           <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
         </div>
+        {/* 빠른 칩 (2026-11-07) — 글자를 앞에 붙일 뿐이라 해석은 아래 문장 일정 입력(nlSchedule)이 그대로 한다. 같은 종류(날짜끼리·시간끼리)는 바꿔 넣는다 */}
+        {taskInput.trim() && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            {['오늘', '내일', '모레', '오전 9시', '오후 3시'].map(w => (
+              <button key={w} onClick={() => { setTaskInput(applyChip(taskInput, w)); setNlOff(false); if (canAutoFocus()) taskInputRef.current?.focus(); }}
+                style={{ height: 34, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
+            ))}
+          </div>
+        )}
         {/* 어떻게 들어갈지 저장 전에 보여준다 — 잘못 알아들었으면 "그냥 글자로" (2026-11-03 읽기 쉬운 말로) */}
         {parsedMany && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>

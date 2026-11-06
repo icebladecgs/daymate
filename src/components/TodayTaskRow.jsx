@@ -15,7 +15,8 @@ const X = icon(<path d="M6 6l12 12M18 6L6 18" />);
 // 전역 button padding(index.css) 때문에 padding: 0 필수
 const iconBtn = { width: 32, height: 40, padding: 0, border: "none", background: "none", color: "var(--dm-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 10 };
 
-export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggle, onOpen, onSomeday, onDelete, onFocus }) {
+// reorder: 순서 편집 중이면 { canUp, canDown, onMove } — 체크·열기·언젠가·✕ 대신 ▲▼만 (체크 실수 방지)
+export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggle, onOpen, onSomeday, onDelete, onFocus, reorder }) {
   const done = !!task.done;
   // 방금 체크했을 때만 동그라미가 튄다 (처음부터 끝난 줄은 가만히)
   const [pop, setPop] = useState(0);
@@ -36,12 +37,12 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
         : { padding: "2px 0", borderBottom: last ? "none" : "1px solid var(--dm-row)" }),
     }}>
       {/* 동그란 체크 26px, 누르는 영역 40px */}
-      <button className="dm-rowcheck" onClick={() => onToggle(task.id)} aria-label={done ? "완료 취소" : "완료"}
+      <button className="dm-rowcheck" onClick={() => !reorder && onToggle(task.id)} disabled={!!reorder} aria-label={done ? "완료 취소" : "완료"}
         style={{ width: 40, height: 40, padding: 0, border: "none", background: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span key={pop} className={pop ? "dm-pop" : undefined} style={{ transition: "background .18s, border-color .18s", width: 26, height: 26, borderRadius: "50%", boxSizing: "border-box", border: `2px solid ${done ? "#4ADE80" : now ? "#6C8EFF" : "var(--dm-muted)"}`, background: done ? "#4ADE80" : "transparent", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{done ? "✓" : ""}</span>
       </button>
 
-      <div onClick={() => onOpen(task.id)} style={{ flex: 1, minWidth: 0, cursor: "pointer", padding: now ? "0" : "8px 0" }}>
+      <div onClick={() => !reorder && onOpen(task.id)} style={{ flex: 1, minWidth: 0, cursor: reorder ? "default" : "pointer", padding: now ? "0" : "8px 0" }}>
         {now && (
           <div style={{ display: "flex", flexWrap: "wrap", columnGap: 6, fontSize: 13, fontWeight: 800, color: "#6C8EFF", marginBottom: 2, paddingTop: 2 }}>
             <span style={{ whiteSpace: "nowrap" }}>● 지금 · {fmtMin(now.start)}–{fmtMin(now.end)}</span>
@@ -74,8 +75,15 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
       </div>
 
       <div style={{ display: "flex", alignItems: "center", flexShrink: 0, ...(now ? {} : { paddingTop: 0 }) }}>
-        {!done && <button onClick={() => onSomeday(task)} aria-label="언젠가로" title="언젠가로 보내기" style={iconBtn}>{TRAY}</button>}
-        <button onClick={() => onDelete(task)} aria-label="삭제" title="삭제" style={iconBtn}>{X}</button>
+        {reorder ? (
+          [[-1, "▲", "위로", reorder.canUp], [1, "▼", "아래로", reorder.canDown]].map(([dir, ch, label, can]) => (
+            <button key={dir} onClick={() => reorder.onMove(dir)} disabled={!can} aria-label={label}
+              style={{ ...iconBtn, width: 40, fontSize: 18, fontWeight: 800, color: can ? "#5B7CFA" : "var(--dm-muted)", opacity: can ? 1 : 0.3, cursor: can ? "pointer" : "default" }}>{ch}</button>
+          ))
+        ) : (<>
+          {!done && <button onClick={() => onSomeday(task)} aria-label="언젠가로" title="언젠가로 보내기" style={iconBtn}>{TRAY}</button>}
+          <button onClick={() => onDelete(task)} aria-label="삭제" title="삭제" style={iconBtn}>{X}</button>
+        </>)}
       </div>
 
       {/* 지금 할 일 남은 시간 — 칸 아래 가장자리 선 */}

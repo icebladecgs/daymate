@@ -15,6 +15,7 @@ import { holidayName } from "../utils/holidays.js";
 import { solarToLunar } from "../data/contacts.js";
 import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
 import { useBackClose } from "../utils/useBackClose.js";
+import { canMoveInList, moveInList } from "../utils/taskOrder.js";
 
 export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -453,6 +454,10 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onError={showToast}
           onDelete={deletePreviewTask}
           onComplete={onToggleTaskForDate && ((t) => onToggleTaskForDate(preview, t.id))}
+          order={{
+            canUp: canMoveInList(plans[preview]?.tasks, detailTask.id, -1), canDown: canMoveInList(plans[preview]?.tasks, detailTask.id, 1),
+            onMove: (dir) => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: moveInList(prev.tasks, detailTask.id, dir) })),
+          }}
           dateStr={preview}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, preview, to); if (ok) showToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />

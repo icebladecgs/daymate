@@ -8,6 +8,7 @@ import Toast from "../components/Toast.jsx";
 import MemoTimeline, { genMemoId, displayMemos, withMemoList } from "../components/MemoTimeline.jsx";
 import TaskDetailSheet, { TaskDetailBadge } from "../components/TaskDetailSheet.jsx";
 import { pickTaskDetail } from "../utils/taskDetail.js";
+import { canMoveInList, moveInList } from "../utils/taskOrder.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
 import TimeSelect from "../components/TimeSelect.jsx";
@@ -169,6 +170,10 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           onClose={() => setDetailTaskId(null)}
           onError={setToast}
           onComplete={(t) => toggleDone(t.id)}
+          order={{
+            canUp: canMoveInList(data.tasks, detailTask.id, -1), canDown: canMoveInList(data.tasks, detailTask.id, 1),
+            onMove: (dir) => setData((prev) => ({ ...prev, tasks: moveInList(prev.tasks, detailTask.id, dir) })),
+          }}
           dateStr={dateStr}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, dateStr, to); if (ok) setToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />

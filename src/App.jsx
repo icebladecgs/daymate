@@ -27,6 +27,7 @@ import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/sta
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
+import OfflineBar from "./components/OfflineBar.jsx";
 import DesktopUpdateBar from "./components/DesktopUpdateBar.jsx";
 import { triggerVibration, sendNotification, getPermission, playNotifSound } from "./utils/notification.js";
 import { collectMemoAlarms, dueAlarms, taskAlarmLead, loadFired, saveFired, loadSnoozes, saveSnoozes, dueSnoozes } from "./utils/alarms.js";
@@ -1321,6 +1322,13 @@ export default function App() {
   // 인터넷이 다시 연결되면 자동으로 다시 저장한다. 닫으면 개수가 바뀌기 전까지 다시 띄우지 않는다
   const [unsynced, setUnsynced] = useState(null); // { n, offline } | null
   const [unsyncedHidden, setUnsyncedHidden] = useState(0); // 닫았을 때의 개수
+  // 인터넷 끊김 표시(OfflineBar) — 로그인 여부와 상관없이, 끊긴 동안만
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  useEffect(() => {
+    const on = () => setIsOffline(false), off = () => setIsOffline(true);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
   const unsyncedSinceRef = useRef({});
   const retryUnsyncedRef = useRef(null);
   retryUnsyncedRef.current = () => {
@@ -2715,7 +2723,8 @@ export default function App() {
         {unsynced && unsynced.n !== unsyncedHidden && !statAsk && (
           <UnsyncedBar count={unsynced.n} offline={unsynced.offline} onRetry={() => retryUnsyncedRef.current?.()} onClose={() => setUnsyncedHidden(unsynced.n)} />
         )}
-        {!statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <DesktopUpdateBar />}
+        {isOffline && !statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <OfflineBar />}
+        {!isOffline && !statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <DesktopUpdateBar />}
         <AlarmSnoozeBar
           items={alarmBar.filter(x => (plans[x.ds]?.tasks || []).some(t => String(t.id) === String(x.id) && !t.done))}
           workHours={normalizeWorkHours(workHours)}
