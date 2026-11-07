@@ -1,5 +1,5 @@
 import { useState } from "react";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import PhotoAttach from "../components/PhotoAttach.jsx";
 import ContactImportSheet, { ContactPermissionGuide } from "../components/ContactImportSheet.jsx";
@@ -18,7 +18,7 @@ const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // 입력 �
 function Header({ title, onBack, right }) {
   return (
     <div style={S.topbar}>
-      <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
+      <button className={NL() ? 'dm-hit' : undefined} onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
       <div style={{ flex: 1, fontSize: 18, fontWeight: 900, marginLeft: 8, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
       {right}
     </div>
@@ -37,7 +37,7 @@ function TagPicker({ allTags, selected, onToggle, onAddTag }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {allTags.map(t => (
-        <button key={t} type="button" onClick={() => onToggle(t)} style={S.pill(selected.includes(t))}>{t}</button>
+        <button key={t} type="button" onClick={() => onToggle(t)} style={{ ...S.pill(selected.includes(t)), ...(NL() ? { fontSize: UI.sub } : {}) }}>{t}</button>
       ))}
       {adding ? (
         <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit}
@@ -242,8 +242,8 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
     <div style={S.content}>
       <Header title={contact.name} onBack={onBack} right={
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <button onClick={onEdit} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>수정</button>
-          <button onClick={onDelete} style={{ background: "none", border: "none", color: "#F87171", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>삭제</button>
+          <button className={NL() ? 'dm-hit' : undefined} onClick={onEdit} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>수정</button>
+          <button className={NL() ? 'dm-hit' : undefined} onClick={onDelete} style={{ background: "none", border: "none", color: "#F87171", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>삭제</button>
         </div>
       } />
 
@@ -254,7 +254,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
           {contact.email && <div style={{ fontSize: 13, color: "var(--dm-text)" }}>✉️ {contact.email}</div>}
           {(contact.tags || []).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-              {contact.tags.map(t => <span key={t} style={S.pill(true)}>{t}</span>)}
+              {contact.tags.map(t => <span key={t} style={{ ...S.pill(true), ...(NL() ? { fontSize: UI.sub } : {}) }}>{t}</span>)}
             </div>
           )}
         </div>
@@ -480,14 +480,14 @@ export default function People({
         {contactTags.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
             {contactTags.map(t => (
-              <button key={t} onClick={() => setTagFilters(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} style={S.pill(tagFilters.includes(t))}>{t}</button>
+              <button className={NL() ? 'dm-hit' : undefined} key={t} onClick={() => setTagFilters(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} style={{ ...S.pill(tagFilters.includes(t)), ...(NL() ? { fontSize: UI.sub } : {}) }}>{t}</button>
             ))}
           </div>
         )}
       </div>
 
       <div style={{ padding: "0 16px 8px" }}>
-        <button onClick={() => setShowAlarmSettings(v => !v)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+        <button className={NL() ? 'dm-hit' : undefined} onClick={() => setShowAlarmSettings(v => !v)} style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
           🔔 생일 알림 설정 {showAlarmSettings ? "▲" : "▼"}
         </button>
         {showAlarmSettings && (

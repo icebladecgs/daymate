@@ -193,7 +193,7 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
         {editing === "new" ? (
           <DdayForm minDate={dateStr} onSave={addDday} onCancel={() => setEditing(null)} />
         ) : (
-          <button onClick={() => setEditing("new")} style={{ display: "block", width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: all.length ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", fontSize: 15, fontWeight: 800, color: RAIN_COLOR, cursor: "pointer" }}>
+          <button className={boxed ? 'dm-hit' : undefined} onClick={() => setEditing("new")} style={{ display: "block", width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: all.length ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", fontSize: 15, fontWeight: 800, color: RAIN_COLOR, cursor: "pointer" }}>
             ＋ D-day 추가
           </button>
         )}

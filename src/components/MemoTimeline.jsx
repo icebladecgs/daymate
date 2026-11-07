@@ -19,6 +19,7 @@ const chipBtn = (color) => ({
   color,
   borderRadius: 8,
   padding: '4px 10px',
+  ...(NL() ? { minHeight: UI.touch } : {}),
   fontSize: NL() ? 14 : 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -85,7 +86,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
           {item.id !== 'legacy' && <button onClick={() => requestMemoLock(item.id, 'lock')} style={chipBtn('#94A3B8')}>🔒 잠그기</button>}
           <button onClick={() => onDelete(item.id)} style={chipBtn('#F87171')}>삭제</button>
           <div style={{ flex: 1 }} />
-          <button onClick={() => setMode('collapsed')} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px' }}>∧</button>
+          <button onClick={() => setMode('collapsed')} aria-label="접기" style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '4px 6px', ...rowBtn() }}>∧</button>
         </div>
       </div>
     );

@@ -565,6 +565,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
     const head = `${formatKoreanDate(item.ds)}${item.kind === "task" && title.trim() ? ` · ${title.trim()}` : item.kind === "journal" ? " · 일기" : ""}`;
     if (!printMemo(t, head)) onError?.("출력 창을 열지 못했어요");
   };
+  const smallHit = nl && window.innerWidth < 900 ? "dm-hit" : undefined;
   const small = { padding: z("5px 10px", "7px 12px"), borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
 
   return (
@@ -572,17 +573,17 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
-        <button onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
-        <button onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
+        <button className={smallHit} onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
+        <button className={smallHit} onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
-        <button onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
-        {canAutoFocus() && <button onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
+        <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
+        {canAutoFocus() && <button className={smallHit} onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
         {item.kind === "memo" && (
-          <button onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
+          <button className={smallHit} onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
         )}
         {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js. 보기 모드엔 커서가 없어 숨김 */}
         {item.kind === "memo" && !viewMode && (
-          <button onMouseDown={e => e.preventDefault()} onClick={() => {
+          <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={() => {
             const el = textRef.current;
             const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
             if (!t) { onError?.("언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
@@ -592,14 +593,14 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
           }} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로" style={sentTask ? { ...small, color: "#4ADE80", borderColor: "rgba(74,222,128,.5)" } : small}>{sentTask ? "보냄 ✓" : "📋 언젠가로"}</button>
         )}
         {item.kind === "task" && (
-          <button onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
+          <button className={smallHit} onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
         )}
         {item.kind === "memo" && window.daymateDesktop?.openSticky && (
-          <button onClick={() => window.daymateDesktop.openSticky(item.ds, item.id)} style={small}>📌 포스트잇으로</button>
+          <button className={smallHit} onClick={() => window.daymateDesktop.openSticky(item.ds, item.id)} style={small}>📌 포스트잇으로</button>
         )}
-        {onOpenDate && <button onClick={() => onOpenDate(item.ds)} style={small}>날짜 열기 →</button>}
-        {item.kind === "memo" && item.id !== "legacy" && <button onClick={() => requestMemoLock(item.id, "lock")} style={small}>🔒 잠그기</button>}
-        {item.kind === "memo" && <button onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
+        {onOpenDate && <button className={smallHit} onClick={() => onOpenDate(item.ds)} style={small}>날짜 열기 →</button>}
+        {item.kind === "memo" && item.id !== "legacy" && <button className={smallHit} onClick={() => requestMemoLock(item.id, "lock")} style={small}>🔒 잠그기</button>}
+        {item.kind === "memo" && <button className={smallHit} onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
       </div>
       {item.kind === "task" && (
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}

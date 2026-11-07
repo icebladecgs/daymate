@@ -171,6 +171,10 @@ button:hover {
 /* 그림은 그대로 두고 누르는 칸만 40px로 넓힌다 — 배치가 흔들리지 않는다 (2026-11-07, UI.touch와 같은 값) */
 .dm-hit { position: relative; }
 .dm-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 40px); height: max(100%, 40px); transform: translate(-50%, -50%); }
+/* 옆 버튼과 간격이 좁으면 한 방향만 넓힌다: y = 세로만, x = 가로만 */
+.dm-hit-y, .dm-hit-x { position: relative; }
+.dm-hit-y::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 40px); transform: translateY(-50%); }
+.dm-hit-x::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: max(100%, 40px); transform: translateX(-50%); }
 
 /* 테두리는 키보드로 옮겨 갈 때만 — 예전엔 터치·클릭한 버튼에 남아 화면이 깨져 보였다 (2026-11-07) */
 button:focus-visible {

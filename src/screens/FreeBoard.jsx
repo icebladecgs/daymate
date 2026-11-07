@@ -352,7 +352,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
                           </div>
                           <div style={{ fontSize: NL() ? 15 : 13, color: 'var(--dm-text)', lineHeight: 1.6 }}><Linkify text={c.text} /></div>
                           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
-                            <button
+                            <button className={NL() ? 'dm-hit' : undefined}
                               onClick={() => toggleFreeBoardCommentLike(selectedPost.id, c.id, authUser?.uid).catch(() => {})}
                               style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: NL() ? 13 : 11, fontWeight: isLiked ? 700 : 400 }}>
                               {isLiked ? '❤️' : '🤍'} {likedBy.length > 0 ? likedBy.length : ''}

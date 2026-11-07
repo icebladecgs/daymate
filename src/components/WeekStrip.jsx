@@ -45,7 +45,7 @@ export default function WeekStrip({ todayDs, selectedDs, plans, todayTasks, onSe
               background: selected ? "#6C8EFF" : "var(--dm-card)",
               color: selected ? "#fff" : weekend ? (i === 6 ? "#F87171" : "#6C8EFF") : "var(--dm-text)",
             }}>
-            <span style={{ fontSize: 11, fontWeight: 800, opacity: selected ? 0.9 : 0.75 }}>{DOW[i]}</span>
+            <span style={{ fontSize: inBox ? 13 : 11, fontWeight: 800, opacity: selected ? 0.9 : 0.75 }}>{DOW[i]}</span>
             <span style={{ fontSize: 15, fontWeight: 900, lineHeight: 1 }}>{Number(ds.slice(8))}</span>
             <span style={{ width: 5, height: 5, borderRadius: "50%", background: hasTasks(ds) ? (selected ? "#fff" : "#6C8EFF") : "transparent" }} />
           </button>

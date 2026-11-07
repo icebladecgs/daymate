@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
+import { UI } from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
 import { SOUND_STYLES } from "../utils/notification.js";
 import { loadChatPush, saveChatPush, getChatSound, setChatSound, playChatSound, CHAT_PUSH_DEFAULTS } from "../utils/chatNotify.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
+
+const NL = () => newDesignOn();
 
 // 커뮤니티 채팅 알림 설정 — 채팅방 ⚙(communityId 있음)과 설정 → 알림(없음)에서 같이 쓴다.
 export default function ChatNotifySettings({ authUser, communityId, communityName }) {
@@ -38,11 +42,11 @@ export default function ChatNotifySettings({ authUser, communityId, communityNam
     <div>
       {/* 이 기기 알림 권한 */}
       {!pushSupported() ? (
-        <div style={{ fontSize: 12, color: "#F87171", marginBottom: 8, lineHeight: 1.6 }}>이 기기(브라우저)는 푸시 알림을 받을 수 없어요. 휴대폰에 설치한 앱에서 설정해 주세요.</div>
+        <div style={{ fontSize: NL() ? UI.sub : 12, color: "#F87171", marginBottom: 8, lineHeight: 1.6 }}>이 기기(브라우저)는 푸시 알림을 받을 수 없어요. 휴대폰에 설치한 앱에서 설정해 주세요.</div>
       ) : perm === "granted" ? (
-        <div style={{ fontSize: 12, color: "#22A55A", marginBottom: 8, fontWeight: 700 }}>🔔 이 기기는 알림이 허용돼 있어요</div>
+        <div style={{ fontSize: NL() ? UI.sub : 12, color: "#22A55A", marginBottom: 8, fontWeight: 700 }}>🔔 이 기기는 알림이 허용돼 있어요</div>
       ) : perm === "denied" ? (
-        <div style={{ fontSize: 12, color: "#F87171", marginBottom: 8, lineHeight: 1.6 }}>알림이 차단돼 있어요. 휴대폰 설정 → 애플리케이션 → Chrome(또는 DayMate) → 알림에서 허용해 주세요.</div>
+        <div style={{ fontSize: NL() ? UI.sub : 12, color: "#F87171", marginBottom: 8, lineHeight: 1.6 }}>알림이 차단돼 있어요. 휴대폰 설정 → 애플리케이션 → Chrome(또는 DayMate) → 알림에서 허용해 주세요.</div>
       ) : (
         <button onClick={allow} style={{ width: "100%", padding: "10px 0", marginBottom: 8, borderRadius: 10, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>🔔 이 기기에서 알림 허용하기</button>
       )}
@@ -58,10 +62,10 @@ export default function ChatNotifySettings({ authUser, communityId, communityNam
 
       <div style={{ padding: "10px 0", borderTop: "1px solid var(--dm-row)" }}>
         <div style={{ fontWeight: 900, fontSize: 14, color: "var(--dm-text)" }}>앱을 켜 둔 동안 알림 소리</div>
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2, marginBottom: 8 }}>누르면 미리 들려요 · 이 기기에만 적용</div>
+        <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, marginBottom: 8 }}>누르면 미리 들려요 · 이 기기에만 적용</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {[...SOUND_STYLES, { id: "none", label: "무음" }].map(s => (
-            <button key={s.id} onClick={() => { setSound(s.id); setChatSound(s.id); playChatSound(s.id); }}
+            <button className={NL() ? 'dm-hit' : undefined} key={s.id} onClick={() => { setSound(s.id); setChatSound(s.id); playChatSound(s.id); }}
               style={{ padding: "7px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer",
                 border: `1.5px solid ${sound === s.id ? "#6C8EFF" : "var(--dm-border)"}`,
                 background: sound === s.id ? "rgba(108,142,255,.12)" : "transparent", color: sound === s.id ? "#6C8EFF" : "var(--dm-sub)" }}>
@@ -70,11 +74,11 @@ export default function ChatNotifySettings({ authUser, communityId, communityNam
           ))}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: "var(--dm-muted)", lineHeight: 1.7, paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
+      <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", lineHeight: 1.7, paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
         • 앱이 꺼져 있을 때 오는 알림 소리는 휴대폰 설정에서 바꿔요: 설정 → 애플리케이션 → Chrome(또는 DayMate) → 알림.<br />
         • 알림은 계정당 한 기기로 가요 — 마지막으로 알림을 허용한 기기예요.
       </div>
-      {msg && <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: msg.startsWith("✅") ? "#22A55A" : "#F87171" }}>{msg}</div>}
+      {msg && <div style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 700, marginTop: 8, color: msg.startsWith("✅") ? "#22A55A" : "#F87171" }}>{msg}</div>}
     </div>
   );
 }
@@ -85,7 +89,7 @@ function Row({ title, sub, on, onToggle, disabled }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: "1px solid var(--dm-row)", opacity: disabled ? 0.45 : 1 }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 900, fontSize: 14, color: "var(--dm-text)" }}>{title}</div>
-        {sub && <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>{sub}</div>}
       </div>
       <div onClick={() => !disabled && onToggle()} role="switch" aria-checked={on} aria-label={title}
         style={{ width: 52, height: 28, borderRadius: 999, background: on ? "#6C8EFF" : "var(--dm-border)", cursor: disabled ? "default" : "pointer", position: "relative", flexShrink: 0 }}>

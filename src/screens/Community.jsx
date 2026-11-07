@@ -129,11 +129,11 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
     <div style={{ margin: '0 16px 8px', borderRadius: 16, background: 'var(--dm-card)', border: '1px solid var(--dm-border)', padding: '14px 12px' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <button onClick={prevMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>‹</button>
+        <button className={NL() ? 'dm-hit' : undefined} onClick={prevMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>‹</button>
         <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>
           {viewYear}년 {viewMonth + 1}월
         </div>
-        <button onClick={nextMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>›</button>
+        <button className={NL() ? 'dm-hit' : undefined} onClick={nextMonth} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>›</button>
       </div>
       {/* 요일 헤더 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
@@ -1865,7 +1865,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                           </div>
                           <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}><Linkify text={c.text} /></div>
                           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
-                            <button
+                            <button className={NL() ? 'dm-hit' : undefined}
                               onClick={() => toggleBoardCommentLike(communityId, selectedBoardPost.id, c.id, authUser?.uid).catch(() => {})}
                               style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: NL() ? UI.sub : 11, fontWeight: isLiked ? 700 : 400 }}
                             >
@@ -1966,7 +1966,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                         </div>
                         <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>{c.text}</div>
                         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}>
-                          <button
+                          <button className={NL() ? 'dm-hit' : undefined}
                             onClick={() => toggleCommentLike(communityId, selectedNotice.id, c.id, authUser?.uid).catch(() => {})}
                             style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', color: isLiked ? '#F87171' : 'var(--dm-muted)', fontSize: NL() ? UI.sub : 11, fontWeight: isLiked ? 700 : 400 }}
                           >

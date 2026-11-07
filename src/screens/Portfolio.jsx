@@ -4,7 +4,7 @@ import { store } from "../utils/storage.js";
 import { toDateStr } from "../utils/date.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import HoldingsScanSheet from "../components/HoldingsScanSheet.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
@@ -267,12 +267,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
       {/* 상단바 */}
       <div style={S.topbar}>
-        <button onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
+        <button className={NL() ? 'dm-hit' : undefined} onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
         <div style={{ flex: 1, marginLeft: 10 }}>
           <div style={S.title}>💼 보유자산</div>
-          <div style={S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
+          <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
         </div>
-        <button
+        <button className={NL() ? 'dm-hit' : undefined}
           onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
           style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
         >
@@ -395,15 +395,15 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                    <button
+                    <button className={NL() ? 'dm-hit-x' : undefined}
                       onClick={() => { setMemoOpenId(memoOpen ? null : h.id); setMemoDraft(""); }}
                       style={{ background: "transparent", border: "none", color: memos.length > 0 ? "#6C8EFF" : "var(--dm-muted)", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 800, padding: "2px 4px" }}
                     >
                       📝{memos.length > 0 ? ` ${memos.length}` : ""}
                     </button>
-                    <button onClick={() => handleEdit(h)}
+                    <button className={NL() ? 'dm-hit-x' : undefined} onClick={() => handleEdit(h)}
                       style={{ background: "transparent", border: "none", color: "var(--dm-muted)", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>✏️</button>
-                    <button onClick={() => handleDelete(h.id)}
+                    <button className={NL() ? 'dm-hit-x' : undefined} onClick={() => handleDelete(h.id)}
                       style={{ background: "transparent", border: "none", color: "#F87171", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>🗑</button>
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
       {/* 추가 버튼 */}
       {!showForm && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, ...(NL() ? { padding: `0 ${UI.gutter}px` } : {}) }}>
           <button onClick={() => { resetForm(); setShowForm(true); }} style={{ ...S.btn, flex: 1, marginTop: 0 }}>
             ＋ 종목 추가
           </button>
@@ -481,7 +481,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 6 }}>빠른 선택</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {PRESET_ASSETS.map(p => (
-                  <button key={p.sym} onClick={() => pickPreset(p)}
+                  <button className={NL() ? 'dm-hit' : undefined} key={p.sym} onClick={() => pickPreset(p)}
                     style={{
                       fontSize: NL() ? 14 : 12, padding: "4px 10px", borderRadius: 8, cursor: "pointer",
                       border: fSym === p.sym ? "1.5px solid #6C8EFF" : "1px solid var(--dm-border)",

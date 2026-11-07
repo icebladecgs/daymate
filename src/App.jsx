@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes, countCommunitySince } from "./firebase.js";
+import { newDesignOn } from "./utils/todayLook.js";
 import { countCommunityNews } from "./utils/communityNews.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
@@ -2456,7 +2457,7 @@ export default function App() {
         <Dashboard
           today={renderToday({ dashboard: true })}
           calendar={renderHistory()}
-          week={<WeeklySchedule plans={plans} habits={habits} onOpenDate={(ds) => window.dispatchEvent(new CustomEvent('dm:calendar-preview', { detail: ds }))} showAll />}
+          week={<WeeklySchedule roomy={newDesignOn()} plans={plans} habits={habits} onOpenDate={(ds) => window.dispatchEvent(new CustomEvent('dm:calendar-preview', { detail: ds }))} showAll />}
           memo={renderMemo({ toast: null, embedded: true })}
           onClose={() => {
             // 새로고침·주소로 바로 열었으면 돌아갈 화면이 없다 — 뒤로 가면 "앱을 종료하시겠습니까?"가 뜨므로 오늘 탭으로 바꾼다

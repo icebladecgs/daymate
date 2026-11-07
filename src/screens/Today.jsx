@@ -57,7 +57,7 @@ function ReorderButtons({ r }) {
 function ReorderToggle({ on, onClick }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '2px 0 10px' }}>
-      <button onClick={onClick}
+      <button className="dm-hit" onClick={onClick}
         style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? '#5B7CFA' : 'var(--dm-border)'}`, background: on ? 'rgba(91,124,250,.12)' : 'transparent', color: on ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
         {on ? '✓ 순서 완료' : '↕ 순서 바꾸기'}
       </button>
@@ -606,9 +606,9 @@ export default function Today({
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
             <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
-            {!morning && <button onClick={() => carryToToday(carryTasks)}
-              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
-            <button onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
+            {!morning && <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday(carryTasks)}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: newLook ? UI.sub : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
+            <button className={newLook ? 'dm-hit' : undefined} onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
               style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
           {morning && (
@@ -619,18 +619,18 @@ export default function Today({
           {morning && carryTasks.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 2px' }}>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 일 {carryTasks.length}개</span>
-              <button onClick={() => carryToToday(carryTasks)}
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday(carryTasks)}
                 style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#5B7CFA', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
             </div>
           )}
           {carryTasks.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {t.title}{t.time ? <span style={{ fontSize: 11, color: '#6C8EFF', marginLeft: 6 }}>{t.time}</span> : null}
+                {t.title}{t.time ? <span style={{ fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', marginLeft: 6 }}>{t.time}</span> : null}
               </span>
-              <button onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
-              <button onClick={() => carryToSomeday(t)} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
-              <button onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: newLook ? UI.sub : 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToSomeday(t)} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: newLook ? UI.sub : 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+              <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </div>
           ))}
           {morningSomeday.length > 0 && (
@@ -639,11 +639,11 @@ export default function Today({
               {morningSomeday.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.goalRef ? '🎯 ' : ''}{item.title}</span>
-                  <button onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+                  <button className={newLook ? 'dm-hit' : undefined} onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
                 </div>
               ))}
               {planSomeday.length > 3 && (
-                <button onClick={() => setPlanMore(v => !v)} style={{ display: 'block', width: '100%', padding: '8px 0 2px', marginTop: 0, background: 'none', border: 'none', borderTop: '1px solid var(--dm-row)', borderRadius: 0, color: 'var(--dm-sub)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button className={newLook ? 'dm-hit' : undefined} onClick={() => setPlanMore(v => !v)} style={{ display: 'block', width: '100%', padding: '8px 0 2px', marginTop: 0, background: 'none', border: 'none', borderTop: '1px solid var(--dm-row)', borderRadius: 0, color: 'var(--dm-sub)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {planMore ? '접기 ▲' : `${planSomeday.length - 3}개 더 보기 ▼`}
                 </button>
               )}
@@ -663,10 +663,10 @@ export default function Today({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? (newLook ? UI.titleGap : 8) : 0, paddingTop: newLook ? 0 : 4 }}>
           <span onClick={onOpenPeople} style={newLook
             ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
-            : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
+            : { fontSize: newLook ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
             {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
           </span>
-          {onOpenPeople && <button onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
+          {onOpenPeople && <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
         {contactReminders.length > 0 && (
           <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
@@ -687,12 +687,13 @@ export default function Today({
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘의 습관
-          {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {habitsSectionOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
+          className={newLook ? 'dm-hit' : undefined}
           onClick={() => { setEditingHabits(v => !v); setNewHabitIcon(''); setNewHabitName(''); }}
           style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editingHabits ? '#4ADE80' : 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
         >{editingHabits ? '완료 ✓' : '수정'}</button>
@@ -735,15 +736,15 @@ export default function Today({
                 style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
             {visibleHabits.length === 0 && !newHabitName && (
-              <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
+              <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
             )}
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: newLook ? UI.rowGap : 8 }}>
             {visibleHabits.length === 0 && (
               newLook
-                ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
-                : <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
+                ? <button className={newLook ? 'dm-hit' : undefined} onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
+                : <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
             )}
             {visibleHabits.map(h => {
               const checked = !!habitChecks[h.id];
@@ -768,7 +769,7 @@ export default function Today({
       <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
-          {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+          {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>}
         </span>
@@ -795,13 +796,13 @@ export default function Today({
               <TaskDetailBadge task={item} />
             </span>
             {reorder === 'someday' ? <ReorderButtons r={somedayReorder(item.id)} /> : (<>
-              <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
               <button className={newLook ? 'dm-hit' : undefined} onClick={() => confirmDeleteSomeday(item)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </>)}
           </div>
         ))}
         {somedayList.length > 3 && reorder !== 'someday' && (
-          <button onClick={() => setSomedayShowAll(v => !v)}
+          <button className={newLook ? 'dm-hit' : undefined} onClick={() => setSomedayShowAll(v => !v)}
             style={{ display: 'block', width: '100%', margin: '2px 0 10px', padding: '8px 0', borderRadius: 10, border: '1px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)', fontSize: newLook ? 14 : 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
             {somedayShowAll ? '접기 ▲' : `더 보기 (${somedayList.length - 3}개 더) ▼`}
           </button>
@@ -827,7 +828,7 @@ export default function Today({
     weekly: !hiddenSec.weekly && (<SectionBox on={newLook}>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(scheduleOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('cal', '📅')}주간 일정</span>
-        {newLook ? <FoldButton open={scheduleOpen} onClick={() => setScheduleOpen(v => !v)} /> : <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+        {newLook ? <FoldButton open={scheduleOpen} onClick={() => setScheduleOpen(v => !v)} /> : <button onClick={() => setScheduleOpen(v => !v)} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
           {scheduleOpen ? '접기 ▲' : '펼치기 ▼'}
         </button>}
       </div>
@@ -875,14 +876,14 @@ export default function Today({
               <span style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
             )}
             {journalDayOffset === 0 && (
-              <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
+              <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: newLook ? UI.sub : 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
             )}
           </span>
         </span>
         {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o - 1); }} aria-label="전날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          <button className={newLook ? 'dm-hit' : undefined} onClick={() => { flushJournalSave(); setJournalDayOffset(o => o - 1); }} aria-label="전날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button className={newLook ? 'dm-hit' : undefined} onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
       <div style={innerCard}>
@@ -923,7 +924,7 @@ export default function Today({
             {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
+            <button className={newLook ? 'dm-hit' : undefined}
               onClick={handleManualJournalSave}
               style={{
                 background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10,
@@ -1059,7 +1060,7 @@ export default function Today({
         )}
         {/* 수험생 모드 바로 켜고 끄기 (2026-11-01 사용자 결정 — 모든 사람에게 보임, 설정 → 수험생 모드와 같은 값). 꺼도 D-day·기록은 그대로 */}
         {setExam && !dashboard && (
-          <button onClick={() => { setExam(e => ({ ...e, on: !e.on })); setToast(examOn ? '수험생 모드를 껐어요 (기록은 그대로예요)' : '📚 수험생 모드를 켰어요'); }}
+          <button className={newLook ? 'dm-hit' : undefined} onClick={() => { setExam(e => ({ ...e, on: !e.on })); setToast(examOn ? '수험생 모드를 껐어요 (기록은 그대로예요)' : '📚 수험생 모드를 켰어요'); }}
             role="switch" aria-checked={examOn} aria-label="수험생 모드" title="수험생 모드 (D-day·공부 시간·오답 노트)"
             style={{ flexShrink: 0, alignSelf: 'center', padding: '6px 10px', borderRadius: 999, border: `1.5px solid ${examOn ? '#5B7CFA' : 'var(--dm-border)'}`, background: examOn ? 'rgba(91,124,250,.14)' : 'var(--dm-input)', color: examOn ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
             📚 시험 {examOn ? 'ON' : 'OFF'}
@@ -1068,7 +1069,7 @@ export default function Today({
         {!dashboard && canOpenDashboard() && (
           <button onClick={() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'dashboard' }))} aria-label="대시보드" title="대시보드 (넓은 화면으로 보기)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)', marginTop: 0 }}>🖥️</button>
         )}
-        {!dashboard && <button onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>}
+        {!dashboard && <button className={newLook ? 'dm-hit' : undefined} onClick={openMemoManager} aria-label="메모 관리자" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '8px 4px', color: 'var(--dm-muted)' }}>🔍</button>}
       </div>
 
       {/* 🌤 날씨 — 평소 한 줄, 누르면 7일 (설정에서 끌 수 있음) */}
@@ -1088,7 +1089,7 @@ export default function Today({
         <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))", border: "1.5px solid rgba(74,222,128,.35)" }}>
           <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>🎉</div>
           <div style={{ fontSize: 14, fontWeight: 900, textAlign: "center", color: "#4ADE80" }}>완벽한 하루!</div>
-          <div style={{ fontSize: 12, textAlign: "center", color: "var(--dm-sub)", marginTop: 6 }}>3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥</div>
+          <div style={{ fontSize: newLook ? UI.sub : 12, textAlign: "center", color: "var(--dm-sub)", marginTop: 6 }}>3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥</div>
         </div>
       )}
 
@@ -1104,7 +1105,7 @@ export default function Today({
           <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6 }}>
               <span style={{ whiteSpace: [0, 1, -1].includes(taskDayOffset) ? 'nowrap' : 'normal', wordBreak: 'keep-all' }}>{taskDayTitle}</span>
-              {!newLook && <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {!newLook && <button onClick={() => setTasksOpen(v => !v)} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {tasksOpen ? '접기 ▲' : '펼치기 ▼'}
               </button>}
             </span>
@@ -1116,10 +1117,10 @@ export default function Today({
         {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12, flexShrink: 0 }}>
           {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
-            <button onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
+            <button className={newLook ? 'dm-hit-y' : undefined} onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
           )}
-          <button onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
           {newLook && <FoldButton open={tasksOpen} onClick={() => setTasksOpen(v => !v)} />}
         </div>
       </div>
@@ -1162,7 +1163,7 @@ export default function Today({
               disabled={reorder === 'tasks'}
               onClick={() => toggleTargetTask(task.id)}
               aria-label={task.done ? '완료 취소' : '완료'}
-              style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
+              style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? UI.sub : 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
             {/* 제목 줄(제목+아이콘) 아래에 시간·"지금"을 작은 줄로 — 한 줄에 다 넣으면 제목이 두 줄로 쪼개졌다 */}
             <div onClick={() => reorder !== 'tasks' && setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, cursor: reorder === 'tasks' ? 'default' : 'pointer', padding: '2px 0' }}>
@@ -1173,17 +1174,17 @@ export default function Today({
               </div>
               {(task.time || task.id === nowTaskId) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                  {task.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime && task.endTime > task.time ? ` ~ ${task.endTime}` : ''}</span>}
-                  {task.id === nowTaskId && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
+                  {task.time && <span style={{ fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime && task.endTime > task.time ? ` ~ ${task.endTime}` : ''}</span>}
+                  {task.id === nowTaskId && <span style={{ fontSize: newLook ? UI.sub : 10, color: '#fff', fontWeight: 900, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
                 </div>
               )}
             </div>
             {reorder === 'tasks' && <ReorderButtons r={taskReorder(task.id)} />}
             {/* 자주 쓰는 "언젠가로 미루기"(미완료만)와 삭제(확인창)만 목록에 바로 노출. 나머지 편집은 상세에서 */}
             {reorder !== 'tasks' && !task.done && (
-              <button
+              <button className={newLook ? 'dm-hit' : undefined}
                 onClick={() => somedayWithUndo(task)}
-                style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
             {/* 언젠가할일 목록의 ✕와 같은 모양 */}
@@ -1214,7 +1215,7 @@ export default function Today({
         {taskInput.trim() && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             {['오늘', '내일', '모레', '오전 9시', '오후 3시'].map(w => (
-              <button key={w} onClick={() => { setTaskInput(applyChip(taskInput, w)); setNlOff(false); if (canAutoFocus()) taskInputRef.current?.focus(); }}
+              <button key={w} className="dm-hit" onClick={() => { setTaskInput(applyChip(taskInput, w)); setNlOff(false); if (canAutoFocus()) taskInputRef.current?.focus(); }}
                 style={{ height: UI.chip, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
             ))}
           </div>
@@ -1230,7 +1231,7 @@ export default function Today({
                 </div>
               ))}
             </div>
-            <button onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
+            <button className={newLook ? 'dm-hit' : undefined} onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
           </div>
         )}
         {parsedTask && !parsedMany && (
@@ -1240,10 +1241,10 @@ export default function Today({
                 {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: '#5B7CFA' }}>{friendlySchedule(parsedTask, targetDs, recurringLabel) || describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
               </div>
               {(parsedTask.recurring || (parsedTask.date && parsedTask.date !== targetDs)) && (
-                <div style={{ fontSize: 12, color: 'var(--dm-sub)', marginTop: 2 }}>{parsedTask.recurring ? '→ 반복 할일로 등록돼요' : '→ 그날 할일로 들어가요'}</div>
+                <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-sub)', marginTop: 2 }}>{parsedTask.recurring ? '→ 반복 할일로 등록돼요' : '→ 그날 할일로 들어가요'}</div>
               )}
             </div>
-            <button onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
+            <button className={newLook ? 'dm-hit' : undefined} onClick={() => setNlOff(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>그냥 글자로</button>
           </div>
         )}
       </div>

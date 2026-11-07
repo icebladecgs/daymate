@@ -307,11 +307,11 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       {(!boxed || tagsOpen) && (<>
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: newLook ? 14 : 10, color: newLook ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: 900, marginBottom: 3 }}>내가 만든 태그</div>
-        <div style={{ fontSize: newLook ? 12 : 10, color: 'var(--dm-muted)', marginBottom: newLook ? 8 : 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
+        <div style={{ fontSize: newLook ? UI.sub : 10, color: 'var(--dm-muted)', marginBottom: newLook ? 8 : 5, opacity: 0.8 }}>'/'를 넣으면 하위 태그를 만들 수 있어요 (예: 만화/명대사)</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {myTags.map(name => (
             <div key={name} style={{ position: 'relative' }}>
-              <button
+              <button className={newLook ? 'dm-hit' : undefined}
                 onClick={() => handleInsertTag(name)}
                 style={{
                   background: 'rgba(167,139,250,0.13)', border: '1px solid rgba(167,139,250,0.3)',
@@ -359,7 +359,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
               >추가</button>
             </div>
           ) : (
-            <button
+            <button className={newLook ? 'dm-hit' : undefined}
               onClick={handleAddTag}
               style={{
                 background: 'var(--dm-input)', border: '1px dashed var(--dm-border)',
@@ -375,7 +375,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
           <div style={{ fontSize: newLook ? 14 : 10, color: newLook ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: 900, marginBottom: newLook ? 8 : 5 }}>많이 쓴 태그</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {frequentTags.map(name => (
-              <button
+              <button className={newLook ? 'dm-hit' : undefined}
                 key={name}
                 onClick={() => handleInsertTag(name)}
                 style={{
