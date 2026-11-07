@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { store } from "../utils/storage.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn();
 import { chatFetch } from "../api/chatFetch.js";
 
 const QUESTIONS = [
@@ -94,7 +97,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
   const wrap = (children) => (
     <div style={S.content}>
       <div style={{ padding: "12px 22px 32px", position: "relative", zIndex: 1 }}>
-        <button onClick={onBack}
+        <button className={NL() ? 'dm-hit' : undefined} onClick={onBack}
           style={{ background: "none", border: "none", padding: "6px 0", marginBottom: 14, fontSize: 14, fontWeight: 700, color: "var(--dm-muted)", cursor: "pointer", fontFamily: "inherit" }}>
           ← 나가기
         </button>
@@ -120,14 +123,14 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--dm-row)" }}>
               <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{q.icon}</span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-muted)" }}>질문 {i + 1}</div>
+                <div style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 800, color: "var(--dm-muted)" }}>질문 {i + 1}</div>
                 <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 2 }}>{q.label}</div>
               </div>
-              {answers[i].trim() && <span style={{ fontSize: 12, color: "#4ADE80", fontWeight: 800 }}>✓</span>}
+              {answers[i].trim() && <span style={{ fontSize: NL() ? UI.sub : 12, color: "#4ADE80", fontWeight: 800 }}>✓</span>}
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: NL() ? UI.sub : 12, color: "var(--dm-muted)", textAlign: "center", marginBottom: 16 }}>
           솔직하게 답할수록 정확한 플랜이 나와요 · 모르는 질문은 건너뛰어도 돼요
         </div>
         <button style={S.btn} onClick={() => setStep(1)}>{answeredCount > 0 ? "이어서 하기 →" : "시작하기 →"}</button>
@@ -160,7 +163,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>{q.icon}</div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#6C8EFF", marginBottom: 6 }}>
+          <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 800, color: "#6C8EFF", marginBottom: 6 }}>
             질문 {step} / {totalQ} — {q.label}
           </div>
           <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.5, color: "var(--dm-text)" }}>
@@ -184,8 +187,8 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) goNext();
           }}
         />
-        {error && <div style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>{error}</div>}
-        {blocked && <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 8 }}>한 가지 이상 답해야 플랜을 만들 수 있어요</div>}
+        {error && <div style={{ fontSize: NL() ? UI.sub : 12, color: "#f87171", marginTop: 8 }}>{error}</div>}
+        {blocked && <div style={{ fontSize: NL() ? UI.sub : 12, color: "var(--dm-muted)", marginTop: 8 }}>한 가지 이상 답해야 플랜을 만들 수 있어요</div>}
 
         <button style={{ ...S.btn, marginTop: 16, opacity: blocked ? 0.5 : 1 }} onClick={goNext} disabled={blocked}>
           {isLast ? "플랜 만들기 ✨" : empty ? "건너뛰기 →" : "다음 →"}
@@ -223,7 +226,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 {result.keywords.map((kw, i) => (
                   <span key={i} style={{
-                    padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 800,
+                    padding: "4px 12px", borderRadius: 999, fontSize: NL() ? UI.sub : 12, fontWeight: 800,
                     background: "rgba(108,142,255,.15)", color: "#818cf8",
                     border: "1px solid rgba(108,142,255,.3)",
                   }}>#{kw}</span>
@@ -239,7 +242,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
               border: "1px solid rgba(108,142,255,0.25)",
               borderRadius: 16, padding: "18px 18px", marginBottom: 14,
             }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: "#818cf8", marginBottom: 8, letterSpacing: 1 }}>💬 코치의 말</div>
+              <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: "#818cf8", marginBottom: 8, letterSpacing: 1 }}>💬 코치의 말</div>
               <div style={{ fontSize: 14, color: "var(--dm-text)", lineHeight: 1.8, fontWeight: 500 }}>
                 {result.message}
               </div>

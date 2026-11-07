@@ -8,7 +8,7 @@ import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebas
 import { saveSettings, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import { IOSInstallGuide } from "../components/InstallGuide.jsx";
 import { androidInstallText } from "../utils/installGuideText.jsx";
@@ -87,7 +87,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
       {(onAction || onClick) && (
         <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 12, flexWrap: nl ? 'wrap' : undefined }}>
           {onAction && actionLabel && (
-            <button
+            <button className={NL() ? 'dm-hit' : undefined}
               type="button"
               onClick={onAction}
               style={{
@@ -106,7 +106,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
             </button>
           )}
           {onClick && (
-            <button
+            <button className={NL() ? 'dm-hit' : undefined}
               type="button"
               onClick={onClick}
               style={{
@@ -133,7 +133,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
 function SubHeader({ title, onBack }) {
   return (
     <div style={{ ...S.topbar }}>
-      <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
+      <button className={NL() ? 'dm-hit' : undefined} aria-label="뒤로" onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
       <div style={{ flex: 1, fontSize: 18, fontWeight: 900, marginLeft: 8 }}>{title}</div>
     </div>
   );
@@ -652,7 +652,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
         <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13, marginBottom: 6 }}>시간 정한 할일 알림</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {[['off', '끄기'], [0, '정각'], [5, '5분 전'], [10, '10분 전']].map(([v, label]) => (
-            <button key={String(v)} onClick={() => { setAlarmLead(v); setTaskAlarmLead(v); }}
+            <button key={String(v)} className={NL() ? 'dm-hit' : undefined} onClick={() => { setAlarmLead(v); setTaskAlarmLead(v); }}
               style={{ padding: '7px 12px', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
                 border: alarmLead === v ? '1.5px solid #5B7CFA' : '1px solid var(--dm-border)', background: alarmLead === v ? 'rgba(91,124,250,.12)' : 'var(--dm-input)', color: alarmLead === v ? '#5B7CFA' : 'var(--dm-sub)' }}>{label}</button>
           ))}
@@ -796,7 +796,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', fontWeight: 900, marginBottom: 8 }}>소리 스타일</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {SOUND_STYLES.map(s => (
-                <button key={s.id} onClick={() => { setSoundStyle(s.id); localStorage.setItem('dm_notif_sound_style', s.id); playNotifSound(s.id); }}
+                <button className={NL() ? 'dm-hit' : undefined} key={s.id} onClick={() => { setSoundStyle(s.id); localStorage.setItem('dm_notif_sound_style', s.id); playNotifSound(s.id); }}
                   style={{
                     padding: '6px 14px', borderRadius: 20, border: '1.5px solid',
                     borderColor: soundStyle === s.id ? '#6C8EFF' : 'var(--dm-border)',
@@ -805,7 +805,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                     fontSize: 13, fontWeight: soundStyle === s.id ? 900 : 400, cursor: 'pointer',
                   }}>
                   {s.label}
-                  <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)', marginLeft: 4 }}>{s.desc}</span>
+                  <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)', marginLeft: 4 }}>{s.desc}</span>
                 </button>
               ))}
             </div>
@@ -968,7 +968,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             {Object.entries(ASSET_META).map(([sym, meta]) => {
               const on = selectedAssets.includes(sym);
               return (
-                <button
+                <button className={NL() ? 'dm-hit' : undefined}
                   key={sym}
                   onClick={() => toggleAsset(sym)}
                   style={{
@@ -1382,7 +1382,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           const sec = TODAY_ORDER_SECTIONS.find(x => x.id === id);
           const arrow = (dir, label, can) => (
             <button onClick={() => setSectionOrderList(moveTodaySection(id, dir))} disabled={!can} aria-label={`${sec.label} ${label}`}
-              style={{ width: 40, height: 36, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', opacity: can ? 1 : 0.35, fontSize: 14, cursor: can ? 'pointer' : 'default', flexShrink: 0 }}>{dir < 0 ? '▲' : '▼'}</button>
+              style={{ width: 40, height: NL() ? UI.touch : 36, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', opacity: can ? 1 : 0.35, fontSize: 14, cursor: can ? 'pointer' : 'default', flexShrink: 0 }}>{dir < 0 ? '▲' : '▼'}</button>
           );
           return (
             <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: '1px solid var(--dm-row)' }}>
@@ -1561,9 +1561,9 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
       <div style={S.topbar}>
         <div style={{ flex: 1 }}>
           <div style={S.title}>설정</div>
-          <div style={S.sub}>연결 상태와 개인 환경을 관리</div>
+          <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>연결 상태와 개인 환경을 관리</div>
         </div>
-        <button
+        <button className={NL() ? 'dm-hit' : undefined}
           onClick={() => setIsDark(v => !v)}
           style={{ width: 38, height: 38, borderRadius: 999,
             border: "1.5px solid var(--dm-border)", background: "var(--dm-input)", fontSize: 18,
@@ -1571,7 +1571,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             flexShrink: 0 }}>
           {isDark ? "☀️" : "🌙"}
         </button>
-        <button onClick={() => setFontScale?.(v => v === 'large' ? 'normal' : 'large')}
+        <button className={NL() ? 'dm-hit' : undefined} onClick={() => setFontScale?.(v => v === 'large' ? 'normal' : 'large')}
           style={{ width: 38, height: 38, borderRadius: 999,
             border: `1.5px solid ${fontScale === 'large' ? 'rgba(108,142,255,.5)' : 'var(--dm-border)'}`,
             background: fontScale === 'large' ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
@@ -1676,7 +1676,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           <button onClick={onOpenAdmin} style={{ ...S.btnGhost, background: 'transparent', color: 'var(--dm-muted)', border: '1px dashed var(--dm-border)', boxShadow: 'none', fontSize: NL() ? 14 : 12, position: 'relative', marginTop: 0 }}>
             🛠 관리자 페이지
             {pendingSuggestions > 0 && (
-              <span style={{ position: 'absolute', top: -4, right: -4, fontSize: NL() ? 12 : 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
+              <span style={{ position: 'absolute', top: -4, right: -4, fontSize: NL() ? UI.sub : 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 6px', lineHeight: 1 }}>{pendingSuggestions}</span>
             )}
           </button>
         </div>

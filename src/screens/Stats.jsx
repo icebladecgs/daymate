@@ -135,11 +135,11 @@ const last30 = useMemo(() => {
       <div style={S.topbar}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
           {onBack && (
-            <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
+            <button className={NL() ? 'dm-hit' : undefined} aria-label="뒤로" onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0 }}>←</button>
           )}
           <div>
             <div style={S.title}>통계</div>
-            <div style={S.sub}>{monthLabel(viewYear, viewMonth)}</div>
+            <div style={NL() ? { ...S.sub, fontSize: 13 } : S.sub}>{monthLabel(viewYear, viewMonth)}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -149,8 +149,8 @@ const last30 = useMemo(() => {
               오늘
             </button>
           )}
-          <button onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
-          <button onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
+          <button className={NL() ? 'dm-hit' : undefined} aria-label="이전 달" onClick={prev} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>‹</button>
+          <button className={NL() ? 'dm-hit' : undefined} aria-label="다음 달" onClick={next} style={{ ...S.btnGhost, width: 44, marginTop: 0, padding: 10 }}>›</button>
         </div>
       </div>
 

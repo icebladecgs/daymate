@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn();
 import { getAppLock, setAppLock, setAppLockIdle, clearAppLock, checkPin, isValidPin, lockWaitMs, IDLE_CHOICES, bioAvailable, enrollBio, removeBio, verifyBio } from "../utils/appLock.js";
 
 // 설정 → 앱 관리 → 앱 잠금. 이 기기에만 적용된다(기기마다 따로).
@@ -85,7 +88,7 @@ export default function AppLockSettings({ authUser, setToast }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>비밀번호 4자리로 잠그기</div>
-            <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>앱을 켤 때와 앱을 벗어났다 돌아올 때 물어봐요. 이 기기에만 적용돼요</div>
+            <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>앱을 켤 때와 앱을 벗어났다 돌아올 때 물어봐요. 이 기기에만 적용돼요</div>
           </div>
           <div onClick={() => (mode ? reset() : start(on ? "off" : "on"))} role="switch" aria-checked={on} style={{
             width: 52, height: 28, borderRadius: 999, background: on ? "#6C8EFF" : "var(--dm-border)",
@@ -97,7 +100,7 @@ export default function AppLockSettings({ authUser, setToast }) {
 
         {on && !mode && (
           <>
-            <div style={{ fontSize: 12, color: "var(--dm-sub)", fontWeight: 900, margin: "16px 0 8px" }}>앱을 벗어났다 돌아올 때 다시 묻기</div>
+            <div style={{ fontSize: NL() ? UI.sub : 12, color: "var(--dm-sub)", fontWeight: 900, margin: "16px 0 8px" }}>앱을 벗어났다 돌아올 때 다시 묻기</div>
             <div style={{ display: "flex", gap: 6 }}>
               {IDLE_CHOICES.map(m => (
                 <button key={m} onClick={() => pickIdle(m)}
@@ -113,7 +116,7 @@ export default function AppLockSettings({ authUser, setToast }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 16 }}>
                 <div>
                   <div style={{ fontWeight: 900, fontSize: 13 }}>👆 지문·얼굴로 풀기</div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>비밀번호를 잊어도 지문으로 풀고 새로 정할 수 있어요</div>
+                  <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>비밀번호를 잊어도 지문으로 풀고 새로 정할 수 있어요</div>
                 </div>
                 <div onClick={toggleBio} role="switch" aria-checked={bioOn} style={{
                   width: 52, height: 28, borderRadius: 999, background: bioOn ? "#6C8EFF" : "var(--dm-border)",
@@ -135,7 +138,7 @@ export default function AppLockSettings({ authUser, setToast }) {
             {bioOn && (mode === "change" || mode === "off") && (
               <button style={{ ...S.btnGhost, marginTop: 0, marginBottom: 8 }} onClick={confirmByBio}>👆 지금 비밀번호 대신 지문으로 확인</button>
             )}
-            {err && <div style={{ fontSize: 12, color: "#F87171", fontWeight: 700, marginBottom: 8 }}>{err}</div>}
+            {err && <div style={{ fontSize: NL() ? UI.sub : 12, color: "#F87171", fontWeight: 700, marginBottom: 8 }}>{err}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.btnGhost, marginTop: 0, flex: 1 }} onClick={reset}>취소</button>
               <button style={{ ...S.btn, marginTop: 0, flex: 1 }} onClick={save}>{mode === "off" ? "잠금 끄기" : mode === "on" ? "잠금 켜기" : "바꾸기"}</button>
@@ -143,7 +146,7 @@ export default function AppLockSettings({ authUser, setToast }) {
           </div>
         )}
 
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", lineHeight: 1.7, marginTop: 12 }}>
+        <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", lineHeight: 1.7, marginTop: 12 }}>
           • 휴대폰·PC는 각각 그 기기 설정에서 따로 켜요.<br />
           • 비밀번호를 잊으면 지문·얼굴로 풀거나, 잠금 화면의 "비밀번호를 잊었어요"에서 관리자에게 해제를 요청해요. 관리자가 본인인지 확인한 뒤 풀어 드려요.<br />
           • 지문·얼굴을 켤 때 "패스키 저장" 창이 뜰 수 있어요. 비밀번호가 아니라 이 기기 확인용 키예요.<br />
