@@ -38,7 +38,7 @@ const COLORS = {
 // 섹션 제목 한 줄 (새 디자인) — 17px 굵게 + 선 아이콘. right에 접기·수정 같은 버튼
 export function SectionHeading({ icon, children, right, style }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, margin: "0 0 10px", paddingTop: 10, fontSize: 17, fontWeight: 900, color: "var(--dm-text)", ...style }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, margin: "0 0 14px", paddingTop: 10, fontSize: 17, fontWeight: 900, color: "var(--dm-text)", ...style }}>
       <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><SectionIcon name={icon} size={20} />{children}</span>
       {right}
     </div>

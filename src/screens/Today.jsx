@@ -481,7 +481,8 @@ export default function Today({
   const remainCount = filledCount - doneCount;
   // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘. 글씨는 할 일과 같은 17px·진하게(사용자 요청 — 섹션이 잘 보여야 함)
   // 새 디자인은 제목과 내용을 칸 하나(SectionBox)로 묶으므로 제목의 바깥 여백·안쪽 칸 모양을 뺀다
-  const secTitle = newLook ? { ...S.sectionTitle, padding: '0 0 10px' } : S.sectionTitle;
+  // 제목 아래 여백 16px — 제목 바로 밑에 내용이 붙어 답답하다는 사용자 의견(2026-11-07)으로 모든 칸 공통으로 키움
+  const secTitle = newLook ? { ...S.sectionTitle, padding: '0 0 16px' } : S.sectionTitle;
   const innerCard = newLook ? { position: 'relative' } : S.card;
   const foldPad = (open) => (newLook && !open ? { paddingBottom: 0 } : {}); // 접힌 칸은 제목 아래 여백을 뺀다
   const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
@@ -659,7 +660,7 @@ export default function Today({
     // 기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다)
     people: !hiddenSec.people && (<SectionBox on={newLook}>
       <div style={newLook ? {} : { margin: '0 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? 8 : 0, paddingTop: newLook ? 0 : 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? (newLook ? 14 : 8) : 0, paddingTop: newLook ? 0 : 4 }}>
           <span onClick={onOpenPeople} style={newLook
             ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
@@ -683,7 +684,7 @@ export default function Today({
           boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
       ),
     habits: !hiddenSec.habits && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...(newLook ? { paddingBottom: 16 } : {}), ...foldPad(habitsSectionOpen) }}>
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('repeat', '💪')}오늘의 습관
           {!newLook && <button onClick={() => setHabitsSectionOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -764,7 +765,7 @@ export default function Today({
 
       </SectionBox>),
     someday: !hiddenSec.someday && (<SectionBox on={newLook}>
-      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between', paddingBottom: 16 } : {}), ...foldPad(somedayOpen) }}>
+      <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
           {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
