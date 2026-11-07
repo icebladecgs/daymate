@@ -56,7 +56,7 @@ export default function GoalDetailSheet({ kind, title, actions = [], progress, t
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 20px 12px' }}>
           {progress?.lastDs && (
-            <div style={{ borderRadius: 12, background: 'rgba(108,142,255,.08)', border: '1px solid rgba(108,142,255,.25)', padding: '10px 12px', marginBottom: 14 }}>
+            <div style={{ borderRadius: 12, background: 'var(--dm-accent-soft, rgba(108,142,255,.08))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', padding: '10px 12px', marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 }}>📈 진행</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[
@@ -83,7 +83,7 @@ export default function GoalDetailSheet({ kind, title, actions = [], progress, t
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid var(--dm-row)' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{a.title}</span>
               <button onClick={() => send(a)}
-                style={{ background: sentId === a.id ? 'rgba(74,222,128,.15)' : 'rgba(108,142,255,.1)', border: `1px solid ${sentId === a.id ? 'rgba(74,222,128,.4)' : 'rgba(108,142,255,.25)'}`, borderRadius: 8, padding: '4px 8px', fontSize: 11, color: sentId === a.id ? '#4ADE80' : '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                style={{ background: sentId === a.id ? 'rgba(74,222,128,.15)' : 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: `1px solid ${sentId === a.id ? 'rgba(74,222,128,.4)' : 'var(--dm-accent-soft, rgba(108,142,255,.25))'}`, borderRadius: 8, padding: '4px 8px', fontSize: 11, color: sentId === a.id ? '#4ADE80' : 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {sentId === a.id ? '보냄 ✓' : '언젠가로'}
               </button>
               <button onClick={() => remove(a)} aria-label="항목 삭제"
@@ -100,7 +100,7 @@ export default function GoalDetailSheet({ kind, title, actions = [], progress, t
               style={{ ...S.input, flex: 1, marginBottom: 0 }}
             />
             <button onClick={add}
-              style={{ width: 42, height: 42, padding: 0, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0 }}>+</button>
+              style={{ width: 42, height: 42, padding: 0, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0 }}>+</button>
           </div>
         </div>
 

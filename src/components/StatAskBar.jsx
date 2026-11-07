@@ -32,7 +32,7 @@ export default function StatAskBar({ title, onAnswer, onClose, onStop }) {
       onPointerDown={startTimer} // 고르는 중에는 사라지지 않게 시간을 다시 잰다
       style={{
         position: 'fixed', top: 10, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 24px)', maxWidth: 406,
-        zIndex: 250, background: 'var(--dm-card)', border: '1.5px solid rgba(108,142,255,.45)', borderRadius: 14,
+        zIndex: 250, background: 'var(--dm-card)', border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.45))', borderRadius: 14,
         boxShadow: '0 8px 28px rgba(0,0,0,.25)', padding: '10px 12px',
       }}
     >

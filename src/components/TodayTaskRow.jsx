@@ -35,18 +35,18 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
       ...(riseDelay != null ? { animationDelay: `${riseDelay}ms` } : {}),
       position: "relative", display: "flex", alignItems: "flex-start", gap: 4,
       ...(now
-        ? { margin: "2px -8px 8px", padding: "12px 4px 14px 8px", borderRadius: 14, background: "rgba(108,142,255,.12)", overflow: "hidden" }
+        ? { margin: "2px -8px 8px", padding: "12px 4px 14px 8px", borderRadius: 14, background: "var(--dm-accent-soft, rgba(108,142,255,.12))", overflow: "hidden" }
         : { padding: "2px 0", borderBottom: last ? "none" : "1px solid var(--dm-row)" }),
     }}>
       {/* 동그란 체크 26px, 누르는 영역 40px */}
       <button className="dm-rowcheck" onClick={() => !reorder && onToggle(task.id)} disabled={!!reorder} aria-label={done ? "완료 취소" : "완료"}
         style={{ width: 40, height: 40, padding: 0, border: "none", background: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span key={pop} className={pop ? "dm-pop" : undefined} style={{ transition: "background .18s, border-color .18s", width: 26, height: 26, borderRadius: "50%", boxSizing: "border-box", border: `2px solid ${done ? "#4ADE80" : now ? "#6C8EFF" : "var(--dm-muted)"}`, background: done ? "#4ADE80" : "transparent", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{done ? "✓" : ""}</span>
+        <span key={pop} className={pop ? "dm-pop" : undefined} style={{ transition: "background .18s, border-color .18s", width: 26, height: 26, borderRadius: "50%", boxSizing: "border-box", border: `2px solid ${done ? "#4ADE80" : now ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)"}`, background: done ? "#4ADE80" : "transparent", color: "#fff", fontSize: 15, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{done ? "✓" : ""}</span>
       </button>
 
       <div onClick={() => !reorder && onOpen(task.id)} style={{ flex: 1, minWidth: 0, cursor: reorder ? "default" : "pointer", padding: now ? "0" : "8px 0" }}>
         {now && (
-          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 6, fontSize: 13, fontWeight: 800, color: "#6C8EFF", marginBottom: 2, paddingTop: 2 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", columnGap: 6, fontSize: 13, fontWeight: 800, color: "var(--dm-accent, #6C8EFF)", marginBottom: 2, paddingTop: 2 }}>
             <span style={{ whiteSpace: "nowrap" }}>● 지금 · {fmtMin(now.start)}–{fmtMin(now.end)}</span>
             <span style={{ whiteSpace: "nowrap" }}>· {leftText(Math.max(0, now.end - now.nowMin))} 남음</span>
           </div>
@@ -62,15 +62,15 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
           </span>
         </div>
         {next != null && !now && !done && (
-          <div style={{ fontSize: UI.sub, fontWeight: 700, color: "#6C8EFF", marginTop: 2 }}>다음 · {leftText(next)} 뒤</div>
+          <div style={{ fontSize: UI.sub, fontWeight: 700, color: "var(--dm-accent, #6C8EFF)", marginTop: 2 }}>다음 · {leftText(next)} 뒤</div>
         )}
         {now && !reorder && (
           <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => onToggle(task.id)}
-              style={{ flex: 1, height: 42, padding: 0, borderRadius: 12, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>✓ 완료</button>
+              style={{ flex: 1, height: 42, padding: 0, borderRadius: 12, border: "none", background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>✓ 완료</button>
             {onFocus && (
               <button onClick={() => onFocus(task)}
-                style={{ flex: 1, height: 42, padding: 0, borderRadius: 12, border: "1.5px solid rgba(108,142,255,.45)", background: "transparent", color: "#6C8EFF", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>▶ 집중</button>
+                style={{ flex: 1, height: 42, padding: 0, borderRadius: 12, border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.45))", background: "transparent", color: "var(--dm-accent, #6C8EFF)", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>▶ 집중</button>
             )}
           </div>
         )}
@@ -80,7 +80,7 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
         {reorder ? (
           [[-1, "▲", "위로", reorder.canUp], [1, "▼", "아래로", reorder.canDown]].map(([dir, ch, label, can]) => (
             <button key={dir} onClick={() => reorder.onMove(dir)} disabled={!can} aria-label={label}
-              style={{ ...iconBtn, width: 40, fontSize: 18, fontWeight: 800, color: can ? "#5B7CFA" : "var(--dm-muted)", opacity: can ? 1 : 0.3, cursor: can ? "pointer" : "default" }}>{ch}</button>
+              style={{ ...iconBtn, width: 40, fontSize: 18, fontWeight: 800, color: can ? "var(--dm-accent, #5B7CFA)" : "var(--dm-muted)", opacity: can ? 1 : 0.3, cursor: can ? "pointer" : "default" }}>{ch}</button>
           ))
         ) : (<>
           {!done && <button onClick={() => onSomeday(task)} aria-label="언젠가로" title="언젠가로 보내기" style={iconBtn}>{TRAY}</button>}
@@ -90,8 +90,8 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
 
       {/* 지금 할 일 남은 시간 — 칸 아래 가장자리 선 */}
       {now && (
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: "rgba(108,142,255,.18)" }}>
-          <div style={{ width: `${progress * 100}%`, height: "100%", background: "#6C8EFF" }} />
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: "var(--dm-accent-soft, rgba(108,142,255,.18))" }}>
+          <div style={{ width: `${progress * 100}%`, height: "100%", background: "var(--dm-accent, #6C8EFF)" }} />
         </div>
       )}
     </div>

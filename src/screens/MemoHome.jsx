@@ -124,7 +124,7 @@ function MemoHomeInner({
     <div style={newDesignOn() ? { paddingBottom: 20 } : { borderTop: '1px solid var(--dm-border)', marginTop: 8, padding: '18px 20px 28px' }}>
       {onOpenWrong && (
         <div style={newDesignOn() ? { padding: '0 16px' } : undefined}>
-        <button onClick={onOpenWrong} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 16, borderRadius: 14, border: '1.5px solid rgba(91,124,250,.35)', background: 'rgba(91,124,250,.08)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <button onClick={onOpenWrong} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 16, borderRadius: 14, border: '1.5px solid var(--dm-accent-line, rgba(91,124,250,.35))', background: 'var(--dm-accent-soft, rgba(91,124,250,.08))', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
           <span style={{ fontSize: 22 }}>📕</span>
           <span style={{ flex: 1, fontSize: 16, fontWeight: 900, color: 'var(--dm-text)' }}>오답 노트</span>
           {wrongDue > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>다시 풀 문제 {wrongDue}개</span>}

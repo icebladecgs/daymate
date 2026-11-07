@@ -116,7 +116,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
           <div style={S.card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)" }}>기타 기념일 (제사처럼 음력이면 "음력"을 눌러요)</div>
-              <button type="button" onClick={addAnniversary} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 추가</button>
+              <button type="button" onClick={addAnniversary} style={{ background: "none", border: "none", color: "var(--dm-accent, #6C8EFF)", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 추가</button>
             </div>
             {(draft.anniversaries || []).map(a => (
               <div key={a.id} style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
@@ -163,7 +163,7 @@ function ContactForm({ draft, setDraft, allTags, onAddTag, contacts, uid, onCanc
           <div style={S.card}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)" }}>명함 (앞면 · 뒷면)</div>
-              {uid && <button type="button" onClick={addCard} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 명함 추가</button>}
+              {uid && <button type="button" onClick={addCard} style={{ background: "none", border: "none", color: "var(--dm-accent, #6C8EFF)", fontSize: NL() ? 14 : 12, fontWeight: 900, cursor: "pointer" }}>＋ 명함 추가</button>}
             </div>
             {!uid && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>로그인 후 명함 사진을 첨부할 수 있어요</div>}
             {(draft.cards || []).map(card => (
@@ -205,7 +205,7 @@ function BirthdayLine({ birthday }) {
   return (
     <div style={{ fontSize: 13, color: "var(--dm-text)" }}>
       🎂 {label}
-      {dday != null && <span style={{ color: "#6C8EFF", fontWeight: 900, marginLeft: 6 }}>{dday === 0 ? "오늘!" : `D-${dday}`}</span>}
+      {dday != null && <span style={{ color: "var(--dm-accent, #6C8EFF)", fontWeight: 900, marginLeft: 6 }}>{dday === 0 ? "오늘!" : `D-${dday}`}</span>}
     </div>
   );
 }
@@ -242,7 +242,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
     <div style={S.content}>
       <Header title={contact.name} onBack={onBack} right={
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <button className={NL() ? 'dm-hit' : undefined} onClick={onEdit} style={{ background: "none", border: "none", color: "#6C8EFF", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>수정</button>
+          <button className={NL() ? 'dm-hit' : undefined} onClick={onEdit} style={{ background: "none", border: "none", color: "var(--dm-accent, #6C8EFF)", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>수정</button>
           <button className={NL() ? 'dm-hit' : undefined} onClick={onDelete} style={{ background: "none", border: "none", color: "#F87171", fontSize: 13, fontWeight: 900, cursor: "pointer" }}>삭제</button>
         </div>
       } />
@@ -250,7 +250,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
       {(contact.company || contact.title || contact.phone || contact.email || (contact.tags || []).length > 0) && (
         <div style={S.card}>
           {(contact.company || contact.title) && <div style={{ fontSize: 13, color: "var(--dm-sub)", marginBottom: 4 }}>{[contact.company, contact.title].filter(Boolean).join(" · ")}</div>}
-          {contact.phone && <a href={`tel:${contact.phone}`} style={{ display: "block", fontSize: 13, color: "#6C8EFF", textDecoration: "none" }}>📞 {contact.phone}</a>}
+          {contact.phone && <a href={`tel:${contact.phone}`} style={{ display: "block", fontSize: 13, color: "var(--dm-accent, #6C8EFF)", textDecoration: "none" }}>📞 {contact.phone}</a>}
           {contact.email && <div style={{ fontSize: 13, color: "var(--dm-text)" }}>✉️ {contact.email}</div>}
           {(contact.tags || []).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -326,10 +326,10 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onAddMeeting,
               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                 <input value={followupTitle} onChange={e => setFollowupTitle(e.target.value)} placeholder="할 일 제목" style={{ ...S.input, flex: 1.5, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: "8px 10px" }} />
                 <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)} style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: "8px 10px" }} />
-                <button onClick={submitFollowup} style={{ background: "#6C8EFF", border: "none", borderRadius: 8, color: "#fff", fontSize: NL() ? 14 : 12, fontWeight: 900, padding: "0 10px", cursor: "pointer" }}>추가</button>
+                <button onClick={submitFollowup} style={{ background: "var(--dm-accent, #6C8EFF)", border: "none", borderRadius: 8, color: "#fff", fontSize: NL() ? 14 : 12, fontWeight: 900, padding: "0 10px", cursor: "pointer" }}>추가</button>
               </div>
             ) : (
-              <button onClick={() => { setAddingFollowup(m.id); setFollowupTitle(""); setFollowupDate(toDateStr()); }} style={{ marginTop: 6, background: "none", border: "none", color: "#6C8EFF", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>＋ 할 일 추가</button>
+              <button onClick={() => { setAddingFollowup(m.id); setFollowupTitle(""); setFollowupDate(toDateStr()); }} style={{ marginTop: 6, background: "none", border: "none", color: "var(--dm-accent, #6C8EFF)", fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>＋ 할 일 추가</button>
             )}
           </div>
         ))}
@@ -495,7 +495,7 @@ export default function People({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>생일·기념일 알림</span>
               <button onClick={() => setContactAlarmCfg({ ...contactAlarmCfg, enabled: !contactAlarmCfg.enabled })}
-                style={{ width: 44, height: 24, borderRadius: 999, background: contactAlarmCfg.enabled ? "#6C8EFF" : "var(--dm-border)", border: "none", position: "relative", cursor: "pointer" }}>
+                style={{ width: 44, height: 24, borderRadius: 999, background: contactAlarmCfg.enabled ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)", border: "none", position: "relative", cursor: "pointer" }}>
                 <span style={{ position: "absolute", top: 3, left: contactAlarmCfg.enabled ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
               </button>
             </div>
@@ -525,7 +525,7 @@ export default function People({
             {(c.company || c.title) && <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginTop: 2 }}>{[c.company, c.title].filter(Boolean).join(" · ")}</div>}
             {(c.tags || []).length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-                {c.tags.map(t => <span key={t} style={{ fontSize: NL() ? 13 : 10, padding: "2px 8px", borderRadius: 999, background: "rgba(108,142,255,.12)", color: "#6C8EFF" }}>{t}</span>)}
+                {c.tags.map(t => <span key={t} style={{ fontSize: NL() ? 13 : 10, padding: "2px 8px", borderRadius: 999, background: "var(--dm-accent-soft, rgba(108,142,255,.12))", color: "var(--dm-accent, #6C8EFF)" }}>{t}</span>)}
               </div>
             )}
           </button>
@@ -538,7 +538,7 @@ export default function People({
       </div>
 
       <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, padding: "0 16px", boxSizing: "border-box", pointerEvents: "none", zIndex: 200, display: "flex", gap: 8 }}>
-        <button onClick={startAdd} style={{ ...S.btn, flex: 1, marginTop: 0, pointerEvents: "auto", boxShadow: "0 8px 24px rgba(75,111,255,.4)" }}>＋ 사람 추가</button>
+        <button onClick={startAdd} style={{ ...S.btn, flex: 1, marginTop: 0, pointerEvents: "auto", boxShadow: "0 8px 24px var(--dm-accent-soft, rgba(75,111,255,.4))" }}>＋ 사람 추가</button>
         <button onClick={startImport} style={{ ...S.btnGhost, flex: 1, marginTop: 0, pointerEvents: "auto", background: "var(--dm-card)", boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}>📱 연락처에서</button>
       </div>
       {importCandidates && (

@@ -18,7 +18,7 @@ export default function StatSelect({ value, name, onChange, style }) {
       title="체크하면 오르는 성장 능력치"
       style={{
         height: 42, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)',
-        color: value ? '#6C8EFF' : 'var(--dm-sub)', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+        color: value ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-sub)', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
         padding: '0 2px', width: 78, flexShrink: 0, cursor: 'pointer', ...style,
       }}
     >

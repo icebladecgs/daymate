@@ -91,7 +91,7 @@ export default function AppLockSettings({ authUser, setToast }) {
             <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>앱을 켤 때와 앱을 벗어났다 돌아올 때 물어봐요. 이 기기에만 적용돼요</div>
           </div>
           <div onClick={() => (mode ? reset() : start(on ? "off" : "on"))} role="switch" aria-checked={on} style={{
-            width: 52, height: 28, borderRadius: 999, background: on ? "#6C8EFF" : "var(--dm-border)",
+            width: 52, height: 28, borderRadius: 999, background: on ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>
             <div style={{ position: "absolute", top: 4, left: on ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -105,9 +105,9 @@ export default function AppLockSettings({ authUser, setToast }) {
               {IDLE_CHOICES.map(m => (
                 <button key={m} onClick={() => pickIdle(m)}
                   style={{ flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer",
-                    border: idleMin === m ? "1px solid #6C8EFF" : "1px solid var(--dm-border)",
-                    background: idleMin === m ? "rgba(108,142,255,.15)" : "transparent",
-                    color: idleMin === m ? "#6C8EFF" : "var(--dm-sub)" }}>
+                    border: idleMin === m ? "1px solid var(--dm-accent, #6C8EFF)" : "1px solid var(--dm-border)",
+                    background: idleMin === m ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "transparent",
+                    color: idleMin === m ? "var(--dm-accent, #6C8EFF)" : "var(--dm-sub)" }}>
                   {m === 0 ? "즉시" : `${m}분 뒤`}
                 </button>
               ))}
@@ -119,7 +119,7 @@ export default function AppLockSettings({ authUser, setToast }) {
                   <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>비밀번호를 잊어도 지문으로 풀고 새로 정할 수 있어요</div>
                 </div>
                 <div onClick={toggleBio} role="switch" aria-checked={bioOn} style={{
-                  width: 52, height: 28, borderRadius: 999, background: bioOn ? "#6C8EFF" : "var(--dm-border)",
+                  width: 52, height: 28, borderRadius: 999, background: bioOn ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
                   cursor: "pointer", position: "relative", flexShrink: 0, opacity: bioBusy ? 0.5 : 1,
                 }}>
                   <div style={{ position: "absolute", top: 4, left: bioOn ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />

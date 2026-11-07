@@ -10,8 +10,8 @@ import { useBackClose } from "../utils/useBackClose.js";
 
 const chip = (active) => ({
   fontSize: 12, padding: '5px 10px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
-  border: active ? '1.5px solid #6C8EFF' : '1px solid var(--dm-border)',
-  background: active ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', color: 'var(--dm-sub)',
+  border: active ? '1.5px solid var(--dm-accent, #6C8EFF)' : '1px solid var(--dm-border)',
+  background: active ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)', color: 'var(--dm-sub)',
 });
 const sectionLabel = { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 6 };
 const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).slice(2, 6)}`, text: text.trim(), done: false });
@@ -148,14 +148,14 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             </div>
           )}
           {task.memoRef && (
-            <div style={{ fontSize: 12, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 10, padding: '8px 10px', marginBottom: 14, lineHeight: 1.5 }}>
               📝 {task.memoRef.ds ? `${formatShortKoreanDate(task.memoRef.ds)} ` : ''}메모에서 나온 할일
             </div>
           )}
           {recurring && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14, color: '#5B7CFA', fontWeight: 700, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 10px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14, color: 'var(--dm-accent, #5B7CFA)', fontWeight: 700, background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 10, padding: '8px 10px', marginBottom: 14 }}>
               <span style={{ flex: 1, minWidth: 0 }}>🔁 {recurring.label} 반복</span>
-              {recurring.onManage && <button onClick={() => { handleClose(); recurring.onManage(); }} style={{ ...chip(false), fontSize: 13, color: '#5B7CFA', fontWeight: 700 }}>반복 관리</button>}
+              {recurring.onManage && <button onClick={() => { handleClose(); recurring.onManage(); }} style={{ ...chip(false), fontSize: 13, color: 'var(--dm-accent, #5B7CFA)', fontWeight: 700 }}>반복 관리</button>}
               <button onClick={() => { if (recurring.onStop() !== false) handleClose(); }} style={{ ...chip(false), fontSize: 13, color: '#F87171', fontWeight: 700 }}>반복 그만하기</button>
             </div>
           )}
@@ -215,7 +215,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: importedGcal && onMoveDate ? 6 : 14, minHeight: 32, flexWrap: 'wrap' }}>
             {onMoveDate && (
               // 버튼 위에 투명한 날짜 입력칸을 겹쳐서 누르면 휴대폰·PC 기본 달력이 열리게 한다
-              <label style={{ ...chip(!!dateStr), position: 'relative', color: dateStr ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, opacity: importedGcal ? 0.5 : 1, cursor: importedGcal ? 'default' : 'pointer' }}>
+              <label style={{ ...chip(!!dateStr), position: 'relative', color: dateStr ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', fontWeight: 700, opacity: importedGcal ? 0.5 : 1, cursor: importedGcal ? 'default' : 'pointer' }}>
                 📅 {dateStr ? formatShortKoreanDate(dateStr) : '날짜 정하기'}
                 {!importedGcal && (
                   <input
@@ -232,14 +232,14 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             {editingTime ? (
               <TimeSelect autoFocus value={task.time} onChange={v => onSave({ time: v || undefined })} onClose={() => setEditingTime(false)} />
             ) : (
-              <button onClick={() => setEditingTime(true)} style={{ ...chip(!!task.time), color: task.time ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
+              <button onClick={() => setEditingTime(true)} style={{ ...chip(!!task.time), color: task.time ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', fontWeight: 700 }}>
                 ⏰ {task.time || '시간 설정'}
               </button>
             )}
             {task.time && !editingTime && (editingEnd ? (
               <TimeSelect autoFocus value={task.endTime || task.time} onChange={saveEndTime} onClose={() => setEditingEnd(false)} />
             ) : (
-              <button onClick={() => setEditingEnd(true)} style={{ ...chip(!!task.endTime && task.endTime > task.time), color: task.endTime && task.endTime > task.time ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700 }}>
+              <button onClick={() => setEditingEnd(true)} style={{ ...chip(!!task.endTime && task.endTime > task.time), color: task.endTime && task.endTime > task.time ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', fontWeight: 700 }}>
                 ~ {task.endTime && task.endTime > task.time ? task.endTime : '끝 시간'}
               </button>
             ))}
@@ -249,7 +249,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               const end = hh * 60 + mm + d;
               if (end >= 24 * 60) return null;
               const v = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
-              return <button key={d} onClick={() => saveEndTime(v)} style={{ ...chip(false), color: '#5B7CFA', fontWeight: 700 }}>+{d < 60 ? `${d}분` : `${d / 60}시간`}</button>;
+              return <button key={d} onClick={() => saveEndTime(v)} style={{ ...chip(false), color: 'var(--dm-accent, #5B7CFA)', fontWeight: 700 }}>+{d < 60 ? `${d}분` : `${d / 60}시간`}</button>;
             })}
             {task.time && (
               <button onClick={() => { setEditingTime(false); setEditingEnd(false); onSave({ time: undefined, endTime: undefined }); }} style={{ ...chip(false), color: 'var(--dm-muted)' }}>시간 지우기</button>
@@ -311,7 +311,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
           <DriveFileList files={files} onChange={(next) => onSave({ files: next })} />
           {drive.input}
           <button onClick={drive.pick} disabled={drive.busy}
-            style={{ width: '100%', padding: '11px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', padding: '11px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', color: drive.busy ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
             {drive.label}
           </button>
 

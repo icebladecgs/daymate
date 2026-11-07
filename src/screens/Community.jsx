@@ -38,7 +38,7 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
       onClick={() => { if (!editingCommunityOrder) onOpen(); }}
       style={{
         background: 'var(--dm-card)',
-        border: dragging ? '1.5px dashed rgba(108,142,255,.35)' : '1.5px solid var(--dm-border)',
+        border: dragging ? '1.5px dashed var(--dm-accent-soft, rgba(108,142,255,.35))' : '1.5px solid var(--dm-border)',
         borderRadius: 14,
         padding: dragging ? '20px 14px' : '14px',
         cursor: editingCommunityOrder ? 'default' : 'pointer',
@@ -51,10 +51,10 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
         position: 'relative',
         zIndex: dragging ? 2 : 1,
         boxShadow: dragging ? '0 18px 36px rgba(0,0,0,.18)' : 'none',
-        backgroundColor: dragging ? 'rgba(108,142,255,.05)' : undefined,
+        backgroundColor: dragging ? 'var(--dm-accent-soft, rgba(108,142,255,.05))' : undefined,
       }}
     >
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(108,142,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }} title={meta ? (meta.isPublic ? '공개 커뮤니티' : '비공개 커뮤니티') : undefined}>{!meta ? '👥' : meta.isPublic ? '🌐' : '🔒'}</div>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }} title={meta ? (meta.isPublic ? '공개 커뮤니티' : '비공개 커뮤니티') : undefined}>{!meta ? '👥' : meta.isPublic ? '🌐' : '🔒'}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: NL() ? 16 : 14, fontWeight: 900, color: 'var(--dm-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta?.name || communityName || '...'}</span>
@@ -79,7 +79,7 @@ function SortableCommunityCard({ communityId, meta, communityName, editingCommun
             height: 42,
             borderRadius: 10,
             border: '1px solid var(--dm-border)',
-            background: dragging ? 'rgba(108,142,255,.18)' : 'var(--dm-card)',
+            background: dragging ? 'var(--dm-accent-soft, rgba(108,142,255,.18))' : 'var(--dm-card)',
             color: 'var(--dm-muted)',
             cursor: isOverlay ? 'grabbing' : 'grab',
             flexShrink: 0,
@@ -139,7 +139,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <div key={d} style={{ textAlign: 'center', fontSize: NL() ? UI.sub : 11, fontWeight: 700,
-            color: i === 0 ? '#F87171' : i === 6 ? '#6C8EFF' : 'var(--dm-muted)', padding: '2px 0' }}>
+            color: i === 0 ? '#F87171' : i === 6 ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', padding: '2px 0' }}>
             {d}
           </div>
         ))}
@@ -156,14 +156,14 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
           return (
             <div key={ds} onClick={() => onSelectDate(isSelected ? null : ds)}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3px 0', cursor: hasEvent ? 'pointer' : 'default', borderRadius: 8,
-                background: isSelected ? 'rgba(108,142,255,.2)' : isToday ? 'rgba(75,111,255,.1)' : 'transparent' }}>
+                background: isSelected ? 'var(--dm-accent-soft, rgba(108,142,255,.2))' : isToday ? 'var(--dm-accent-soft, rgba(75,111,255,.1))' : 'transparent' }}>
               <div style={{ fontSize: 13, fontWeight: isToday ? 900 : 500, lineHeight: 1.4,
-                color: isSelected ? '#6C8EFF' : isToday ? '#4B6FFF' : dayOfWeek === 0 ? '#F87171' : dayOfWeek === 6 ? '#6C8EFF' : 'var(--dm-text)',
-                borderBottom: isToday ? '2px solid #4B6FFF' : 'none' }}>
+                color: isSelected ? 'var(--dm-accent, #6C8EFF)' : isToday ? 'var(--dm-accent, #4B6FFF)' : dayOfWeek === 0 ? '#F87171' : dayOfWeek === 6 ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-text)',
+                borderBottom: isToday ? '2px solid var(--dm-accent, #4B6FFF)' : 'none' }}>
                 {d}
               </div>
               <div style={{ width: 5, height: 5, borderRadius: '50%', marginTop: 2,
-                background: hasEvent ? '#6C8EFF' : 'transparent' }} />
+                background: hasEvent ? 'var(--dm-accent, #6C8EFF)' : 'transparent' }} />
             </div>
           );
         })}
@@ -897,9 +897,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid rgba(108,142,255,.22)', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
+            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.22))', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
           >
-            <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
             <div style={{ fontSize: NL() ? UI.sub : 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호(숫자 4~6자리)를 입력해주세요.</div>
             <input
@@ -939,8 +939,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
-            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
-            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid var(--dm-accent, #6C8EFF)' : '2.5px solid transparent',
             marginBottom: -1,
           }}>{t.label}</button>
         ))}
@@ -977,9 +977,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     {[{ k: 'all', label: `전체 ${communityIds.length}` }, { k: 'public', label: `🌐 공개 ${pubCount}` }, { k: 'private', label: `🔒 비공개 ${privCount}` }].map(f => (
                       <button key={f.k} onClick={() => setMyFilter(f.k)} style={{
                         flex: 1, padding: '7px 0', borderRadius: 10, fontSize: NL() ? UI.sub : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-                        border: `1.5px solid ${myFilter === f.k ? '#6C8EFF' : 'var(--dm-border)'}`,
-                        background: myFilter === f.k ? 'rgba(108,142,255,.12)' : 'transparent',
-                        color: myFilter === f.k ? '#6C8EFF' : 'var(--dm-sub)',
+                        border: `1.5px solid ${myFilter === f.k ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+                        background: myFilter === f.k ? 'var(--dm-accent-soft, rgba(108,142,255,.12))' : 'transparent',
+                        color: myFilter === f.k ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-sub)',
                       }}>{f.label}</button>
                     ))}
                   </div>
@@ -1070,7 +1070,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</div>
                       <div style={{ fontSize: NL() ? UI.sub : 11, color: 'var(--dm-muted)', marginTop: 2 }}>멤버 {c.memberCount}명 {c.hasPassword ? '· 🔑 비밀번호' : '· 자유 입장'}</div>
                     </div>
-                    <button className={NL() ? 'dm-hit' : undefined} style={{ background: 'rgba(108,142,255,.15)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 8, padding: '5px 12px', color: '#6C8EFF', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>가입</button>
+                    <button className={NL() ? 'dm-hit' : undefined} style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 8, padding: '5px 12px', color: 'var(--dm-accent, #6C8EFF)', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>가입</button>
                   </div>
                 ))}
               </div>
@@ -1092,8 +1092,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
-            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
-            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid var(--dm-accent, #6C8EFF)' : '2.5px solid transparent',
             marginBottom: -1,
           }}>{t.label}</button>
         ))}
@@ -1128,9 +1128,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           <div style={{ display: 'flex', gap: 8 }}>
             {[{ v: false, label: '🔒 비공개', desc: '초대코드로만 입장' }, { v: true, label: '🌐 공개', desc: '목록에 표시됨' }].map(({ v, label, desc }) => (
               <button key={String(v)} onClick={() => setIsPublic(v)} style={{
-                flex: 1, padding: '10px 8px', borderRadius: 12, border: `1.5px solid ${isPublic === v ? '#6C8EFF' : 'var(--dm-border)'}`,
-                background: isPublic === v ? 'rgba(108,142,255,.12)' : 'var(--dm-input)',
-                color: isPublic === v ? '#6C8EFF' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: NL() ? UI.sub : 12, fontFamily: 'inherit',
+                flex: 1, padding: '10px 8px', borderRadius: 12, border: `1.5px solid ${isPublic === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+                background: isPublic === v ? 'var(--dm-accent-soft, rgba(108,142,255,.12))' : 'var(--dm-input)',
+                color: isPublic === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: NL() ? UI.sub : 12, fontFamily: 'inherit',
               }}>
                 <div>{label}</div>
                 <div style={{ fontSize: NL() ? UI.sub : 10, fontWeight: 400, marginTop: 2, color: 'var(--dm-muted)' }}>{desc}</div>
@@ -1159,9 +1159,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
             {[{ v: 'public', label: '🌐 공개 목록' }, { v: 'code', label: '🔒 초대코드' }].map(({ v, label }) => (
               <button key={v} className={NL() ? 'dm-hit' : undefined} onClick={() => { setJoinTab(v); setSelectedPublic(null); setPubPassword(''); }} style={{
-                flex: 1, padding: '8px', borderRadius: 10, border: `1.5px solid ${joinTab === v ? '#6C8EFF' : 'var(--dm-border)'}`,
-                background: joinTab === v ? 'rgba(108,142,255,.12)' : 'var(--dm-input)',
-                color: joinTab === v ? '#6C8EFF' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: NL() ? UI.sub : 12, fontFamily: 'inherit',
+                flex: 1, padding: '8px', borderRadius: 10, border: `1.5px solid ${joinTab === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+                background: joinTab === v ? 'var(--dm-accent-soft, rgba(108,142,255,.12))' : 'var(--dm-input)',
+                color: joinTab === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-sub)', cursor: 'pointer', fontWeight: 700, fontSize: NL() ? UI.sub : 12, fontFamily: 'inherit',
               }}>{label}</button>
             ))}
           </div>
@@ -1175,8 +1175,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               {publicList.map(c => (
                 <button key={c.id} onClick={() => setSelectedPublic(selectedPublic?.id === c.id ? null : c)} style={{
                   textAlign: 'left', padding: '12px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
-                  border: `1.5px solid ${selectedPublic?.id === c.id ? '#6C8EFF' : 'var(--dm-border)'}`,
-                  background: selectedPublic?.id === c.id ? 'rgba(108,142,255,.1)' : 'var(--dm-input)',
+                  border: `1.5px solid ${selectedPublic?.id === c.id ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+                  background: selectedPublic?.id === c.id ? 'var(--dm-accent-soft, rgba(108,142,255,.1))' : 'var(--dm-input)',
                 }}>
                   <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--dm-text)' }}>{c.name}</div>
                   <div style={{ fontSize: NL() ? UI.sub : 11, color: 'var(--dm-muted)', marginTop: 2 }}>
@@ -1215,7 +1215,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               </div>
               {foundCommunity && (
                 <>
-                  <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(108,142,255,.08)', border: '1px solid rgba(108,142,255,.2)' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: 12, background: 'var(--dm-accent-soft, rgba(108,142,255,.08))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.2))' }}>
                     <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)' }}>{foundCommunity.name}</div>
                     <div style={{ fontSize: NL() ? UI.sub : 11, color: 'var(--dm-muted)', marginTop: 2 }}>
                       멤버 {foundCommunity.memberCount}명 {foundCommunity.hasPassword ? '· 🔑 암호 있음' : '· 자유 입장'}
@@ -1262,9 +1262,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid rgba(108,142,255,.22)', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
+            style={{ width: '100%', maxWidth: 340, borderRadius: 24, background: 'var(--dm-card)', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.22))', boxShadow: '0 24px 60px rgba(0,0,0,.35)', padding: '22px 18px 18px' }}
           >
-            <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 6 }}>🔐 보호된 커뮤니티</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 6 }}>{accessPasswordModal.name}</div>
             <div style={{ fontSize: NL() ? UI.sub : 12, color: 'var(--dm-muted)', lineHeight: 1.6, marginBottom: 14 }}>입장 전에 비밀번호(숫자 4~6자리)를 입력해주세요.</div>
             <input
@@ -1305,8 +1305,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
-            color: mainTab === t.key ? '#6C8EFF' : 'var(--dm-muted)',
-            borderBottom: mainTab === t.key ? '2.5px solid #6C8EFF' : '2.5px solid transparent',
+            color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
+            borderBottom: mainTab === t.key ? '2.5px solid var(--dm-accent, #6C8EFF)' : '2.5px solid transparent',
             marginBottom: -1,
           }}>{t.label}</button>
         ))}
@@ -1340,7 +1340,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {soundOn ? '🔔' : '🔕'}
         </button>
         <button className={NL() ? 'dm-hit' : undefined} onClick={() => setShowAdd(v => !v)}
-          style={{ background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', border: 'none', borderRadius: 20, padding: '8px 16px', color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
+          style={{ background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', border: 'none', borderRadius: 20, padding: '8px 16px', color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
           + 일정
         </button>
       </div>
@@ -1354,8 +1354,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               requestCommunityAccess(id, { openDetail: true });
             }} style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: 999, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-              border: `1.5px solid ${id === activeCommunityId ? '#6C8EFF' : 'var(--dm-border)'}`,
-              background: id === activeCommunityId ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+              border: `1.5px solid ${id === activeCommunityId ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+              background: id === activeCommunityId ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
               color: id === activeCommunityId ? '#818cf8' : 'var(--dm-sub)',
             }}>
               {communityNames[id] || '...'}
@@ -1423,7 +1423,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 style={{ ...S.input, fontSize: NL() ? UI.sub : 12, padding: '3px 8px', marginBottom: 0, width: 140 }}
               />
               <button onClick={handleSavePassword} disabled={savingPassword}
-                style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+                style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
                 {savingPassword ? '저장 중' : '저장'}
               </button>
               <button onClick={() => { setShowPasswordEdit(false); setPasswordEditValue(''); }}
@@ -1442,7 +1442,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
       {/* 일정 추가 폼 */}
       {showAdd && (
-        <div style={{ ...S.card, border: '1.5px solid #4B6FFF' }}>
+        <div style={{ ...S.card, border: '1.5px solid var(--dm-accent, #4B6FFF)' }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10 }}>새 일정 추가</div>
           <input style={{ ...S.input, marginBottom: 8 }} placeholder="일정 제목 (예: 팀 회의)" value={evTitle} onChange={e => setEvTitle(e.target.value)} maxLength={50} />
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -1462,7 +1462,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </div>
             <div onClick={() => setAddToGcal(v => !v)} style={{
               width: 48, height: 26, borderRadius: 999,
-              background: addToGcal ? '#6C8EFF' : 'var(--dm-border)',
+              background: addToGcal ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)',
               cursor: 'pointer', position: 'relative', flexShrink: 0,
             }}>
               <div style={{ position: 'absolute', top: 3, left: addToGcal ? 25 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
@@ -1491,7 +1491,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </span>
             {isAdmin && (
               <button className={NL() ? 'dm-hit' : undefined} onClick={() => setShowNoticeForm(v => !v)}
-                style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+                style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
                 {showNoticeForm ? '취소' : '+ 공지 작성'}
               </button>
             )}
@@ -1507,7 +1507,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 placeholder="내용 (선택)"
                 rows={3} style={{ ...S.input, resize: 'none', marginBottom: 10 }} maxLength={300} />
               <button onClick={handlePostNotice} disabled={postingNotice || !noticeTitle.trim()}
-                style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' }}>
+                style={{ ...S.btn, marginTop: 0, background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))' }}>
                 {postingNotice ? '등록 중...' : '📢 공지 등록'}
               </button>
             </div>
@@ -1525,14 +1525,14 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             </div>
           )}
           {notices.length > 0 && (
-            <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(108,142,255,.3)', background: 'linear-gradient(135deg,rgba(75,111,255,.06),rgba(108,142,255,.03))' }}>
+            <div style={{ margin: '0 16px 8px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.06)),var(--dm-accent-soft, rgba(108,142,255,.03)))' }}>
               {notices.slice(0, 3).map((n, i) => {
                 const isUnread = !lastReadNotice || n.createdAt > lastReadNotice;
                 return (
                   <div key={n.id} onClick={() => setSelectedNotice(n)}
                     style={{ display: 'flex', borderBottom: i < Math.min(notices.length, 3) - 1 ? '1px solid var(--dm-border)' : 'none', cursor: 'pointer' }}>
                     {/* 미읽음 파란 바 */}
-                    <div style={{ width: 4, flexShrink: 0, background: isUnread ? '#6C8EFF' : 'transparent', borderRadius: i === 0 ? '14px 0 0 0' : i === Math.min(notices.length, 3) - 1 ? '0 0 0 14px' : '0', transition: 'background 0.2s' }} />
+                    <div style={{ width: 4, flexShrink: 0, background: isUnread ? 'var(--dm-accent, #6C8EFF)' : 'transparent', borderRadius: i === 0 ? '14px 0 0 0' : i === Math.min(notices.length, 3) - 1 ? '0 0 0 14px' : '0', transition: 'background 0.2s' }} />
                     <div style={{ flex: 1, padding: '12px 14px 12px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ flex: 1 }}>
@@ -1544,8 +1544,8 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                             <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>
                               {new Date(n.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {n.commentCount || 0}</span>
-                            {isUnread && <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF', fontWeight: 900 }}>NEW</span>}
+                            <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700 }}>💬 {n.commentCount || 0}</span>
+                            {isUnread && <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900 }}>NEW</span>}
                           </div>
                         </div>
                         {isAdmin && (
@@ -1568,7 +1568,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {NL() ? <SectionIcon name="pencil" size={20} badge /> : <span style={S.sectionEmoji}>📝</span>}커뮤니티 게시판
         </span>
         <button className={NL() ? 'dm-hit' : undefined} onClick={() => { if (showBoardForm) cancelBoardForm(); else setShowBoardForm(true); }}
-          style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {showBoardForm ? '취소' : '+ 글쓰기'}
         </button>
       </div>
@@ -1576,7 +1576,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* 글쓰기/수정 폼 */}
       {showBoardForm && (
         <div style={{ ...S.card, marginBottom: 8 }}>
-          {editingBoardPost && <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 8 }}>✏️ 게시글 수정</div>}
+          {editingBoardPost && <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 8 }}>✏️ 게시글 수정</div>}
           <input value={boardTitle} onChange={e => setBoardTitle(e.target.value)}
             placeholder="제목 (필수)"
             style={{ ...S.input, marginBottom: 8, fontWeight: 700 }} maxLength={60} />
@@ -1616,7 +1616,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
                     <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
-                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
+                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700 }}>💬 {p.commentCount}</span>}
                   </div>
                 </div>
                 {(isMine || isAdmin) && (
@@ -1628,7 +1628,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           })}
           {boardPosts.length > 5 && (
             <button onClick={() => setShowAllBoard(v => !v)}
-              style={{ width: '100%', padding: '10px', background: 'var(--dm-input)', border: 'none', color: '#6C8EFF', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', borderTop: '1px solid var(--dm-border)' }}>
+              style={{ width: '100%', padding: '10px', background: 'var(--dm-input)', border: 'none', color: 'var(--dm-accent, #6C8EFF)', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', borderTop: '1px solid var(--dm-border)' }}>
               {showAllBoard ? '접기 ▲' : `더보기 +${boardPosts.length - 5} ▼`}
             </button>
           )}
@@ -1645,9 +1645,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       <div style={S.card}>
         <button onClick={handleCheckin} disabled={!!myCheckin || checkingIn} style={{
           width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: myCheckin ? 'default' : 'pointer', fontWeight: 900, fontSize: 14, fontFamily: 'inherit',
-          background: myCheckin ? 'rgba(74,222,128,.12)' : 'linear-gradient(135deg,#4B6FFF,#6C8EFF)',
+          background: myCheckin ? 'rgba(74,222,128,.12)' : 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))',
           color: myCheckin ? '#4ADE80' : '#fff',
-          boxShadow: myCheckin ? 'none' : '0 4px 16px rgba(75,111,255,.3)',
+          boxShadow: myCheckin ? 'none' : '0 4px 16px var(--dm-accent-soft, rgba(75,111,255,.3))',
         }}>
           {myCheckin
             ? `✅ 출석 완료${myCheckin.streak > 1 ? ` · 🔥 ${myCheckin.streak}일 연속` : ''}${myCheckin.completionRate != null ? ` · ${myCheckin.completionRate}%` : ''}`
@@ -1662,7 +1662,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {todayCheckins.map(c => (
                 <div key={c.uid} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
                     {c.nickname?.[0] || '?'}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -1670,7 +1670,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     {c.streak > 1 && <span style={{ fontSize: NL() ? UI.sub : 11, color: '#F97316', marginLeft: 6, fontWeight: 900 }}>🔥 {c.streak}일</span>}
                   </div>
                   {c.completionRate != null && (
-                    <div style={{ fontSize: 13, fontWeight: 900, color: c.completionRate >= 100 ? '#4ADE80' : c.completionRate >= 50 ? '#6C8EFF' : 'var(--dm-muted)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: c.completionRate >= 100 ? '#4ADE80' : c.completionRate >= 50 ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)' }}>
                       {c.completionRate}%
                     </div>
                   )}
@@ -1697,9 +1697,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {[{ v: false, label: '≡ 목록' }, { v: true, label: '📅 달력' }].map(({ v, label }) => (
             <button className={NL() ? 'dm-hit' : undefined} key={String(v)} onClick={() => { setCalView(v); setSelectedCalDate(null); }} style={{
               padding: '4px 10px', borderRadius: 8, fontSize: NL() ? 13 : 11, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-              border: `1px solid ${calView === v ? '#6C8EFF' : 'var(--dm-border)'}`,
-              background: calView === v ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
-              color: calView === v ? '#6C8EFF' : 'var(--dm-muted)',
+              border: `1px solid ${calView === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)'}`,
+              background: calView === v ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
+              color: calView === v ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
             }}>{label}</button>
           ))}
         </div>
@@ -1716,11 +1716,11 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {selectedCalDate && (
             <div style={{ padding: '0 0 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 6px' }}>
-                <div style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: selectedCalDate === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
+                <div style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: selectedCalDate === today ? 'var(--dm-accent, #4B6FFF)' : 'var(--dm-sub)' }}>
                   {new Date(selectedCalDate + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
                 </div>
                 <button onClick={() => { setEvDate(selectedCalDate); setShowAdd(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '4px 10px', color: '#6C8EFF', fontSize: NL() ? UI.sub : 11, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ background: 'var(--dm-accent-soft, rgba(75,111,255,.15))', border: '1px solid var(--dm-accent-line, rgba(75,111,255,.3))', borderRadius: 8, padding: '4px 10px', color: 'var(--dm-accent, #6C8EFF)', fontSize: NL() ? UI.sub : 11, fontWeight: 700, cursor: 'pointer' }}>
                   + 일정 추가
                 </button>
               </div>
@@ -1748,7 +1748,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               <div style={{ padding: '4px 16px 2px', fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-sub)' }}>다가오는 일정</div>
               {upcomingDates.map(date => (
                 <div key={date}>
-                  <div style={{ padding: '6px 16px 2px', fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: date === today ? '#4B6FFF' : 'var(--dm-sub)' }}>
+                  <div style={{ padding: '6px 16px 2px', fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: date === today ? 'var(--dm-accent, #4B6FFF)' : 'var(--dm-sub)' }}>
                     {date === today ? '오늘' : new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
                   </div>
                   {grouped[date].map(ev => (
@@ -1823,7 +1823,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {selectedBoardPost.uid === authUser?.uid && (
                   <button onClick={() => startEditBoard(selectedBoardPost)}
-                    style={{ ...(NL() ? { minWidth: UI.touch, minHeight: UI.touch } : {}),  background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    style={{ ...(NL() ? { minWidth: UI.touch, minHeight: UI.touch } : {}),  background: 'transparent', border: 'none', color: 'var(--dm-accent, #6C8EFF)', fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
                     수정
                   </button>
                 )}
@@ -1865,12 +1865,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                     const isLiked = likedBy.includes(authUser?.uid);
                     return (
                       <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'var(--dm-accent-soft, rgba(75,111,255,.2))' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', flexShrink: 0 }}>
                           {(c.nickname || '?')[0]}
                         </div>
-                        <div style={{ flex: 1, background: isMine ? 'rgba(75,111,255,.07)' : 'var(--dm-card)', border: `1px solid ${isMine ? 'rgba(108,142,255,.25)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
+                        <div style={{ flex: 1, background: isMine ? 'var(--dm-accent-soft, rgba(75,111,255,.07))' : 'var(--dm-card)', border: `1px solid ${isMine ? 'var(--dm-accent-soft, rgba(108,142,255,.25))' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
+                            <span style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: isMine ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-text)' }}>{c.nickname}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>
                                 {formatRelativeTime(c.createdAt)}
@@ -1913,7 +1913,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 onClick={handlePostBoardComment}
                 disabled={postingBoardComment || !hasBoardCommentText}
                 style={{
-                  background: hasBoardCommentText ? '#4B6FFF' : 'var(--dm-input)',
+                  background: hasBoardCommentText ? 'var(--dm-accent, #4B6FFF)' : 'var(--dm-input)',
                   border: 'none', borderRadius: 12, padding: '0 16px', height: 40,
                   color: hasBoardCommentText ? '#fff' : 'var(--dm-muted)',
                   fontSize: 13, fontWeight: 700, cursor: hasBoardCommentText ? 'pointer' : 'default',
@@ -1966,12 +1966,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                   const isLiked = likedBy.includes(authUser?.uid);
                   return (
                     <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'flex-start' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'rgba(75,111,255,.2)' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-muted)', flexShrink: 0 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 999, background: isMine ? 'var(--dm-accent-soft, rgba(75,111,255,.2))' : 'var(--dm-row)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isMine ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', flexShrink: 0 }}>
                         {(c.nickname || '?')[0]}
                       </div>
-                      <div style={{ flex: 1, background: isMine ? 'rgba(75,111,255,.07)' : 'var(--dm-card)', border: `1px solid ${isMine ? 'rgba(108,142,255,.25)' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
+                      <div style={{ flex: 1, background: isMine ? 'var(--dm-accent-soft, rgba(75,111,255,.07))' : 'var(--dm-card)', border: `1px solid ${isMine ? 'var(--dm-accent-soft, rgba(108,142,255,.25))' : 'var(--dm-border)'}`, borderRadius: 12, padding: '8px 12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
+                          <span style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: isMine ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-text)' }}>{c.nickname}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>
                               {formatRelativeTime(c.createdAt)}
@@ -2013,7 +2013,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
                 onClick={handlePostComment}
                 disabled={postingComment || !hasCommentText}
                 style={{
-                  background: hasCommentText ? '#4B6FFF' : 'var(--dm-input)',
+                  background: hasCommentText ? 'var(--dm-accent, #4B6FFF)' : 'var(--dm-input)',
                   border: 'none', borderRadius: 12, padding: '0 16px', height: 40,
                   color: hasCommentText ? '#fff' : 'var(--dm-muted)',
                   fontSize: 13, fontWeight: 700, cursor: hasCommentText ? 'pointer' : 'default',
@@ -2037,7 +2037,7 @@ function EventCard({ ev, authUid, onAddToGcal, onDelete, past }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 2 }}>{ev.title}</div>
           {(ev.startTime || ev.endTime) && (
-            <div style={{ fontSize: NL() ? UI.sub : 12, color: '#6C8EFF', marginBottom: 2 }}>
+            <div style={{ fontSize: NL() ? UI.sub : 12, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 2 }}>
               🕐 {ev.startTime}{ev.endTime && ev.endTime !== ev.startTime ? ` ~ ${ev.endTime}` : ''}
             </div>
           )}
@@ -2046,7 +2046,7 @@ function EventCard({ ev, authUid, onAddToGcal, onDelete, past }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
           <button onClick={onAddToGcal}
-            style={{ ...(NL() ? { minHeight: UI.touch } : {}), background: 'rgba(75,111,255,.15)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '5px 10px', color: '#6C8EFF', fontSize: NL() ? UI.sub : 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ ...(NL() ? { minHeight: UI.touch } : {}), background: 'var(--dm-accent-soft, rgba(75,111,255,.15))', border: '1px solid var(--dm-accent-line, rgba(75,111,255,.3))', borderRadius: 8, padding: '5px 10px', color: 'var(--dm-accent, #6C8EFF)', fontSize: NL() ? UI.sub : 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             📅 내 캘린더
           </button>
           {ev.createdBy === authUid && (

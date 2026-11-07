@@ -155,8 +155,8 @@ export default function GrowthFortunePanel({
   const xpBadge = (
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ fontSize: nl ? 20 : 15, fontWeight: 900, color: "var(--dm-text)" }}>{totalScore.toLocaleString()}</span>
-              <span style={{ fontSize: nl ? UI.sub : 11, color: "#6C8EFF", fontWeight: 700 }}>XP</span>
-              <button className={nl ? "dm-hit" : undefined} aria-label="XP 설명" onClick={() => setXpHelpOpen(true)} style={{ background: "rgba(108,142,255,.18)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "#6C8EFF", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
+              <span style={{ fontSize: nl ? UI.sub : 11, color: "var(--dm-accent, #6C8EFF)", fontWeight: 700 }}>XP</span>
+              <button className={nl ? "dm-hit" : undefined} aria-label="XP 설명" onClick={() => setXpHelpOpen(true)} style={{ background: "var(--dm-accent-soft, rgba(108,142,255,.18))", border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", borderRadius: 999, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, color: "var(--dm-accent, #6C8EFF)", fontWeight: 900, padding: 0, lineHeight: 1 }}>?</button>
             </div>
   );
 
@@ -164,11 +164,11 @@ export default function GrowthFortunePanel({
     <>
       {/* 🌱 나의 성장 능력치 (+ My탭과 동일한 레벨/XP 요약) */}
       {statXp && (
-        <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05))", border: "1.5px solid rgba(108,142,255,.3)" }}>
+        <div style={{ ...S.card, background: "var(--dm-hero-bg, linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05)))", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: nl ? "wrap" : "nowrap" }}>
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
             <span style={{ fontSize: nl ? 16 : 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
-            <span style={{ fontSize: nl ? 14 : 11, fontWeight: 700, color: "#6C8EFF" }}>Lv.{levelInfo.level}</span>
+            <span style={{ fontSize: nl ? 14 : 11, fontWeight: 700, color: "var(--dm-accent, #6C8EFF)" }}>Lv.{levelInfo.level}</span>
             {onSetBattleNickname && (
               <button className={nl ? "dm-hit" : undefined}
                 onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(v => !v); }}
@@ -196,7 +196,7 @@ export default function GrowthFortunePanel({
               />
               <button
                 onClick={() => { onSetBattleNickname(nicknameDraft.trim()); setEditingNickname(false); }}
-                style={{ background: "#6C8EFF", border: "none", borderRadius: 8, padding: "0 14px", color: "#fff", fontWeight: 900, fontSize: 12, cursor: "pointer" }}
+                style={{ background: "var(--dm-accent, #6C8EFF)", border: "none", borderRadius: 8, padding: "0 14px", color: "#fff", fontWeight: 900, fontSize: 12, cursor: "pointer" }}
               >저장</button>
               <button
                 onClick={() => setEditingNickname(false)}
@@ -207,8 +207,8 @@ export default function GrowthFortunePanel({
           {(!nl || myRank) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             {myRank ? (
-              <button onClick={onOpenStats} style={{ background: "rgba(75,111,255,.15)", border: "1px solid rgba(108,142,255,.4)", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
-                <span style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: "#6C8EFF" }}>🏆 전체 {myRank.rank}위</span>
+              <button onClick={onOpenStats} style={{ background: "var(--dm-accent-soft, rgba(75,111,255,.15))", border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                <span style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>🏆 전체 {myRank.rank}위</span>
                 <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
               </button>
             ) : <span />}
@@ -216,7 +216,7 @@ export default function GrowthFortunePanel({
           </div>
           )}
           <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-            <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
+            <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
           </div>
           <div style={{ display: "flex", flexWrap: nl ? "wrap" : "nowrap", columnGap: 8, justifyContent: "space-between", marginBottom: 14 }}>
             <span style={{ fontSize: nl ? UI.sub : 10, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
@@ -237,7 +237,7 @@ export default function GrowthFortunePanel({
                   <span style={{ fontSize: nl ? 15 : 13, width: nl ? 20 : 18, textAlign: "center", flexShrink: 0 }}>{stat.icon}</span>
                   <span style={{ fontSize: nl ? 13 : 11, color: nl ? "var(--dm-text)" : "var(--dm-sub)", width: nl ? 42 : 34, flexShrink: 0 }}>{stat.name}</span>
                   <div style={{ flex: 1, height: 6, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", minWidth: 0 }}>
-                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#4B6FFF,#6C8EFF)", width: `${score}%`, transition: "width 0.4s" }} />
+                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", width: `${score}%`, transition: "width 0.4s" }} />
                   </div>
                   <span style={{ fontSize: nl ? 14 : 11, fontWeight: 900, color: "var(--dm-text)", width: nl ? 26 : 22, textAlign: "right", flexShrink: 0 }}>{score}</span>
                 </div>
@@ -246,7 +246,7 @@ export default function GrowthFortunePanel({
           </div>
           )}
           {onOpenBattle && (
-            <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 12, padding: nl ? '12px 0' : '10px 0', fontSize: nl ? 16 : 13, fontWeight: 900, color: nl ? '#8B5CF6' : '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'var(--dm-accent-soft, rgba(167,139,250,0.15))', border: '1px solid var(--dm-accent-line, rgba(167,139,250,0.4))', borderRadius: 12, padding: nl ? '12px 0' : '10px 0', fontSize: nl ? 16 : 13, fontWeight: 900, color: nl ? 'var(--dm-accent, #8B5CF6)' : '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
               ⚔️ 배틀
             </button>
           )}
@@ -279,7 +279,7 @@ export default function GrowthFortunePanel({
                 </div>
               ) : (
                 <button onClick={drawLotto} disabled={lottoAnim}
-                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'linear-gradient(135deg,#7C3AED,#A78BFA)', border: 'none', borderRadius: 8, padding: nl ? 0 : '6px 0', height: nl ? UI.touch : undefined, fontSize: nl ? UI.sub : 12, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'var(--dm-btn-bg, linear-gradient(135deg,#7C3AED,#A78BFA))', border: 'none', borderRadius: 8, padding: nl ? 0 : '6px 0', height: nl ? UI.touch : undefined, fontSize: nl ? UI.sub : 12, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
                   {lottoAnim ? '추출 중...' : '번호 뽑기'}
                 </button>
               )}
@@ -316,9 +316,9 @@ export default function GrowthFortunePanel({
                   }} style={{
                     flex: 1, padding: "8px 0", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer",
                     border: "none", transition: "all .2s",
-                    background: fortuneTab === t.key ? "#6C8EFF" : "transparent",
+                    background: fortuneTab === t.key ? "var(--dm-accent, #6C8EFF)" : "transparent",
                     color: fortuneTab === t.key ? "#fff" : "var(--dm-muted)",
-                    boxShadow: fortuneTab === t.key ? "0 2px 8px rgba(108,142,255,.4)" : "none",
+                    boxShadow: fortuneTab === t.key ? "0 2px 8px var(--dm-accent-soft, rgba(108,142,255,.4))" : "none",
                   }}>{t.label}</button>
                 ))}
               </div>
@@ -413,7 +413,7 @@ export default function GrowthFortunePanel({
                     </div>
                     <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7, marginBottom: 12 }}>{fortuneData.message}</div>
                     <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF", marginBottom: 4 }}>💡 오늘의 조언</div>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)", marginBottom: 4 }}>💡 오늘의 조언</div>
                       <div style={{ fontSize: 13, color: "var(--dm-text)" }}>{fortuneData.advice}</div>
                     </div>
                     <div style={{ display: "flex", gap: 10 }}>
@@ -439,7 +439,7 @@ export default function GrowthFortunePanel({
                   <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
                     <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>사주팔자</div>
                     <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: 2 }}>{sajuData.pillars}</div>
-                    <div style={{ fontSize: 12, color: "#6C8EFF", marginTop: 4 }}>일간: {sajuData.dayMaster}</div>
+                    <div style={{ fontSize: 12, color: "var(--dm-accent, #6C8EFF)", marginTop: 4 }}>일간: {sajuData.dayMaster}</div>
                   </div>
                   {[
                     { label: "🧠 성격 & 기질", content: sajuData.personality },
@@ -545,11 +545,11 @@ export default function GrowthFortunePanel({
                 <button onClick={() => setXpHelpOpen(false)} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
-                <div style={{ background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ background: "linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.15)),var(--dm-accent-soft, rgba(108,142,255,.07)))", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontSize: 36 }}>{levelInfo.icon}</div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title} · Lv.{levelInfo.level}</div>
-                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
+                    <div style={{ fontSize: 11, color: "var(--dm-accent, #6C8EFF)", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
                     <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP 남음</div>
                   </div>
                 </div>
@@ -561,7 +561,7 @@ export default function GrowthFortunePanel({
                       background: i % 2 === 0 ? "transparent" : "var(--dm-row)",
                       borderBottom: i < XP_ITEMS.length - 1 ? "1px solid var(--dm-border)" : "none" }}>
                       <span style={{ fontSize: 13, color: "var(--dm-text)" }}>{it.label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>{it.pt}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>{it.pt}</span>
                     </div>
                   ))}
                 </div>
@@ -572,20 +572,20 @@ export default function GrowthFortunePanel({
                     const isCurrent = lv.lv === levelInfo.level;
                     return (
                       <div key={lv.lv} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px",
-                        background: isCurrent ? "rgba(75,111,255,.15)" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                        background: isCurrent ? "var(--dm-accent-soft, rgba(75,111,255,.15))" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
                         borderBottom: i < LEVELS.length - 1 ? "1px solid var(--dm-border)" : "none",
-                        border: isCurrent ? "1.5px solid rgba(108,142,255,.5)" : undefined,
+                        border: isCurrent ? "1.5px solid var(--dm-accent-line, rgba(108,142,255,.5))" : undefined,
                       }}>
                         <span style={{ fontSize: 18 }}>{lv.icon}</span>
                         <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "#6C8EFF" : "var(--dm-text)" }}>
+                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "var(--dm-accent, #6C8EFF)" : "var(--dm-text)" }}>
                             Lv.{lv.lv} {lv.title}
                           </span>
                         </div>
-                        <span style={{ fontSize: 11, color: isCurrent ? "#6C8EFF" : "var(--dm-muted)", fontWeight: 700 }}>
+                        <span style={{ fontSize: 11, color: isCurrent ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)", fontWeight: 700 }}>
                           {lv.floor.toLocaleString()} XP~
                         </span>
-                        {isCurrent && <span style={{ fontSize: 10, background: "#4B6FFF", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
+                        {isCurrent && <span style={{ fontSize: 10, background: "var(--dm-accent, #4B6FFF)", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
                       </div>
                     );
                   })}

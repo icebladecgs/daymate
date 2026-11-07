@@ -6,7 +6,10 @@ import { store } from "./storage.js";
 const KEY = "dm_today_new_look";
 export const todayNewLookOn = () => store.get(KEY, true) !== false;
 export const newDesignOn = todayNewLookOn;
-export const setTodayNewLook = (on) => store.set(KEY, !!on);
+// 새 디자인 색(2026-11-08, 아이폰 미리알림 방식 D안)은 index.css의 [data-look="new"]에 있다 — 스위치를 따라 html에 표시를 단다
+const markLook = () => { try { document.documentElement.setAttribute("data-look", todayNewLookOn() ? "new" : "old"); } catch { /* 문서 없음(서버·테스트) */ } };
+markLook();
+export const setTodayNewLook = (on) => { store.set(KEY, !!on); markLook(); };
 
 // 새 화면에서 끝낸 할 일을 아래 "완료 n" 묶음으로 모으기 (끄면 제자리에 남음)
 const DONE_KEY = "dm_today_done_group";

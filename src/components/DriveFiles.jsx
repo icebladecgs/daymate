@@ -116,7 +116,7 @@ export function MemoLinks({ text = '', style, hint = '' }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: -6, marginBottom: 14, ...style }}>
       {urls.map((u, k) => (
         <a key={u} href={u} target="_blank" rel="noopener noreferrer" onClick={externalLinkClick(u)} title={u}
-          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.3)', color: '#6C8EFF', textDecoration: 'none', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', color: 'var(--dm-accent, #6C8EFF)', textDecoration: 'none', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           🔗 {labels[k]}
         </a>
       ))}

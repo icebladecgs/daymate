@@ -52,8 +52,8 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
         zIndex: dragging ? 2 : 1,
         borderRadius: 14,
         boxShadow: dragging ? '0 18px 36px rgba(0,0,0,.18)' : 'none',
-        border: dragging ? '1px dashed rgba(108,142,255,.35)' : '1px solid transparent',
-        background: dragging ? 'rgba(108,142,255,.05)' : 'transparent',
+        border: dragging ? '1px dashed var(--dm-accent-soft, rgba(108,142,255,.35))' : '1px solid transparent',
+        background: dragging ? 'var(--dm-accent-soft, rgba(108,142,255,.05))' : 'transparent',
         padding: dragging ? '6px' : 0,
       }}
     >
@@ -69,7 +69,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
           height: 42,
           borderRadius: 10,
           border: '1px solid var(--dm-border)',
-          background: dragging ? 'rgba(108,142,255,.18)' : 'var(--dm-card)',
+          background: dragging ? 'var(--dm-accent-soft, rgba(108,142,255,.18))' : 'var(--dm-card)',
           color: 'var(--dm-muted)',
           cursor: isOverlay ? 'grabbing' : 'grab',
           flexShrink: 0,
@@ -587,19 +587,19 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       {levelUpInfo && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,.8)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={onDismissLevelUp}>
-          <div className="dm-levelup-card" style={{ background: "var(--dm-card)", border: "1.5px solid rgba(108,142,255,.5)", borderRadius: 28, padding: "40px 32px", textAlign: "center", minWidth: 260, maxWidth: 320, position: "relative", boxShadow: "0 0 60px rgba(108,142,255,.35)" }}
+          <div className="dm-levelup-card" style={{ background: "var(--dm-card)", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.5))", borderRadius: 28, padding: "40px 32px", textAlign: "center", minWidth: 260, maxWidth: 320, position: "relative", boxShadow: "0 0 60px var(--dm-accent-soft, rgba(108,142,255,.35))" }}
             onClick={e => e.stopPropagation()}>
             {/* 배경 빛 효과 */}
-            <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "radial-gradient(circle at 50% 30%, rgba(108,142,255,.25), transparent 70%)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", inset: 0, borderRadius: 28, background: "radial-gradient(circle at 50% 30%, var(--dm-accent-soft, rgba(108,142,255,.25)), transparent 70%)", pointerEvents: "none" }} />
             <div style={{ position: "relative", display: "inline-block", marginBottom: 8 }}>
               <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(252,211,77,.35), transparent 70%)", animation: "dm-levelup-pulse 2s ease-in-out infinite alternate", pointerEvents: "none" }} />
               <div style={{ fontSize: 64, filter: "drop-shadow(0 0 20px rgba(252,211,77,.8))", position: "relative" }}>{levelUpInfo.icon}</div>
             </div>
-            <div style={{ fontSize: 13, color: "#6C8EFF", fontWeight: 900, letterSpacing: 2, marginBottom: 4 }}>LEVEL UP!</div>
+            <div style={{ fontSize: 13, color: "var(--dm-accent, #6C8EFF)", fontWeight: 900, letterSpacing: 2, marginBottom: 4 }}>LEVEL UP!</div>
             <div style={{ fontSize: 32, fontWeight: 900, color: "var(--dm-text)", marginBottom: 4 }}>Lv.{levelUpInfo.level}</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#FCD34D", marginBottom: 16 }}>{levelUpInfo.title}</div>
             {levelUpInfo.badge && (
-              <div style={{ background: "linear-gradient(135deg, rgba(252,211,77,.2), rgba(108,142,255,.2))", border: "1px solid rgba(252,211,77,.4)", borderRadius: 14, padding: "10px 20px", marginBottom: 16, display: "inline-block" }}>
+              <div style={{ background: "linear-gradient(135deg, rgba(252,211,77,.2), var(--dm-accent-soft, rgba(108,142,255,.2)))", border: "1px solid rgba(252,211,77,.4)", borderRadius: 14, padding: "10px 20px", marginBottom: 16, display: "inline-block" }}>
                 <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 4 }}>🏅 뱃지 획득</div>
                 <div style={{ fontSize: 15, fontWeight: 900 }}>{levelUpInfo.badge.icon} {levelUpInfo.badge.label}</div>
               </div>
@@ -659,7 +659,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       {showInstallBanner && (
         <div
           onClick={() => { if (canDirectInstall) handleInstall(); }}
-          style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid #4B6FFF", padding: "12px 14px", boxShadow: "0 2px 12px rgba(75,111,255,.2)", cursor: canDirectInstall ? 'pointer' : 'default' }}
+          style={{ margin: "0 0 12px 0", borderRadius: 14, background: "var(--dm-card)", border: "1.5px solid var(--dm-accent, #4B6FFF)", padding: "12px 14px", boxShadow: "0 2px 12px var(--dm-accent-soft, rgba(75,111,255,.2))", cursor: canDirectInstall ? 'pointer' : 'default' }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 22 }}>📲</div>
@@ -672,7 +672,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <button onClick={(e) => { e.stopPropagation(); dismissInstallBanner(); }} style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 16, cursor: "pointer", padding: 4, lineHeight: 1 }}>✕</button>
           </div>
           {installPrompt ? (
-            <button onClick={(e) => { e.stopPropagation(); handleInstall(); }} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
+            <button onClick={(e) => { e.stopPropagation(); handleInstall(); }} style={{ width: "100%", padding: "11px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>설치하기</button>
           ) : isIOS ? (
             <div style={{ padding: "10px 10px 4px", borderRadius: 8, background: "var(--dm-bg)" }}>
               <IOSInstallGuide />
@@ -686,7 +686,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       )}
 
       {showInviteBanners && recentInviteReward && (
-        <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(74,222,128,.18),rgba(108,142,255,.08))", border: "1.5px solid rgba(74,222,128,.3)", padding: "13px 15px" }}>
+        <div style={{ margin: "0 0 12px 0", borderRadius: 16, background: "linear-gradient(135deg,rgba(74,222,128,.18),var(--dm-accent-soft, rgba(108,142,255,.08)))", border: "1.5px solid rgba(74,222,128,.3)", padding: "13px 15px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 900, color: "#4ADE80", marginBottom: 3 }}>초대 보상이 적용됐어요</div>
@@ -737,8 +737,8 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             {isMyTab && (
               <div style={myBox}>
                 {myLabel('target', '🎯', '목표 관리')}
-                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: '#A78BFA', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]), progressOf: (i) => goalProgressLine(goalProgressOf('life', lifeGoals[i]), goalTodayStr) })}
-                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: '#6C8EFF', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0, progressOf: (i) => goalProgressLine(goalProgressOf('year', currentYearGoals[i]), goalTodayStr) })}
+                {renderMyGoalBlock({ emoji: '🌟', title: '인생목표', accent: 'var(--dm-accent, #A78BFA)', items: lifeGoals, editing: editingLifeGoals, draft: lifeDraft, setDraft: setLifeDraft, newInput: newLifeInput, setNewInput: setNewLifeInput, onStartEdit: () => { setLifeDraft([...lifeGoals]); setNewLifeInput(''); setEditingLifeGoals(true); }, onSave: saveLifeGoalsFn, open: lifeGoalsOpen, onToggleOpen: () => setLifeGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'life', title: lifeGoals[i] }), itemCount: (i) => lifeActionCount(lifeGoals[i]), progressOf: (i) => goalProgressLine(goalProgressOf('life', lifeGoals[i]), goalTodayStr) })}
+                {renderMyGoalBlock({ emoji: '🌱', title: '올해 목표', accent: 'var(--dm-accent, #6C8EFF)', items: currentYearGoals, editing: editingYearGoalsState, draft: yearDraft, setDraft: setYearDraft, newInput: newYearInput, setNewInput: setNewYearInput, onStartEdit: () => { setYearDraft(currentYearGoals); setNewYearInput(''); setEditingYearGoalsState(true); }, onSave: saveYearGoalsFn, open: yearGoalsOpen, onToggleOpen: () => setYearGoalsOpen(v => !v), onItemClick: (i) => setOpenGoal({ kind: 'year', id: yearGoals[i]?.id }), itemCount: (i) => yearGoals[i]?.actions?.length || 0, progressOf: (i) => goalProgressLine(goalProgressOf('year', currentYearGoals[i]), goalTodayStr) })}
                 {renderMyGoalBlock({ emoji: '🗓️', title: '이번달 목표', accent: '#4ADE80', items: currentMonthGoals, editing: editingMonthGoalsState, draft: monthDraft, setDraft: setMonthDraft, newInput: newMonthInput, setNewInput: setNewMonthInput, onStartEdit: () => { setMonthDraft([...currentMonthGoals]); setNewMonthInput(''); setEditingMonthGoalsState(true); }, onSave: saveMonthGoalsFn, open: monthGoalsOpen, onToggleOpen: () => setMonthGoalsOpen(v => !v) })}
               </div>
             )}
@@ -752,7 +752,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                       <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === bucketList.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 8 }) }}>
                         <button className={newLook ? 'dm-hit' : undefined} onClick={() => toggleBucketItem(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, ...(newLook ? { padding: 0 } : {}), border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
                         <span style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
-                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => copyBucketToSomeday(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => copyBucketToSomeday(item)} style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
                         <button className={newLook ? 'dm-hit' : undefined} onClick={() => deleteBucketItem(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
                       </div>
                     ))}
@@ -770,7 +770,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                         maxLength={60}
                         disabled={bucketList.length >= BUCKET_LIST_MAX}
                       />
-                      <button onClick={addBucketItem} disabled={bucketList.length >= BUCKET_LIST_MAX} style={{ padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: bucketList.length >= BUCKET_LIST_MAX ? 'default' : 'pointer', color: '#6C8EFF', flexShrink: 0, opacity: bucketList.length >= BUCKET_LIST_MAX ? 0.5 : 1 }}>+</button>
+                      <button onClick={addBucketItem} disabled={bucketList.length >= BUCKET_LIST_MAX} style={{ padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: bucketList.length >= BUCKET_LIST_MAX ? 'default' : 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0, opacity: bucketList.length >= BUCKET_LIST_MAX ? 0.5 : 1 }}>+</button>
                     </div>
                   </div>
                 )}
@@ -787,7 +787,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     </div>
                   ) : (
                     <button onClick={bcPickPhoto} disabled={bcUploading || !authUser}
-                      style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, border: '1.5px dashed var(--dm-border)', background: 'var(--dm-input)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: authUser ? 'pointer' : 'default', color: 'var(--dm-muted)', opacity: authUser ? 1 : 0.5, ...(newLook ? { aspectRatio: 'auto', flexDirection: 'row', gap: 8, padding: '12px 14px', color: authUser ? '#5B7CFA' : 'var(--dm-muted)' } : {}) }}>
+                      style={{ width: '100%', aspectRatio: '1.6 / 1', borderRadius: 12, border: '1.5px dashed var(--dm-border)', background: 'var(--dm-input)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: authUser ? 'pointer' : 'default', color: 'var(--dm-muted)', opacity: authUser ? 1 : 0.5, ...(newLook ? { aspectRatio: 'auto', flexDirection: 'row', gap: 8, padding: '12px 14px', color: authUser ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-muted)' } : {}) }}>
                       <span style={{ fontSize: newLook ? 18 : 26 }}>{bcUploading ? '⏳' : '📇'}</span>
                       <span style={{ fontSize: newLook ? 15 : 12, fontWeight: 700 }}>{bcUploading ? '업로드 중...' : authUser ? '명함 사진 추가' : '로그인 후 사용 가능해요'}</span>
                     </button>
@@ -795,7 +795,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
                   {bcDefault?.photoUrl && (
                     <>
-                      <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
+                      <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
                         {bcUploading ? '업로드 중...' : '＋ 명함 추가'}
                       </button>
                       <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -812,7 +812,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
                         {businessCards.slice().reverse().map(c => (
                           <button key={c.id} onClick={() => { setBcViewerId(c.id); setBcLabelDraft(c.label || ''); }}
-                            style={{ flexShrink: 0, width: 72, height: 45, borderRadius: 8, overflow: 'hidden', border: c.isDefault ? '2px solid #6C8EFF' : '1px solid var(--dm-border)', padding: 0, cursor: 'pointer', background: 'var(--dm-input)' }}>
+                            style={{ flexShrink: 0, width: 72, height: 45, borderRadius: 8, overflow: 'hidden', border: c.isDefault ? '2px solid var(--dm-accent, #6C8EFF)' : '1px solid var(--dm-border)', padding: 0, cursor: 'pointer', background: 'var(--dm-input)' }}>
                             <img src={c.photoUrl} alt={c.label || '명함'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </button>
                         ))}
@@ -878,7 +878,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               {pfSummary && (
                 <button onClick={() => setPfHidden(!pfHidden)} aria-label={pfHidden ? "금액 보이기" : "금액 숨기기"} aria-pressed={pfHidden}
-                  style={{ width: 40, height: 40, padding: 0, fontSize: 17, background: pfHidden ? "rgba(91,124,250,.12)" : "transparent", border: "none", borderRadius: 10, cursor: "pointer" }}>
+                  style={{ width: 40, height: 40, padding: 0, fontSize: 17, background: pfHidden ? "var(--dm-accent-soft, rgba(91,124,250,.12))" : "transparent", border: "none", borderRadius: 10, cursor: "pointer" }}>
                   {pfHidden ? "🙈" : "👁"}
                 </button>
               )}
@@ -953,7 +953,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <div style={{ fontSize: 28, marginBottom: 8 }}>🎁</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>초대 보상이 도착했어요</div>
             <div style={{ fontSize: 13, color: 'var(--dm-sub)', lineHeight: 1.7, marginBottom: 16 }}>
-              친구 초대 코드 <b style={{ color: '#6C8EFF' }}>{invitePromptCode}</b> 를 적용하면 바로 <b style={{ color: '#4ADE80' }}>+100 XP</b>를 받을 수 있어요.
+              친구 초대 코드 <b style={{ color: 'var(--dm-accent, #6C8EFF)' }}>{invitePromptCode}</b> 를 적용하면 바로 <b style={{ color: '#4ADE80' }}>+100 XP</b>를 받을 수 있어요.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={onDismissInvitePrompt} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>나중에</button>
@@ -1001,11 +1001,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               {/* 스크롤 내용 */}
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
                 {/* 내 현재 상태 */}
-                <div style={{ background: "linear-gradient(135deg,rgba(75,111,255,.15),rgba(108,142,255,.07))", border: "1.5px solid rgba(108,142,255,.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ background: "linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.15)),var(--dm-accent-soft, rgba(108,142,255,.07)))", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))", borderRadius: 14, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ fontSize: 36 }}>{levelInfo.icon}</div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title} · Lv.{levelInfo.level}</div>
-                    <div style={{ fontSize: 11, color: "#6C8EFF", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
+                    <div style={{ fontSize: 11, color: "var(--dm-accent, #6C8EFF)", fontWeight: 700, marginTop: 2 }}>{totalScore.toLocaleString()} XP 보유</div>
                     <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 1 }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP 남음</div>
                   </div>
                 </div>
@@ -1018,7 +1018,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                       background: i % 2 === 0 ? "transparent" : "var(--dm-row)",
                       borderBottom: i < XP_ITEMS.length - 1 ? "1px solid var(--dm-border)" : "none" }}>
                       <span style={{ fontSize: 13, color: "var(--dm-text)" }}>{it.label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: "#6C8EFF" }}>{it.pt}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>{it.pt}</span>
                     </div>
                   ))}
                 </div>
@@ -1030,20 +1030,20 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                     const isCurrent = lv.lv === levelInfo.level;
                     return (
                       <div key={lv.lv} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px",
-                        background: isCurrent ? "rgba(75,111,255,.15)" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
+                        background: isCurrent ? "var(--dm-accent-soft, rgba(75,111,255,.15))" : i % 2 === 0 ? "transparent" : "var(--dm-row)",
                         borderBottom: i < LEVELS.length - 1 ? "1px solid var(--dm-border)" : "none",
-                        border: isCurrent ? "1.5px solid rgba(108,142,255,.5)" : undefined,
+                        border: isCurrent ? "1.5px solid var(--dm-accent-line, rgba(108,142,255,.5))" : undefined,
                       }}>
                         <span style={{ fontSize: 18 }}>{lv.icon}</span>
                         <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "#6C8EFF" : "var(--dm-text)" }}>
+                          <span style={{ fontSize: 13, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? "var(--dm-accent, #6C8EFF)" : "var(--dm-text)" }}>
                             Lv.{lv.lv} {lv.title}
                           </span>
                         </div>
-                        <span style={{ fontSize: 11, color: isCurrent ? "#6C8EFF" : "var(--dm-muted)", fontWeight: 700 }}>
+                        <span style={{ fontSize: 11, color: isCurrent ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)", fontWeight: 700 }}>
                           {lv.floor.toLocaleString()} XP~
                         </span>
-                        {isCurrent && <span style={{ fontSize: 10, background: "#4B6FFF", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
+                        {isCurrent && <span style={{ fontSize: 10, background: "var(--dm-accent, #4B6FFF)", color: "#fff", borderRadius: 999, padding: "2px 7px", fontWeight: 900 }}>현재</span>}
                       </div>
                     );
                   })}

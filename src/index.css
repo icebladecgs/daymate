@@ -77,6 +77,70 @@
   --dm-nav-active-ring: rgba(75,111,255,0.3);
 }
 
+/* ===== 새 디자인 색 (2026-11-08 사용자 선택 D안 — 아이폰 미리알림·설정 방식) =====
+   묶음 칸: 바탕과 칸의 밝기 차이로만 나누고 칸 테두리·그림자·번짐은 없앤다. 강조색은 파랑 하나.
+   --dm-accent(-soft/-line), --dm-card-line/-shadow, --dm-warn-* 는 여기서만 정의한다 — 예전 디자인에서는
+   정의가 없어 코드에 적힌 원래 색(var(..., 원래색))이 그대로 쓰인다. 새 강조색 칸은 var(--dm-accent, 원래색)으로 쓴다. */
+[data-look="new"][data-theme="dark"] {
+  --dm-bg:        #000000;
+  --dm-phone:     #000000;
+  --dm-card:      #1C1C1E;
+  --dm-border:    rgba(255, 255, 255, 0.12);
+  --dm-border2:   rgba(255, 255, 255, 0.2);
+  --dm-input:     #2C2C2E;
+  --dm-text:      #F5F5F7;
+  --dm-sub:       #AEAEB2;
+  --dm-muted:     #8E8E93;
+  --dm-row:       rgba(255, 255, 255, 0.08);
+  --dm-nav:       rgba(22, 22, 24, 0.94);
+  --dm-pill-off:  #2C2C2E;
+  --dm-deep:      #1C1C1E;
+  --dm-title-grad: linear-gradient(#F5F5F7, #F5F5F7);
+  --dm-nav-active: #0A84FF;
+  --dm-nav-active-bg: rgba(10, 132, 255, 0.16);
+  --dm-nav-active-ring: transparent;
+  --dm-accent:      #0A84FF;
+  --dm-accent-soft: rgba(10, 132, 255, 0.18);
+  --dm-accent-line: transparent;
+  --dm-card-line:   transparent;
+  --dm-card-shadow: none;
+  --dm-warn-line:   transparent;
+  --dm-warn-soft:   #1C1C1E;
+  --dm-btn-bg:      #0A84FF;
+  --dm-hero-bg:     #1C1C1E;
+  --dm-week-bg:     #2C2C2E;
+}
+[data-look="new"][data-theme="light"] {
+  --dm-bg:        #F2F2F7;
+  --dm-phone:     #F2F2F7;
+  --dm-card:      #FFFFFF;
+  --dm-border:    rgba(60, 60, 67, 0.16);
+  --dm-border2:   rgba(60, 60, 67, 0.26);
+  --dm-input:     rgba(118, 118, 128, 0.12);
+  --dm-text:      #000000;
+  --dm-sub:       #48484D;
+  --dm-muted:     #8E8E93;
+  --dm-row:       rgba(60, 60, 67, 0.08);
+  --dm-nav:       rgba(249, 249, 249, 0.96);
+  --dm-pill-off:  rgba(118, 118, 128, 0.12);
+  --dm-deep:      #FFFFFF;
+  --dm-title-grad: linear-gradient(#000000, #000000);
+  --dm-nav-active: #007AFF;
+  --dm-nav-active-bg: rgba(0, 122, 255, 0.12);
+  --dm-nav-active-ring: transparent;
+  --dm-accent:      #007AFF;
+  --dm-accent-soft: rgba(0, 122, 255, 0.12);
+  --dm-accent-line: transparent;
+  --dm-card-line:   transparent;
+  --dm-card-shadow: none;
+  --dm-warn-line:   transparent;
+  --dm-warn-soft:   #FFFFFF;
+  --dm-btn-bg:      #007AFF;
+  --dm-hero-bg:     #FFFFFF;
+  --dm-week-bg:     rgba(118, 118, 128, 0.12);
+}
+[data-look="new"] .dm-blob { display: none; }
+
 /* ===== Ambient blob decorations ===== */
 .dm-blob {
   position: absolute;

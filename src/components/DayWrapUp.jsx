@@ -24,7 +24,7 @@ export function LeaveCheckCard({ dateStr, tasks, nowMin, fromMin, toMin, onOpen 
   const left = tasks.filter(t => t.title?.trim() && !t.done).length;
   if (hidden || !left || nowMin < fromMin || nowMin >= toMin) return null;
   return (
-    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(91,124,250,.45)', background: 'rgba(91,124,250,.08)', cursor: 'pointer' }}
+    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--dm-accent-line, rgba(91,124,250,.45))', background: 'var(--dm-accent-soft, rgba(91,124,250,.08))', cursor: 'pointer' }}
       onClick={onOpen}>
       <span style={{ fontSize: 22 }}>🏁</span>
       <div style={{ flex: 1, minWidth: 0 }}>

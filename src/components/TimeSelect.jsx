@@ -4,7 +4,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 const selectStyle = {
-  fontSize: 13, padding: '3px 4px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)',
+  fontSize: 13, padding: '3px 4px', borderRadius: 8, border: '1px solid var(--dm-accent-line, rgba(108,142,255,.4))',
   background: 'var(--dm-input)', color: 'var(--dm-text)', fontFamily: 'inherit', cursor: 'pointer',
 };
 

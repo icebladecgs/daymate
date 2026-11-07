@@ -41,13 +41,13 @@ export default function WeekStrip({ todayDs, selectedDs, plans, todayTasks, onSe
             style={{
               flex: 1, maxWidth: 48, aspectRatio: "1 / 1.15", padding: 0, borderRadius: 999, cursor: "pointer",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-              border: selected ? "2px solid #6C8EFF" : isToday ? "2px solid rgba(108,142,255,.45)" : "1px solid var(--dm-border)",
-              background: selected ? "#6C8EFF" : "var(--dm-card)",
-              color: selected ? "#fff" : weekend ? (i === 6 ? "#F87171" : "#6C8EFF") : "var(--dm-text)",
+              border: selected ? "2px solid var(--dm-accent, #6C8EFF)" : isToday ? "2px solid var(--dm-accent-line, rgba(108,142,255,.45))" : "1px solid var(--dm-card-line, var(--dm-border))",
+              background: selected ? "var(--dm-accent, #6C8EFF)" : "var(--dm-week-bg, var(--dm-card))",
+              color: selected ? "#fff" : weekend ? (i === 6 ? "#F87171" : "var(--dm-accent, #6C8EFF)") : "var(--dm-text)",
             }}>
             <span style={{ fontSize: inBox ? 13 : 11, fontWeight: 800, opacity: selected ? 0.9 : 0.75 }}>{DOW[i]}</span>
             <span style={{ fontSize: 15, fontWeight: 900, lineHeight: 1 }}>{Number(ds.slice(8))}</span>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: hasTasks(ds) ? (selected ? "#fff" : "#6C8EFF") : "transparent" }} />
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: hasTasks(ds) ? (selected ? "#fff" : "var(--dm-accent, #6C8EFF)") : "transparent" }} />
           </button>
         );
       })}

@@ -34,7 +34,7 @@ export default function IndentBar({ taRef }) {
   }, [focused]);
 
   if (!touch || !focused) return null;
-  const btn = { flex: 1, height: 40, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "#5B7CFA", fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" };
+  const btn = { flex: 1, height: 40, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-accent, #5B7CFA)", fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" };
   const press = (shift) => indentAtCursor(taRef.current, shift);
   return createPortal(
     <div data-indent-bar style={{ position: "fixed", left: 0, right: 0, bottom, zIndex: 920, display: "flex", gap: 8, padding: "6px 12px", background: "var(--dm-bg)", borderTop: "1px solid var(--dm-border)", maxWidth: 430, margin: "0 auto" }}>

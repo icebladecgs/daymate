@@ -75,8 +75,8 @@ export default function JournalViewer({ plans, onClose, focusDate = null, onSave
         </div>
         <button onClick={copyAll} style={{
           padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-          background: copied ? 'rgba(74,222,128,.15)' : 'rgba(108,142,255,.15)',
-          color: copied ? '#4ADE80' : '#6C8EFF',
+          background: copied ? 'rgba(74,222,128,.15)' : 'var(--dm-accent-soft, rgba(108,142,255,.15))',
+          color: copied ? '#4ADE80' : 'var(--dm-accent, #6C8EFF)',
           fontSize: 12, fontWeight: 900, flexShrink: 0,
         }}>
           {copied ? '✓ 복사됨' : focusDate ? '복사' : '전체 복사'}

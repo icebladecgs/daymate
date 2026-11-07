@@ -37,7 +37,7 @@ export default function DesktopUpdateBar() {
   return createPortal(
     <div role="status" style={{
       position: "fixed", top: 10, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 24px)", maxWidth: 406,
-      zIndex: 240, background: "var(--dm-card)", border: "1.5px solid rgba(108,142,255,.55)", borderRadius: 12,
+      zIndex: 240, background: "var(--dm-card)", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.55))", borderRadius: 12,
       boxShadow: "0 6px 20px rgba(0,0,0,.18)", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8,
     }}>
       <span style={{ fontSize: 16 }}>🆕</span>
@@ -45,7 +45,7 @@ export default function DesktopUpdateBar() {
         데스크탑 앱 <b>새 버전 {DESKTOP_LATEST}</b>이 있어요 (지금 {current}). 받아서 설치하면 돼요.
       </div>
       <button onClick={download}
-        style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(108,142,255,.6)", background: "rgba(108,142,255,.15)", color: "var(--dm-text)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+        style={{ flexShrink: 0, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--dm-accent-line, rgba(108,142,255,.6))", background: "var(--dm-accent-soft, rgba(108,142,255,.15))", color: "var(--dm-text)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
         받기
       </button>
       <button onClick={snooze} aria-label="나중에" title="나중에 (3일 뒤 다시 알림)"

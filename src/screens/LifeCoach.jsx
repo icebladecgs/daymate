@@ -154,7 +154,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
               style={{ flex: 1, height: 20, padding: 0, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>
               <span style={{
                 display: "block", width: "100%", height: i === qIdx ? 6 : 4, borderRadius: 3,
-                background: i === qIdx ? "#6C8EFF" : answers[i].trim() ? "rgba(108,142,255,.55)" : "var(--dm-border)",
+                background: i === qIdx ? "var(--dm-accent, #6C8EFF)" : answers[i].trim() ? "var(--dm-accent-soft, rgba(108,142,255,.55))" : "var(--dm-border)",
                 transition: "background .3s",
               }} />
             </button>
@@ -163,7 +163,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
 
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>{q.icon}</div>
-          <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 800, color: "#6C8EFF", marginBottom: 6 }}>
+          <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 800, color: "var(--dm-accent, #6C8EFF)", marginBottom: 6 }}>
             질문 {step} / {totalQ} — {q.label}
           </div>
           <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.5, color: "var(--dm-text)" }}>
@@ -227,8 +227,8 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
                 {result.keywords.map((kw, i) => (
                   <span key={i} style={{
                     padding: "4px 12px", borderRadius: 999, fontSize: NL() ? UI.sub : 12, fontWeight: 800,
-                    background: "rgba(108,142,255,.15)", color: "#818cf8",
-                    border: "1px solid rgba(108,142,255,.3)",
+                    background: "var(--dm-accent-soft, rgba(108,142,255,.15))", color: "#818cf8",
+                    border: "1px solid var(--dm-accent-line, rgba(108,142,255,.3))",
                   }}>#{kw}</span>
                 ))}
               </div>
@@ -238,8 +238,8 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
           {/* 코치 메시지 */}
           {result.message && (
             <div style={{
-              background: "linear-gradient(135deg, rgba(108,142,255,0.12), rgba(139,92,246,0.12))",
-              border: "1px solid rgba(108,142,255,0.25)",
+              background: "linear-gradient(135deg, var(--dm-accent-soft, rgba(108,142,255,0.12)), rgba(139,92,246,0.12))",
+              border: "1px solid var(--dm-accent-line, rgba(108,142,255,0.25))",
               borderRadius: 16, padding: "18px 18px", marginBottom: 14,
             }}>
               <div style={{ fontSize: NL() ? UI.sub : 11, fontWeight: 900, color: "#818cf8", marginBottom: 8, letterSpacing: 1 }}>💬 코치의 말</div>
@@ -316,7 +316,7 @@ export default function LifeCoach({ user, onBack, onApplyPlan }) {
             </>
           )}
 
-          <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={handleApply}>
+          <button style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))" }} onClick={handleApply}>
             할일 & 습관 등록하기 →
           </button>
           <button style={S.btnGhost} onClick={onBack}>나중에 등록하기</button>

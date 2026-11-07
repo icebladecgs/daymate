@@ -167,7 +167,7 @@ function LockScreen({ onUnlock }) {
       <div style={{ fontSize: 20, fontWeight: 900 }}>비밀번호 4자리</div>
       <div style={{ display: "flex", gap: 18 }}>
         {[0, 1, 2, 3].map(i => (
-          <div key={i} style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #6C8EFF", background: i < pin.length ? "#6C8EFF" : "transparent" }} />
+          <div key={i} style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--dm-accent, #6C8EFF)", background: i < pin.length ? "var(--dm-accent, #6C8EFF)" : "transparent" }} />
         ))}
       </div>
       <div style={{ minHeight: 22, fontSize: 15, color: "#F87171", fontWeight: 700, textAlign: "center", maxWidth: 320 }}>
@@ -184,7 +184,7 @@ function LockScreen({ onUnlock }) {
         <button onClick={back} aria-label="지우기" style={{ ...keyBtn, border: "none", background: "transparent", fontSize: 24 }}>⌫</button>
       </div>
       {bio && (
-        <button onClick={tryBio} style={{ padding: "10px 22px", borderRadius: 999, border: "1px solid #6C8EFF", background: "rgba(108,142,255,.12)", color: "#6C8EFF", fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
+        <button onClick={tryBio} style={{ padding: "10px 22px", borderRadius: 999, border: "1px solid var(--dm-accent, #6C8EFF)", background: "var(--dm-accent-soft, rgba(108,142,255,.12))", color: "var(--dm-accent, #6C8EFF)", fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
           👆 지문·얼굴로 풀기
         </button>
       )}
@@ -207,7 +207,7 @@ function LockScreen({ onUnlock }) {
               <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={300} rows={2}
                 placeholder="연락받을 방법 (선택, 예: 카톡 아이디)"
                 style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, resize: "none", fontFamily: "inherit", marginBottom: 8 }} />
-              <button onClick={sendRequest} disabled={sending} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
+              <button onClick={sendRequest} disabled={sending} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
                 {sending ? "보내는 중..." : "📨 해제 요청 보내기"}
               </button>
             </>

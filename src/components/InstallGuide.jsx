@@ -5,7 +5,7 @@
 //  - 크롬·엣지·파이어폭스(iOS 16.4+): 주소창 오른쪽 공유 버튼에서 추가 가능.
 //  - 앱 안 브라우저(카카오톡·네이버·인스타 등): 홈 화면 추가 불가 → Safari로 먼저 연다.
 
-const ACCENT = '#6C8EFF';
+const ACCENT = 'var(--dm-accent, #6C8EFF)';
 
 export function detectIOSBrowser(ua = navigator.userAgent) {
   const isIPad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);

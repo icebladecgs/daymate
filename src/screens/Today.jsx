@@ -51,14 +51,14 @@ const applyChip = (input, word) => {
 function ReorderButtons({ r }) {
   return [[-1, '▲', '위로', r.canUp], [1, '▼', '아래로', r.canDown]].map(([dir, ch, label, can]) => (
     <button key={dir} onClick={() => r.onMove(dir)} disabled={!can} aria-label={label}
-      style={{ width: UI.touch, height: UI.touch, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? '#5B7CFA' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
+      style={{ width: UI.touch, height: UI.touch, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
   ));
 }
 function ReorderToggle({ on, onClick }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '2px 0 10px' }}>
       <button className="dm-hit" onClick={onClick}
-        style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? '#5B7CFA' : 'var(--dm-border)'}`, background: on ? 'rgba(91,124,250,.12)' : 'transparent', color: on ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+        style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
         {on ? '✓ 순서 완료' : '↕ 순서 바꾸기'}
       </button>
     </div>
@@ -587,16 +587,16 @@ export default function Today({
         const step1 = onboardStep1, step2 = onboardStep2;
         const row = (done, n, label, sub, onClick) => (
           <button onClick={done ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 4px', border: 'none', borderTop: '1px solid var(--dm-row)', background: 'none', cursor: done ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-            <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: done ? '#4ADE80' : 'rgba(91,124,250,.15)', color: done ? '#fff' : '#5B7CFA' }}>{done ? '✓' : n}</span>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, background: done ? '#4ADE80' : 'var(--dm-accent-soft, rgba(91,124,250,.15))', color: done ? '#fff' : 'var(--dm-accent, #5B7CFA)' }}>{done ? '✓' : n}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
               {!done && <span style={{ display: 'block', fontSize: 13, color: 'var(--dm-sub)', marginTop: 1 }}>{sub}</span>}
             </span>
-            {!done && <span style={{ color: '#5B7CFA', fontSize: 18 }}>›</span>}
+            {!done && <span style={{ color: 'var(--dm-accent, #5B7CFA)', fontSize: 18 }}>›</span>}
           </button>
         );
         return (
-          <div style={{ ...S.card, border: '1.5px solid rgba(91,124,250,.4)' }}>
+          <div style={{ ...S.card, border: '1.5px solid var(--dm-accent-line, rgba(91,124,250,.4))' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ flex: 1, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', wordBreak: 'keep-all' }}>👋 처음이세요? 두 가지만 해 봐요</span>
               <button onClick={closeOnboard} aria-label="안내 닫기" style={{ width: 32, height: 32, padding: 0, background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
@@ -607,7 +607,7 @@ export default function Today({
         );
       })()}
       {tasksOpen && taskDayOffset === 0 && showPlanCard && newLook && morning && !planOpen && (
-        <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)', padding: '4px 8px 4px 14px' }}>
+        <div style={{ ...S.card, border: '1px solid var(--dm-warn-line, rgba(251,191,36,.45))', background: 'var(--dm-warn-soft, rgba(251,191,36,.08))', padding: '4px 8px 4px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={() => setPlanOpen(true)} aria-expanded={false}
               style={{ flex: 1, minWidth: 0, minHeight: UI.touch, display: 'flex', alignItems: 'center', gap: 8, padding: 0, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--dm-text)' }}>
@@ -623,13 +623,13 @@ export default function Today({
         </div>
       )}
       {tasksOpen && taskDayOffset === 0 && showPlanCard && !(newLook && morning && !planOpen) && (
-        <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
+        <div style={{ ...S.card, border: '1px solid var(--dm-warn-line, rgba(251,191,36,.45))', background: 'var(--dm-warn-soft, rgba(251,191,36,.08))' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
             <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
             {newLook && morning && <button className="dm-hit-y" onClick={() => setPlanOpen(false)} aria-expanded={true}
               style={{ padding: '0 6px', height: 32, background: 'none', border: 'none', color: 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>접기 ▲</button>}
             {!morning && <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday(carryTasks)}
-              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: newLook ? UI.sub : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--dm-accent-line, rgba(108,142,255,.4))', background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', color: 'var(--dm-accent, #6C8EFF)', fontSize: newLook ? UI.sub : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
             <button className={newLook ? 'dm-hit' : undefined} onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
               style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
@@ -642,15 +642,15 @@ export default function Today({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 2px' }}>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dm-text)' }}>⏪ 어제 못 한 일 {carryTasks.length}개</span>
               <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday(carryTasks)}
-                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#5B7CFA', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
+                style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--dm-accent-line, rgba(108,142,255,.4))', background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', color: 'var(--dm-accent, #5B7CFA)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>
             </div>
           )}
           {carryTasks.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {t.title}{t.time ? <span style={{ fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', marginLeft: 6 }}>{t.time}</span> : null}
+                {t.title}{t.time ? <span style={{ fontSize: newLook ? UI.sub : 11, color: 'var(--dm-accent, #6C8EFF)', marginLeft: 6 }}>{t.time}</span> : null}
               </span>
-              <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#6C8EFF', fontSize: newLook ? UI.sub : 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday([t])} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', color: 'var(--dm-accent, #6C8EFF)', fontSize: newLook ? UI.sub : 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
               <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToSomeday(t)} style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: newLook ? UI.sub : 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
               <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => carryDelete(t)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </div>
@@ -661,7 +661,7 @@ export default function Today({
               {morningSomeday.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.goalRef ? '🎯 ' : ''}{item.title}</span>
-                  <button className={newLook ? 'dm-hit' : undefined} onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)', color: '#5B7CFA', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
+                  <button className={newLook ? 'dm-hit' : undefined} onClick={() => { moveSomedayToTask(item); setToast('오늘 할일로 옮겼어요 ✅'); }} style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', color: 'var(--dm-accent, #5B7CFA)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>오늘로</button>
                 </div>
               ))}
               {planSomeday.length > 3 && (
@@ -759,7 +759,7 @@ export default function Today({
                   setHabits?.(prev => [...prev, { id: `h_${Date.now()}`, icon: newHabitIcon || '🎯', name: newHabitName.trim() }]);
                   setNewHabitIcon(''); setNewHabitName('');
                 }}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
             {visibleHabits.length === 0 && !newHabitName && (
               <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>아이콘과 이름을 입력 후 + 버튼</div>
@@ -769,7 +769,7 @@ export default function Today({
           <div style={{ display: 'flex', flexDirection: 'column', gap: newLook ? UI.rowGap : 8 }}>
             {visibleHabits.length === 0 && (
               newLook
-                ? <button className={newLook ? 'dm-hit' : undefined} onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
+                ? <button className={newLook ? 'dm-hit' : undefined} onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: 'var(--dm-accent, #5B7CFA)', cursor: 'pointer' }}>＋ 습관 추가</button>
                 : <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0' }}>습관을 추가하려면 수정을 눌러보세요</div>
             )}
             {visibleHabits.map(h => {
@@ -808,7 +808,7 @@ export default function Today({
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
           {somedayOpen && (somedayList.length > 1 || reorder === 'someday') && (
             <button className="dm-hit" onClick={() => setReorder(reorder === 'someday' ? null : 'someday')}
-              style={{ height: 32, padding: '0 10px', borderRadius: 10, border: `1.5px solid ${reorder === 'someday' ? '#5B7CFA' : 'var(--dm-border)'}`, background: reorder === 'someday' ? 'rgba(91,124,250,.12)' : 'transparent', color: reorder === 'someday' ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              style={{ height: 32, padding: '0 10px', borderRadius: 10, border: `1.5px solid ${reorder === 'someday' ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: reorder === 'someday' ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: reorder === 'someday' ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
               {reorder === 'someday' ? '✓ 완료' : '↕ 순서'}
             </button>
           )}
@@ -822,12 +822,12 @@ export default function Today({
             <button className={newLook ? 'dm-hit' : undefined} disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
             <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
-              {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
+              {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, flexShrink: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
               <TaskStatIcon task={item} />
               <TaskDetailBadge task={item} />
             </span>
             {reorder === 'someday' ? <ReorderButtons r={somedayReorder(item.id)} /> : (<>
-              <button className={newLook ? 'dm-hit' : undefined} onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => moveSomedayToTask(item)} style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
               <button className={newLook ? 'dm-hit' : undefined} onClick={() => confirmDeleteSomeday(item)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </>)}
           </div>
@@ -850,7 +850,7 @@ export default function Today({
             placeholder="언젠가 할 일 추가 후 Enter"
             maxLength={60}
           />
-          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+          <button onClick={addSomeday} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
         </div>
       </div>
       )}
@@ -921,7 +921,7 @@ export default function Today({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-muted)', wordBreak: 'keep-all' }}>저녁에 하루를 돌아보며 써 보세요</span>
           <button onClick={() => setJournalOpen(true)}
-            style={{ flexShrink: 0, minHeight: UI.touch, padding: '0 14px', borderRadius: 10, border: '1.5px solid rgba(91,124,250,.35)', background: 'rgba(91,124,250,.10)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ 지금 쓰기</button>
+            style={{ flexShrink: 0, minHeight: UI.touch, padding: '0 14px', borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(91,124,250,.35))', background: 'var(--dm-accent-soft, rgba(91,124,250,.10))', color: 'var(--dm-accent, #5B7CFA)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ 지금 쓰기</button>
         </div>
       ) : (
       <div style={innerCard}>
@@ -942,7 +942,7 @@ export default function Today({
             onClick={onOpenVoiceDiary}
             style={{
               width: '100%', marginBottom: 12, padding: '10px 14px', borderRadius: 12,
-              border: '1.5px solid rgba(108,142,255,.3)', background: 'rgba(108,142,255,.1)',
+              border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))', background: 'var(--dm-accent-soft, rgba(108,142,255,.1))',
               color: '#818cf8', fontSize: 13, fontWeight: 800, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
@@ -1101,7 +1101,7 @@ export default function Today({
         {setExam && !dashboard && (
           <button className={newLook ? 'dm-hit' : undefined} onClick={() => { setExam(e => ({ ...e, on: !e.on })); setToast(examOn ? '수험생 모드를 껐어요 (기록은 그대로예요)' : '📚 수험생 모드를 켰어요'); }}
             role="switch" aria-checked={examOn} aria-label="수험생 모드" title="수험생 모드 (D-day·공부 시간·오답 노트)"
-            style={{ flexShrink: 0, alignSelf: 'center', padding: '6px 10px', borderRadius: 999, border: `1.5px solid ${examOn ? '#5B7CFA' : 'var(--dm-border)'}`, background: examOn ? 'rgba(91,124,250,.14)' : 'var(--dm-input)', color: examOn ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+            style={{ flexShrink: 0, alignSelf: 'center', padding: '6px 10px', borderRadius: 999, border: `1.5px solid ${examOn ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: examOn ? 'var(--dm-accent-soft, rgba(91,124,250,.14))' : 'var(--dm-input)', color: examOn ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
             📚 시험 {examOn ? 'ON' : 'OFF'}
           </button>
         )}
@@ -1125,7 +1125,7 @@ export default function Today({
       )}
 
       {isPerfect && (
-        <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(74,222,128,.15),rgba(108,142,255,.10))", border: "1.5px solid rgba(74,222,128,.35)" }}>
+        <div style={{ ...S.card, background: "linear-gradient(135deg,rgba(74,222,128,.15),var(--dm-accent-soft, rgba(108,142,255,.10)))", border: "1.5px solid rgba(74,222,128,.35)" }}>
           <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>🎉</div>
           <div style={{ fontSize: 14, fontWeight: 900, textAlign: "center", color: "#4ADE80" }}>완벽한 하루!</div>
           <div style={{ fontSize: newLook ? UI.sub : 12, textAlign: "center", color: "var(--dm-sub)", marginTop: 6 }}>3가지 완료 + 일기 작성. 연속 기록이 쌓이고 있어요 🔥</div>
@@ -1157,7 +1157,7 @@ export default function Today({
         {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12, flexShrink: 0, ...(newLook ? { marginLeft: 'auto' } : {}) }}>
           {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
-            <button className={newLook ? 'dm-hit-y' : undefined} onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
+            <button className={newLook ? 'dm-hit-y' : undefined} onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-accent-line, rgba(75,111,255,.35))', background: 'var(--dm-accent-soft, rgba(75,111,255,.12))', color: 'var(--dm-accent, #6C8EFF)', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
           )}
           <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => setTaskDayOffset(o => o - 1)} aria-label="전날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
           <button className={newLook ? 'dm-hit-y' : undefined} onClick={() => setTaskDayOffset(o => o + 1)} aria-label="다음날 할일" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
@@ -1214,8 +1214,8 @@ export default function Today({
               </div>
               {(task.time || task.id === nowTaskId) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                  {task.time && <span style={{ fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', fontWeight: 700, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime && task.endTime > task.time ? ` ~ ${task.endTime}` : ''}</span>}
-                  {task.id === nowTaskId && <span style={{ fontSize: newLook ? UI.sub : 10, color: '#fff', fontWeight: 900, background: '#6C8EFF', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
+                  {task.time && <span style={{ fontSize: newLook ? UI.sub : 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{task.time}{task.endTime && task.endTime > task.time ? ` ~ ${task.endTime}` : ''}</span>}
+                  {task.id === nowTaskId && <span style={{ fontSize: newLook ? UI.sub : 10, color: '#fff', fontWeight: 900, background: 'var(--dm-accent, #6C8EFF)', padding: '1px 6px', borderRadius: 6 }}>지금</span>}
                 </div>
               )}
             </div>
@@ -1224,7 +1224,7 @@ export default function Today({
             {reorder !== 'tasks' && !task.done && (
               <button className={newLook ? 'dm-hit' : undefined}
                 onClick={() => somedayWithUndo(task)}
-                style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
               >언젠가</button>
             )}
             {/* 언젠가할일 목록의 ✕와 같은 모양 */}
@@ -1249,25 +1249,25 @@ export default function Today({
             placeholder="할 일 추가 (예: 내일 오후 3시 회의)"
             maxLength={200}
           />
-          <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid rgba(108,142,255,.35)', background: 'rgba(108,142,255,.12)', fontSize: 20, cursor: 'pointer', color: '#6C8EFF', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+          <button onClick={addTargetTask} style={{ width: 42, height: 42, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
         </div>
         {/* 빠른 칩 (2026-11-07) — 글자를 앞에 붙일 뿐이라 해석은 아래 문장 일정 입력(nlSchedule)이 그대로 한다. 같은 종류(날짜끼리·시간끼리)는 바꿔 넣는다 */}
         {taskInput.trim() && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             {['오늘', '내일', '모레', '오전 9시', '오후 3시'].map(w => (
               <button key={w} className="dm-hit" onClick={() => { setTaskInput(applyChip(taskInput, w)); setNlOff(false); if (canAutoFocus()) taskInputRef.current?.focus(); }}
-                style={{ height: UI.chip, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
+                style={{ height: UI.chip, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-accent, #5B7CFA)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
             ))}
           </div>
         )}
         {/* 어떻게 들어갈지 저장 전에 보여준다 — 잘못 알아들었으면 "그냥 글자로" (2026-11-03 읽기 쉬운 말로) */}
         {parsedMany && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
-            <div style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '7px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#5B7CFA', marginBottom: 2 }}>📋 {parsedMany.length}개가 들어가요</div>
+            <div style={{ flex: 1, minWidth: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 10, padding: '7px 10px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dm-accent, #5B7CFA)', marginBottom: 2 }}>📋 {parsedMany.length}개가 들어가요</div>
               {parsedMany.map((p, i) => (
                 <div key={i} style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
-                  {p.recurring ? '🔁' : '📅'} <b style={{ color: '#5B7CFA' }}>{friendlySchedule(p, targetDs, recurringLabel) || '이 날'}</b> · {p.title}
+                  {p.recurring ? '🔁' : '📅'} <b style={{ color: 'var(--dm-accent, #5B7CFA)' }}>{friendlySchedule(p, targetDs, recurringLabel) || '이 날'}</b> · {p.title}
                 </div>
               ))}
             </div>
@@ -1276,9 +1276,9 @@ export default function Today({
         )}
         {parsedTask && !parsedMany && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <div style={{ flex: 1, minWidth: 0, background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '7px 10px' }}>
+            <div style={{ flex: 1, minWidth: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 10, padding: '7px 10px' }}>
               <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
-                {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: '#5B7CFA' }}>{friendlySchedule(parsedTask, targetDs, recurringLabel) || describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
+                {parsedTask.recurring ? '🔁' : '📅'} <b style={{ color: 'var(--dm-accent, #5B7CFA)' }}>{friendlySchedule(parsedTask, targetDs, recurringLabel) || describeSchedule(parsedTask, recurringLabel)}</b> · {parsedTask.title}
               </div>
               {(parsedTask.recurring || (parsedTask.date && parsedTask.date !== targetDs)) && (
                 <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-sub)', marginTop: 2 }}>{parsedTask.recurring ? '→ 반복 할일로 등록돼요' : '→ 그날 할일로 들어가요'}</div>

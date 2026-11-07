@@ -30,7 +30,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{weekLabel}</span>
           {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} style={{ fontSize: fs(10), fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
+            <button onClick={() => setWeekOffset(0)} style={{ fontSize: fs(10), fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
           )}
         </div>
         <button onClick={() => setWeekOffset(o => o + 1)} aria-label="다음 주" style={{ ...S.btnGhost, marginTop: 0, width: navSize, height: navSize, padding: 0, fontSize: 16 }}>›</button>
@@ -65,8 +65,8 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
               fontFamily: 'inherit',
               borderRadius: 12,
               padding: showAll ? '5px 10px' : '10px 12px',
-              border: isToday ? '1.5px solid rgba(108,142,255,.5)' : '1px solid var(--dm-border)',
-              background: isToday ? 'rgba(108,142,255,.08)' : 'rgba(255,255,255,.02)',
+              border: isToday ? '1.5px solid var(--dm-accent-line, rgba(108,142,255,.5))' : '1px solid var(--dm-border)',
+              background: isToday ? 'var(--dm-accent-soft, rgba(108,142,255,.08))' : 'rgba(255,255,255,.02)',
             }}>
             <div style={{ width: 30, textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: fs(9), color: isToday ? (roomy ? UI.accent : '#AFC0FF') : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
@@ -74,7 +74,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
             </div>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
               {isToday && (
-                <span style={{ fontSize: fs(10), color: '#6C8EFF', fontWeight: 900, background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
+                <span style={{ fontSize: fs(10), color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
               )}
               {showAll && tasks.length > 0 ? (
                 <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 3 }}>

@@ -55,7 +55,7 @@ export default function PhotoWall({ photos, query, onOpen, tile = 0, selectedKey
             {items.map(p => (
               <button key={p.key} ref={el => { tileRefs.current[p.key] = el; }} type="button" onClick={() => onOpen(p)}
                 aria-label={p.kind === "memo" ? "메모 열기" : "일정 열기"}
-                style={{ position: "relative", padding: 0, border: "none", aspectRatio: "1 / 1", overflow: "hidden", background: "var(--dm-input)", cursor: "pointer", borderRadius: 4, outline: p.key === selectedKey ? "3px solid #5B7CFA" : "none", outlineOffset: -3 }}>
+                style={{ position: "relative", padding: 0, border: "none", aspectRatio: "1 / 1", overflow: "hidden", background: "var(--dm-input)", cursor: "pointer", borderRadius: 4, outline: p.key === selectedKey ? "3px solid var(--dm-accent, #5B7CFA)" : "none", outlineOffset: -3 }}>
                 <img src={p.url} alt="" loading="lazy" decoding="async"
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 <span style={{ position: "absolute", top: 4, right: 4, fontSize: 11, lineHeight: 1, background: "rgba(0,0,0,.5)", borderRadius: 6, padding: "3px 4px" }}>

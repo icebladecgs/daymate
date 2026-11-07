@@ -93,9 +93,9 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
               type="button"
               onClick={(e) => { e.stopPropagation(); onAction(); }}
               style={{
-                border: '1px solid rgba(108,142,255,.28)',
-                background: 'rgba(108,142,255,.12)',
-                color: nl ? '#5B7CFA' : '#C9D7FF',
+                border: '1px solid var(--dm-accent-line, rgba(108,142,255,.28))',
+                background: 'var(--dm-accent-soft, rgba(108,142,255,.12))',
+                color: nl ? 'var(--dm-accent, #5B7CFA)' : '#C9D7FF',
                 borderRadius: 999,
                 padding: nl ? '7px 12px' : '6px 10px',
                 fontSize: nl ? 13 : 10,
@@ -145,7 +145,7 @@ function Toggle({ value, onChange, disabled }) {
   return (
     <div onClick={() => !disabled && onChange(!value)} style={{
       width: 52, height: 28, borderRadius: 999,
-      background: value && !disabled ? '#6C8EFF' : 'var(--dm-border)',
+      background: value && !disabled ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)',
       cursor: disabled ? 'not-allowed' : 'pointer',
       position: 'relative', opacity: disabled ? 0.5 : 1, flexShrink: 0,
     }}>
@@ -659,7 +659,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           {[['off', '끄기'], [0, '정각'], [5, '5분 전'], [10, '10분 전']].map(([v, label]) => (
             <button key={String(v)} className={NL() ? 'dm-hit' : undefined} onClick={() => { setAlarmLead(v); setTaskAlarmLead(v); }}
               style={{ padding: '7px 12px', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-                border: alarmLead === v ? '1.5px solid #5B7CFA' : '1px solid var(--dm-border)', background: alarmLead === v ? 'rgba(91,124,250,.12)' : 'var(--dm-input)', color: alarmLead === v ? '#5B7CFA' : 'var(--dm-sub)' }}>{label}</button>
+                border: alarmLead === v ? '1.5px solid var(--dm-accent, #5B7CFA)' : '1px solid var(--dm-border)', background: alarmLead === v ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'var(--dm-input)', color: alarmLead === v ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)' }}>{label}</button>
           ))}
         </div>
         <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 8, lineHeight: 1.6 }}>
@@ -698,7 +698,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             }}
             style={{
               width: 52, height: 28, borderRadius: 999,
-              background: notifEnabled && permission === "granted" ? "#6C8EFF" : "var(--dm-border)",
+              background: notifEnabled && permission === "granted" ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
               cursor: permission === "granted" ? "pointer" : "not-allowed",
               position: "relative",
               opacity: permission === "granted" ? 1 : 0.5,
@@ -790,7 +790,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             </div>
             <div onClick={() => onChange(!value)} style={{
               width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer',
-              background: value ? '#6C8EFF' : 'var(--dm-border)', position: 'relative',
+              background: value ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)', position: 'relative',
             }}>
               <div style={{ position: 'absolute', top: 4, left: value ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
             </div>
@@ -804,9 +804,9 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                 <button className={NL() ? 'dm-hit' : undefined} key={s.id} onClick={() => { setSoundStyle(s.id); localStorage.setItem('dm_notif_sound_style', s.id); playNotifSound(s.id); }}
                   style={{
                     padding: '6px 14px', borderRadius: 20, border: '1.5px solid',
-                    borderColor: soundStyle === s.id ? '#6C8EFF' : 'var(--dm-border)',
-                    background: soundStyle === s.id ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
-                    color: soundStyle === s.id ? '#6C8EFF' : 'var(--dm-text)',
+                    borderColor: soundStyle === s.id ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)',
+                    background: soundStyle === s.id ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
+                    color: soundStyle === s.id ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-text)',
                     fontSize: 13, fontWeight: soundStyle === s.id ? 900 : 400, cursor: 'pointer',
                   }}>
                   {s.label}
@@ -855,7 +855,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>알람 시 문구를 음성으로 읽어줘요</div>
           </div>
           <div onClick={() => { const v = !ttsEnabled; setTtsEnabled(v); localStorage.setItem('dm_notif_tts', v); if (v) speakTTS('음성 알람이 켜졌어요!'); }}
-            style={{ width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer', background: ttsEnabled ? '#6C8EFF' : 'var(--dm-border)', position: 'relative' }}>
+            style={{ width: 52, height: 28, borderRadius: 999, flexShrink: 0, cursor: 'pointer', background: ttsEnabled ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-border)', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 4, left: ttsEnabled ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
           </div>
         </div>
@@ -901,7 +901,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           {tgConnected ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--dm-accent-soft, rgba(75,111,255,.15))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 900, color: '#4ADE80' }}>✓ 텔레그램 연결됨</div>
                   <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginTop: 2 }}>{tgFirstName ? `${tgFirstName}님 계정` : '연결 완료'}</div>
@@ -912,15 +912,15 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           ) : (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(75,111,255,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--dm-accent-soft, rgba(75,111,255,.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📨</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 900 }}>텔레그램 연결</div>
                   <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginTop: 2 }}>버튼 하나로 바로 연결</div>
                 </div>
               </div>
               <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.8, marginBottom: 14, background: 'var(--dm-deep)', borderRadius: 10, padding: '10px 12px' }}>
-                <b style={{ color: '#6C8EFF' }}>1.</b> 아래 버튼을 누르면 텔레그램이 열려요<br />
-                <b style={{ color: '#6C8EFF' }}>2.</b> 봇에서 <b>시작</b> 버튼만 누르면 끝!<br />
+                <b style={{ color: 'var(--dm-accent, #6C8EFF)' }}>1.</b> 아래 버튼을 누르면 텔레그램이 열려요<br />
+                <b style={{ color: 'var(--dm-accent, #6C8EFF)' }}>2.</b> 봇에서 <b>시작</b> 버튼만 누르면 끝!<br />
                 <span style={{ color: 'var(--dm-muted)', fontSize: NL() ? 13 : 11 }}>BotFather, 토큰, Chat ID — 모두 필요 없어요 ✨</span>
               </div>
               <button
@@ -978,7 +978,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                   onClick={() => toggleAsset(sym)}
                   style={{
                     padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 700,
-                    background: on ? "#4B6FFF" : "var(--dm-row)",
+                    background: on ? "var(--dm-accent, #4B6FFF)" : "var(--dm-row)",
                     color: on ? "#fff" : "var(--dm-muted)",
                   }}
                 >
@@ -994,7 +994,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                 <div key={a.sym} style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "5px 10px", borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700,
-                  background: selectedAssets.includes(a.sym) ? "#4B6FFF" : "var(--dm-row)",
+                  background: selectedAssets.includes(a.sym) ? "var(--dm-accent, #4B6FFF)" : "var(--dm-row)",
                   color: selectedAssets.includes(a.sym) ? "#fff" : "var(--dm-muted)",
                 }}>
                   <span onClick={() => toggleAsset(a.sym)} style={{ cursor: "pointer" }}>
@@ -1022,7 +1022,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                   onClick={() => { setSearchMode(id); setSearchResults([]); setAssetSearch(''); }}
                   style={{
                     padding: "5px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: NL() ? 14 : 12, fontWeight: 700,
-                    background: searchMode === id ? "#4B6FFF" : "var(--dm-row)",
+                    background: searchMode === id ? "var(--dm-accent, #4B6FFF)" : "var(--dm-row)",
                     color: searchMode === id ? "#fff" : "var(--dm-muted)",
                   }}
                 >{label}</button>
@@ -1055,7 +1055,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                       <span style={{ fontWeight: 700, fontSize: 13, color: "var(--dm-text)" }}>{item.sym}</span>
                       <span style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginLeft: 8 }}>{item.label}</span>
                     </div>
-                    <span style={{ fontSize: NL() ? 14 : 12, color: "#4B6FFF", fontWeight: 700 }}>+ 추가</span>
+                    <span style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-accent, #4B6FFF)", fontWeight: 700 }}>+ 추가</span>
                   </div>
                 ))}
               </div>
@@ -1218,19 +1218,19 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>🎁</span> 친구 초대</div>
       <div style={S.card}>
         {pendingInviteCode && (
-          <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,rgba(108,142,255,.12),rgba(74,222,128,.08))', border: '1px solid rgba(108,142,255,.25)' }}>
+          <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(108,142,255,.12)),rgba(74,222,128,.08))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))' }}>
             <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4 }}>지금 들어온 초대 코드</div>
             <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', lineHeight: 1.6 }}>
-              <b style={{ color: '#6C8EFF' }}>{pendingInviteCode}</b> 가 감지됐어요. 아래에서 바로 적용되거나, 이미 적용됐다면 친구에게 내 링크를 다시 공유해보세요.
+              <b style={{ color: 'var(--dm-accent, #6C8EFF)' }}>{pendingInviteCode}</b> 가 감지됐어요. 아래에서 바로 적용되거나, 이미 적용됐다면 친구에게 내 링크를 다시 공유해보세요.
             </div>
           </div>
         )}
         <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", lineHeight: 1.7, marginBottom: 12 }}>
-          내 코드/링크로 친구가 가입하면 <b style={{ color: "#6C8EFF" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
+          내 코드/링크로 친구가 가입하면 <b style={{ color: "var(--dm-accent, #6C8EFF)" }}>친구가 +100 XP</b> 획득, 나는 초대 랭킹이 올라가요!
         </div>
         <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", fontWeight: 900, marginBottom: 6 }}>내 초대 코드</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          <div style={{ flex: 1, padding: "12px 14px", borderRadius: 12, background: "var(--dm-deep)", border: "1.5px solid var(--dm-border)", fontSize: 20, fontWeight: 900, letterSpacing: 4, textAlign: "center", color: "#6C8EFF" }}>
+          <div style={{ flex: 1, padding: "12px 14px", borderRadius: 12, background: "var(--dm-deep)", border: "1.5px solid var(--dm-border)", fontSize: 20, fontWeight: 900, letterSpacing: 4, textAlign: "center", color: "var(--dm-accent, #6C8EFF)" }}>
             {myCode}
           </div>
           <button onClick={() => {
@@ -1306,7 +1306,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             if (installPrompt) { handleInstall(); }
             else { store.set('dm_install_dismissed', false); setShowInstallBanner(true); setShowInstallGuide(v => !v); }
           }}
-          style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", color: "#fff" }}>
+          style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", color: "#fff" }}>
           앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
         </button>
         {!installPrompt && showInstallGuide && (
@@ -1347,7 +1347,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             </div>
           </div>
           <div onClick={() => { const v = !todayNewLook; setTodayNewLookState(v); setTodayNewLook(v); }} role="switch" aria-checked={todayNewLook} aria-label="새 디자인" style={{
-            width: 52, height: 28, borderRadius: 999, background: todayNewLook ? "#6C8EFF" : "var(--dm-border)",
+            width: 52, height: 28, borderRadius: 999, background: todayNewLook ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>
             <div style={{ position: "absolute", top: 4, left: todayNewLook ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -1360,7 +1360,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>체크한 할 일을 목록 아래 "완료" 묶음으로 · 끄면 제자리에 남아요</div>
             </div>
             <div onClick={() => { const v = !todayDoneGroup; setTodayDoneGroupState(v); setTodayDoneGroup(v); }} role="switch" aria-checked={todayDoneGroup} aria-label="끝낸 할 일 아래로 모으기" style={{
-              width: 52, height: 28, borderRadius: 999, background: todayDoneGroup ? "#6C8EFF" : "var(--dm-border)",
+              width: 52, height: 28, borderRadius: 999, background: todayDoneGroup ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
               cursor: "pointer", position: "relative", flexShrink: 0,
             }}>
               <div style={{ position: "absolute", top: 4, left: todayDoneGroup ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -1418,7 +1418,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>능력치를 알 수 없는 할일을 완료하면 한 번 물어보고 기억해요</div>
           </div>
           <div onClick={() => setStatAskOff?.(v => !v)} role="switch" aria-checked={!statAskOff} style={{
-            width: 52, height: 28, borderRadius: 999, background: !statAskOff ? "#6C8EFF" : "var(--dm-border)",
+            width: 52, height: 28, borderRadius: 999, background: !statAskOff ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>
             <div style={{ position: "absolute", top: 4, left: !statAskOff ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -1432,7 +1432,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               return (
                 <div key={x.w} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--dm-row)' }}>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.w}</span>
-                  <span style={{ fontSize: NL() ? 14 : 12, color: stat ? '#6C8EFF' : 'var(--dm-muted)', fontWeight: 700, flexShrink: 0 }}>{stat ? `${stat.icon} ${stat.name}` : '🚫 해당 없음'}</span>
+                  <span style={{ fontSize: NL() ? 14 : 12, color: stat ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', fontWeight: 700, flexShrink: 0 }}>{stat ? `${stat.icon} ${stat.name}` : '🚫 해당 없음'}</span>
                   <button onClick={() => setStatWords?.(prev => (prev || []).filter(y => y.w !== x.w))} aria-label="지우기"
                     style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 15, padding: '0 4px', flexShrink: 0 }}>✕</button>
                 </div>
@@ -1452,7 +1452,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             </div>
           </div>
           <div onClick={() => { const v = !memoAutoList; setMemoAutoListState(v); setMemoAutoList(v); }} role="switch" aria-checked={memoAutoList} style={{
-            width: 52, height: 28, borderRadius: 999, background: memoAutoList ? "#6C8EFF" : "var(--dm-border)",
+            width: 52, height: 28, borderRadius: 999, background: memoAutoList ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>
             <div style={{ position: "absolute", top: 4, left: memoAutoList ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -1488,7 +1488,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               <div style={{ fontWeight: 900, fontSize: 13 }}>배너 활성화</div>
               <div onClick={() => setEventActive(v => !v)} style={{
                 width: 52, height: 28, borderRadius: 999,
-                background: eventActive ? "#6C8EFF" : "var(--dm-border)",
+                background: eventActive ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
                 cursor: "pointer", position: "relative", flexShrink: 0,
               }}>
                 <div style={{ position: "absolute", top: 4, left: eventActive ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
@@ -1578,11 +1578,11 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
         </button>
         <button className={NL() ? 'dm-hit' : undefined} onClick={() => setFontScale?.(v => v === 'large' ? 'normal' : 'large')}
           style={{ width: 38, height: 38, borderRadius: 999,
-            border: `1.5px solid ${fontScale === 'large' ? 'rgba(108,142,255,.5)' : 'var(--dm-border)'}`,
-            background: fontScale === 'large' ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
+            border: `1.5px solid ${fontScale === 'large' ? 'var(--dm-accent-soft, rgba(108,142,255,.5))' : 'var(--dm-border)'}`,
+            background: fontScale === 'large' ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
             fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center",
             justifyContent: "center", flexShrink: 0, fontWeight: 900,
-            color: fontScale === 'large' ? '#6C8EFF' : 'var(--dm-muted)' }}>
+            color: fontScale === 'large' ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)' }}>
           A+
         </button>
       </div>
@@ -1659,9 +1659,9 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               type="button"
               onClick={item.action}
               style={{
-                border: '1px solid rgba(108,142,255,.24)',
-                background: 'rgba(108,142,255,.10)',
-                color: todayNewLook ? '#5B7CFA' : '#C9D7FF',
+                border: '1px solid var(--dm-accent-line, rgba(108,142,255,.24))',
+                background: 'var(--dm-accent-soft, rgba(108,142,255,.10))',
+                color: todayNewLook ? 'var(--dm-accent, #5B7CFA)' : '#C9D7FF',
                 borderRadius: 999,
                 padding: '11px 16px',
                 minHeight: 44,
@@ -1743,7 +1743,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>제안이 접수됐어요!</div>
                 <div style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-muted)', marginBottom: 20 }}>검토 후 반영 여부를 알려드릴게요.</div>
-                <button onClick={() => setSuggestionOpen(false)} style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', width: 'auto', padding: '10px 28px' }}>확인</button>
+                <button onClick={() => setSuggestionOpen(false)} style={{ ...S.btn, background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', width: 'auto', padding: '10px 28px' }}>확인</button>
               </div>
             ) : (
               <>
@@ -1761,7 +1761,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
                 <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', textAlign: 'right', marginBottom: 12 }}>{suggestionText.length}/500</div>
                 <button onClick={handleSubmitSuggestion}
                   disabled={submittingSuggestion || !suggestionText.trim()}
-                  style={{ ...S.btn, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', marginTop: 0 }}>
+                  style={{ ...S.btn, background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', marginTop: 0 }}>
                   {submittingSuggestion ? '제출 중...' : '💡 제안 제출하기'}
                 </button>
               </>

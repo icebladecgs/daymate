@@ -452,9 +452,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <button className={NL() ? 'dm-hit' : undefined} key={p.sym} onClick={() => pickPreset(p)}
                 style={{
                   fontSize: NL() ? 14 : 12, padding: "4px 10px", borderRadius: 8, cursor: "pointer",
-                  border: fSym === p.sym ? "1.5px solid #6C8EFF" : "1px solid var(--dm-border)",
-                  background: fSym === p.sym ? "rgba(108,142,255,.12)" : "var(--dm-card)",
-                  color: fSym === p.sym ? "#6C8EFF" : "var(--dm-text)", fontWeight: 700,
+                  border: fSym === p.sym ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1px solid var(--dm-border)",
+                  background: fSym === p.sym ? "var(--dm-accent-soft, rgba(108,142,255,.12))" : "var(--dm-card)",
+                  color: fSym === p.sym ? "var(--dm-accent, #6C8EFF)" : "var(--dm-text)", fontWeight: 700,
                 }}>
                 {p.sym}
               </button>
@@ -577,7 +577,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
           <div style={{ ...(NL() ? { ...S.sub, fontSize: UI.sub } : S.sub), wordBreak: "keep-all" }}>수량 · 단가 입력 후 평가손익 확인</div>
         </div>
         <button onClick={() => setPfHidden(!hidden)} aria-label={hidden ? "금액 보이기" : "금액 숨기기"} aria-pressed={hidden} title={hidden ? "금액 보이기" : "금액 숨기기"}
-          style={{ width: UI.touch, height: UI.touch, padding: 0, background: hidden ? "rgba(91,124,250,.12)" : "transparent", border: "none", borderRadius: 10, color: "var(--dm-text)", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>
+          style={{ width: UI.touch, height: UI.touch, padding: 0, background: hidden ? "var(--dm-accent-soft, rgba(91,124,250,.12))" : "transparent", border: "none", borderRadius: 10, color: "var(--dm-text)", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>
           {hidden ? "🙈" : "👁"}
         </button>
         <button className={NL() ? 'dm-hit' : undefined}
@@ -617,7 +617,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             </div>
             <button onClick={() => { setPanel(panel === "menu" ? null : "menu"); setRenameDraft(activeTab.name); }}
               aria-label="계좌 메뉴" aria-expanded={panel === "menu"}
-              style={{ flexShrink: 0, width: UI.touch, height: UI.touch, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: panel === "menu" ? "rgba(91,124,250,.12)" : "var(--dm-card)", color: "var(--dm-text)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}>⋯</button>
+              style={{ flexShrink: 0, width: UI.touch, height: UI.touch, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: panel === "menu" ? "var(--dm-accent-soft, rgba(91,124,250,.12))" : "var(--dm-card)", color: "var(--dm-text)", fontSize: 18, fontWeight: 900, cursor: "pointer" }}>⋯</button>
           </div>
         )}
 
@@ -661,9 +661,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                 {["USD", "KRW"].map(cur => (
                   <button key={cur} className="dm-hit" onClick={() => setDisplayCurrencyPersist(cur)}
                     style={{ fontSize: 13, fontWeight: 800, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
-                      border: `1px solid ${displayCurrency === cur ? "#6C8EFF" : "var(--dm-border)"}`,
-                      background: displayCurrency === cur ? "rgba(108,142,255,.14)" : "transparent",
-                      color: displayCurrency === cur ? "#6C8EFF" : "var(--dm-muted)" }}>{cur}</button>
+                      border: `1px solid ${displayCurrency === cur ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)"}`,
+                      background: displayCurrency === cur ? "var(--dm-accent-soft, rgba(108,142,255,.14))" : "transparent",
+                      color: displayCurrency === cur ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)" }}>{cur}</button>
                 ))}
               </div>
             )}
@@ -723,9 +723,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                           <button key={cur} onClick={() => setDisplayCurrencyPersist(cur)}
                             style={{
                               fontSize: NL() ? 13 : 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6, cursor: "pointer",
-                              border: `1px solid ${displayCurrency === cur ? "#6C8EFF" : "var(--dm-border)"}`,
-                              background: displayCurrency === cur ? "rgba(108,142,255,.14)" : "transparent",
-                              color: displayCurrency === cur ? "#6C8EFF" : "var(--dm-muted)",
+                              border: `1px solid ${displayCurrency === cur ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)"}`,
+                              background: displayCurrency === cur ? "var(--dm-accent-soft, rgba(108,142,255,.14))" : "transparent",
+                              color: displayCurrency === cur ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)",
                             }}>{cur}</button>
                         ))}
                       </div>
@@ -851,7 +851,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
                     <button className={NL() ? 'dm-hit-x' : undefined} aria-label="메모"
                       onClick={() => { setMemoOpenId(memoOpen ? null : h.id); setMemoDraft(""); }}
-                      style={{ ...iconBtn(memos.length > 0 ? "#6C8EFF" : "var(--dm-muted)", NL() ? 14 : 12), fontWeight: 800 }}
+                      style={{ ...iconBtn(memos.length > 0 ? "var(--dm-accent, #6C8EFF)" : "var(--dm-muted)", NL() ? 14 : 12), fontWeight: 800 }}
                     >
                       📝{memos.length > 0 ? ` ${memos.length}` : ""}
                     </button>
@@ -995,7 +995,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               {[[30, "1달"], [90, "3달"], [365, "1년"], [null, "전체"]].map(([d, l]) => (
                 <button key={l} className="dm-hit-y" onClick={() => setTrendRange(d)} aria-pressed={trendRange === d}
                   style={{ height: 30, padding: "0 8px", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
-                    border: `1px solid ${trendRange === d ? ACCENT : "var(--dm-border)"}`, background: trendRange === d ? "rgba(91,124,250,.12)" : "transparent", color: trendRange === d ? ACCENT : "var(--dm-sub)" }}>{l}</button>
+                    border: `1px solid ${trendRange === d ? ACCENT : "var(--dm-border)"}`, background: trendRange === d ? "var(--dm-accent-soft, rgba(91,124,250,.12))" : "transparent", color: trendRange === d ? ACCENT : "var(--dm-sub)" }}>{l}</button>
               ))}
             </div>
           </div>
@@ -1060,7 +1060,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       {/* 제작자가 만든 코인 시장 분석 앱 — 새 창(외부 브라우저)으로 연다 */}
       <a href="https://altseason-lab.vercel.app/" target="_blank" rel="noopener noreferrer"
         style={{ ...S.card, marginTop: 6, marginBottom: 10, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "var(--dm-text)" }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(108,142,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📡</div>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--dm-accent-soft, rgba(108,142,255,.15))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📡</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 900 }}>알트 시즌 레이더</div>
           <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", marginTop: 2 }}>알트코인 사이클·상대 강도 분석</div>

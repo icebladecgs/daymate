@@ -12,14 +12,14 @@ import { useUndo, putBack } from "../utils/useUndo.js";
 // 수험생 모드 화면 부품 (2026-11-01) — 오늘 탭 패널·D-day 창·공부 기록 창·설정 카드.
 // 계산은 utils/exam.js, 오답 노트는 WrongNotes.jsx.
 
-const BLUE = '#5B7CFA';
+const BLUE = 'var(--dm-accent, #5B7CFA)';
 const chip = (on) => ({
   padding: '7px 12px', borderRadius: 999, fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-  borderWidth: 1.5, borderStyle: 'solid', borderColor: on ? BLUE : 'var(--dm-border)', background: on ? 'rgba(91,124,250,.14)' : 'var(--dm-input)',
+  borderWidth: 1.5, borderStyle: 'solid', borderColor: on ? BLUE : 'var(--dm-border)', background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.14))' : 'var(--dm-input)',
   color: on ? BLUE : 'var(--dm-sub)', whiteSpace: 'nowrap',
 });
 const smallBtn = {
-  padding: '7px 12px', borderRadius: 10, border: `1px solid rgba(91,124,250,.4)`, background: 'rgba(91,124,250,.1)',
+  padding: '7px 12px', borderRadius: 10, border: `1px solid var(--dm-accent-line, rgba(91,124,250,.4))`, background: 'var(--dm-accent-soft, rgba(91,124,250,.1))',
   color: BLUE, fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
 };
 const xBtn = { background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 17, padding: '0 4px', flexShrink: 0 };
@@ -197,7 +197,7 @@ function StudySheet({ exam, plans, todayDs, todayData, startAdding, onAdd, onDel
           return (
             <div key={w.ds} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
               <span style={{ fontSize: 12, color: 'var(--dm-muted)', fontWeight: 700 }}>{m ? (m >= 60 ? `${Math.round(m / 6) / 10}h` : `${m}m`) : ''}</span>
-              <div style={{ width: '100%', maxWidth: 28, height: `${Math.max(m ? 4 : 2, (m / weekMax) * 70)}px`, borderRadius: 6, background: m ? (w.ds === todayDs ? BLUE : 'rgba(91,124,250,.45)') : 'var(--dm-border)' }} />
+              <div style={{ width: '100%', maxWidth: 28, height: `${Math.max(m ? 4 : 2, (m / weekMax) * 70)}px`, borderRadius: 6, background: m ? (w.ds === todayDs ? BLUE : 'var(--dm-accent-soft, rgba(91,124,250,.45))') : 'var(--dm-border)' }} />
               <span style={{ fontSize: 13, color: w.ds === todayDs ? BLUE : 'var(--dm-sub)', fontWeight: w.ds === todayDs ? 900 : 700 }}>{'일월화수목금토'[d.getDay()]}</span>
             </div>
           );
@@ -247,7 +247,7 @@ export function ExamSettingsCard({ exam, setExam }) {
             </div>
           </div>
           <div onClick={() => setExam(e => ({ ...e, on: !e.on }))} role="switch" aria-checked={on} aria-label="수험생 모드" style={{
-            width: 52, height: 28, borderRadius: 999, background: on ? "#6C8EFF" : "var(--dm-border)",
+            width: 52, height: 28, borderRadius: 999, background: on ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
             cursor: "pointer", position: "relative", flexShrink: 0,
           }}>
             <div style={{ position: "absolute", top: 4, left: on ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />

@@ -198,7 +198,7 @@ export default function HoldingsScanSheet({ holdings, usdKrwRate, onApply, onClo
                       </span>
                       {r.item.broker && <span style={{ fontSize: 11, color: "var(--dm-muted)", flexShrink: 0 }}>{r.item.broker}</span>}
                       <span style={{ flex: 1 }} />
-                      {r.status === "new" ? badge("새 종목", "#6C8EFF") : r.status === "same" ? badge("변동 없음", "var(--dm-muted)") : badge("바뀜", "#F59E0B")}
+                      {r.status === "new" ? badge("새 종목", "var(--dm-accent, #6C8EFF)") : r.status === "same" ? badge("변동 없음", "var(--dm-muted)") : badge("바뀜", "#F59E0B")}
                     </label>
                     {r.holding && (
                       <div style={{ fontSize: 11, color: "var(--dm-muted)", margin: "4px 0 0 26px" }}>
@@ -284,9 +284,9 @@ export default function HoldingsScanSheet({ holdings, usdKrwRate, onApply, onClo
                 <button key={a || "auto"} onClick={() => setApp(a)}
                   style={{
                     fontSize: 12, fontWeight: 800, padding: "5px 10px", borderRadius: 8, cursor: "pointer",
-                    border: `1px solid ${app === a ? "#6C8EFF" : "var(--dm-border)"}`,
-                    background: app === a ? "rgba(108,142,255,.14)" : "transparent",
-                    color: app === a ? "#6C8EFF" : "var(--dm-sub)",
+                    border: `1px solid ${app === a ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)"}`,
+                    background: app === a ? "var(--dm-accent-soft, rgba(108,142,255,.14))" : "transparent",
+                    color: app === a ? "var(--dm-accent, #6C8EFF)" : "var(--dm-sub)",
                   }}>{a || "자동"}</button>
               ))}
             </div>

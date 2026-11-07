@@ -200,7 +200,7 @@ export default function CommunityChat({ communityId, communityName, authUser, my
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 5, flexDirection: mine ? "row-reverse" : "row", maxWidth: "88%" }}>
                   <div onClick={(e) => { e.stopPropagation(); if (canDelete) setSelected(s => (s === m.id ? null : m.id)); }}
                     style={{ minWidth: 0, padding: m.photos?.length && !m.text ? 4 : "8px 12px", borderRadius: 14,
-                      background: mine ? "#6C8EFF" : "var(--dm-card)", color: mine ? "#fff" : "var(--dm-text)",
+                      background: mine ? "var(--dm-accent, #6C8EFF)" : "var(--dm-card)", color: mine ? "#fff" : "var(--dm-text)",
                       border: mine ? "none" : "1px solid var(--dm-border)", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word",
                       cursor: canDelete ? "pointer" : "default", outline: selected === m.id ? "2px solid #F87171" : "none" }}>
                     {m.text && <Linkify text={m.text} linkColor={mine ? "#fff" : undefined} />}
@@ -237,7 +237,7 @@ export default function CommunityChat({ communityId, communityName, authUser, my
           placeholder="메시지 입력"
           style={{ flex: 1, minWidth: 0, resize: "none", maxHeight: 120, minHeight: 42, boxSizing: "border-box", padding: "10px 12px", borderRadius: 12, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 15, lineHeight: 1.4, fontFamily: "inherit", outline: "none", fieldSizing: "content" }} />
         <button onClick={() => send()} disabled={sending || !text.trim()}
-          style={{ height: 42, padding: "0 16px", borderRadius: 12, border: "none", background: text.trim() ? "#6C8EFF" : "var(--dm-border)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer", flexShrink: 0 }}>보내기</button>
+          style={{ height: 42, padding: "0 16px", borderRadius: 12, border: "none", background: text.trim() ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer", flexShrink: 0 }}>보내기</button>
       </div>
       {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
     </div>,

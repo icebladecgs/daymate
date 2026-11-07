@@ -76,7 +76,7 @@ export default function MemoSettings({ onClose, inline = false }) {
           <div style={{ fontSize: 11, color: sub, marginTop: 2, lineHeight: 1.5 }}>Enter 이어쓰기 · Tab 들여쓰기 · Backspace · 번호 다시 매기기(단계마다 1. 가. 1) 가)) · 이 기기에만 적용</div>
         </div>
         <div onClick={() => { const v = !autoList; setAutoList(v); setMemoAutoList(v); }} role="switch" aria-checked={autoList} aria-label="목록 자동완성"
-          style={{ width: 46, height: 26, borderRadius: 999, background: autoList ? "#6C8EFF" : (inline ? "#ccc" : "var(--dm-border)"), cursor: "pointer", position: "relative", flexShrink: 0 }}>
+          style={{ width: 46, height: 26, borderRadius: 999, background: autoList ? "var(--dm-accent, #6C8EFF)" : (inline ? "#ccc" : "var(--dm-border)"), cursor: "pointer", position: "relative", flexShrink: 0 }}>
           <div style={{ position: "absolute", top: 3, left: autoList ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function MemoSettings({ onClose, inline = false }) {
           )}
           {desktop.openShortcutSettings ? (
             <button onClick={() => desktop.openShortcutSettings()}
-              style={{ marginTop: 10, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ marginTop: 10, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
               ⌨️ 단축키 바꾸기 (새 메모·메모 관리자 등 전체)
             </button>
           ) : (

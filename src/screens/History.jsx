@@ -151,27 +151,27 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       return {
         ...base,
         color: isPerfect ? "var(--dm-text)" : "var(--dm-muted)",
-        border: isToday ? "1.5px solid #6C8EFF" : "1px solid transparent",
+        border: isToday ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1px solid transparent",
       };
     }
 
     if (r >= 80) {
       return {
         ...base,
-        background: "rgba(75,111,255,.22)",
+        background: "var(--dm-accent-soft, rgba(75,111,255,.22))",
         color: "#DCE5FF",
         fontWeight: 900,
-        border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(108,142,255,.18)",
+        border: isToday ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1px solid var(--dm-accent-line, rgba(108,142,255,.18))",
       };
     }
 
     if (r > 0) {
       return {
         ...base,
-        background: "rgba(75,111,255,.10)",
+        background: "var(--dm-accent-soft, rgba(75,111,255,.10))",
         color: "#9CB3FF",
         fontWeight: 800,
-        border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(108,142,255,.12)",
+        border: isToday ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1px solid var(--dm-accent-line, rgba(108,142,255,.12))",
       };
     }
 
@@ -180,7 +180,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       background: "rgba(255,255,255,.03)",
       color: "var(--dm-sub)",
       fontWeight: 700,
-      border: isToday ? "1.5px solid #6C8EFF" : "1px solid rgba(255,255,255,.05)",
+      border: isToday ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1px solid rgba(255,255,255,.05)",
     };
   };
 
@@ -324,7 +324,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           setYearDraft(yearGoals.map((goal) => goal.title));
           setNewYearInput('');
           setEditingYearGoals(true);
-        }} style={{ fontSize: 11, fontWeight: 900, color: editingYearGoals ? '#4ADE80' : '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+        }} style={{ fontSize: 11, fontWeight: 900, color: editingYearGoals ? '#4ADE80' : 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {editingYearGoals ? '저장 ✓' : '편집'}
         </button>
       </div>
@@ -379,9 +379,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           {yearGoals.map((goal, index) => {
             const expanded = expandedYearGoalId === goal.id;
             return (
-              <div key={goal.id} style={{ borderRadius: 14, border: `1px solid ${expanded ? 'rgba(108,142,255,.28)' : 'var(--dm-border)'}`, background: expanded ? 'rgba(108,142,255,.05)' : 'rgba(255,255,255,.02)' }}>
+              <div key={goal.id} style={{ borderRadius: 14, border: `1px solid ${expanded ? 'var(--dm-accent-soft, rgba(108,142,255,.28))' : 'var(--dm-border)'}`, background: expanded ? 'var(--dm-accent-soft, rgba(108,142,255,.05))' : 'rgba(255,255,255,.02)' }}>
                 <button type="button" onClick={() => setExpandedYearGoalId(prev => prev === goal.id ? null : goal.id)} style={{ width: '100%', background: 'transparent', border: 'none', padding: '12px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 999, background: '#6C8EFF', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{index + 1}</div>
+                  <div style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--dm-accent, #6C8EFF)', color: '#fff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{index + 1}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{goal.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 3 }}>액션플랜 {(goal.actions || []).length}개</div>
@@ -588,7 +588,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         {legendOpen && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             {[
-              { color: 'rgba(75,111,255,0.75)', label: '캘린더' },
+              { color: 'var(--dm-accent-soft, rgba(75,111,255,0.75))', label: '캘린더' },
               { color: 'rgba(75,158,255,0.55)', label: '할일' },
               { color: 'rgba(252,211,77,0.75)', label: '중요' },
               { color: 'rgba(74,222,128,0.3)', label: '완료' },
@@ -599,7 +599,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               </div>
             ))}
             {[
-              { dot: '#6C8EFF', label: '메모' },
+              { dot: 'var(--dm-accent, #6C8EFF)', label: '메모' },
               { dot: '#A78BFA', label: '일기' },
             ].map(({ dot, label }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -612,7 +612,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완벽한 날</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 16, height: 3, borderRadius: 2, background: 'linear-gradient(to right, #4B6FFF, #4ADE80)' }} />
+              <div style={{ width: 16, height: 3, borderRadius: 2, background: 'linear-gradient(to right, var(--dm-accent, #4B6FFF), #4ADE80)' }} />
               <span style={{ fontSize: 10, color: 'var(--dm-muted)' }}>완료율</span>
             </div>
           </div>
@@ -644,7 +644,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const importedGcalIds = new Set((plans[ds]?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
-            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'rgba(75,111,255,0.75)' }));
+            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'var(--dm-accent-soft, rgba(75,111,255,0.75))' }));
             const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
             // 공휴일(utils/holidays.js) — 날짜 숫자를 빨갛게(일요일도), 이름은 칸 맨 위 일정 줄로
             const holiday = holidayName(ds);
@@ -704,12 +704,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 완료율 진행바 */}
                 {r !== null && r > 0 && (
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
-                    <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "#6C8EFF" : "#4B6FFF" }} />
+                    <div style={{ height: "100%", width: `${r}%`, background: r >= 100 ? "#4ADE80" : r >= 60 ? "var(--dm-accent, #6C8EFF)" : "var(--dm-accent, #4B6FFF)" }} />
                   </div>
                 )}
                 {/* 메모 점 */}
                 {hasMemo && (
-                  <span style={{ position: "absolute", top: 3, right: hasJournal ? 10 : 3, width: 5, height: 5, borderRadius: 999, background: "#6C8EFF" }} />
+                  <span style={{ position: "absolute", top: 3, right: hasJournal ? 10 : 3, width: 5, height: 5, borderRadius: 999, background: "var(--dm-accent, #6C8EFF)" }} />
                 )}
                 {/* 일기 점 */}
                 {hasJournal && (
@@ -744,7 +744,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 const on = marketCal.includes(m.id);
                 return (
                   <button key={m.id} onClick={() => toggle(m.id)} aria-pressed={on}
-                    style={{ padding: "6px 11px", borderRadius: 999, border: `1.5px solid ${on ? "#5B7CFA" : "var(--dm-border)"}`, background: on ? "rgba(91,124,250,.14)" : "var(--dm-input)", color: on ? "#5B7CFA" : "var(--dm-sub)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    style={{ padding: "6px 11px", borderRadius: 999, border: `1.5px solid ${on ? "var(--dm-accent, #5B7CFA)" : "var(--dm-border)"}`, background: on ? "var(--dm-accent-soft, rgba(91,124,250,.14))" : "var(--dm-input)", color: on ? "var(--dm-accent, #5B7CFA)" : "var(--dm-sub)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                     {m.label}
                   </button>
                 );
@@ -766,7 +766,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     const d = new Date(`${e.ds}T12:00:00`);
                     return (
                       <div key={`${e.ds}${e.market}${i}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: i ? "1px solid var(--dm-row)" : "none", opacity: past ? 0.45 : 1 }}>
-                        <span style={{ width: 78, flexShrink: 0, whiteSpace: "nowrap", fontSize: 14, fontWeight: 800, color: e.ds === today ? "#5B7CFA" : "var(--dm-text)" }}>{d.getMonth() + 1}/{d.getDate()} ({WD[d.getDay()]})</span>
+                        <span style={{ width: 78, flexShrink: 0, whiteSpace: "nowrap", fontSize: 14, fontWeight: 800, color: e.ds === today ? "var(--dm-accent, #5B7CFA)" : "var(--dm-text)" }}>{d.getMonth() + 1}/{d.getDate()} ({WD[d.getDay()]})</span>
                         {(() => { const m = MARKETS.find(x => x.id === e.market); return <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: m.color, border: `1px solid ${m.color}`, borderRadius: 6, padding: "1px 5px" }}>{m.tag}</span>; })()}
                         <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--dm-text)" }}>
                           {e.title}{e.time && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-sub)" }}> · {e.time}</span>}
@@ -897,7 +897,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               {tasks.length > 0 && (
                 <div style={{ height: 4, background: "var(--dm-row)", margin: '0 20px 0' }}>
                   <div style={{ height: "100%", transition: "width 0.3s",
-                    background: done === tasks.length ? "#4ADE80" : "#4B6FFF",
+                    background: done === tasks.length ? "#4ADE80" : "var(--dm-accent, #4B6FFF)",
                     width: `${Math.round(done / tasks.length * 100)}%`, borderRadius: 2 }} />
                 </div>
               )}
@@ -915,7 +915,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       {/* 체크박스 */}
                       <div onClick={() => togglePreviewTask(preview, t.id)}
                         style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
-                          background: t.done ? "#4B6FFF" : "transparent",
+                          background: t.done ? "var(--dm-accent, #4B6FFF)" : "transparent",
                           border: t.done ? "none" : "2px solid var(--dm-border2)",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           transition: "all 0.15s", cursor: 'pointer' }}>
@@ -926,14 +926,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                         textDecoration: t.done ? "line-through" : "none", flex: 1, minWidth: 0, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
                         {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
                         <span style={{ minWidth: 0 }}>{t.title}</span>
-                        {t.time && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
+                        {t.time && <span style={{ fontSize: 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, flexShrink: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
                         <TaskDetailBadge task={t} />
                       </div>
                       {/* 오늘 탭과 같이 "언젠가"(미완료만)와 ✕(확인 후 삭제)만 목록에 바로 노출 */}
                       {!t.done && setSomeday && (
                         <button
                           onClick={() => movePreviewTaskToSomeday(t)}
-                          style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                          style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                         >언젠가</button>
                       )}
                       <button
@@ -947,7 +947,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     <>
                       {timed.length > 0 && (
                         <>
-                          <div style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>⏰ 시간 일정</div>
+                          <div style={{ fontSize: 10, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>⏰ 시간 일정</div>
                           {timed.map((t, i) => renderTask(t, i, timed))}
                         </>
                       )}
@@ -967,7 +967,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 {/* 아직 가져오지 않은 구글 캘린더 일정 — 캘린더 셀 칩으로는 보이지만 수정은 안 되므로, 가져오기 눌러야 편집 가능해진다 */}
                 {previewGcalEvents.length > 0 && (
                   <div style={{ marginTop: tasks.length > 0 ? 10 : 0, marginBottom: 4 }}>
-                    <div style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>📅 구글 캘린더 일정 (가져오지 않음)</div>
+                    <div style={{ fontSize: 10, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, padding: '4px 0 2px', letterSpacing: 0.5 }}>📅 구글 캘린더 일정 (가져오지 않음)</div>
                     {previewGcalEvents.map(e => {
                       const timeStr = e.start?.dateTime
                         ? new Date(e.start.dateTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -975,13 +975,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       return (
                         <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
                           <span style={{ fontSize: 14, color: 'var(--dm-text)', flex: 1, lineHeight: 1.4, opacity: 0.85 }}>{e.summary || '(제목없음)'}</span>
-                          {timeStr && <span style={{ fontSize: 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{timeStr}</span>}
+                          {timeStr && <span style={{ fontSize: 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, flexShrink: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{timeStr}</span>}
                         </div>
                       );
                     })}
                     {onImportGcalEvents && (
                       <button onClick={importPreviewGcalEvents} disabled={gcalImporting}
-                        style={{ marginTop: 4, fontSize: 12, padding: '6px 12px', background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', borderRadius: 8, cursor: gcalImporting ? 'default' : 'pointer', color: '#6C8EFF', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
+                        style={{ marginTop: 4, fontSize: 12, padding: '6px 12px', background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 8, cursor: gcalImporting ? 'default' : 'pointer', color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
                         {gcalImporting ? '⏳ 가져오는 중...' : '📥 가져와서 수정 가능하게 하기'}
                       </button>
                     )}
@@ -996,14 +996,14 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     if (token) { fetchGcal(true); showToast('📅 구글 캘린더 연동 완료!'); }
                     else showToast('연동 실패');
                   }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12,
-                    background: 'linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))',
-                    border: '1.5px dashed rgba(108,142,255,.35)', cursor: 'pointer', marginBottom: 10 }}>
+                    background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.08)),var(--dm-accent-soft, rgba(108,142,255,.04)))',
+                    border: '1.5px dashed var(--dm-accent-soft, rgba(108,142,255,.35))', cursor: 'pointer', marginBottom: 10 }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>📅</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF' }}>구글 캘린더 연동하기</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)' }}>구글 캘린더 연동하기</div>
                       <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>연동하면 캘린더 일정이 자동으로 표시돼요</div>
                     </div>
-                    <span style={{ fontSize: 14, color: 'rgba(108,142,255,.6)' }}>›</span>
+                    <span style={{ fontSize: 14, color: 'var(--dm-accent-soft, rgba(108,142,255,.6))' }}>›</span>
                   </div>
                 )}
 
@@ -1018,7 +1018,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 12px' }}
                   />
                   <button onClick={addQuickTask}
-                    style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(108,142,255,.15)', border: '1.5px solid rgba(108,142,255,.3)', color: '#6C8EFF', fontWeight: 900, cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>
+                    style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))', color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>
                     추가
                   </button>
                 </div>
@@ -1053,7 +1053,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   닫기
                 </button>
                 <button onClick={() => { onOpenDate(preview); setPreview(null); }}
-                  style={{ flex: 2, padding: 13, borderRadius: 12, background: "linear-gradient(135deg,#4B6FFF,#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 15, boxShadow: "0 4px 16px rgba(75,111,255,.4)" }}>
+                  style={{ flex: 2, padding: 13, borderRadius: 12, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),#818cf8)", border: "none", color: "#fff", fontWeight: 900, cursor: "pointer", fontSize: 15, boxShadow: "0 4px 16px var(--dm-accent-soft, rgba(75,111,255,.4))" }}>
                   자세히보기 →
                 </button>
               </div>

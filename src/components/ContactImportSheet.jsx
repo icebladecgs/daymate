@@ -11,7 +11,7 @@ export function ContactPermissionGuide({ mode, onContinue, onClose }) {
   useBackClose(onClose);
   const step = (n, text) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
-      <span style={{ width: 22, height: 22, borderRadius: 999, background: '#6C8EFF', color: '#fff', fontSize: 12, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
+      <span style={{ width: 22, height: 22, borderRadius: 999, background: 'var(--dm-accent, #6C8EFF)', color: '#fff', fontSize: 12, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
       <span style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.55 }}>{text}</span>
     </div>
   );
@@ -130,7 +130,7 @@ export default function ContactImportSheet({ candidates, allTags = [], onImport,
             <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{deferredQuery ? `검색 결과 ${visible.length}명` : `전체 ${items.length}명`}</span>
             {selectable.length > 0 && (
               <button onClick={toggleAllVisible}
-                style={{ background: 'none', border: 'none', color: '#6C8EFF', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>
+                style={{ background: 'none', border: 'none', color: 'var(--dm-accent, #6C8EFF)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit' }}>
                 {allVisibleChecked ? '전체 해제' : (deferredQuery ? '검색 결과 전체 선택' : '전체 선택')}
               </button>
             )}

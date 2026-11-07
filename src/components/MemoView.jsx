@@ -6,7 +6,7 @@ import { openLink } from "../utils/links.js";
 // 더블클릭하면 편집으로 돌아간다(onEdit).
 export default function MemoView({ text, onToggle, onTag, onEdit, placeholder = "내용이 없어요" }) {
   const rows = parseMemoLines(text);
-  const accent = "#6C8EFF";
+  const accent = "var(--dm-accent, #6C8EFF)";
 
   const inline = (s) => parseInline(s).map((p, i) => {
     if (p.type === "bold") return <b key={i}>{p.value}</b>;
@@ -16,7 +16,7 @@ export default function MemoView({ text, onToggle, onTag, onEdit, placeholder = 
       const label = p.type === "wiki" ? `[[${p.value}]]` : `#${p.value}`;
       return (
         <button key={i} onClick={() => onTag?.(p.value)} title={`'${p.value}' 들어간 기록 보기`}
-          style={{ padding: "0 4px", margin: 0, border: "none", borderRadius: 4, background: "rgba(108,142,255,.12)", color: accent, font: "inherit", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "0 4px", margin: 0, border: "none", borderRadius: 4, background: "var(--dm-accent-soft, rgba(108,142,255,.12))", color: accent, font: "inherit", fontWeight: 700, cursor: "pointer" }}>
           {label}
         </button>
       );

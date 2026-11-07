@@ -145,7 +145,7 @@ const last30 = useMemo(() => {
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {(viewMonth !== nowMonth || viewYear !== nowYear) && (
             <button onClick={() => { setViewMonth(nowMonth); setViewYear(nowYear); setAiReview(null); }}
-              style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', borderColor: 'rgba(108,142,255,.4)' }}>
+              style={{ ...S.btnGhost, marginTop: 0, padding: '5px 10px', fontSize: NL() ? 13 : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', borderColor: 'var(--dm-accent-soft, rgba(108,142,255,.4))' }}>
               오늘
             </button>
           )}
@@ -156,7 +156,7 @@ const last30 = useMemo(() => {
 
       {/* 빈 상태: 기록이 거의 없는 신규 사용자 */}
       {Object.keys(plans || {}).length === 0 && (
-        <div style={{ margin: "0 16px 14px", borderRadius: 16, background: "linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))", border: "1.5px dashed rgba(108,142,255,.3)", padding: "24px 20px", textAlign: "center" }}>
+        <div style={{ margin: "0 16px 14px", borderRadius: 16, background: "linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.08)),var(--dm-accent-soft, rgba(108,142,255,.04)))", border: "1.5px dashed var(--dm-accent-soft, rgba(108,142,255,.3))", padding: "24px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
           <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 6 }}>아직 통계 데이터가 없어요</div>
           <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)", lineHeight: 1.8 }}>
@@ -219,7 +219,7 @@ const last30 = useMemo(() => {
               transition: "width 0.3s",
             }} />
           </div>
-          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: "#6C8EFF" }}>
+          <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>
             {perfectRate}% 완성도
           </div>
         </div>
@@ -234,7 +234,7 @@ const last30 = useMemo(() => {
               padding: NL() ? "12px 4px" : 12,
               background: "var(--dm-input)",
               borderRadius: 10,
-              border: m.month === viewMonth ? "2px solid #6C8EFF" : "1px solid var(--dm-border)",
+              border: m.month === viewMonth ? "2px solid var(--dm-accent, #6C8EFF)" : "1px solid var(--dm-border)",
             }}>
               <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: "var(--dm-sub)", marginBottom: 8, whiteSpace: "nowrap" }}>
                 {pad2(m.month + 1)}월
@@ -254,7 +254,7 @@ const last30 = useMemo(() => {
       <div style={{ ...S.card, margin: "0 0 10px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: monthlyReport.habitStats.length > 0 ? 14 : 0 }}>
           {[
-            { label: '기록한 날', value: `${monthlyReport.filledDaysCount}일`, color: '#6C8EFF' },
+            { label: '기록한 날', value: `${monthlyReport.filledDaysCount}일`, color: 'var(--dm-accent, #6C8EFF)' },
             { label: '완벽한 날', value: `${monthlyReport.perfectDaysCount}일`, color: '#4ADE80' },
             { label: '할일 완료율', value: `${monthlyReport.completionRate}%`, color: monthlyReport.completionRate >= 80 ? '#4ADE80' : monthlyReport.completionRate >= 50 ? '#FCD34D' : '#F87171' },
             { label: '최고 연속', value: `${monthlyReport.bestStreak}일`, color: '#FCD34D' },
@@ -311,23 +311,23 @@ const last30 = useMemo(() => {
                 setAiLoading(false);
               }
             }}
-            style={{ width: '100%', marginTop: 12, padding: '10px 0', background: 'linear-gradient(135deg,rgba(108,142,255,.15),rgba(167,139,250,.1))', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, cursor: aiLoading ? 'default' : 'pointer', fontSize: 13, fontWeight: 900, color: '#6C8EFF', opacity: aiLoading ? 0.6 : 1 }}>
+            style={{ width: '100%', marginTop: 12, padding: '10px 0', background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(108,142,255,.15)),rgba(167,139,250,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.4))', borderRadius: 10, cursor: aiLoading ? 'default' : 'pointer', fontSize: 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', opacity: aiLoading ? 0.6 : 1 }}>
             {aiLoading ? '🤔 코치가 분석 중...' : '🤖 AI 코치 리뷰 받기'}
           </button>
         )}
       </div>
 
       {aiReview && !aiReview.error && (
-        <div style={{ ...S.card, margin: '0 0 10px', background: 'linear-gradient(135deg,rgba(108,142,255,.06),rgba(167,139,250,.04))', border: '1.5px solid rgba(108,142,255,.25)' }}>
+        <div style={{ ...S.card, margin: '0 0 10px', background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(108,142,255,.06)),rgba(167,139,250,.04))', border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.25))' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <span style={{ fontSize: 28, lineHeight: 1 }}>🤖</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>AI 코치 월간 리뷰</div>
               <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{viewYear}년 {viewMonth + 1}월</div>
             </div>
-            <div style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 900, color: aiReview.grade === 'S' ? '#4ADE80' : aiReview.grade === 'A' ? '#6C8EFF' : aiReview.grade === 'B' ? '#FCD34D' : '#F87171' }}>{aiReview.grade}</div>
+            <div style={{ marginLeft: 'auto', fontSize: 28, fontWeight: 900, color: aiReview.grade === 'S' ? '#4ADE80' : aiReview.grade === 'A' ? 'var(--dm-accent, #6C8EFF)' : aiReview.grade === 'B' ? '#FCD34D' : '#F87171' }}>{aiReview.grade}</div>
           </div>
-          {aiReview.summary && <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, marginBottom: 12, padding: '10px 12px', background: 'rgba(108,142,255,.08)', borderRadius: 8 }}>{aiReview.summary}</div>}
+          {aiReview.summary && <div style={{ fontSize: 13, color: 'var(--dm-text)', lineHeight: 1.6, marginBottom: 12, padding: '10px 12px', background: 'var(--dm-accent-soft, rgba(108,142,255,.08))', borderRadius: 8 }}>{aiReview.summary}</div>}
           {aiReview.strengths?.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#4ADE80', marginBottom: 4 }}>✅ 잘한 점</div>
@@ -342,7 +342,7 @@ const last30 = useMemo(() => {
           )}
           {aiReview.nextMonth?.length > 0 && (
             <div>
-              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 4 }}>🎯 다음 달 집중할 것</div>
+              <div style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 4 }}>🎯 다음 달 집중할 것</div>
               {aiReview.nextMonth.map((s, i) => <div key={i} style={{ fontSize: NL() ? 14 : 12, color: 'var(--dm-sub)', paddingLeft: 8, marginBottom: 2 }}>• {s}</div>)}
             </div>
           )}
@@ -367,7 +367,7 @@ const last30 = useMemo(() => {
                   width: "100%", height: barH, borderRadius: 3,
                   background: color,
                   opacity: isSelected ? 1 : 0.85,
-                  border: isSelected ? "1.5px solid #6C8EFF" : "1.5px solid transparent",
+                  border: isSelected ? "1.5px solid var(--dm-accent, #6C8EFF)" : "1.5px solid transparent",
                   transition: "height 0.2s",
                 }} />
                 {/* 날짜 레이블: 매주 일요일 또는 1일 */}

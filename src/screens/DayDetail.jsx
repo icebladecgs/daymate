@@ -222,7 +222,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
             const token = await onGcalConnect();
             if (!token) { setToast('연동 실패'); return; }
             await importCalendarTasks(token, '연동 완료 · 가져올 일정 없음', '연동 완료 · ');
-          }} disabled={gcalImporting} style={{ fontSize: 12, padding: '3px 8px', background: 'rgba(75,111,255,.12)', border: '1px solid #4B6FFF', borderRadius: 6, cursor: gcalImporting ? 'default' : 'pointer', color: '#6C8EFF', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
+          }} disabled={gcalImporting} style={{ fontSize: 12, padding: '3px 8px', background: 'var(--dm-accent-soft, rgba(75,111,255,.12))', border: '1px solid var(--dm-accent, #4B6FFF)', borderRadius: 6, cursor: gcalImporting ? 'default' : 'pointer', color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, opacity: gcalImporting ? 0.5 : 1 }}>
             {gcalImporting ? '⏳ 연결 중...' : '📅 GCal 연동'}
           </button>
         ))}
@@ -237,13 +237,13 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           if (!token) { setToast('연동 실패'); return; }
           await importCalendarTasks(token, '연동 완료 · 가져올 일정 없음', '연동 완료 · ');
         }}
-          style={{ margin: '0 0 10px', padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,rgba(75,111,255,.08),rgba(108,142,255,.04))', border: '1.5px dashed rgba(108,142,255,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+          style={{ margin: '0 0 10px', padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(75,111,255,.08)),var(--dm-accent-soft, rgba(108,142,255,.04)))', border: '1.5px dashed var(--dm-accent-soft, rgba(108,142,255,.35))', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>📅</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: '#6C8EFF', marginBottom: 2 }}>구글 캘린더 연동하기</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 2 }}>구글 캘린더 연동하기</div>
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.4 }}>연동하면 캘린더 일정이 할일로 자동 추가돼요</div>
           </div>
-          <span style={{ fontSize: 16, color: 'rgba(108,142,255,.6)' }}>›</span>
+          <span style={{ fontSize: 16, color: 'var(--dm-accent-soft, rgba(108,142,255,.6))' }}>›</span>
         </div>
       )}
 
@@ -332,7 +332,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                       <button
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => { setActiveTaskId(t.id); setEditingTimeId(t.id); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'rgba(108,142,255,.15)' : 'var(--dm-input)', border: `1px solid ${t.time ? 'rgba(108,142,255,.4)' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? '#6C8EFF' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 3, background: t.time ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)', border: `1px solid ${t.time ? 'var(--dm-accent-soft, rgba(108,142,255,.4))' : 'var(--dm-border)'}`, borderRadius: 8, padding: '3px 8px', fontSize: 11, color: t.time ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         <span>⏰</span>
                         {t.time && <span style={{ fontWeight: 700 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
@@ -369,7 +369,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
                 className="someday-row">
                 <div style={{ flex: 1, fontSize: 14, color: 'var(--dm-sub)' }}>{item.title} <TaskDetailBadge task={item} /></div>
                 <button onClick={() => moveToTask(item.id)}
-                  style={{ background: 'rgba(75,111,255,.12)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 8, padding: '4px 10px', color: '#6C8EFF', fontSize: 12, fontWeight: 900, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  style={{ background: 'var(--dm-accent-soft, rgba(75,111,255,.12))', border: '1px solid var(--dm-accent-line, rgba(75,111,255,.3))', borderRadius: 8, padding: '4px 10px', color: 'var(--dm-accent, #6C8EFF)', fontSize: 12, fontWeight: 900, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   ↑ 할일로
                 </button>
               </div>
@@ -421,9 +421,9 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
       <div style={{
         ...S.card,
         transition: 'box-shadow 0.4s, border-color 0.4s',
-        border: highlightMemo ? '1px solid rgba(108,142,255,0.7)' : S.card.border,
+        border: highlightMemo ? '1px solid var(--dm-accent-line, rgba(108,142,255,0.7))' : S.card.border,
         boxShadow: highlightMemo
-          ? '0 0 0 3px rgba(108,142,255,0.35), 0 4px 24px rgba(0,0,0,0.25)'
+          ? '0 0 0 3px var(--dm-accent-soft, rgba(108,142,255,0.35)), 0 4px 24px rgba(0,0,0,0.25)'
           : S.card.boxShadow,
       }}>
         <MemoTimeline
@@ -469,7 +469,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
         {(() => {
           const len = (data.journal?.body || "").length;
           const pct = Math.min(100, Math.round(len / 1200 * 100));
-          const color = len >= 500 ? "#4ADE80" : len >= 150 ? "#4B6FFF" : "var(--dm-border2)";
+          const color = len >= 500 ? "#4ADE80" : len >= 150 ? "var(--dm-accent, #4B6FFF)" : "var(--dm-border2)";
           return (
             <div style={{ marginTop: 8 }}>
               <div style={{ height: 3, background: "var(--dm-row)", borderRadius: 2, overflow: "hidden", marginBottom: 4 }}>

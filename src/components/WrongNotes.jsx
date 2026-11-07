@@ -14,10 +14,10 @@ import { useBackClose } from "../utils/useBackClose.js";
 // 다시 풀 날은 utils/exam.js(1·3·7·21일), 4번 연속 맞으면 졸업. 저장은 firebase.js wrongNotes.
 // 앱 위에 덮는 화면이라 알림(Toast)을 따로 그린다 (CLAUDE.md 15장).
 
-const BLUE = '#5B7CFA';
+const BLUE = 'var(--dm-accent, #5B7CFA)';
 const chip = (on) => ({
   padding: '7px 12px', borderRadius: 999, fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-  borderWidth: 1.5, borderStyle: 'solid', borderColor: on ? BLUE : 'var(--dm-border)', background: on ? 'rgba(91,124,250,.14)' : 'var(--dm-input)',
+  borderWidth: 1.5, borderStyle: 'solid', borderColor: on ? BLUE : 'var(--dm-border)', background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.14))' : 'var(--dm-input)',
   color: on ? BLUE : 'var(--dm-sub)', whiteSpace: 'nowrap',
 });
 const newId = () => `wn_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

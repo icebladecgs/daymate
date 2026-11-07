@@ -273,7 +273,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
             disabled={drive.busy}
             style={{
               flex: 1, minWidth: 0, padding: '12px 6px', borderRadius: 12, background: 'var(--dm-input)',
-              border: '1.5px dashed var(--dm-border)', color: drive.busy ? '#6C8EFF' : newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
+              border: '1.5px dashed var(--dm-border)', color: drive.busy ? 'var(--dm-accent, #6C8EFF)' : newLook ? 'var(--dm-sub)' : 'var(--dm-muted)', fontSize: newLook ? 15 : 13, fontWeight: 700,
               cursor: drive.busy ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}
           >{drive.busy ? drive.label : '📁 구글 드라이브'}</button>
@@ -352,7 +352,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
               <button
                 onClick={confirmNewTag}
                 style={{
-                  background: 'rgba(108,142,255,0.2)', border: '1px solid rgba(108,142,255,0.4)',
+                  background: 'var(--dm-accent-soft, rgba(108,142,255,0.2))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,0.4))',
                   borderRadius: 999, padding: '5px 11px', fontSize: 12, color: '#b8c3ff',
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
@@ -379,8 +379,8 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
                 key={name}
                 onClick={() => handleInsertTag(name)}
                 style={{
-                  background: 'rgba(108,142,255,0.13)', border: '1px solid rgba(108,142,255,0.28)',
-                  borderRadius: 999, padding: newLook ? '7px 13px' : '5px 11px', fontSize: newLook ? 14 : 12, color: newLook ? '#5B7CFA' : '#b8c3ff',
+                  background: 'var(--dm-accent-soft, rgba(108,142,255,0.13))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,0.28))',
+                  borderRadius: 999, padding: newLook ? '7px 13px' : '5px 11px', fontSize: newLook ? 14 : 12, color: newLook ? 'var(--dm-accent, #5B7CFA)' : '#b8c3ff',
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >#{name}</button>

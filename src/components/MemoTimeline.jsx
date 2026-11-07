@@ -107,7 +107,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
         <button onClick={() => onToggleStar(item.id, !item.starred)} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: item.starred ? '#FBBF24' : '#888', cursor: 'pointer', fontSize: 16, padding: '4px 4px', flexShrink: 0, lineHeight: 1, ...rowBtn() }}>{item.starred ? '★' : '☆'}</button>
       )}
       {isLong && (
-        <button onClick={() => setMode('expanded')} aria-label="펼쳐 보기" style={{ background: 'none', border: 'none', color: '#6C8EFF', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0, ...rowBtn() }}>∨</button>
+        <button onClick={() => setMode('expanded')} aria-label="펼쳐 보기" style={{ background: 'none', border: 'none', color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0, ...rowBtn() }}>∨</button>
       )}
       <button onClick={() => onDelete(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1, ...rowBtn() }}>✕</button>
     </div>
@@ -158,7 +158,7 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
       <div ref={listRef}>
         {memos.map(memo => (
           <div key={memo.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", ...(NL() ? { padding: "2px 0", borderBottom: "1px solid var(--dm-row)" } : { marginBottom: 10 }) }}>
-            <div style={{ fontSize: NL() ? 13 : 11, color: "#6C8EFF", fontWeight: 900, paddingTop: 9, width: NL() ? 44 : 34, flexShrink: 0 }}>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-accent, #6C8EFF)", fontWeight: 900, paddingTop: 9, width: NL() ? 44 : 34, flexShrink: 0 }}>
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -181,8 +181,8 @@ export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, pl
         <button
           onClick={handleAdd}
           style={{
-            background: "rgba(75,111,255,0.15)", border: "1px solid rgba(75,111,255,0.3)",
-            color: "#6C8EFF", borderRadius: 10, padding: "8px 14px", fontSize: 18,
+            background: "var(--dm-accent-soft, rgba(75,111,255,0.15))", border: "1px solid var(--dm-accent-line, rgba(75,111,255,0.3))",
+            color: "var(--dm-accent, #6C8EFF)", borderRadius: 10, padding: "8px 14px", fontSize: 18,
             fontWeight: 900, cursor: "pointer", flexShrink: 0, fontFamily: "inherit",
           }}
         >+</button>

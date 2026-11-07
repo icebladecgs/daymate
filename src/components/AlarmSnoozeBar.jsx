@@ -5,9 +5,9 @@ import { snoozeOptions } from "../utils/alarms.js";
 export default function AlarmSnoozeBar({ items, workHours, onSnooze, onClose }) {
   if (!items.length) return null;
   const item = items[0];
-  const btn = { height: 34, padding: "0 10px", marginTop: 0, borderRadius: 9, border: "1px solid rgba(91,124,250,.45)", background: "rgba(91,124,250,.12)", color: "#5B7CFA", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+  const btn = { height: 34, padding: "0 10px", marginTop: 0, borderRadius: 9, border: "1px solid var(--dm-accent-line, rgba(91,124,250,.45))", background: "var(--dm-accent-soft, rgba(91,124,250,.12))", color: "var(--dm-accent, #5B7CFA)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
   return createPortal(
-    <div role="status" style={{ position: "fixed", top: 10, left: "50%", transform: "translateX(-50%)", zIndex: 960, width: "calc(100% - 24px)", maxWidth: 406, boxSizing: "border-box", padding: "10px 12px", borderRadius: 14, background: "var(--dm-bg)", border: "1.5px solid rgba(91,124,250,.55)", boxShadow: "0 8px 28px rgba(0,0,0,.28)" }}>
+    <div role="status" style={{ position: "fixed", top: 10, left: "50%", transform: "translateX(-50%)", zIndex: 960, width: "calc(100% - 24px)", maxWidth: 406, boxSizing: "border-box", padding: "10px 12px", borderRadius: 14, background: "var(--dm-bg)", border: "1.5px solid var(--dm-accent-line, rgba(91,124,250,.55))", boxShadow: "0 8px 28px rgba(0,0,0,.28)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>⏰ {item.body}</span>
         {items.length > 1 && <span style={{ flexShrink: 0, fontSize: 13, color: "var(--dm-muted)" }}>외 {items.length - 1}개</span>}

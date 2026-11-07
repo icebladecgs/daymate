@@ -115,7 +115,7 @@ export default function MemoLockSheet({ request, plans, cfg, onSaveCfg, onUpdate
             <input type="password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} placeholder="비밀번호 (4자 이상)" style={input} autoFocus />
             <input type="password" value={pw2} onChange={e => { setPw2(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && setup()} placeholder="비밀번호 확인" style={input} />
             {err && <div style={{ fontSize: 12, color: "#F87171", marginBottom: 8 }}>{err}</div>}
-            <button onClick={setup} style={btn("#6C8EFF", "#fff")}>비밀번호 만들기</button>
+            <button onClick={setup} style={btn("var(--dm-accent, #6C8EFF)", "#fff")}>비밀번호 만들기</button>
           </>
         )}
 
@@ -124,7 +124,7 @@ export default function MemoLockSheet({ request, plans, cfg, onSaveCfg, onUpdate
             <div style={{ fontSize: 13, color: "var(--dm-sub)", marginBottom: 10 }}>메모 잠금 비밀번호를 넣어 주세요. (5분 동안 다시 묻지 않아요)</div>
             <input type="password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && unlock()} placeholder="비밀번호" style={input} autoFocus />
             {err && <div style={{ fontSize: 12, color: "#F87171", marginBottom: 8 }}>{err}</div>}
-            <button onClick={unlock} style={btn("#6C8EFF", "#fff")}>확인</button>
+            <button onClick={unlock} style={btn("var(--dm-accent, #6C8EFF)", "#fff")}>확인</button>
           </>
         )}
 
@@ -146,7 +146,7 @@ export default function MemoLockSheet({ request, plans, cfg, onSaveCfg, onUpdate
             {err && <div style={{ fontSize: 12, color: "#F87171", marginBottom: 8 }}>{err}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={removeLock} style={btn("var(--dm-input)", "var(--dm-sub)")}>🔓 잠금 풀기</button>
-              <button onClick={saveLocked} style={btn("#6C8EFF", "#fff")}>🔒 잠근 채 저장</button>
+              <button onClick={saveLocked} style={btn("var(--dm-accent, #6C8EFF)", "#fff")}>🔒 잠근 채 저장</button>
             </div>
             <button onClick={() => { lockNow(); onClose(); }} style={{ marginTop: 10, background: "none", border: "none", color: "var(--dm-muted)", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
               지금 바로 잠그기 (5분 기다리지 않고 다시 비밀번호 묻기)

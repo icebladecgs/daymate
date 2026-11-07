@@ -37,7 +37,7 @@ export default function LinkOverlay({ taRef, text }) {
   let at = 0;
   ranges.forEach((r, i) => {
     parts.push(text.slice(at, r.start));
-    parts.push(<mark key={i} style={{ color: "transparent", background: "rgba(108,142,255,.16)", textDecoration: "underline", textDecorationColor: "#6C8EFF", textUnderlineOffset: 2, borderRadius: 2 }}>{text.slice(r.start, r.end)}</mark>);
+    parts.push(<mark key={i} style={{ color: "transparent", background: "var(--dm-accent-soft, rgba(108,142,255,.16))", textDecoration: "underline", textDecorationColor: "var(--dm-accent, #6C8EFF)", textUnderlineOffset: 2, borderRadius: 2 }}>{text.slice(r.start, r.end)}</mark>);
     at = r.end;
   });
   parts.push(text.slice(at) + "\n");

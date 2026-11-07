@@ -15,7 +15,7 @@ export default function UpdateBanner({ mode, version, onApply, onDismiss }) {
       background: isReady
         ? 'linear-gradient(135deg, rgba(18,30,49,.97), rgba(23,39,61,.95))'
         : 'linear-gradient(135deg, rgba(17,28,46,.95), rgba(24,40,64,.93))',
-      border: `1px solid ${isReady ? 'rgba(108,142,255,.38)' : 'rgba(74,222,128,.32)'}`,
+      border: `1px solid ${isReady ? 'var(--dm-accent-soft, rgba(108,142,255,.38))' : 'rgba(74,222,128,.32)'}`,
       borderRadius: 14,
       padding: '10px 12px',
       boxShadow: '0 14px 28px rgba(0,0,0,.28)',
@@ -34,8 +34,8 @@ export default function UpdateBanner({ mode, version, onApply, onDismiss }) {
         </div>
         {isReady && (
           <button onClick={onApply} style={{
-            background: 'rgba(108,142,255,.18)',
-            border: '1px solid rgba(108,142,255,.32)',
+            background: 'var(--dm-accent-soft, rgba(108,142,255,.18))',
+            border: '1px solid var(--dm-accent-line, rgba(108,142,255,.32))',
             borderRadius: 999,
             color: '#D7E2FF',
             fontSize: 10,

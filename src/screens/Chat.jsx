@@ -148,7 +148,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
         {messages.map((m, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
             {m.role === 'assistant' && (
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2 }}>
                 ✦
               </div>
             )}
@@ -156,7 +156,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
               maxWidth: '75%',
               padding: '10px 14px',
               borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              background: m.role === 'user' ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-card)',
+              background: m.role === 'user' ? 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))' : 'var(--dm-card)',
               color: m.role === 'user' ? '#fff' : 'var(--dm-text)',
               fontSize: 14,
               lineHeight: 1.6,
@@ -170,7 +170,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
         ))}
         {loading && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>✦</div>
             <div style={{ padding: '10px 14px', borderRadius: '18px 18px 18px 4px', background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', fontSize: 14, color: 'var(--dm-muted)' }}>
               ···
             </div>
@@ -205,7 +205,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
           disabled={!input.trim() || loading}
           style={{
             width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, alignSelf: 'flex-end',
-            background: input.trim() && !loading ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
+            background: input.trim() && !loading ? 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))' : 'var(--dm-input)',
             color: input.trim() && !loading ? '#fff' : 'var(--dm-muted)',
             fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}

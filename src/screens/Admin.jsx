@@ -20,8 +20,8 @@ function LevelPill({ levelInfo, score = 0, compact = false }) {
       display: 'inline-flex', alignItems: 'center',
       gap: compact ? 4 : 6, padding: compact ? '3px 8px' : '5px 10px',
       borderRadius: 999,
-      background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
-      border: '1px solid rgba(108,142,255,.22)',
+      background: 'linear-gradient(135deg, var(--dm-accent-soft, rgba(108,142,255,.16)), var(--dm-accent-soft, rgba(75,111,255,.08)))',
+      border: '1px solid var(--dm-accent-line, rgba(108,142,255,.22))',
       color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
       fontSize: compact ? 10 : 11, fontWeight: compact ? 800 : 900, whiteSpace: 'nowrap',
     }}>
@@ -209,7 +209,7 @@ export default function Admin({ authUser, onBack }) {
   const totalDays = Object.values(daysMap).reduce((a, b) => (typeof b === "number" ? a + b : a), 0);
 
   const statCards = [
-    { label: "전체 유저", value: status === "loading" ? "..." : totalUsers, color: "#6C8EFF" },
+    { label: "전체 유저", value: status === "loading" ? "..." : totalUsers, color: "var(--dm-accent, #6C8EFF)" },
     { label: "오늘 접속", value: status === "loading" ? "..." : activeToday, color: "#4ADE80" },
     { label: "7일 활성", value: status === "loading" ? "..." : activeWeek, color: "#FBBF24" },
     { label: "신규 (7일)", value: status === "loading" ? "..." : newThisWeek, color: "#F472B6" },
@@ -258,7 +258,7 @@ export default function Admin({ authUser, onBack }) {
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   flex: '1 1 30%', padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
                   border: 'none',
-                  background: activeTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
+                  background: activeTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-input)',
                   color: activeTab === t.key ? '#fff' : 'var(--dm-sub)',
                   position: 'relative',
                 }}>
@@ -283,7 +283,7 @@ export default function Admin({ authUser, onBack }) {
                 <button key={key} onClick={() => setRankTab(key)} style={{
                   flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer',
                   border: 'none',
-                  background: rankTab === key ? 'linear-gradient(135deg,#4B6FFF,#6C8EFF)' : 'var(--dm-input)',
+                  background: rankTab === key ? 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))' : 'var(--dm-input)',
                   color: rankTab === key ? '#fff' : 'var(--dm-sub)',
                 }}>{label}</button>
               ))}
@@ -368,7 +368,7 @@ export default function Admin({ authUser, onBack }) {
                   setCommLoading(false);
                   alert(failed ? `${legacy.length - failed}개 옮김, ${failed}개 실패` : `${legacy.length}개 모두 옮겼어요`);
                 }}
-                style={{ background: 'rgba(91,124,250,.12)', border: '1px solid rgba(91,124,250,.4)', borderRadius: 10, color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', padding: '10px 12px' }}>
+                style={{ background: 'var(--dm-accent-soft, rgba(91,124,250,.12))', border: '1px solid var(--dm-accent-line, rgba(91,124,250,.4))', borderRadius: 10, color: 'var(--dm-accent, #5B7CFA)', fontSize: 14, fontWeight: 800, cursor: 'pointer', padding: '10px 12px' }}>
                 🔐 비밀번호·초대 코드 옮기기 ({communities.filter(isLegacyCommunity).length}개 남음)
               </button>
             )}
@@ -379,7 +379,7 @@ export default function Admin({ authUser, onBack }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                     <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{c.name}</span>
-                    {c.isPublic && <span style={{ fontSize: 9, fontWeight: 900, color: '#6C8EFF', background: 'rgba(75,111,255,.12)', border: '1px solid rgba(75,111,255,.3)', borderRadius: 4, padding: '1px 5px' }}>공개</span>}
+                    {c.isPublic && <span style={{ fontSize: 9, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'var(--dm-accent-soft, rgba(75,111,255,.12))', border: '1px solid var(--dm-accent-line, rgba(75,111,255,.3))', borderRadius: 4, padding: '1px 5px' }}>공개</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--dm-muted)' }}>멤버 {c.memberCount || 0}명 · ID: {c.id.slice(0, 8)}...</div>
                 </div>
@@ -471,8 +471,8 @@ export default function Admin({ authUser, onBack }) {
                     onDone={() => markUnlocked(s.id)} />
                 )}
                 {s.adminReply && (
-                  <div style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.3)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', marginBottom: 3 }}>관리자 답변</div>
+                  <div style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.3))', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', marginBottom: 3 }}>관리자 답변</div>
                     <div style={{ fontSize: 12, color: 'var(--dm-text)', lineHeight: 1.6 }}>{s.adminReply}</div>
                   </div>
                 )}
@@ -492,7 +492,7 @@ export default function Admin({ authUser, onBack }) {
                         await replySuggestion(s.id, reply);
                         setSuggestions(prev => prev.map(x => x.id === s.id ? { ...x, adminReply: reply, status: 'answered' } : x));
                         setReplyingId(null);
-                      }} style={{ ...S.btn, flex: 1, marginTop: 0, background: 'linear-gradient(135deg,#4B6FFF,#6C8EFF)', fontSize: 13 }}>
+                      }} style={{ ...S.btn, flex: 1, marginTop: 0, background: 'linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))', fontSize: 13 }}>
                         답변 저장
                       </button>
                       <button onClick={() => setReplyingId(null)} style={{ ...S.btnGhost, flex: 1, marginTop: 0, fontSize: 13 }}>취소</button>

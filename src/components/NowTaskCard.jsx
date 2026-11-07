@@ -14,7 +14,7 @@ export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen, onFocus }
     return (
       <div onClick={() => onOpen(next.task.id)} style={{ margin: "0 16px 10px", padding: "12px 14px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-border)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
         <span style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-muted)", flexShrink: 0 }}>다음</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: "#6C8EFF", flexShrink: 0 }}>{fmt(next.start)}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-accent, #6C8EFF)", flexShrink: 0 }}>{fmt(next.start)}</span>
         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{next.task.title}</span>
         <span style={{ fontSize: 12, color: "var(--dm-muted)", flexShrink: 0 }}>{untilText(next.start - nowMin)}</span>
       </div>
@@ -26,12 +26,12 @@ export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen, onFocus }
   const progress = Math.min(1, (nowMin - current.start) / total);
   const R = 34, C = 2 * Math.PI * R;
   return (
-    <div style={{ margin: "0 16px 10px", padding: 16, borderRadius: 18, background: "linear-gradient(135deg, rgba(108,142,255,.18), rgba(108,142,255,.06))", border: "1.5px solid rgba(108,142,255,.35)" }}>
+    <div style={{ margin: "0 16px 10px", padding: 16, borderRadius: 18, background: "linear-gradient(135deg, var(--dm-accent-soft, rgba(108,142,255,.18)), var(--dm-accent-soft, rgba(108,142,255,.06)))", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         {/* 남은 시간 원 — 시간이 지날수록 채워진다 */}
         <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }}>
           <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="42" cy="42" r={R} fill="none" stroke="rgba(108,142,255,.18)" strokeWidth="7" />
+            <circle cx="42" cy="42" r={R} fill="none" stroke="var(--dm-accent-soft, rgba(108,142,255,.18))" strokeWidth="7" />
             <circle cx="42" cy="42" r={R} fill="none" stroke="#6C8EFF" strokeWidth="7" strokeLinecap="round"
               strokeDasharray={C} strokeDashoffset={C * (1 - progress)} />
           </svg>
@@ -41,14 +41,14 @@ export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen, onFocus }
           </div>
         </div>
         <div onClick={() => onOpen(current.task.id)} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#6C8EFF", letterSpacing: "0.04em" }}>● 지금 할 일</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)", letterSpacing: "0.04em" }}>● 지금 할 일</div>
           <div style={{ fontSize: 19, fontWeight: 900, color: "var(--dm-text)", lineHeight: 1.3, marginTop: 2, wordBreak: "keep-all", overflowWrap: "anywhere" }}>{current.task.title}</div>
           <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 3 }}>{fmt(current.start)} ~ {fmt(current.end)}</div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
         <button onClick={() => onToggle(current.task.id)}
-          style={{ flex: 1, height: 44, padding: 0, borderRadius: 12, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>✓ 완료</button>
+          style={{ flex: 1, height: 44, padding: 0, borderRadius: 12, border: "none", background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>✓ 완료</button>
         {onFocus && (
           <button onClick={() => onFocus(current.task)}
             style={{ flex: 1, height: 44, padding: 0, borderRadius: 12, border: "1.5px solid rgba(167,139,250,.55)", background: "rgba(167,139,250,.14)", color: "#A78BFA", fontSize: 15, fontWeight: 900, cursor: "pointer" }}>▶ 집중</button>
@@ -56,7 +56,7 @@ export default function NowTaskCard({ tasks, nowMin, onToggle, onOpen, onFocus }
       </div>
       {next && (
         <div style={{ marginTop: 10, fontSize: 12, color: "var(--dm-sub)", display: "flex", gap: 6, minWidth: 0 }}>
-          <span style={{ flexShrink: 0 }}>다음 <b style={{ color: "#6C8EFF" }}>{fmt(next.start)}</b></span>
+          <span style={{ flexShrink: 0 }}>다음 <b style={{ color: "var(--dm-accent, #6C8EFF)" }}>{fmt(next.start)}</b></span>
           <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--dm-text)", fontWeight: 700 }}>{next.task.title}</span>
         </div>
       )}

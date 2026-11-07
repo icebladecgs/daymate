@@ -47,8 +47,8 @@ function LevelChip({ levelInfo, score = 0, compact = false }) {
       gap: compact ? 4 : 6,
       padding: compact ? '3px 8px' : '5px 10px',
       borderRadius: 999,
-      background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
-      border: '1px solid rgba(108,142,255,.22)',
+      background: 'linear-gradient(135deg, var(--dm-accent-soft, rgba(108,142,255,.16)), var(--dm-accent-soft, rgba(75,111,255,.08)))',
+      border: '1px solid var(--dm-accent-line, rgba(108,142,255,.22))',
       color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
       fontSize: NL() ? UI.sub : (compact ? 10 : 11),
       fontWeight: compact ? 800 : 900,
@@ -157,7 +157,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
           {[{ key: 'my', label: `내 챌린지 ${activeMyChallenges.length}` }, { key: 'explore', label: '탐색' }, { key: 'archive', label: `보관함 ${archivedChallenges.length}` }].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
               flex: 1, padding: '8px 0', borderRadius: 10, fontSize: NL() ? 15 : 13, fontWeight: 800, cursor: 'pointer', border: 'none',
-              background: tab === t.key ? '#6C8EFF' : 'var(--dm-input)',
+              background: tab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-input)',
               color: tab === t.key ? '#fff' : 'var(--dm-sub)',
             }}>{t.label}</button>
           ))}
@@ -484,9 +484,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                       updateMemberLinkedHabit(c.id, authUser.uid, h.id).catch(() => {});
                     }} style={{
                       padding: '5px 10px', borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer',
-                      border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
-                      background: selected ? 'rgba(108,142,255,.15)' : 'var(--dm-input)',
-                      color: selected ? '#6C8EFF' : 'var(--dm-muted)',
+                      border: selected ? '1.5px solid var(--dm-accent, #6C8EFF)' : '1.5px solid var(--dm-border)',
+                      background: selected ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
+                      color: selected ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
                     }}>{h.icon || '📌'} {h.name || h.title}</button>
                   );
                 })}
@@ -511,7 +511,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
         {[{ key: 'feed', label: `인증 피드 (오늘 ${todayCerts}명)` }, { key: 'members', label: `전체 참여자 ${members.length}명` }].map(t => (
           <button className={NL() ? 'dm-hit' : undefined} key={t.key} onClick={() => setDetailTab(t.key)} style={{
             flex: 1, padding: '7px 0', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', border: 'none',
-            background: detailTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
+            background: detailTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-input)',
             color: detailTab === t.key ? '#fff' : 'var(--dm-sub)',
           }}>{t.label}</button>
         ))}
@@ -530,7 +530,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
             <div key={cert.id} style={{ background: 'var(--dm-card)', border: '1.5px solid var(--dm-border)', borderRadius: 14, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: cert.text && cert.text !== '✓' ? 6 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 15 : 13, fontWeight: 900, color: '#6C8EFF' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 15 : 13, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)' }}>
                     {cert.nickname?.[0] || '?'}
                   </div>
                   <div>
@@ -541,7 +541,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
                       <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
-                      <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
+                      <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-accent, #6C8EFF)' }}>{certScore.toLocaleString()} XP</span>
                     </div>
                   </div>
                 </div>
@@ -581,31 +581,31 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
             </div>
           )}
           {myMemberRank > 0 && (
-            <div style={{ background: 'linear-gradient(135deg,rgba(108,142,255,.14),rgba(108,142,255,.06))', border: '1px solid rgba(108,142,255,.25)', borderRadius: 12, padding: '10px 12px', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ background: 'linear-gradient(135deg,var(--dm-accent-soft, rgba(108,142,255,.14)),var(--dm-accent-soft, rgba(108,142,255,.06)))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 12, padding: '10px 12px', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
                 <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 3 }}>내 현재 위치</div>
                 <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-sub)' }}>지금 {myMemberRank}위예요. 순위는 인증 횟수가 먼저 반영되고, 이후 XP와 연속 인증이 비교됩니다.</div>
               </div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>#{myMemberRank}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0 }}>#{myMemberRank}</div>
             </div>
           )}
           {rankedMembers.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--dm-muted)', padding: 32, fontSize: NL() ? 16 : 14 }}>아직 참여자가 없어요.</div>
           ) : rankedMembers.map((m, i) => (
-            <div key={m.uid} style={{ background: 'var(--dm-card)', border: m.uid === authUser.uid ? '1.5px solid rgba(108,142,255,.35)' : '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, boxShadow: i < 3 ? '0 8px 22px rgba(15,23,42,.04)' : 'none' }}>
+            <div key={m.uid} style={{ background: 'var(--dm-card)', border: m.uid === authUser.uid ? '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))' : '1.5px solid var(--dm-border)', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, boxShadow: i < 3 ? '0 8px 22px rgba(15,23,42,.04)' : 'none' }}>
               <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 900, color: i < 3 ? rankAccent[i] : 'var(--dm-muted)', width: 20, textAlign: 'center', paddingTop: 6 }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 16 : 14, fontWeight: 900, color: '#6C8EFF', flexShrink: 0 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#4B6FFF22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: NL() ? 16 : 14, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0 }}>
                 {m.nickname?.[0] || '?'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                   <span style={{ fontSize: NL() ? 15 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{m.nickname}</span>
-                  {m.uid === authUser.uid && <span style={{ fontSize: NL() ? UI.sub : 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
+                  {m.uid === authUser.uid && <span style={{ fontSize: NL() ? UI.sub : 10, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.24))', borderRadius: 999, padding: '2px 7px' }}>나</span>}
                   <LevelChip levelInfo={m.levelInfo} score={m.totalScore} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-sub)', background: 'var(--dm-input)', borderRadius: 999, padding: '4px 8px' }}>인증 {m.totalCerts}회</span>
-                  <span style={{ fontSize: NL() ? 13 : 11, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.18)', borderRadius: 999, padding: '4px 8px' }}>누적 {m.totalScore.toLocaleString()} XP</span>
+                  <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-accent, #6C8EFF)', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.18))', borderRadius: 999, padding: '4px 8px' }}>누적 {m.totalScore.toLocaleString()} XP</span>
                   <span style={{ fontSize: NL() ? 13 : 11, color: '#FBBF24', background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.18)', borderRadius: 999, padding: '4px 8px' }}>🔥 연속 {m.streak || 0}일</span>
                 </div>
               </div>
@@ -683,7 +683,7 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
             {[{ key: 'check', label: '✓ 체크만' }, { key: 'text', label: '✏️ 한 줄 텍스트' }].map(t => (
               <button key={t.key} onClick={() => setCertType(t.key)} style={{
                 flex: 1, padding: '10px 0', borderRadius: 10, fontSize: NL() ? 15 : 13, fontWeight: 700, cursor: 'pointer', border: 'none',
-                background: certType === t.key ? '#6C8EFF' : 'var(--dm-input)',
+                background: certType === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-input)',
                 color: certType === t.key ? '#fff' : 'var(--dm-sub)',
               }}>{t.label}</button>
             ))}
@@ -706,9 +706,9 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
                 return (
                   <button key={h.id} onClick={() => setLinkedHabitId(h.id)} style={{
                     padding: '5px 10px', borderRadius: 8, fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer',
-                    border: selected ? '1.5px solid #6C8EFF' : '1.5px solid var(--dm-border)',
-                    background: selected ? 'rgba(108,142,255,.2)' : 'var(--dm-card)',
-                    color: selected ? '#6C8EFF' : 'var(--dm-text)',
+                    border: selected ? '1.5px solid var(--dm-accent, #6C8EFF)' : '1.5px solid var(--dm-border)',
+                    background: selected ? 'var(--dm-accent-soft, rgba(108,142,255,.2))' : 'var(--dm-card)',
+                    color: selected ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-text)',
                   }}>{h.icon || '📌'} {h.name || h.title}</button>
                 );
               })}
@@ -721,7 +721,7 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
             <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)' }}>공개 챌린지</div>
             <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>누구나 탐색에서 찾아 참여 가능</div>
           </div>
-          <div onClick={() => setIsPublic(p => !p)} style={{ width: 44, height: 24, borderRadius: 999, background: isPublic ? '#6C8EFF' : 'var(--dm-input)', cursor: 'pointer', position: 'relative', transition: 'background .2s' }}>
+          <div onClick={() => setIsPublic(p => !p)} style={{ width: 44, height: 24, borderRadius: 999, background: isPublic ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-input)', cursor: 'pointer', position: 'relative', transition: 'background .2s' }}>
             <div style={{ position: 'absolute', top: 2, left: isPublic ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
           </div>
         </div>

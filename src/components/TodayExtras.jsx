@@ -8,7 +8,7 @@ import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, we
 import UndoBar from "./UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
 
-const RAIN_COLOR = "#5B7CFA"; // 밝은·어두운 화면 모두에서 보이는 파랑
+const RAIN_COLOR = "var(--dm-accent, #5B7CFA)"; // 밝은·어두운 화면 모두에서 보이는 파랑
 const OPEN_KEY = "dm_weather_open";
 const SHOW_MORE = 10;
 
@@ -174,7 +174,7 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
   const adding = editing === "new";
   const addBtn = (
     <button className="dm-hit" onClick={() => setEditing(adding ? null : "new")} aria-expanded={adding}
-      style={{ height: 32, padding: "0 10px", marginLeft: "auto", borderRadius: 10, border: `1.5px solid ${adding ? RAIN_COLOR : "var(--dm-border)"}`, background: adding ? "rgba(91,124,250,.12)" : "transparent", color: RAIN_COLOR, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+      style={{ height: 32, padding: "0 10px", marginLeft: "auto", borderRadius: 10, border: `1.5px solid ${adding ? RAIN_COLOR : "var(--dm-border)"}`, background: adding ? "var(--dm-accent-soft, rgba(91,124,250,.12))" : "transparent", color: RAIN_COLOR, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
       ＋ 추가
     </button>
   );

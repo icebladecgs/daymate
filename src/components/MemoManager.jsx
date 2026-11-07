@@ -29,13 +29,13 @@ import UndoBar from "./UndoBar.jsx";
 import { useUndo } from "../utils/useUndo.js";
 
 const KIND = {
-  memo: { icon: "📝", label: "메모", color: "#6C8EFF" },
+  memo: { icon: "📝", label: "메모", color: "var(--dm-accent, #6C8EFF)" },
   task: { icon: "📅", label: "일정", color: "#4ADE80" },
   journal: { icon: "📖", label: "일기", color: "#A78BFA" },
   trash: { icon: "🗑", label: "휴지통", color: "#F87171" },
 };
 const PAGE = 300;
-const ACCENT = (nl) => (nl ? "#5B7CFA" : "#6C8EFF"); // 새 디자인: 밝은·어두운 화면 둘 다 보이는 파랑
+const ACCENT = (nl) => (nl ? "var(--dm-accent, #5B7CFA)" : "var(--dm-accent, #6C8EFF)"); // 새 디자인: 밝은·어두운 화면 둘 다 보이는 파랑
 
 const fmtUpdated = (v) => {
   if (!v) return "";
@@ -244,8 +244,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     return (
       <button key={id} className={hit} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
         style={wide
-          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
-          : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "var(--dm-accent-soft, rgba(108,142,255,.18))" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
+          : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         <span>{icon}</span> {label}
       </button>
     );
@@ -275,7 +275,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     <>
       {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
       <button className={hit} onClick={() => setTagsOpen(o => !o)}
-        style={{ flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+        style={{ flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         {tagChipLabel} {tagsOpen ? "▴" : "▾"}
       </button>
       {baseFilters.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
@@ -288,7 +288,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       <span style={{ ...muted, fontSize: z(12, 14), fontWeight: 700, whiteSpace: "nowrap" }}>관련</span>
       {related.map(r => (
         <button key={r.name} onClick={() => changeFilter(`#${r.name}`)}
-          style={{ flexShrink: 0, padding: z("3px 9px", "5px 11px"), borderRadius: z(12, 14), border: "1px solid rgba(108,142,255,.35)", background: "rgba(108,142,255,.08)", color: ACCENT(nl), fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+          style={{ flexShrink: 0, padding: z("3px 9px", "5px 11px"), borderRadius: z(12, 14), border: "1px solid var(--dm-accent-line, rgba(108,142,255,.35))", background: "var(--dm-accent-soft, rgba(108,142,255,.08))", color: ACCENT(nl), fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
           #{r.name}
         </button>
       ))}
@@ -342,7 +342,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             const cell = z("6px 8px", "10px 8px");
             return (
               <tr key={it.key} ref={el => { rowRefs.current[it.key] = el; }} onClick={() => (picking ? pickable(it) && togglePick(it.key) : select(it.key))}
-                style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "rgba(108,142,255,.2)" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
+                style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.starred && "⭐ "}{it.title}
@@ -382,7 +382,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       {photoWall.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
           <span style={{ flex: 1, fontSize: z(13, 14), ...muted }}>사진 {photoWall.length}장 · 누르면 아래에 그 기록이 열려요</span>
-          <button onClick={openBig} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #5B7CFA", background: "rgba(91,124,250,.12)", color: "#5B7CFA", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>⤢ 크게 보기</button>
+          <button onClick={openBig} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--dm-accent, #5B7CFA)", background: "var(--dm-accent-soft, rgba(91,124,250,.12))", color: "var(--dm-accent, #5B7CFA)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>⤢ 크게 보기</button>
         </div>
       )}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 4px 10px" }}>
@@ -492,7 +492,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--dm-muted)", fontSize: z(13, 15), padding: 20, textAlign: "center" }}>
         <div style={{ fontSize: 30 }}>🔒</div>
         잠긴 메모예요. 비밀번호를 넣어야 볼 수 있어요.
-        <button onClick={() => requestMemoLock(item.id, "open")} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid rgba(108,142,255,.4)", background: "rgba(108,142,255,.15)", color: ACCENT(nl), fontSize: z(13, 15), fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🔓 열기</button>
+        <button onClick={() => requestMemoLock(item.id, "open")} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", background: "var(--dm-accent-soft, rgba(108,142,255,.15))", color: ACCENT(nl), fontSize: z(13, 15), fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🔓 열기</button>
       </div>
     );
   }
@@ -573,8 +573,8 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
-        <button className={smallHit} onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
-        <button className={smallHit} onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "rgba(108,142,255,.5)" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
+        <button className={smallHit} onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "var(--dm-accent-soft, rgba(108,142,255,.5))" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
+        <button className={smallHit} onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "var(--dm-accent-soft, rgba(108,142,255,.5))" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
         <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
         {canAutoFocus() && <button className={smallHit} onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}

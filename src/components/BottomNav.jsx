@@ -58,7 +58,7 @@ export default function BottomNav({ screen, setScreen, badge = {} }) {
               <span style={{
                 position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
                 width: 24, height: 3, borderRadius: 999,
-                background: "linear-gradient(90deg, #6C8EFF, #A78BFA)",
+                background: "linear-gradient(90deg, var(--dm-accent, #6C8EFF), #A78BFA)",
               }} />
             )}
             <span style={{ position: "relative", display: "inline-flex" }}>

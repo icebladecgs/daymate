@@ -69,14 +69,14 @@ const S = {
   sub: { fontSize: 12, color: "var(--dm-sub)", marginTop: 2 },
   card: {
     background: "var(--dm-card)",
-    border: "1px solid rgba(255,255,255,0.06)",
+    border: "1px solid var(--dm-card-line, rgba(255,255,255,0.06))",
     borderRadius: 20,
     padding: "14px 14px",
     margin: "0 16px 10px",
     boxSizing: "border-box",
     backdropFilter: "blur(16px)",
     WebkitBackdropFilter: "blur(16px)",
-    boxShadow: "0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.07)",
+    boxShadow: "var(--dm-card-shadow, 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.07))",
     position: "relative",
     zIndex: 1,
     transition: "box-shadow 0.2s ease, transform 0.2s ease",
@@ -119,13 +119,13 @@ const S = {
     padding: "13px 14px",
     borderRadius: 12,
     border: "none",
-    background: "linear-gradient(135deg, #4B6FFF, #818cf8)",
+    background: "var(--dm-btn-bg, linear-gradient(135deg, #4B6FFF, #818cf8))",
     color: "#fff",
     fontSize: 14,
     fontWeight: 900,
     cursor: "pointer",
     fontFamily: "inherit",
-    boxShadow: "0 4px 20px rgba(75,111,255,.35), inset 0 1px 0 rgba(255,255,255,.15)",
+    boxShadow: "0 4px 20px var(--dm-accent-soft, rgba(75,111,255,.35)), inset 0 1px 0 rgba(255,255,255,.15)",
     letterSpacing: "0.01em",
   },
   btnGhost: {
@@ -144,8 +144,8 @@ const S = {
   pill: (on) => ({
     padding: "7px 12px",
     borderRadius: 999,
-    border: `1.5px solid ${on ? "rgba(108,142,255,.5)" : "var(--dm-border)"}`,
-    background: on ? "rgba(108,142,255,.15)" : "var(--dm-pill-off)",
+    border: `1.5px solid ${on ? "var(--dm-accent-soft, rgba(108,142,255,.5))" : "var(--dm-border)"}`,
+    background: on ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-pill-off)",
     color: on ? "#818cf8" : "var(--dm-sub)",
     fontSize: 12,
     fontWeight: 800,
@@ -169,7 +169,7 @@ const S = {
     display: "flex",
     justifyContent: "space-around",
     zIndex: 100,
-    boxShadow: "0 -4px 32px rgba(75, 111, 255, 0.18)",
+    boxShadow: "0 -4px 32px var(--dm-accent-soft, rgba(75, 111, 255, 0.18))",
   },
   navItem: (active) => ({
     display: "flex",
@@ -227,7 +227,7 @@ export const UI = {
   sub: 13,             // 보조 글씨 최소 크기(CLAUDE.md 14.7). 아직 못 옮긴 화면에 9~12가 남아 있다 — 가이드 7장
   touch: 40,           // 새로 만드는 버튼의 누르는 칸 최소(2026-11-07 사용자 확정). 기존 작은 버튼은 탭별로 올릴 때 키운다
   chip: 34,            // 칩·보조 버튼 높이 (지금 코드의 값, 사용자 확정 아님)
-  accent: '#5B7CFA',   // 강조(파랑) — 밝은·어두운 화면 모두 보이는 색
+  accent: 'var(--dm-accent, #5B7CFA)',   // 강조(파랑) — 밝은·어두운 화면 모두 보이는 색
   accent2: '#8B5CF6',  // 강조(보라)
 };
 

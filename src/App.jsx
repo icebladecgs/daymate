@@ -94,7 +94,7 @@ class ScreenErrorBoundary extends Component {
         <div style={{ padding: 24, color: '#F87171', fontSize: 13, background: 'var(--dm-card)', margin: 16, borderRadius: 14, border: '1px solid #F87171' }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>⚠️ 화면 오류</div>
           <div style={{ opacity: 0.8, wordBreak: 'break-all' }}>{String(this.state.error)}</div>
-          <button onClick={() => this.setState({ error: null })} style={{ marginTop: 12, padding: '8px 16px', background: '#4B6FFF', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>다시 시도</button>
+          <button onClick={() => this.setState({ error: null })} style={{ marginTop: 12, padding: '8px 16px', background: 'var(--dm-accent, #4B6FFF)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>다시 시도</button>
         </div>
       );
     }
@@ -2076,7 +2076,7 @@ export default function App() {
           <div className="dm-blob dm-blob-1" />
           <div className="dm-blob dm-blob-2" />
           <div style={{ padding: "56px 24px 32px", position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ width: 72, height: 72, borderRadius: 20, marginBottom: 20, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px rgba(108,142,255,.35)" }}>✅</div>
+            <div style={{ width: 72, height: 72, borderRadius: 20, marginBottom: 20, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px var(--dm-accent-soft, rgba(108,142,255,.35))" }}>✅</div>
             <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, textAlign: "center" }}>DayMate</div>
             <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8, textAlign: "center", marginBottom: 32 }}>
               매일 할 일 3가지만 정하고<br/>체크하고, 일기 한 줄로 마무리.
@@ -2099,14 +2099,14 @@ export default function App() {
                   ["3", "Safari에서 ⋯ 또는 공유 버튼(□↑) → '홈 화면에 추가'"],
                 ].map(([n, txt]) => (
                   <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 999, background: "#6C8EFF", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
+                    <div style={{ width: 22, height: 22, borderRadius: 999, background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 12, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</div>
                     <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.5, paddingTop: 2 }}>{txt}</div>
                   </div>
                 ))}
               </div>
             ) : (
               <>
-                <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 10 }} onClick={() => openInBrowser('com.android.chrome')}>
+                <button style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", marginBottom: 10 }} onClick={() => openInBrowser('com.android.chrome')}>
                   🌐 크롬에서 열기
                 </button>
                 <button style={{ ...S.btn, background: "var(--dm-card)", color: "var(--dm-text)", border: "1.5px solid var(--dm-border)", marginBottom: 0 }} onClick={() => openInBrowser('com.sec.android.app.sbrowser')}>
@@ -2124,15 +2124,15 @@ export default function App() {
     const iconBox = (
       <div style={{
         width: 72, height: 72, borderRadius: 20, margin: "0 auto 16px",
-        background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)",
+        background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 32, boxShadow: "0 8px 24px rgba(108,142,255,.35)",
+        fontSize: 32, boxShadow: "0 8px 24px var(--dm-accent-soft, rgba(108,142,255,.35))",
       }}>✅</div>
     );
     const stepDots = (
       <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 24 }}>
         {[1,2,3,4].map(n => (
-          <div key={n} style={{ width: n === onboardStep ? 20 : 8, height: 8, borderRadius: 4, transition: "width .2s", background: n === onboardStep ? "#6C8EFF" : "var(--dm-border)" }} />
+          <div key={n} style={{ width: n === onboardStep ? 20 : 8, height: 8, borderRadius: 4, transition: "width .2s", background: n === onboardStep ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)" }} />
         ))}
       </div>
     );
@@ -2187,7 +2187,7 @@ export default function App() {
                 ].map(([label, desc]) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--dm-row)" }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
-                    <div style={{ fontSize: 12, color: "#6C8EFF", fontWeight: 900 }}>{desc}</div>
+                    <div style={{ fontSize: 12, color: "var(--dm-accent, #6C8EFF)", fontWeight: 900 }}>{desc}</div>
                   </div>
                 ))}
                 <button style={{ ...S.btn, marginTop: 20 }} onClick={() => setOnboardStep(3)}>다음 →</button>
@@ -2233,7 +2233,7 @@ export default function App() {
                     <div style={{ fontSize: 14, fontWeight: 900, color: "#4ADE80" }}>이미 앱으로 설치되어 있어요!</div>
                   </div>
                 ) : installPrompt ? (
-                  <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)", marginBottom: 8 }} onClick={async () => {
+                  <button style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", marginBottom: 8 }} onClick={async () => {
                     await handleInstall();
                   }}>📲 홈 화면에 설치하기</button>
                 ) : isIOS ? (
@@ -2247,7 +2247,7 @@ export default function App() {
                   </div>
                 )}
 
-                <button style={{ ...S.btn, marginTop: 8, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => {
+                <button style={{ ...S.btn, marginTop: 8, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))" }} onClick={() => {
                   store.set("dm_first_run_done", true);
                   setFirstRunDone(true);
                 }}>시작하기 →</button>

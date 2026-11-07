@@ -48,7 +48,7 @@ export default function ChatNotifySettings({ authUser, communityId, communityNam
       ) : perm === "denied" ? (
         <div style={{ fontSize: NL() ? UI.sub : 12, color: "#F87171", marginBottom: 8, lineHeight: 1.6 }}>알림이 차단돼 있어요. 휴대폰 설정 → 애플리케이션 → Chrome(또는 DayMate) → 알림에서 허용해 주세요.</div>
       ) : (
-        <button onClick={allow} style={{ width: "100%", padding: "10px 0", marginBottom: 8, borderRadius: 10, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>🔔 이 기기에서 알림 허용하기</button>
+        <button onClick={allow} style={{ width: "100%", padding: "10px 0", marginBottom: 8, borderRadius: 10, border: "none", background: "var(--dm-accent, #6C8EFF)", color: "#fff", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>🔔 이 기기에서 알림 허용하기</button>
       )}
 
       <Row title="채팅 알림 받기" sub="모든 커뮤니티 채팅 알림을 한 번에 켜고 꺼요"
@@ -67,8 +67,8 @@ export default function ChatNotifySettings({ authUser, communityId, communityNam
           {[...SOUND_STYLES, { id: "none", label: "무음" }].map(s => (
             <button className={NL() ? 'dm-hit' : undefined} key={s.id} onClick={() => { setSound(s.id); setChatSound(s.id); playChatSound(s.id); }}
               style={{ padding: "7px 12px", borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer",
-                border: `1.5px solid ${sound === s.id ? "#6C8EFF" : "var(--dm-border)"}`,
-                background: sound === s.id ? "rgba(108,142,255,.12)" : "transparent", color: sound === s.id ? "#6C8EFF" : "var(--dm-sub)" }}>
+                border: `1.5px solid ${sound === s.id ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)"}`,
+                background: sound === s.id ? "var(--dm-accent-soft, rgba(108,142,255,.12))" : "transparent", color: sound === s.id ? "var(--dm-accent, #6C8EFF)" : "var(--dm-sub)" }}>
               {s.label}
             </button>
           ))}
@@ -92,7 +92,7 @@ function Row({ title, sub, on, onToggle, disabled }) {
         {sub && <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", marginTop: 2, lineHeight: 1.5 }}>{sub}</div>}
       </div>
       <div onClick={() => !disabled && onToggle()} role="switch" aria-checked={on} aria-label={title}
-        style={{ width: 52, height: 28, borderRadius: 999, background: on ? "#6C8EFF" : "var(--dm-border)", cursor: disabled ? "default" : "pointer", position: "relative", flexShrink: 0 }}>
+        style={{ width: 52, height: 28, borderRadius: 999, background: on ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)", cursor: disabled ? "default" : "pointer", position: "relative", flexShrink: 0 }}>
         <div style={{ position: "absolute", top: 4, left: on ? 28 : 4, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
       </div>
     </div>

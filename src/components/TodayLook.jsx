@@ -35,6 +35,13 @@ const COLORS = {
   megaphone: "#F97316", pencil: "#5B7CFA", checkin: "#22C55E", globe: "#14B8A6",
   search: "#5B7CFA", refresh: "#5B7CFA", sprout: "#22C55E",
 };
+// 칸 제목 배지 색 — 흰 아이콘이 잘 보이는 진한 색(아이폰 기본 색 계열)
+const BADGE = {
+  today: "#007AFF", people: "#FF2D55", repeat: "#34C759", inbox: "#AF52DE", cal: "#FF9500", book: "#30B0C7",
+  target: "#FF3B30", flag: "#FF9500", card: "#5856D6", sparkle: "#AF52DE", briefcase: "#FF9500",
+  megaphone: "#FF9500", pencil: "#007AFF", checkin: "#34C759", globe: "#30B0C7",
+  search: "#007AFF", refresh: "#007AFF", sprout: "#34C759",
+};
 
 // 섹션 제목 한 줄 (새 디자인) — UI.title(19px) 굵게 + 색 배지 아이콘. right에 접기·수정 같은 버튼
 export function SectionHeading({ icon, children, right, style }) {
@@ -48,10 +55,11 @@ export function SectionHeading({ icon, children, right, style }) {
 // badge: 칸 제목용 — 아이콘 색을 연하게 깐 30px 동그라미 안에 18px 아이콘 (2026-11-07 사용자 확정, 비교 화면에서 고름)
 export function SectionIcon({ name, size = 18, badge = false }) {
   if (badge) {
-    const color = COLORS[name] || "#5B7CFA";
+    // 2026-11-08 D안: 색이 꽉 찬 동그라미 + 흰 아이콘(아이폰 설정 방식). 색은 아이폰 기본 색에 맞춘 BADGE
+    const color = BADGE[name] || COLORS[name] || "#007AFF";
     return (
-      <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: "50%", background: `${color}26`, flexShrink: 0 }}>
-        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{PATHS[name]}</svg>
+      <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: "50%", background: color, flexShrink: 0 }}>
+        <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{PATHS[name]}</svg>
       </span>
     );
   }

@@ -9,8 +9,8 @@ function ToastContent({ msg }) {
     <span>
       {match[1]}
       <span style={{
-        background: "rgba(108,142,255,.25)",
-        border: "1px solid rgba(108,142,255,.5)",
+        background: "var(--dm-accent-soft, rgba(108,142,255,.25))",
+        border: "1px solid var(--dm-accent-line, rgba(108,142,255,.5))",
         borderRadius: 999,
         padding: "1px 8px",
         color: "#b8c3ff",

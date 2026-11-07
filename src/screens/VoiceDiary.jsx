@@ -147,14 +147,14 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
           {qList.map((_, i) => (
             <div key={i} style={{
               flex: 1, height: 4, borderRadius: 2,
-              background: i < step ? "#6C8EFF" : "var(--dm-border)",
+              background: i < step ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)",
               transition: "background .3s",
             }} />
           ))}
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#6C8EFF", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--dm-accent, #6C8EFF)", marginBottom: 6 }}>
             질문 {step} / {totalQ}
           </div>
           <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.5, color: "var(--dm-text)" }}>
@@ -228,7 +228,7 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
           value={result}
           onChange={(e) => setResult(e.target.value)}
         />
-        <button style={{ ...S.btn, background: "linear-gradient(135deg,#4B6FFF,#6C8EFF)" }} onClick={() => onComplete?.(result.trim())} disabled={!result.trim()}>
+        <button style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))" }} onClick={() => onComplete?.(result.trim())} disabled={!result.trim()}>
           일기에 저장 →
         </button>
         <button style={S.btnGhost} onClick={() => {
