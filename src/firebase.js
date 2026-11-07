@@ -152,6 +152,17 @@ export async function loadAllFromFirestore(uid) {
   return result;
 }
 
+// ---------- 보유자산 추이 (2026-11-07) ----------
+// users/{uid}/data/pfHistory = { points: { 'YYYY-MM-DD': { u, k, t } } } — 하루 한 점이라 몇 년 쌓여도 작다.
+// 날짜 키를 지우는 일이 없어서 맵 + merge 저장으로 둔다(지운 키가 남는 문제 없음). 규칙: users/{uid}/** 본인만
+export async function savePfHistoryPoints(uid, points) {
+  await setDoc(doc(db, "users", uid, "data", "pfHistory"), { points }, { merge: true });
+}
+export async function loadPfHistory(uid) {
+  const snap = await getDoc(doc(db, "users", uid, "data", "pfHistory"));
+  return snap.exists() ? (snap.data().points || {}) : {};
+}
+
 // ---------- 내 사람들(인맥) ----------
 // settings 문서 하나에 몰아넣지 않고 day처럼 사람별 개별 문서로 저장 — 기록이 쌓여도
 // 로그인 시 읽는 단일 settings 문서가 커지지 않고, 문서당 1MiB 한도 위험도 없다.

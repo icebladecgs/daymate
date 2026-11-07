@@ -28,12 +28,18 @@ export function deriveStats(value, cost, dailyChange) {
 // 보유자산 전체 요약. 현재는 USD/KRW 두 통화만 지원한다.
 // 각 통화의 원래(native) 합계를 따로 모아두고, 환율이 있으면 상대 통화 쪽 합계에도 환산해 더해서
 // 두 가지 기준(USD/KRW) 총액을 모두 제공한다.
-export function calcPortfolioSummary(holdings, marketData, usdKrwRate) {
-  if (!marketData || !holdings || holdings.length === 0) return null;
+// cash = { krw, usd } (2026-11-07): 현금은 총 평가금액(value)에만 더한다. 손익·손익률·오늘 변동률은
+// 투자한 종목 기준 그대로(현금 때문에 수익률이 낮아 보이지 않게). stats.cash = 그 통화로 환산한 현금.
+export function calcPortfolioSummary(holdings, marketData, usdKrwRate, cash = null) {
+  const cashKrw = Math.max(0, Number(cash?.krw) || 0);
+  const cashUsd = Math.max(0, Number(cash?.usd) || 0);
+  const hasCash = cashKrw > 0 || cashUsd > 0;
+  const list = holdings || [];
+  if (!hasCash && (!marketData || list.length === 0)) return null;
   let usdValue = 0, usdCost = 0, usdDailyChange = 0, usdCount = 0;
   let krwValue = 0, krwCost = 0, krwDailyChange = 0, krwCount = 0;
-  const rows = holdings.map(h => {
-    const d = marketData[h.sym];
+  const rows = list.map(h => {
+    const d = marketData?.[h.sym];
     if (!d) return { ...h, noData: true };
     const marketCurrency = getMarketCurrency(h, d);
     if (h.currency && h.currency !== marketCurrency) {
@@ -51,7 +57,7 @@ export function calcPortfolioSummary(holdings, marketData, usdKrwRate) {
     }
     return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange };
   });
-  if (usdCount === 0 && krwCount === 0) return null;
+  if (usdCount === 0 && krwCount === 0 && !hasCash) return null;
 
   const rate = usdKrwRate; // 1 USD ≈ rate KRW
   const fxOk = !!rate;
@@ -65,12 +71,17 @@ export function calcPortfolioSummary(holdings, marketData, usdKrwRate) {
     krwCost + (fxOk ? usdCost * rate : 0),
     krwDailyChange + (fxOk ? usdDailyChange * rate : 0)
   );
+  // 현금 더하기 (환율이 없으면 다른 통화 현금은 그 통화 총액에만)
+  const cashInUSD = cashUsd + (fxOk ? cashKrw / rate : 0);
+  const cashInKRW = cashKrw + (fxOk ? cashUsd * rate : 0);
+  statsUSD.invested = statsUSD.value; statsUSD.cash = cashInUSD; statsUSD.value += cashInUSD;
+  statsKRW.invested = statsKRW.value; statsKRW.cash = cashInKRW; statsKRW.value += cashInKRW;
 
   return {
     rows,
-    usdNative: { value: usdValue, count: usdCount },
-    krwNative: { value: krwValue, count: krwCount },
+    usdNative: { value: usdValue + cashUsd, count: usdCount },
+    krwNative: { value: krwValue + cashKrw, count: krwCount },
     statsUSD, statsKRW, fxOk,
-    mixed: usdCount > 0 && krwCount > 0,
+    mixed: (usdCount > 0 || cashUsd > 0) && (krwCount > 0 || cashKrw > 0),
   };
 }

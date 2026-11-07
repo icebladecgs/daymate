@@ -2450,7 +2450,7 @@ export default function App() {
         />
       );
     }
-    const renderHistory = () => <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} />;
+    const renderHistory = () => <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} pfHoldings={telegramCfg?.holdings} />;
     if (screen === "history") return renderHistory();
     if (screen === "dashboard") {
       return (

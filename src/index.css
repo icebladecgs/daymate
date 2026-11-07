@@ -30,6 +30,8 @@
 
 /* ===== DayMate theme variables ===== */
 [data-theme="dark"] {
+  /* 보유자산 비중 차트 색 (국내주식·미국주식·코인·현금) — 어두운 화면용으로 따로 고른 값, 대비 검증 통과 */
+  --dm-viz-1: #3987e5; --dm-viz-2: #d95926; --dm-viz-3: #199e70; --dm-viz-4: #c98500;
   --dm-bg:        #10131d;
   --dm-phone:     rgba(16, 19, 29, 0.45);
   --dm-card:      rgba(26, 31, 46, 0.7);
@@ -52,6 +54,8 @@
 }
 
 [data-theme="light"] {
+  /* 3·4번은 흰 바탕 대비가 3:1 아래라 차트 옆에 이름·%를 늘 글자로 함께 보인다 */
+  --dm-viz-1: #2a78d6; --dm-viz-2: #eb6834; --dm-viz-3: #1baf7a; --dm-viz-4: #eda100;
   --dm-bg:        #e6e9f2;
   --dm-phone:     rgba(255, 255, 255, 0.6);
   --dm-card:      rgba(255, 255, 255, 0.97);

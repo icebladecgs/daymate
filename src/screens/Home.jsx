@@ -9,6 +9,9 @@ import { store } from "../utils/storage.js";
 import { calcDayScore, calcLevel, LEVEL_TITLES, LEVEL_ICONS } from "../data/stats.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
+import { isPfHidden, setPfHidden, HIDE_EVENT, MASK, historySeries } from "../utils/portfolioExtras.js";
+import { localPfHistory, notePfValue, syncPfHistory } from "../utils/pfHistory.js";
+import { TrendChart } from "../components/PortfolioCharts.jsx";
 import { playSound } from "../utils/sound.js";
 import S from "../styles.js";
 import { DEFAULT_HOME_SECTION_ORDER } from "../components/home/config.js";
@@ -425,11 +428,28 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   const pfSummary = useMemo(() => {
     const holdings = telegramCfg?.holdings || [];
-    const summary = calcPortfolioSummary(holdings, pfMarket, pfFxRate);
+    // 실계좌 현금도 총액에 (2026-11-07) — 손익·손익률은 종목 기준 그대로
+    const summary = calcPortfolioSummary(holdings, pfMarket, pfFxRate, telegramCfg?.cash);
     if (!summary) return null;
     const { value: totalValue, pnl, pnlPct, dailyChange: totalDailyChange, dailyChangePct } = summary.statsUSD;
-    return { totalValue, pnl, pnlPct, totalDailyChange, dailyChangePct };
-  }, [pfMarket, pfFxRate, telegramCfg?.holdings]); // eslint-disable-line
+    const complete = summary.rows.every(r => !r.noData && !r.currencyMismatch) && (summary.fxOk || !summary.mixed);
+    return { totalValue, pnl, pnlPct, totalDailyChange, dailyChangePct, complete, totalKRW: summary.fxOk ? summary.statsKRW.value : null };
+  }, [pfMarket, pfFxRate, telegramCfg?.holdings, telegramCfg?.cash]); // eslint-disable-line
+
+  // 👁 금액 숨기기 (보유자산 화면과 같은 값, 기기마다) · 자산 추이 기록(앱을 연 날 하루 한 점)
+  const [pfHidden, setPfHiddenState] = useState(isPfHidden);
+  useEffect(() => {
+    const on = (e) => setPfHiddenState(!!e.detail);
+    window.addEventListener(HIDE_EVENT, on);
+    return () => window.removeEventListener(HIDE_EVENT, on);
+  }, []);
+  const [pfHistory, setPfHistory] = useState(localPfHistory);
+  useEffect(() => { if (isMyTab) syncPfHistory(authUser).then(setPfHistory); }, [authUser?.uid, isMyTab]); // eslint-disable-line
+  useEffect(() => {
+    if (pfSummary?.complete && pfSummary.totalValue > 0) setPfHistory(notePfValue(authUser, today, pfSummary.totalValue, pfSummary.totalKRW));
+  }, [pfSummary?.totalValue, pfSummary?.totalKRW]); // eslint-disable-line
+  const pfTrend = historySeries(pfHistory, { days: 30, today, currency: "USD" });
+  const pfMoney = (n) => pfHidden ? MASK : "$" + Math.round(n).toLocaleString("en-US");
 
 
 
@@ -853,10 +873,18 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {newLook ? <SectionIcon name="briefcase" size={20} /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
             </span>
-            <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPortfolio}
-              style={{ fontSize: newLook ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
-              관리 →
-            </button>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {pfSummary && (
+                <button onClick={() => setPfHidden(!pfHidden)} aria-label={pfHidden ? "금액 보이기" : "금액 숨기기"} aria-pressed={pfHidden}
+                  style={{ width: 40, height: 40, padding: 0, fontSize: 17, background: pfHidden ? "rgba(91,124,250,.12)" : "transparent", border: "none", borderRadius: 10, cursor: "pointer" }}>
+                  {pfHidden ? "🙈" : "👁"}
+                </button>
+              )}
+              <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPortfolio}
+                style={{ fontSize: newLook ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
+                관리 →
+              </button>
+            </span>
           </div>
           <div style={newLook ? {} : { ...S.card, marginBottom: 10 }}>
             {pfLoading && <div style={{ textAlign: "center", fontSize: newLook ? UI.sub : 12, color: "var(--dm-muted)", padding: "12px 0" }}>시세 불러오는 중...</div>}
@@ -865,22 +893,29 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                 <div>
                   <div style={{ fontSize: newLook ? UI.sub : 11, color: "var(--dm-muted)", marginBottom: 2 }}>총 평가금액</div>
                   <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>
-                    ${pfSummary.totalValue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    {pfMoney(pfSummary.totalValue)}
                   </div>
                   <div style={{ fontSize: newLook ? UI.sub : 12, color: pfSummary.pnl >= 0 ? "#4ADE80" : "#F87171", marginTop: 2, fontWeight: 700 }}>
-                    {pfSummary.pnl >= 0 ? "+" : ""}{pfSummary.pnl.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$ ({pfSummary.pnlPct >= 0 ? "+" : ""}{pfSummary.pnlPct.toFixed(1)}%)
+                    {pfHidden ? "" : <>{pfSummary.pnl >= 0 ? "+" : ""}{pfSummary.pnl.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$ </>}({pfSummary.pnlPct >= 0 ? "+" : ""}{pfSummary.pnlPct.toFixed(1)}%)
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: newLook ? UI.sub : 11, color: "var(--dm-muted)", marginBottom: 2 }}>오늘 변동</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: pfSummary.totalDailyChange >= 0 ? "#4ADE80" : "#F87171" }}>
-                    {pfSummary.totalDailyChange >= 0 ? "+" : ""}{pfSummary.totalDailyChange.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$
+                    {pfHidden ? MASK : <>{pfSummary.totalDailyChange >= 0 ? "+" : ""}{pfSummary.totalDailyChange.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$</>}
                   </div>
                   <div style={{ fontSize: newLook ? UI.sub : 11, color: pfSummary.dailyChangePct >= 0 ? "#4ADE80" : "#F87171" }}>
                     {pfSummary.dailyChangePct >= 0 ? "+" : ""}{pfSummary.dailyChangePct.toFixed(2)}%
                   </div>
                 </div>
               </div>
+            )}
+            {!pfLoading && pfSummary && pfTrend.length >= 2 && (
+              <button onClick={onOpenPortfolio} aria-label="자산 추이 자세히 보기"
+                style={{ display: "block", width: "100%", marginTop: 10, padding: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 4 }}>📈 최근 30일</div>
+                <TrendChart series={pfTrend} mini height={36} hidden={pfHidden} fmt={pfMoney} />
+              </button>
             )}
             {!pfLoading && !pfSummary && !(telegramCfg?.holdings?.length > 0) && (
               <div style={{ textAlign: "center", padding: "6px 0" }}>

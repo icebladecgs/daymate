@@ -14,11 +14,24 @@ import { useUndo, putBack } from "../utils/useUndo.js";
 import { holidayName } from "../utils/holidays.js";
 import { solarToLunar } from "../data/contacts.js";
 import { MARKETS, marketEventsOf, hasScheduleFor, SCHEDULE_RANGE, SCHEDULE_END, scheduleNeedsUpdate } from "../utils/marketEvents.js";
+import { projectDividends, dividendSymOf, isPfHidden, MASK } from "../utils/portfolioExtras.js";
+import { fetchDividends } from "../api/dividends.js";
 import { useBackClose } from "../utils/useBackClose.js";
 import { canMoveInList, moveInList } from "../utils/taskOrder.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal, pfHoldings = [] }) {
   const [year, setYear] = useState(new Date().getFullYear());
+  // 📈 증시 일정의 "내 배당" (2026-11-07) — 실계좌 종목의 지난 1년 배당을 1년 뒤로 옮긴 예상 배당락일
+  const [divEvents, setDivEvents] = useState([]);
+  const divOn = marketCal.includes("div");
+  const divKey = divOn ? (pfHoldings || []).map(h => `${h.sym}:${h.qty}`).sort().join(",") : "";
+  useEffect(() => {
+    if (!divKey) { setDivEvents([]); return; }
+    let alive = true;
+    const syms = [...new Set((pfHoldings || []).map(dividendSymOf).filter(Boolean))];
+    fetchDividends(syms).then(data => { if (alive) setDivEvents(projectDividends(pfHoldings, data, toDateStr()).events); });
+    return () => { alive = false; };
+  }, [divKey]); // eslint-disable-line
   const [month0, setMonth0] = useState(new Date().getMonth());
   const [gcalEvents, setGcalEvents] = useState({});
   const [viewMode, setViewMode] = useState('monthly'); // 'monthly' | 'weekly'
@@ -710,7 +723,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
       {/* 📈 이번 달 증시 일정 (2026-11-01) — 날짜 칸에는 넣지 않고 달력 아래 목록으로만(사용자 결정). 고른 시장만, 기본은 모두 꺼짐 */}
       {setMarketCal && (() => {
-        const events = marketEventsOf(year, month0, marketCal);
+        const ym = `${year}-${pad2(month0 + 1)}`;
+        const hideAmt = isPfHidden();
+        const fmtDiv = (e) => hideAmt ? MASK : e.currency === "KRW" ? `${Math.round(e.amount).toLocaleString("ko-KR")}원` : `$${e.amount.toFixed(2)}`;
+        const events = [...marketEventsOf(year, month0, marketCal),
+          ...(divOn ? divEvents.filter(e => e.d.startsWith(ym)).map(e => ({ ds: e.d, market: "div", title: `${e.label} 배당락 (예상)`, time: `약 ${fmtDiv(e)}` })) : [])]
+          .sort((a, b) => a.ds.localeCompare(b.ds) || a.market.localeCompare(b.market));
         // 칩을 켜면 아래에 생긴 목록이 보이게 칸까지 스크롤 (2026-11-01 사용자 요청). 아래 메뉴에 가리지 않게 scrollMarginBottom
         const toggle = (id) => {
           const turningOn = !marketCal.includes(id);
@@ -738,7 +756,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
               </div>
             )}
             {marketCal.length === 0 ? (
-              <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>보고 싶은 시장을 고르면 금리 결정·물가 발표·만기일·휴장일이 보여요.</div>
+              <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>보고 싶은 시장을 고르면 금리 결정·물가 발표·만기일·휴장일이 보여요. "내 배당"은 보유자산 실계좌 종목의 예상 배당락일이에요.</div>
             ) : (
               <>
                 {events.length === 0 && <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>이번 달 일정이 없어요.</div>}
@@ -759,7 +777,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                 </div>
                 <div style={{ fontSize: 12, color: "var(--dm-muted)", marginTop: 6, lineHeight: 1.5 }}>
                   {!hasScheduleFor(year, month0) && `금리 결정·물가·고용 발표는 ${SCHEDULE_RANGE}만 들어 있어요. `}
-                  시간은 한국 기준이에요. 일정은 바뀔 수 있어요.
+                  시간은 한국 기준이에요. 일정은 바뀔 수 있어요.{divOn && " 배당은 지난해 같은 때를 기준으로 한 예상이고, 실제 입금은 몇 주 뒤예요."}
                 </div>
               </>
             )}

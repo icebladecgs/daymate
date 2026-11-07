@@ -4,7 +4,11 @@ import { store } from "../utils/storage.js";
 import { toDateStr } from "../utils/date.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
 import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
-import { readTabs, tabHoldings, setTabHoldings, addTab, renameTab, removeTab, restoreTab, makeReal, groupHoldings, allTabHoldings, roundQty, PF_MAX_TABS } from "../utils/portfolioTabs.js";
+import { readTabs, tabHoldings, tabCash, setTabHoldings, setTabCash, addTab, renameTab, removeTab, restoreTab, makeReal, groupHoldings, allTabHoldings, roundQty, PF_MAX_TABS } from "../utils/portfolioTabs.js";
+import { isPfHidden, setPfHidden, HIDE_EVENT, MASK, allocation, historySeries, projectDividends, dividendMonths, dividendTotal, dividendSymOf, INDEX_SYM, indexWhatIf } from "../utils/portfolioExtras.js";
+import { localPfHistory, notePfValue, syncPfHistory } from "../utils/pfHistory.js";
+import { fetchDividends } from "../api/dividends.js";
+import { AllocationBar, TrendChart, DividendMonths } from "../components/PortfolioCharts.jsx";
 import { useUndo } from "../utils/useUndo.js";
 import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -64,6 +68,19 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   const { tabs } = readTabs(cfg);
   const activeTab = tabs.find(t => t.id === activeId) || tabs.find(t => t.real);
   const holdings = tabHoldings(cfg, activeTab.id);
+  const cash = tabCash(cfg, activeTab.id);
+  // 👁 금액 숨기기 (기기마다, My 탭 자산 브리핑과 같은 값)
+  const [hidden, setHidden] = useState(isPfHidden);
+  useEffect(() => {
+    const on = (e) => setHidden(!!e.detail);
+    window.addEventListener(HIDE_EVENT, on);
+    return () => window.removeEventListener(HIDE_EVENT, on);
+  }, []);
+  const [cashEdit, setCashEdit] = useState(null); // { krw, usd } 입력 중인 글자
+  const [trendRange, setTrendRange] = useState(90);
+  const [history, setHistory] = useState(localPfHistory);
+  const [divData, setDivData] = useState(null);
+  const [divOpen, setDivOpen] = useState(false);
 
   const [marketData, setMarketData] = useState(() => {
     try { return JSON.parse(localStorage.getItem(PF_CACHE_PREFIX + toDateStr()) || "null"); } catch { return null; }
@@ -159,7 +176,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     if (list.length === 0) return;
     setLoading(true);
     try {
-      const syms = [...new Set(list.map(h => h.sym))];
+      // 복사해 둔 계좌가 있으면 지수 비교용 QQQ 시세도 같이 (서버 기본 목록에 있는 종목)
+      const withIndex = readTabs(cfgRef.current).tabs.some(t => t.base) ? [INDEX_SYM] : [];
+      const syms = [...new Set([...list.map(h => h.sym), ...withIndex])];
       const customRegistry = Object.fromEntries(list.map(h => [h.sym, { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) }]));
       const data = await fetchMarketDataFromServer(syms, customRegistry);
       if (Object.keys(data).length > 0) {
@@ -175,8 +194,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   useEffect(() => {
     const all = allTabHoldings(cfgRef.current);
     // 오늘 받은 시세에 다른 탭 종목이 빠져 있으면 다시 받는다
-    if (all.length > 0 && (!marketData || all.some(h => !(h.sym in marketData)))) fetchPrices(all);
+    const needIndex = readTabs(cfgRef.current).tabs.some(t => t.base) && !(marketData && INDEX_SYM in marketData);
+    if (all.length > 0 && (!marketData || needIndex || all.some(h => !(h.sym in marketData)))) fetchPrices(all);
   }, []); // eslint-disable-line
+
+  // 자산 추이 — 계정에 쌓인 기록과 합친다(다른 기기에서 쌓인 점)
+  useEffect(() => { syncPfHistory(authUser).then(setHistory); }, [authUser?.uid]); // eslint-disable-line
 
   // 환율 (KRW 종목을 USD 총액에 합산하기 위함)
   const fetchFxRate = async () => {
@@ -281,8 +304,26 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   // ── 탭 ──
   const closeEditors = () => { resetForm(); setExpandId(null); setMemoOpenId(null); setPanel(null); };
   const selectTab = (id) => { closeEditors(); setShowCompare(false); setActiveId(id); };
-  const createTab = (fromId) => {
-    const { cfg: next, id } = addTab(cfgRef.current, { fromId });
+  // 복사할 때 그날 QQQ 시세·총액(달러)을 남겨 비교 표에서 "그날 QQQ에 넣었다면"을 보여 준다.
+  // 시세를 못 받거나 원화 종목이 있는데 환율이 없으면 기준 없이 복사한다
+  const indexBase = async (fromId) => {
+    try {
+      const src = readTabs(cfgRef.current).tabs.find(t => t.id === fromId);
+      if (!src) return null;
+      const s = calcPortfolioSummary(groupHoldings(tabHoldings(cfgRef.current, fromId)), marketData, usdKrwRate, tabCash(cfgRef.current, fromId));
+      if (!s || (s.mixed && !s.fxOk) || s.rows.some(r => r.noData || r.currencyMismatch)) return null;
+      let qqq = marketData?.[INDEX_SYM]?.price;
+      if (!(qqq > 0)) {
+        const d = await fetchMarketDataFromServer([INDEX_SYM], {});
+        qqq = d?.[INDEX_SYM]?.price;
+        if (qqq > 0) setMarketData(prev => ({ ...(prev || {}), [INDEX_SYM]: d[INDEX_SYM] }));
+      }
+      return qqq > 0 ? { d: toDateStr(), qqq, usd: Math.round(s.statsUSD.value * 100) / 100 } : null;
+    } catch { return null; }
+  };
+  const createTab = async (fromId) => {
+    const base = fromId ? await indexBase(fromId) : null;
+    const { cfg: next, id } = addTab(cfgRef.current, { fromId, base });
     if (!id) { setToast(`계좌는 ${PF_MAX_TABS}개까지 만들 수 있어요`); return; }
     commit(next);
     selectTab(id);
@@ -308,16 +349,61 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   };
 
   const rows = groupHoldings(holdings); // 같은 종목은 한 줄로 (저장은 앱별 그대로)
-  const summary = calcPortfolioSummary(rows, marketData, usdKrwRate);
+  const summary = calcPortfolioSummary(rows, marketData, usdKrwRate, cash);
   const stats = displayCurrency === "KRW" ? summary?.statsKRW : summary?.statsUSD;
   const setDisplayCurrencyPersist = (cur) => { setDisplayCurrency(cur); store.set("dm_pf_display_currency", cur); };
+  // 금액은 이 함수로만 — 👁 숨기기면 가린다 (수익률 %는 그대로)
+  const money = (n, cur) => hidden ? MASK : fmtPrice(n, cur);
+  const qtyText = (q) => hidden ? "•••" : roundQty(q);
+  const today = toDateStr();
+
+  // 자산군 비중
+  const alloc = summary ? allocation(summary.rows, cash, displayCurrency, usdKrwRate) : null;
+
+  // 자산 추이 기록 — 실계좌만, 모든 종목 시세가 있고 환율 문제가 없을 때 하루 한 점
+  const pricesComplete = summary && summary.rows.every(r => !r.noData && !r.currencyMismatch) && (summary.fxOk || !summary.mixed);
+  const recordUSD = activeTab.real && pricesComplete ? summary.statsUSD.value : null;
+  const recordKRW = activeTab.real && pricesComplete && summary.fxOk ? summary.statsKRW.value : null;
+  useEffect(() => {
+    if (recordUSD > 0) setHistory(notePfValue(authUser, today, recordUSD, recordKRW));
+  }, [recordUSD, recordKRW]); // eslint-disable-line
+  const trend = historySeries(history, { days: trendRange, today, currency: displayCurrency });
+
+  // 배당 — 지금 탭 종목의 지난 1년 배당 기록으로 앞으로 1년 예상
+  const divSyms = [...new Set(holdings.map(dividendSymOf).filter(Boolean))].sort().join(",");
+  useEffect(() => {
+    if (!divSyms) { setDivData({}); return; }
+    let alive = true;
+    fetchDividends(divSyms.split(",")).then(d => { if (alive) setDivData(d); });
+    return () => { alive = false; };
+  }, [divSyms]);
+  const divYahooData = divData ? Object.fromEntries(holdings.map(h => [dividendSymOf(h), divData[dividendSymOf(h)]]).filter(([k, v]) => k && v)) : null;
+  const div = divYahooData ? projectDividends(holdings, divYahooData, today) : null;
+  const divMonths = div ? dividendMonths(div.events, today, displayCurrency, usdKrwRate) : [];
+  const divPre = div ? dividendTotal(div.events, displayCurrency, usdKrwRate) : null;
+  const divPost = div ? dividendTotal(div.events, displayCurrency, usdKrwRate, { tax: true }) : null;
+  const divUpcomingCount = div ? div.events.filter(e => e.d >= today).length : 0;
+  const divSoon = div ? div.events.filter(e => e.d >= today).slice(0, divOpen ? 50 : 3) : [];
+  // 배당 수익률 = 예상 연 배당(세전) ÷ 종목 평가금액(현금 제외)
+  const investedNow = summary ? (displayCurrency === "KRW" ? summary.statsKRW.invested : summary.statsUSD.invested) : 0;
+  const divYield = divPre?.ok && investedNow > 0 ? (divPre.sum / investedNow) * 100 : null;
 
   // 비교 표 — 탭마다 지금 시세로 계산한 총 평가금액. 실계좌와의 차이로 "그대로 뒀으면"을 본다
+  const toDisplay = (usd) => usd == null ? null : displayCurrency === "KRW" ? (usdKrwRate ? usd * usdKrwRate : null) : usd;
   const compareRows = showCompare ? tabs.map(t => {
-    const s = calcPortfolioSummary(groupHoldings(tabHoldings(cfg, t.id)), marketData, usdKrwRate);
-    return { ...t, count: tabHoldings(cfg, t.id).length, stats: displayCurrency === "KRW" ? s?.statsKRW : s?.statsUSD };
+    const s = calcPortfolioSummary(groupHoldings(tabHoldings(cfg, t.id)), marketData, usdKrwRate, tabCash(cfg, t.id));
+    return { ...t, count: tabHoldings(cfg, t.id).length, stats: displayCurrency === "KRW" ? s?.statsKRW : s?.statsUSD,
+      whatIf: toDisplay(indexWhatIf(t.base, marketData?.[INDEX_SYM]?.price)) };
   }) : [];
   const realStats = compareRows.find(r => r.real)?.stats;
+
+  // 현금 저장 (지금 탭)
+  const saveCash = () => {
+    const num = (v) => parseFloat(String(v || "").replace(/[,\s원$₩]/g, "")) || 0;
+    commit(setTabCash(cfgRef.current, activeTab.id, { krw: num(cashEdit?.krw), usd: num(cashEdit?.usd) }));
+    setCashEdit(null);
+    setToast("현금 저장 ✅");
+  };
 
   const inputStyle = { ...S.input, marginBottom: 0 };
   const chipStyle = (on) => ({
@@ -466,8 +552,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
         <button className={NL() ? 'dm-hit' : undefined} onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
         <div style={{ flex: 1, marginLeft: 10 }}>
           <div style={S.title}>💼 보유자산</div>
-          <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>수량 · 단가 입력 후 평가손익 확인</div>
+          <div style={{ ...(NL() ? { ...S.sub, fontSize: UI.sub } : S.sub), wordBreak: "keep-all" }}>수량 · 단가 입력 후 평가손익 확인</div>
         </div>
+        <button onClick={() => setPfHidden(!hidden)} aria-label={hidden ? "금액 보이기" : "금액 숨기기"} aria-pressed={hidden} title={hidden ? "금액 보이기" : "금액 숨기기"}
+          style={{ width: UI.touch, height: UI.touch, padding: 0, background: hidden ? "rgba(91,124,250,.12)" : "transparent", border: "none", borderRadius: 10, color: "var(--dm-text)", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>
+          {hidden ? "🙈" : "👁"}
+        </button>
         <button className={NL() ? 'dm-hit' : undefined}
           onClick={() => { localStorage.removeItem(cacheKey); setMarketData(null); fetchPrices(); }}
           style={{ background: "transparent", border: "none", color: "var(--dm-muted)", fontSize: 13, cursor: "pointer" }}
@@ -570,11 +660,16 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 {r.stats ? (
                   <>
-                    <div style={{ fontSize: 15, fontWeight: 900 }}>{fmtPrice(r.stats.value, displayCurrency)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 900 }}>{money(r.stats.value, displayCurrency)}</div>
                     <div style={{ fontSize: 13, color: pnlColor(r.stats.pnl) }}>{fmtPct(r.stats.pnlPct)}</div>
                     {!r.real && realStats && (
                       <div style={{ fontSize: 13, color: pnlColor(r.stats.value - realStats.value) }}>
-                        실계좌보다 {fmtSigned(r.stats.value - realStats.value, displayCurrency)}
+                        실계좌보다 {hidden ? (r.stats.value >= realStats.value ? "+" : "-") + MASK : fmtSigned(r.stats.value - realStats.value, displayCurrency)}
+                      </div>
+                    )}
+                    {r.whatIf != null && (
+                      <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>
+                        그날 QQQ였다면 {money(r.whatIf, displayCurrency)}
                       </div>
                     )}
                   </>
@@ -585,7 +680,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             </button>
           ))}
           <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8, lineHeight: 1.5, wordBreak: "keep-all" }}>
-            모든 계좌를 오늘 시세로 계산해요. 복사해 둔 계좌로 "그대로 뒀다면 지금 얼마인지" 볼 수 있어요.
+            모든 계좌를 오늘 시세로 계산해요. 복사해 둔 계좌로 "그대로 뒀다면 지금 얼마인지" 볼 수 있어요. "그날 QQQ였다면"은 복사한 날 총액을 나스닥100(QQQ)에 넣었다고 친 값이에요(2026.11.07 이후 복사한 계좌만).
           </div>
         </div>
       )}
@@ -614,12 +709,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(stats.value, displayCurrency)}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "var(--dm-text)" }}>{money(stats.value, displayCurrency)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>오늘 변동</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: pnlColor(stats.dailyChange) }}>
-                    {stats.dailyChange >= 0 ? "+" : ""}{fmtPrice(stats.dailyChange, displayCurrency)}
+                    {hidden ? MASK : <>{stats.dailyChange >= 0 ? "+" : ""}{fmtPrice(stats.dailyChange, displayCurrency)}</>}
                   </div>
                   <div style={{ fontSize: NL() ? 14 : 12, color: pnlColor(stats.dailyChangePct) }}>{fmtPct(stats.dailyChangePct)}</div>
                 </div>
@@ -627,12 +722,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               <div style={{ display: "flex", gap: 12, paddingTop: 10, borderTop: "1px solid var(--dm-row)" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>투자원금</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtPrice(stats.cost, displayCurrency)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{money(stats.cost, displayCurrency)}</div>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>평가손익</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: pnlColor(stats.pnl) }}>
-                    {stats.pnl >= 0 ? "+" : ""}{fmtPrice(stats.pnl, displayCurrency)} ({fmtPct(stats.pnlPct)})
+                    {hidden ? "" : <>{stats.pnl >= 0 ? "+" : ""}{fmtPrice(stats.pnl, displayCurrency)} </>}({fmtPct(stats.pnlPct)})
                   </div>
                 </div>
               </div>
@@ -642,12 +737,22 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             <div style={{ display: "flex", gap: 12, paddingTop: 10, marginTop: 10, borderTop: "1px solid var(--dm-row)" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>달러자산</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtUSD(summary.usdNative.value)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{money(summary.usdNative.value, "USD")}</div>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>원화자산</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{fmtKRW(summary.krwNative.value)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-text)" }}>{money(summary.krwNative.value, "KRW")}</div>
               </div>
+            </div>
+          )}
+          {stats.cash > 0 && (
+            <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 8 }}>총 평가금액에 현금 {money(stats.cash, displayCurrency)} 포함 · 손익률은 종목 기준</div>
+          )}
+          {alloc && alloc.parts.length > 0 && (
+            <div style={{ paddingTop: 12, marginTop: 10, borderTop: "1px solid var(--dm-row)" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-sub)", marginBottom: 8 }}>자산 비중</div>
+              <AllocationBar parts={alloc.parts} hidden={hidden} fmt={(v) => fmtPrice(v, displayCurrency)} />
+              {!alloc.ok && <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 6 }}>환율을 못 받아 일부 금액이 빠졌어요</div>}
             </div>
           )}
           {summary.mixed && (
@@ -689,23 +794,23 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                       <span style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>{h.sym}{!multi && h.broker ? ` · ${h.broker}` : ""}</span>
                     </div>
                     <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 2 }}>
-                      {roundQty(h.qty)}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
+                      {qtyText(h.qty)}주 · 매수가 {fmtPrice(h.avgPrice, h.currency)}
                       {!h.noData && h.price != null && (
                         <> · 현재 {fmtPrice(h.price, h.marketCurrency || 'USD')}</>
                       )}
                     </div>
                     {multi && (
                       <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-sub)", marginTop: 2 }}>
-                        {parts.map(p => `${p.broker || "직접 입력"} ${roundQty(p.qty)}`).join(" · ")}
+                        {parts.map(p => `${p.broker || "직접 입력"} ${qtyText(p.qty)}`).join(" · ")}
                       </div>
                     )}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     {!h.noData && h.value != null ? (
                       <>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{fmtPrice(h.value, h.marketCurrency || 'USD')}</div>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "var(--dm-text)" }}>{money(h.value, h.marketCurrency || 'USD')}</div>
                         <div style={{ fontSize: NL() ? 13 : 11, color: pnlColor(h.pnl) }}>
-                          {h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} ({fmtPct(h.pnlPct)})
+                          {hidden ? "" : <>{h.pnl >= 0 ? "+" : ""}{fmtPrice(h.pnl, h.marketCurrency || 'USD')} </>}({fmtPct(h.pnlPct)})
                         </div>
                       </>
                     ) : h.currencyMismatch ? (
@@ -744,7 +849,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--dm-text)" }}>
                             <b>{p.broker || "직접 입력"}</b>
-                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {roundQty(p.qty)}주 · 매수가 {fmtPrice(p.avgPrice, p.currency)}</span>
+                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {qtyText(p.qty)}주 · 매수가 {fmtPrice(p.avgPrice, p.currency)}</span>
                           </div>
                           <button className={NL() ? 'dm-hit-y' : undefined} aria-label={`${p.broker || "직접 입력"} 수정`}
                             onClick={() => (showForm && editingId === p.id) ? resetForm() : handleEdit(p)}
@@ -794,7 +899,37 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
         </div>
       )}
 
-      {holdings.length === 0 && !showForm && (
+      {/* 💵 현금 (2026-11-07) — 총 평가금액·비중에 더한다. 실계좌 현금은 자산 브리핑에도 */}
+      <div style={{ ...S.card, marginBottom: 10 }}>
+        {cashEdit ? (
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>💵 현금</div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 8 }}>
+              <label style={{ fontSize: 13, color: "var(--dm-muted)" }}>원화
+                <input value={cashEdit.krw} onChange={e => setCashEdit(c => ({ ...c, krw: e.target.value }))} inputMode="numeric" placeholder="예: 5,000,000" style={{ ...inputStyle, marginTop: 4 }} />
+              </label>
+              <label style={{ fontSize: 13, color: "var(--dm-muted)" }}>달러
+                <input value={cashEdit.usd} onChange={e => setCashEdit(c => ({ ...c, usd: e.target.value }))} inputMode="decimal" placeholder="예: 2,000" style={{ ...inputStyle, marginTop: 4 }} />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button onClick={saveCash} style={{ ...S.btn, flex: 1, marginTop: 0 }}>저장</button>
+              <button onClick={() => setCashEdit(null)} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>취소</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setCashEdit({ krw: cash?.krw ? String(cash.krw) : "", usd: cash?.usd ? String(cash.usd) : "" })}
+            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", minHeight: UI.touch, padding: 0, background: "none", border: "none", textAlign: "left", color: "var(--dm-text)", cursor: "pointer", fontFamily: "inherit" }}>
+            <span style={{ fontSize: 14, fontWeight: 900 }}>💵 현금</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: cash ? "var(--dm-text)" : "var(--dm-muted)", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {cash ? [cash.krw ? money(cash.krw, "KRW") : null, cash.usd ? money(cash.usd, "USD") : null].filter(Boolean).join(" · ") : "예수금·달러 넣기"}
+            </span>
+            <span aria-hidden style={{ fontSize: 13 }}>✏️</span>
+          </button>
+        )}
+      </div>
+
+      {holdings.length === 0 && !showForm && !cash && (
         <div style={{ ...S.card, textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: "28px 16px" }}>
           보유 종목을 추가해보세요<br />
           <span style={{ fontSize: NL() ? 13 : 11, marginTop: 6, display: "block" }}>수량과 평균단가를 입력하면<br />평가금액과 손익을 자동 계산해요</span>
@@ -821,6 +956,76 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
       {/* 새 종목 입력 창 (수정 창은 그 종목 바로 아래에 열린다) */}
       {showForm && !editingId && renderForm(false)}
+
+      {/* 📈 자산 추이 — 실계좌만 (앱을 연 날 하루 한 점) */}
+      {activeTab.real && (holdings.length > 0 || cash) && (
+        <div style={{ ...S.card, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>📈 자산 추이</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[[30, "1달"], [90, "3달"], [365, "1년"], [null, "전체"]].map(([d, l]) => (
+                <button key={l} className="dm-hit-y" onClick={() => setTrendRange(d)} aria-pressed={trendRange === d}
+                  style={{ height: 30, padding: "0 8px", borderRadius: 8, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+                    border: `1px solid ${trendRange === d ? ACCENT : "var(--dm-border)"}`, background: trendRange === d ? "rgba(91,124,250,.12)" : "transparent", color: trendRange === d ? ACCENT : "var(--dm-sub)" }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          {trend.length >= 2 && (() => {
+            const a = trend[0].v, b = trend[trend.length - 1].v, pct = ((b - a) / a) * 100;
+            return (
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", marginBottom: 8 }}>
+                {trend.length}일 기록 · <b style={{ color: pnlColor(pct) }}>{hidden ? "" : fmtSigned(b - a, displayCurrency) + " "}({fmtPct(pct)})</b>
+              </div>
+            );
+          })()}
+          <TrendChart series={trend} hidden={hidden} fmt={(v) => fmtPrice(v, displayCurrency)} />
+        </div>
+      )}
+
+      {/* 💰 배당 (예상) — Yahoo 배당 기록(지난 1년)으로 앞으로 1년 */}
+      {div && div.perHolding.length > 0 && (
+        <div style={{ ...S.card, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>💰 예상 배당 (1년)</div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: "var(--dm-text)" }}>{money(divPre.sum, displayCurrency)}</div>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>세후 약 {money(divPost.sum, displayCurrency)}{divYield != null ? ` · 연 ${divYield.toFixed(2)}%` : ""}</div>
+            </div>
+          </div>
+          <DividendMonths months={divMonths} hidden={hidden} fmt={(v) => fmtPrice(v, displayCurrency)} />
+          {divSoon.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-sub)", marginBottom: 4 }}>다가오는 배당락일 (예상)</div>
+              {divSoon.map(e => (
+                <div key={e.d + e.sym} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid var(--dm-row)", fontSize: 14, color: "var(--dm-text)" }}>
+                  <span style={{ width: 48, flexShrink: 0, fontWeight: 800, color: "var(--dm-sub)" }}>{Number(e.d.slice(5, 7))}/{Number(e.d.slice(8))}</span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.label}</span>
+                  <span style={{ flexShrink: 0, fontWeight: 800 }}>{money(e.amount, e.currency)}</span>
+                </div>
+              ))}
+              {(divUpcomingCount > 3 || div.perHolding.length > 0) && (
+                <button onClick={() => setDivOpen(v => !v)} style={{ display: "block", width: "100%", minHeight: UI.touch, padding: 0, background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, fontSize: 14, fontWeight: 800, color: ACCENT, cursor: "pointer", fontFamily: "inherit" }}>
+                  {divOpen ? "접기 ▲" : "모두 보기 · 종목별 ▼"}
+                </button>
+              )}
+            </div>
+          )}
+          {divOpen && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dm-sub)", marginBottom: 4 }}>종목별 (1년)</div>
+              {div.perHolding.map(p => (
+                <div key={p.sym + p.currency} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid var(--dm-row)", fontSize: 14, color: "var(--dm-text)" }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label} <span style={{ fontSize: 13, color: "var(--dm-muted)" }}>연 {p.count}회</span></span>
+                  <span style={{ flexShrink: 0, fontWeight: 800 }}>{money(p.annual, p.currency)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.6, wordBreak: "keep-all" }}>
+            지난 1년 배당을 그대로 이어 간다고 보고 계산했어요. 날짜는 배당락일 기준이고 실제 입금은 보통 몇 주 뒤예요. 세후는 원천징수(국내 15.4%·미국 15%)만 뺀 대략값이에요.
+          </div>
+        </div>
+      )}
       </>)}
 
       {/* 제작자가 만든 코인 시장 분석 앱 — 새 창(외부 브라우저)으로 연다 */}

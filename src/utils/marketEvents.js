@@ -10,6 +10,8 @@ import { holidayName } from "./holidays.js";
 export const MARKETS = [
   { id: "kr", label: "코스피", tag: "한국", color: "#EF4444" },
   { id: "us", label: "나스닥", tag: "미국", color: "#5B7CFA" },
+  // 내 보유 종목(실계좌)의 예상 배당락일 (2026-11-07) — History.jsx가 Yahoo 배당 기록으로 만든다(marketEventsOf에는 없음)
+  { id: "div", label: "내 배당", tag: "배당", color: "#16A34A" },
 ];
 
 const BOK = ["2026-11-26", "2027-01-14", "2027-02-25", "2027-04-09", "2027-05-27", "2027-07-15", "2027-08-26", "2027-10-15", "2027-11-25"];

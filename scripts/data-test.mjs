@@ -335,6 +335,78 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('통화가 다르면 합치지 않음', groupHoldings([{ id: 'a', sym: 'X', src: 'yahoo', currency: 'KRW', qty: 1, avgPrice: 1 }, { id: 'b', sym: 'X', src: 'yahoo', currency: 'USD', qty: 1, avgPrice: 1 }]).length === 2);
 }
 
+// ── 보유자산 부가 기능: 현금 · 비중 · 추이 · 배당 · 지수 비교 (2026-11-07) ──
+{
+  const { calcPortfolioSummary } = await load('/src/utils/portfolioCalc.js');
+  const { readTabs, tabCash, setTabCash, addTab, makeReal, setTabHoldings } = await load('/src/utils/portfolioTabs.js');
+  const { allocation, assetClassOf, nextHistoryPoint, mergeHistory, historySeries, projectDividends, dividendMonths, dividendTotal, dividendSymOf, afterTax, indexWhatIf } = await load('/src/utils/portfolioExtras.js');
+  const hs = [
+    { id: 'a', sym: 'TSLA', src: 'finnhub', qty: 10, avgPrice: 200, currency: 'USD' },
+    { id: 'b', sym: '005930.KS', src: 'yahoo', qty: 10, avgPrice: 50000, currency: 'KRW' },
+    { id: 'c', sym: 'BTC', src: 'coingecko', qty: 0.01, avgPrice: 50000, currency: 'USD' },
+  ];
+  const md = { TSLA: { price: 300, chgPct: 0 }, '005930.KS': { price: 70000, chgPct: 0, currency: 'KRW' }, BTC: { price: 100000, chgPct: 0 } };
+  const noCash = calcPortfolioSummary(hs, md, 1400);
+  const withCash = calcPortfolioSummary(hs, md, 1400, { krw: 1400000, usd: 1000 });
+  t('현금: 총액에 더함(원화는 환율로)', Math.abs(withCash.statsUSD.value - (noCash.statsUSD.value + 2000)) < 1e-6);
+  t('현금: 손익·손익률은 종목 기준 그대로', withCash.statsUSD.pnl === noCash.statsUSD.pnl && withCash.statsUSD.pnlPct === noCash.statsUSD.pnlPct);
+  t('현금: 종목 없이 현금만 있어도 요약', calcPortfolioSummary([], null, 1400, { krw: 0, usd: 500 })?.statsUSD.value === 500);
+  t('현금 없음·종목 없음이면 요약 없음(예전과 같음)', calcPortfolioSummary([], md, 1400) === null);
+
+  const cfg0 = { holdings: hs };
+  const r0 = readTabs(cfg0).realId;
+  const c1 = setTabCash(cfg0, r0, { krw: '1000000', usd: 0 }, 2);
+  t('현금: 실계좌 현금은 맨 위 cash(자산 브리핑이 읽음)', c1.cash?.krw === 1000000 && same(tabCash(c1, r0), { krw: 1000000, usd: 0 }));
+  const { cfg: c2, id: cp } = addTab(c1, { fromId: r0, base: { d: '2026-11-07', qqq: 500, usd: 10000 } });
+  t('복사: 현금·지수 기준값도 같이', same(tabCash(c2, cp), c1.cash) && readTabs(c2).tabs[1].base.qqq === 500);
+  const c3 = makeReal(setTabCash(c2, cp, { usd: 300 }), cp);
+  t('실계좌로: 현금도 바뀜, 이전 현금은 비교용 탭에 남음', same(c3.cash, { krw: 0, usd: 300 }) && same(tabCash(c3, r0), { krw: 1000000, usd: 0 }));
+  t('현금 지우기: 0이면 null로 저장(merge 저장에서 지워짐)', setTabCash(c1, r0, { krw: 0, usd: 0 }).cash === null);
+  t('종목 고쳐도 현금 유지', same(setTabHoldings(c1, r0, [], 3).cash, c1.cash));
+
+  t('자산군: 한국·미국·코인', assetClassOf(hs[1]) === 'kr' && assetClassOf(hs[0]) === 'us' && assetClassOf(hs[2]) === 'coin');
+  const al = allocation(withCash.rows, { krw: 1400000, usd: 1000 }, 'USD', 1400);
+  const pct = Object.fromEntries(al.parts.map(p => [p.id, p.pct]));
+  t('비중: 합계 100%', Math.abs(al.parts.reduce((s, p) => s + p.pct, 0) - 100) < 1e-9);
+  t('비중: 금액대로(미국 3000·국내 500·코인 1000·현금 2000)', Math.abs(pct.us - 3000 / 6500 * 100) < 1e-6 && Math.abs(pct.cash - 2000 / 6500 * 100) < 1e-6);
+  t('비중: 환율 없으면 못 바꾼 금액은 빼고 알림', allocation(withCash.rows, null, 'USD', null).ok === false);
+
+  const p1 = nextHistoryPoint({}, '2026-11-07', 1000, 1400000, 1);
+  t('추이: 첫 기록', p1.u === 1000 && p1.k === 1400000);
+  t('추이: 같은 날 거의 같은 값이면 다시 저장 안 함', nextHistoryPoint({ '2026-11-07': p1 }, '2026-11-07', 1000.5, 1400700) === null);
+  t('추이: 같은 날 값이 바뀌면 새 값', nextHistoryPoint({ '2026-11-07': p1 }, '2026-11-07', 1100, 1540000)?.u === 1100);
+  t('추이: 0원은 기록 안 함', nextHistoryPoint({}, '2026-11-07', 0, 0) === null);
+  const merged = mergeHistory({ '2026-11-06': { u: 1, t: 5 }, '2026-11-07': { u: 2, t: 9 } }, { '2026-11-07': { u: 3, t: 7 }, '2026-11-08': { u: 4, t: 1 } });
+  t('추이: 두 기기 합치기(같은 날은 나중 기록)', merged['2026-11-07'].u === 2 && merged['2026-11-08'].u === 4 && Object.keys(merged).length === 3);
+  t('추이: 기간·날짜순', same(historySeries({ '2026-11-07': { u: 3 }, '2026-10-01': { u: 1 }, '2026-11-01': { u: 2 } }, { days: 30, today: '2026-11-07' }).map(x => x.v), [2, 3]));
+  t('추이: 원화로 볼 때 원화값 없는 날은 뺌', historySeries({ '2026-11-07': { u: 3, k: null } }, { currency: 'KRW' }).length === 0);
+
+  t('배당: 코인은 없음, 미국 종목 점은 하이픈', dividendSymOf(hs[2]) === null && dividendSymOf({ sym: 'BRK.B', src: 'finnhub' }) === 'BRK-B');
+  const divData = {
+    TSLA: { currency: 'USD', list: [] },
+    AAPL: { currency: 'USD', list: [{ d: '2025-08-11', a: 0.26 }, { d: '2025-11-10', a: 0.26 }, { d: '2026-02-09', a: 0.26 }, { d: '2026-05-11', a: 0.27 }, { d: '2026-08-10', a: 0.27 }] },
+    '005930.KS': { currency: 'KRW', list: [{ d: '2025-12-29', a: 566 }, { d: '2026-03-30', a: 372 }, { d: '2026-06-29', a: 374 }, { d: '2026-09-29', a: 370 }] },
+  };
+  const dh = [{ sym: 'AAPL', label: '애플', src: 'finnhub', qty: 5 }, { sym: 'AAPL', label: '애플', src: 'finnhub', qty: 5, broker: '키움' }, { sym: '005930.KS', label: '삼성전자', src: 'yahoo', qty: 10 }, hs[0]];
+  const dv = projectDividends(dh, divData, '2026-11-07');
+  const aapl = dv.perHolding.find(p => p.sym === 'AAPL');
+  t('배당: 지난 1년만(4회), 여러 앱 수량 합', aapl.count === 4 && aapl.qty === 10 && Math.abs(aapl.annual - (0.26 + 0.26 + 0.27 + 0.27) * 10) < 1e-9);
+  t('배당: 배당 없는 종목은 빠짐', !dv.perHolding.some(p => p.sym === 'TSLA'));
+  t('배당: 예상일은 1년 뒤, 같은 날 같은 종목은 한 줄', dv.events.filter(e => e.d === '2026-11-10' && e.sym === 'AAPL').length === 1 && dv.events.find(e => e.d === '2026-11-10').amount === 2.6);
+  t('배당: 날짜순', same(dv.events.map(e => e.d), [...dv.events.map(e => e.d)].sort()));
+  const special = projectDividends([{ sym: '005930.KS', label: '삼성전자', src: 'yahoo', qty: 1 }],
+    { '005930.KS': { currency: 'KRW', list: [{ d: '2025-12-29', a: 566 }, { d: '2026-03-30', a: 372 }, { d: '2026-06-29', a: 374 }, { d: '2026-09-29', a: 4601 }] } }, '2026-11-07');
+  t('배당: 평소 3배 넘는 한 번짜리(특별배당·오류)는 예상에서 뺌', special.perHolding[0].count === 3 && special.perHolding[0].annual === 566 + 372 + 374);
+  const months = dividendMonths(dv.events, '2026-11-07', 'USD', 1400);
+  t('배당: 앞으로 12달, 이번 달부터', months.length === 12 && months[0].ym === '2026-11' && Math.abs(months[0].v - 2.6) < 1e-9);
+  t('배당: 원화 배당은 환율로(12월 삼성 5660원 → $4.04)', Math.abs(months[1].v - 5660 / 1400) < 1e-9);
+  t('배당: 세후(미국 15%·국내 15.4%)', Math.abs(afterTax(100, 'USD') - 85) < 1e-9 && Math.abs(afterTax(100, 'KRW') - 84.6) < 1e-9);
+  t('배당: 환율 없으면 합계 불완전 표시', dividendTotal(dv.events, 'USD', null).ok === false);
+
+  t('지수 비교: 그날 QQQ 500 → 지금 550이면 10% 더', Math.abs(indexWhatIf({ qqq: 500, usd: 10000 }, 550) - 11000) < 1e-9);
+  t('지수 비교: 기준 없으면 없음', indexWhatIf(null, 550) === null && indexWhatIf({ qqq: 500, usd: 1 }, 0) === null);
+}
+
 // ── 수험생 모드: D-day · 공부 시간 · 오답 다시 풀기 (2026-11-01) ──
 {
   const { normalizeExam, upcomingDdays, ddayLabel, studyBySubject, studyTotal, lastWeekStudy, newStudyEntry, reviewWrongNote, firstDue, isDue, studyXp, EXAM_SUBJECTS } = await load('/src/utils/exam.js');

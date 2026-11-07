@@ -182,6 +182,34 @@ export default async function handler(req, res) {
     }
   }
 
+  // ?type=dividends&syms=AAPL,005930.KS → 최근 2년 배당 기록 (2026-11-07, 보유자산 배당 달력)
+  // Yahoo 차트 API의 배당 이벤트(공식 API 아님 — 사용자 승인). 날짜는 배당락일이다. 코인은 보내지 않는다.
+  if (req.query.type === 'dividends') {
+    const syms = String(req.query.syms || '').split(',').map(s => s.trim().toUpperCase())
+      .filter(s => /^[A-Z0-9.\-^=]{1,15}$/.test(s)).slice(0, 40);
+    const out = {};
+    await Promise.all(syms.map(async (sym) => {
+      try {
+        const r = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=2y&interval=1mo&events=div`,
+          { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        );
+        const j = await r.json();
+        const result = j?.chart?.result?.[0];
+        if (!result) return;
+        const list = Object.values(result.events?.dividends || {})
+          .filter(d => d && d.amount > 0 && d.date)
+          .map(d => ({ d: new Date(d.date * 1000).toISOString().slice(0, 10), a: d.amount }))
+          .sort((a, b) => a.d.localeCompare(b.d));
+        out[sym] = { currency: result.meta?.currency || null, list };
+      } catch (error) {
+        console.error(`[market] dividends fetch failed for ${sym}:`, error?.message);
+      }
+    }));
+    res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate=86400'); // 배당 기록은 자주 안 바뀐다
+    return res.status(200).json(out);
+  }
+
   // ?type=weather&city=Seoul → 날씨 조회
   if (req.query.type === 'weather') {
     const city = (req.query.city || '').trim() || 'Seoul';
