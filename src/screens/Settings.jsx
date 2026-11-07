@@ -72,7 +72,8 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
         : 'var(--dm-text)';
 
   return (
-    <div style={{
+    <div {...(nl && onClick ? { role: 'button', tabIndex: 0, onClick, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } } : {})}
+      style={{
       border: '1px solid rgba(255,255,255,.06)',
       background: 'rgba(255,255,255,.03)',
       borderRadius: 16,
@@ -80,6 +81,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
       minHeight: 116,
       display: 'flex',
       flexDirection: 'column',
+      ...(nl && onClick ? { cursor: 'pointer' } : {}),
     }}>
       <div style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>{label}</div>
       <div style={{ fontSize: nl ? 18 : 16, fontWeight: 900, color: accent, marginBottom: 6 }}>{value}</div>
@@ -89,7 +91,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
           {onAction && actionLabel && (
             <button className={NL() ? 'dm-hit' : undefined}
               type="button"
-              onClick={onAction}
+              onClick={(e) => { e.stopPropagation(); onAction(); }}
               style={{
                 border: '1px solid rgba(108,142,255,.28)',
                 background: 'rgba(108,142,255,.12)',
@@ -105,7 +107,7 @@ function SummaryTile({ label, value, sub, onClick, actionLabel, onAction, tone =
               {actionLabel}
             </button>
           )}
-          {onClick && (
+          {onClick && !nl && (
             <button className={NL() ? 'dm-hit' : undefined}
               type="button"
               onClick={onClick}
@@ -1609,8 +1611,8 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10 }}>
             <SummaryTile
               label="계정"
-              value={authUser ? '연결됨' : '로컬 모드'}
-              sub={authUser ? (authUser.displayName || authUser.email || 'Google 동기화 사용 중') : '기기 안에서만 저장 중'}
+              value={authUser ? '연결됨' : (todayNewLook ? '이 기기에만' : '로컬 모드')}
+              sub={authUser ? (authUser.displayName || authUser.email || 'Google 동기화 사용 중') : (todayNewLook ? '로그인하면 다른 기기와 맞춰져요' : '기기 안에서만 저장 중')}
               onClick={() => setSubPage('integrations')}
               actionLabel={authUser ? '연동 보기' : '로그인'}
               onAction={() => authUser ? setSubPage('integrations') : onGoogleSignIn().catch(() => {})}
@@ -1638,17 +1640,17 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             />
             <SummaryTile
               label="백업"
-              value={driveConnected ? 'Drive 사용 중' : '로컬에만 저장'}
-              sub={driveConnected ? `마지막 백업 ${backupSummary}` : 'Drive 백업 없음'}
+              value={driveConnected ? (todayNewLook ? '드라이브 사용 중' : 'Drive 사용 중') : (todayNewLook ? '백업 안 함' : '로컬에만 저장')}
+              sub={driveConnected ? `마지막 백업 ${backupSummary}` : (todayNewLook ? '구글 드라이브에 백업할 수 있어요' : 'Drive 백업 없음')}
               onClick={() => setSubPage('app')}
-              actionLabel={driveConnected ? '백업' : 'Drive 연결'}
+              actionLabel={driveConnected ? '백업' : (todayNewLook ? '드라이브 연결' : 'Drive 연결')}
               onAction={driveConnected ? () => setSubPage('app') : () => setSubPage('integrations')}
               tone={driveConnected ? 'good' : 'default'}
             />
           </div>
         </div>
 
-      <div style={{ padding: '0 16px 12px' }}>
+      {!todayNewLook && <div style={{ padding: '0 16px 12px' }}>
         <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: NL() ? 13 : 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.04em' }}>빠른 액션</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {quickActions.map((item) => (
@@ -1672,7 +1674,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {authUser && onOpenAdmin && (
         <div style={{ padding: '0 16px 12px' }}>

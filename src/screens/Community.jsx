@@ -853,6 +853,24 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     <div style={S.content}>
       <div style={S.topbar}><div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div></div></div>
       <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+        {/* 새 디자인: 로그인하면 무엇을 할 수 있는지 먼저 보여 준다 (2026-11-07 — 빈 화면에 한 줄뿐이었다) */}
+        {NL() && (
+          <div style={{ ...S.card, margin: '0 0 20px', textAlign: 'left', padding: '6px 16px' }}>
+            {[
+              ['👥', '커뮤니티', '모임을 만들어 일정·출석·공지·단체 채팅을 함께'],
+              ['🔥', '챌린지', '같은 습관을 여럿이 매일 인증하고 응원'],
+              ['📝', '자유게시판', 'DayMate 쓰는 사람들과 이야기 나누기'],
+            ].map(([icon, title, sub], i) => (
+              <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--dm-row)' : 'none' }}>
+                <span aria-hidden style={{ fontSize: 22, width: 28, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 16, fontWeight: 900, color: 'var(--dm-text)' }}>{title}</span>
+                  <span style={{ display: 'block', fontSize: 14, color: 'var(--dm-sub)', marginTop: 2, lineHeight: 1.5, wordBreak: 'keep-all' }}>{sub}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         <div style={{ color: 'var(--dm-muted)', fontSize: 14, marginBottom: 16 }}>
           로그인 후 이용할 수 있어요
         </div>

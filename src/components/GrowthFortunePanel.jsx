@@ -223,6 +223,12 @@ export default function GrowthFortunePanel({
             <span style={{ fontSize: nl ? UI.sub : 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
           </div>
           {nl ? <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}><SectionIcon name="sprout" size={18} />나의 성장 능력치</div> : <div style={{ fontSize: 12, fontWeight: 900, color: "var(--dm-muted)", letterSpacing: "0.06em", marginBottom: 10 }}>🌱 나의 성장 능력치</div>}
+          {/* 새 디자인: 아직 쌓인 능력치가 없으면 0만 6줄 늘어놓지 않고 한 줄 안내 (2026-11-07) */}
+          {nl && GROWTH_STATS.every(stat => calcStatScore(statXp[stat.id] || 0) === 0) ? (
+            <div style={{ fontSize: 14, color: "var(--dm-sub)", lineHeight: 1.6, wordBreak: "keep-all" }}>
+              할 일·습관을 끝내면 {GROWTH_STATS.slice(0, 3).map(s => `${s.icon} ${s.name}`).join(" · ")} 같은 능력치가 쌓여요.
+            </div>
+          ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8 }}>
             {GROWTH_STATS.map(stat => {
               const score = calcStatScore(statXp[stat.id] || 0);
@@ -238,6 +244,7 @@ export default function GrowthFortunePanel({
               );
             })}
           </div>
+          )}
           {onOpenBattle && (
             <button onClick={onOpenBattle} style={{ width: '100%', marginTop: 14, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 12, padding: nl ? '12px 0' : '10px 0', fontSize: nl ? 16 : 13, fontWeight: 900, color: nl ? '#8B5CF6' : '#c4b5fd', cursor: 'pointer', fontFamily: 'inherit' }}>
               ⚔️ 배틀

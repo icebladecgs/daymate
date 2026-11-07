@@ -111,6 +111,10 @@ export default function Today({
   const nowMin = useNowMinutes(); // "지금 할 일" 카드·목록의 "지금" 표시용 (30초마다)
   const wh = normalizeWorkHours(workHours); // 출퇴근 시간 (설정 → 앱 관리)
   const [planMore, setPlanMore] = useState(false); // 아침 계획: 언젠가할일 더 보기
+  // 새 디자인: 아침 계획 카드는 한 줄로 접어 둔다 (2026-11-07 — 아침마다 첫 할일이 화면 아래로 밀렸다)
+  const [planOpen, setPlanOpen] = useState(false);
+  // 새 디자인: 저녁 전·빈 일기는 한 줄로 접어 둔다 (2026-11-07 — 아침에도 입력칸이 화면 1/4을 차지했다)
+  const [journalOpen, setJournalOpen] = useState(false);
   const [focus, setFocus] = useState(null); // 집중 타이머 { ds, task } — 지금 할 일 카드·할일 상세에서 시작
   const [journalDayOffset, setJournalDayOffset] = useState(0); // 일기 섹션만 다른 날짜로 미리보기
   const [gcalConnecting, setGcalConnecting] = useState(false);
@@ -602,16 +606,34 @@ export default function Today({
           </div>
         );
       })()}
-      {tasksOpen && taskDayOffset === 0 && showPlanCard && (
+      {tasksOpen && taskDayOffset === 0 && showPlanCard && newLook && morning && !planOpen && (
+        <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)', padding: '4px 8px 4px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => setPlanOpen(true)} aria-expanded={false}
+              style={{ flex: 1, minWidth: 0, minHeight: UI.touch, display: 'flex', alignItems: 'center', gap: 8, padding: 0, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--dm-text)' }}>
+              <span style={{ fontSize: 16, fontWeight: 800, whiteSpace: 'nowrap' }}>☀️ 오늘 계획</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {[carryTasks.length ? `어제 못 한 일 ${carryTasks.length}` : null, planSomeday.length ? `언젠가에서 고르기` : null].filter(Boolean).join(' · ')}
+              </span>
+              <span aria-hidden style={{ fontSize: 13, color: 'var(--dm-sub)' }}>▼</span>
+            </button>
+            <button className="dm-hit-y" onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
+              style={{ width: 32, height: 32, background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: 0, flexShrink: 0 }}>✕</button>
+          </div>
+        </div>
+      )}
+      {tasksOpen && taskDayOffset === 0 && showPlanCard && !(newLook && morning && !planOpen) && (
         <div style={{ ...S.card, border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: morning ? 4 : 10 }}>
             <span style={{ flex: 1, fontSize: morning ? 16 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{morning ? '☀️ 오늘 계획' : `⏪ 어제 못 한 할일 ${carryTasks.length}개`}</span>
+            {newLook && morning && <button className="dm-hit-y" onClick={() => setPlanOpen(false)} aria-expanded={true}
+              style={{ padding: '0 6px', height: 32, background: 'none', border: 'none', color: 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>접기 ▲</button>}
             {!morning && <button className={newLook ? 'dm-hit' : undefined} onClick={() => carryToToday(carryTasks)}
               style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(108,142,255,.4)', background: 'rgba(108,142,255,.15)', color: '#6C8EFF', fontSize: newLook ? UI.sub : 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>모두 오늘로</button>}
             <button className={newLook ? 'dm-hit' : undefined} onClick={dismissCarry} aria-label="닫기" title="오늘은 그만 보기"
               style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
           </div>
-          {morning && (
+          {morning && !newLook && (
             <div style={{ fontSize: 14, color: 'var(--dm-sub)', marginBottom: 10 }}>
               {timedToday.length ? `⏰ 시간 정한 일 ${timedToday.length}개 · 첫 일정 ${timedToday[0].time} ${timedToday[0].title}` : '⏰ 오늘은 시간 정한 일이 없어요'}
             </div>
@@ -664,7 +686,7 @@ export default function Today({
           <span onClick={onOpenPeople} style={newLook
             ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: newLook ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
-            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)' } : {}) }}> · 다가오는 생일·기념일이 없어요</span>}
+            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)', whiteSpace: 'nowrap' } : {}) }}>{newLook ? ' · 이번 주 없음' : ' · 다가오는 생일·기념일이 없어요'}</span>}
           </span>
           {onOpenPeople && <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
@@ -754,12 +776,15 @@ export default function Today({
               const checked = !!habitChecks[h.id];
               return (
                 <button key={h.id} onClick={() => onToggleHabit?.(h.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : 'var(--dm-input)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                  aria-pressed={checked}
+                  // 새 디자인: 안 한 습관은 바탕을 비우고 오른쪽 빈 동그라미 — 회색 바탕은 꺼진 버튼처럼 보였다 (2026-11-07)
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : (newLook ? 'transparent' : 'var(--dm-input)'), cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                   {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
                   <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
                   <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
                   {(() => { const n = habitStreak(plans, h.id, dateStr, checked); return n >= 2 ? <span style={{ fontSize: 14, fontWeight: 800, color: '#F97316', flexShrink: 0 }}>🔥 {n}일</span> : null; })()}
                   {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
+                  {!checked && newLook && <span aria-hidden style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--dm-muted)', flexShrink: 0, boxSizing: 'border-box' }} />}
                 </button>
               );
             })}
@@ -890,6 +915,13 @@ export default function Today({
           <button className={newLook ? 'dm-hit' : undefined} onClick={() => { flushJournalSave(); setJournalDayOffset(o => o + 1); }} aria-label="다음날 일기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 20, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
+      {newLook && journalDayOffset === 0 && !journalOpen && !displayedJournalBody?.trim() && !journalTargetDay.journal?.photoUrl && nowMin < wrapFromMin(wh, dateStr) ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-muted)', wordBreak: 'keep-all' }}>저녁에 하루를 돌아보며 써 보세요</span>
+          <button onClick={() => setJournalOpen(true)}
+            style={{ flexShrink: 0, minHeight: UI.touch, padding: '0 14px', borderRadius: 10, border: '1.5px solid rgba(91,124,250,.35)', background: 'rgba(91,124,250,.10)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>✏️ 지금 쓰기</button>
+        </div>
+      ) : (
       <div style={innerCard}>
         {/* {label} 한 일 — done tasks 자동 표시 */}
         {journalDoneTasks.length > 0 && (
@@ -949,6 +981,7 @@ export default function Today({
           </div>
         </div>
       </div>
+      )}
       </SectionBox>
     </>),
   };

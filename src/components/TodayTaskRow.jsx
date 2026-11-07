@@ -11,7 +11,8 @@ import { UI } from "../styles.js";
 const icon = (d) => (
   <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
 );
-const TRAY = icon(<><path d="M12 4v10M8 10l4 4 4-4" /><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" /></>);
+// "언젠가로" — 언젠가할일 칸 제목과 같은 받은편지함 모양 (2026-11-07: 예전 아래 화살표+받침은 다운로드처럼 보였다)
+const TRAY = icon(<><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 01-2 2H4a2 2 0 01-2-2v-6z" /></>);
 const X = icon(<path d="M6 6l12 12M18 6L6 18" />);
 // 전역 button padding(index.css) 때문에 padding: 0 필수
 const iconBtn = { width: UI.touch, height: UI.touch, padding: 0, border: "none", background: "none", color: "var(--dm-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 10 };

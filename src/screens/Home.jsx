@@ -504,10 +504,10 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
   useEffect(() => { store.set('dm_section_open_monthgoals', monthGoalsOpen); }, [monthGoalsOpen]);
   const renderMyGoalBlock = ({ emoji, title, accent, items, editing, draft, setDraft, newInput, setNewInput, onStartEdit, onSave, open, onToggleOpen, onItemClick, itemCount, progressOf }) => (
     <div style={newLook ? { padding: '12px 0', borderTop: '1px solid var(--dm-row)' } : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open ? 8 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open && !(newLook && !items.length && !editing) ? 8 : 0 }}>
         <div>
           <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
-          <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : '아직 비어 있어요'}</div>
+          <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : (newLook ? '아직 비어 있어요 · 편집으로 추가' : '아직 비어 있어요')}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12 }}>
           {!newLook && <button onClick={onToggleOpen} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
@@ -558,7 +558,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             </div>
           ))}
         </div>
-      ) : (
+      ) : newLook ? null : (
         <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', padding: '4px 0' }}>편집을 눌러 목표를 추가해보세요</div>
       )}
     </div>

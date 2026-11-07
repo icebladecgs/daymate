@@ -434,7 +434,8 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
         {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>🔍</button>}
         <button
           onClick={handleSaveClick}
-          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { height: UI.touch, whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px' } : {}) }}
+          // 새 디자인: 1초 뒤 자동 저장되므로 채운 버튼 대신 테두리만 (2026-11-07 — 저장을 꼭 눌러야 하는 것처럼 보였다)
+          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { height: UI.touch, whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px', background: 'transparent', border: '1.5px solid var(--dm-border)', color: 'var(--dm-sub)', fontWeight: 800 } : {}) }}
         >저장</button>
       </div>
       {!uid && onRequireLogin && <LoginNotice onLogin={onRequireLogin} />}
