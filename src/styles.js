@@ -210,25 +210,27 @@ const S = {
 
 export default S;
 
-// 기능별 둥근 칸 (2026-11-05) — S.card와 같은 모양이지만 쌓임 맥락을 만들지 않는다
-// (backdropFilter·zIndex가 있으면 칸 안의 position: fixed 창이 칸에 갇히거나 아래 메뉴에 가려진다)
-export const boxCard = { ...S.card, backdropFilter: "none", WebkitBackdropFilter: "none", position: "static", zIndex: "auto", marginBottom: 12 };
-
 // UI 기준값 (2026-11-07, docs/UX-GUIDE.md와 같은 값 — 문서를 고치면 여기도, 여기를 고치면 문서도 고친다)
-// 새 칸·화면을 만들 때 숫자를 직접 쓰지 말고 이 값을 쓴다. 기존 화면은 탭별로 바꿀 때 차례로 옮긴다(한꺼번에 바꾸지 않는다).
-// 큰 글씨(.dm-phone zoom 1.1)가 기본이라 아래 px는 화면에서 1.1배로 커진 값이 실제 크기다.
+// 새 칸·화면은 숫자를 직접 쓰지 말고 이 값을 쓴다. 기존 화면은 탭별로 올릴 때 차례로 옮긴다(한꺼번에 바꾸지 않는다).
+// 글씨 크기 기본값 large에서는 .dm-phone에 zoom 1.1이 걸려 화면에서 1.1배로 보인다.
 export const UI = {
   gutter: 16,          // 화면 좌우 바깥 여백 (S.card margin)
   box: { radius: 20, pad: 14, gap: 12 }, // 새 디자인 둥근 칸(boxCard): 모서리·안쪽 여백·칸 사이
   titleGap: 16,        // 칸 제목 아래 여백 — 오늘 탭 secTitle. 제목 바로 밑에 내용을 붙이지 않는다
-  headingGap: 14,      // 공통 SectionHeading(My·소셜 등) 제목 아래 여백
-  rowGap: 10,          // 목록 줄 사이(습관 칸 간격·주간 일정 줄 사이)
-  rowPadY: 10,         // 줄 안쪽 위아래 여백(언젠가할일 줄 등 구분선 있는 줄)
+  headingGap: 14,      // SectionHeading(My 탭 계열) 제목 아래 여백
+  controlGap: 14,      // 제목 줄 아래 한 줄짜리 조작부(‹ 날짜 › 등) 앞에 더 두는 여백 — 주간 일정
+  rowGap: 10,          // 목록 줄 사이(습관 칸·주간 일정)
+  rowGapDense: 5,      // 줄을 빽빽하게 보여 주는 곳(PC 대시보드 이번 주 할일)
+  rowPadY: 10,         // 구분선 있는 줄의 위아래 안쪽 여백(언젠가할일)
   title: 17,           // 섹션 제목 글자 크기(굵게). 본문보다 작게 하지 않는다
-  body: 17,            // 오늘 탭 할일 줄 글자 크기. 다른 본문은 14~15 (아래 sub 이상)
-  sub: 13,             // 보조 글씨 최소 크기. 이보다 작게 쓰지 않는다(11~12는 예전 화면 잔재)
-  touch: { min: 32, main: 40 }, // 누르는 칸 최소(헤더 버튼 등) / 줄 안 주요 버튼(체크·아이콘)
-  chip: 34,            // 칩·보조 버튼 높이
+  body: 17,            // 오늘 탭 할일 줄 글자 크기
+  sub: 13,             // 보조 글씨 최소 크기(CLAUDE.md 14.7). 아직 못 옮긴 화면에 9~12가 남아 있다 — 가이드 7장
+  touch: 40,           // 새로 만드는 버튼의 누르는 칸 최소(2026-11-07 사용자 확정). 기존 작은 버튼은 탭별로 올릴 때 키운다
+  chip: 34,            // 칩·보조 버튼 높이 (지금 코드의 값, 사용자 확정 아님)
   accent: '#5B7CFA',   // 강조(파랑) — 밝은·어두운 화면 모두 보이는 색
   accent2: '#8B5CF6',  // 강조(보라)
 };
+
+// 기능별 둥근 칸 (2026-11-05) — S.card와 같은 모양이지만 쌓임 맥락을 만들지 않는다
+// (backdropFilter·zIndex가 있으면 칸 안의 position: fixed 창이 칸에 갇히거나 아래 메뉴에 가려진다)
+export const boxCard = { ...S.card, backdropFilter: "none", WebkitBackdropFilter: "none", position: "static", zIndex: "auto", marginBottom: UI.box.gap };

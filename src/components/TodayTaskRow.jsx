@@ -62,7 +62,7 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
         {next != null && !now && !done && (
           <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF", marginTop: 2 }}>다음 · {leftText(next)} 뒤</div>
         )}
-        {now && (
+        {now && !reorder && (
           <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={() => onToggle(task.id)}
               style={{ flex: 1, height: 42, padding: 0, borderRadius: 12, border: "none", background: "#6C8EFF", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>✓ 완료</button>

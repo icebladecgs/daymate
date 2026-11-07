@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toDateStr, getWeekDates } from "../utils/date.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -20,7 +20,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
 
   return (
     // minmax(0, 1fr): 칸 폭이 화면을 못 넘게 — 띄어쓰기 없는 긴 제목이 있으면 grid 칸이 글자 폭만큼 늘어나 가로로 넘쳤다(2026-11-07)
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: showAll ? 5 : 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: showAll ? UI.rowGapDense : UI.rowGap }}>
       {/* 주간 네비게이션 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
         <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>‹</button>

@@ -168,7 +168,7 @@ button {
 button:hover {
   border-color: #646cff;
 }
-button:focus,
+/* 테두리는 키보드로 옮겨 갈 때만 — 예전엔 터치·클릭한 버튼에 남아 화면이 깨져 보였다 (2026-11-07) */
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }

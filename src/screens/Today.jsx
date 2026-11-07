@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatKoreanDate, formatShortKoreanDate, getWeekDates, addDays } from "../utils/date.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import { FoldButton, SectionBox, WeatherCard, UpcomingDays } from "../components/TodayExtras.jsx";
 import Toast from "../components/Toast.jsx";
 import { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
@@ -58,7 +58,7 @@ function ReorderToggle({ on, onClick }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '2px 0 10px' }}>
       <button onClick={onClick}
-        style={{ height: 34, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? '#5B7CFA' : 'var(--dm-border)'}`, background: on ? 'rgba(91,124,250,.12)' : 'transparent', color: on ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+        style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? '#5B7CFA' : 'var(--dm-border)'}`, background: on ? 'rgba(91,124,250,.12)' : 'transparent', color: on ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
         {on ? '✓ 순서 완료' : '↕ 순서 바꾸기'}
       </button>
     </div>
@@ -482,7 +482,7 @@ export default function Today({
   // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘. 글씨는 할 일과 같은 17px·진하게(사용자 요청 — 섹션이 잘 보여야 함)
   // 새 디자인은 제목과 내용을 칸 하나(SectionBox)로 묶으므로 제목의 바깥 여백·안쪽 칸 모양을 뺀다
   // 제목 아래 여백 16px — 제목 바로 밑에 내용이 붙어 답답하다는 사용자 의견(2026-11-07)으로 모든 칸 공통으로 키움
-  const secTitle = newLook ? { ...S.sectionTitle, padding: '0 0 16px' } : S.sectionTitle;
+  const secTitle = newLook ? { ...S.sectionTitle, padding: `0 0 ${UI.titleGap}px` } : S.sectionTitle;
   const innerCard = newLook ? { position: 'relative' } : S.card;
   const foldPad = (open) => (newLook && !open ? { paddingBottom: 0 } : {}); // 접힌 칸은 제목 아래 여백을 뺀다
   const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
@@ -739,7 +739,7 @@ export default function Today({
             )}
           </>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: newLook ? 10 : 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: newLook ? UI.rowGap : 8 }}>
             {visibleHabits.length === 0 && (
               newLook
                 ? <button onClick={() => setEditingHabits(true)} style={{ display: 'block', width: '100%', padding: '4px 0', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', fontSize: 15, fontWeight: 800, color: '#5B7CFA', cursor: 'pointer' }}>＋ 습관 추가</button>
@@ -786,7 +786,7 @@ export default function Today({
       {somedayOpen && (
       <div style={innerCard}>
         {(somedayShowAll || reorder === 'someday' ? somedayList : somedayList.slice(0, 3)).map((item, i, shown) => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: '10px 0', borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 12 }) }}>
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 12 }) }}>
             <button disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
             <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
@@ -833,7 +833,7 @@ export default function Today({
       </div>
       {scheduleOpen && (
         // 새 디자인은 제목 줄과 ‹ 날짜 › 줄이 붙어 보여 위에 여백을 더 둔다(2026-11-07 사용자 지적 — 접기 버튼과 ‹ › 버튼이 맞닿았다)
-        <div style={{ ...innerCard, ...(newLook ? { paddingTop: 14 } : {}) }}>
+        <div style={{ ...innerCard, ...(newLook ? { paddingTop: UI.controlGap } : {}) }}>
           <WeeklySchedule
             plans={plans}
             habits={habits || []}
@@ -1164,7 +1164,7 @@ export default function Today({
               style={{ width: 22, height: 22, padding: 0, borderRadius: 6, border: `1.5px solid ${task.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: task.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 12, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}
             >{task.done ? '✓' : ''}</button>
             {/* 제목 줄(제목+아이콘) 아래에 시간·"지금"을 작은 줄로 — 한 줄에 다 넣으면 제목이 두 줄로 쪼개졌다 */}
-            <div onClick={() => setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, cursor: 'pointer', padding: '2px 0' }}>
+            <div onClick={() => reorder !== 'tasks' && setDetailTaskId(task.id)} style={{ flex: 1, minWidth: 0, cursor: reorder === 'tasks' ? 'default' : 'pointer', padding: '2px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 <span style={{ minWidth: 0, fontSize: 14, color: task.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{task.title}</span>
                 <TaskStatIcon task={task} />
@@ -1214,7 +1214,7 @@ export default function Today({
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             {['오늘', '내일', '모레', '오전 9시', '오후 3시'].map(w => (
               <button key={w} onClick={() => { setTaskInput(applyChip(taskInput, w)); setNlOff(false); if (canAutoFocus()) taskInputRef.current?.focus(); }}
-                style={{ height: 34, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
+                style={{ height: UI.chip, padding: '0 12px', borderRadius: 17, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: '#5B7CFA', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>{w}</button>
             ))}
           </div>
         )}
