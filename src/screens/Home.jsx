@@ -871,9 +871,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
       {isSectionVisible('portfolio') && (isMyTab || telegramCfg?.holdings?.length > 0 || pfSummary) && (
         <div style={{ order: getSectionOrder('portfolio'), ...(newLook ? boxCard : {}) }}>
-          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, ...(newLook ? { padding: `0 0 ${UI.headingGap}px` } : {}) }}>
+          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, ...(newLook ? { padding: `0 0 ${UI.headingGap}px`, fontSize: UI.title } : {}) }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {newLook ? <SectionIcon name="briefcase" size={20} /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
+              {newLook ? <SectionIcon name="briefcase" size={20} badge /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               {pfSummary && (

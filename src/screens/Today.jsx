@@ -486,10 +486,10 @@ export default function Today({
   // 새 화면 섹션 제목: 입체 이모지 대신 하단 메뉴 같은 선 아이콘. 글씨는 할 일과 같은 17px·진하게(사용자 요청 — 섹션이 잘 보여야 함)
   // 새 디자인은 제목과 내용을 칸 하나(SectionBox)로 묶으므로 제목의 바깥 여백·안쪽 칸 모양을 뺀다
   // 제목 아래 여백 16px — 제목 바로 밑에 내용이 붙어 답답하다는 사용자 의견(2026-11-07)으로 모든 칸 공통으로 키움
-  const secTitle = newLook ? { ...S.sectionTitle, padding: `0 0 ${UI.titleGap}px` } : S.sectionTitle;
+  const secTitle = newLook ? { ...S.sectionTitle, fontSize: UI.title, padding: `0 0 ${UI.titleGap}px` } : S.sectionTitle;
   const innerCard = newLook ? { position: 'relative' } : S.card;
   const foldPad = (open) => (newLook && !open ? { paddingBottom: 0 } : {}); // 접힌 칸은 제목 아래 여백을 뺀다
-  const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} /> : <span style={S.sectionEmoji}>{emoji}</span>);
+  const secIcon = (name, emoji) => (newLook ? <SectionIcon name={name} size={20} badge /> : <span style={S.sectionEmoji}>{emoji}</span>);
 
 
   if (longMemo) return (
@@ -684,9 +684,9 @@ export default function Today({
       <div style={newLook ? {} : { margin: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? (newLook ? UI.titleGap : 8) : 0, paddingTop: newLook ? 0 : 4 }}>
           <span onClick={onOpenPeople} style={newLook
-            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
+            ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', minWidth: 0, whiteSpace: 'nowrap', fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: newLook ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
-            {newLook ? <SectionIcon name="people" size={20} /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)', whiteSpace: 'nowrap' } : {}) }}>{newLook ? ' · 이번 주 없음' : ' · 다가오는 생일·기념일이 없어요'}</span>}
+            {newLook ? <SectionIcon name="people" size={20} badge /> : '💌 '}오늘 챙길 사람{!contactReminders.length && <span style={{ fontWeight: 400, letterSpacing: 0, ...(newLook ? { fontSize: 13, color: 'var(--dm-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 } : {}) }}>{newLook ? ' · 이번 주 없음' : ' · 다가오는 생일·기념일이 없어요'}</span>}
           </span>
           {onOpenPeople && <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPeople} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', flexShrink: 0 }}>내 사람들 ›</button>}
         </div>
@@ -797,7 +797,9 @@ export default function Today({
     someday: !hiddenSec.someday && (<SectionBox on={newLook}>
       <div style={{ ...secTitle, ...(newLook ? { justifyContent: 'space-between' } : {}), ...foldPad(somedayOpen) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {secIcon('inbox', '📋')}언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}
+          {secIcon('inbox', '📋')}{newLook
+            ? <span style={{ whiteSpace: 'nowrap' }}>언젠가할일{somedayList.length > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--dm-sub)', marginLeft: 4 }}>{somedayList.length}</span>}</span>
+            : <>언젠가할일{somedayList.length > 0 ? ` (${somedayList.length})` : ''}</>}
           {!newLook && <button onClick={() => setSomedayOpen(v => !v)} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {somedayOpen ? '접기 ▲' : '펼치기 ▼'}
           </button>}
@@ -1134,8 +1136,9 @@ export default function Today({
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
       <SectionBox on={newLook}>
-      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(tasksOpen) }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+      {/* 새 디자인: 제목(19px)이 버튼과 겹칠 만큼 좁으면 버튼 묶음이 아랫줄로 (2026-11-07, 360px에서 캘린더 연결 버튼이 있을 때) */}
+      <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(tasksOpen), ...(newLook ? { flexWrap: 'wrap', rowGap: 8 } : {}) }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: newLook ? '1 0 auto' : 1 }}>
           {secIcon('today', '✅')}
           {/* 제목: "오늘의 할일"은 항상 한 줄, "9월 26일 (토) 할일"은 아주 좁은 화면에서만 줄바꿈.
               접기는 제목 옆, 자리가 없으면 제목 아래로. 오늘/내일/어제의 날짜는 그 아래 줄에 작게 */}
@@ -1152,7 +1155,7 @@ export default function Today({
           </span>
         </span>
         {/* 전역 button 스타일(index.css)의 좌우 padding 1.2em이 폭을 늘리므로 padding:0 명시 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12, flexShrink: 0, ...(newLook ? { marginLeft: 'auto' } : {}) }}>
           {getValidGcalToken && !getValidGcalToken() && onGcalConnect && (
             <button className={newLook ? 'dm-hit-y' : undefined} onClick={connectGcalFromTask} disabled={gcalConnecting} aria-label="구글 캘린더 연동" title="구글 캘린더 연동하기" style={{ width: 32, height: 32, padding: 0, borderRadius: 10, border: '1px solid rgba(75,111,255,.35)', background: 'rgba(75,111,255,.12)', color: '#6C8EFF', fontSize: 16, cursor: gcalConnecting ? 'default' : 'pointer', opacity: gcalConnecting ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📅</button>
           )}

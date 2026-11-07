@@ -959,7 +959,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {communityIds.length > 0 && (
             <div style={{ padding: '4px 16px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)' } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)' }}>{NL() && <SectionIcon name="people" size={20} />}내 커뮤니티</div>
+                <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)' } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)' }}>{NL() && <SectionIcon name="people" size={20} badge />}내 커뮤니티</div>
                 {communityIds.length > 1 && (
                   <button
                     onClick={() => setEditingCommunityOrder(v => !v)}
@@ -1045,7 +1045,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
           {/* 공개 커뮤니티 */}
           <div style={{ padding: '4px 16px 12px' }}>
-            <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>{NL() && <SectionIcon name="globe" size={20} />}공개 커뮤니티</div>
+            <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>{NL() && <SectionIcon name="globe" size={20} badge />}공개 커뮤니티</div>
             {publicLoading ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>불러오는 중...</div>
             ) : publicList.length === 0 ? (
@@ -1481,10 +1481,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {/* ── 공지사항 ── */}
       {(notices.length > 0 || isAdmin) && (
         <>
-          <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}
+          <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16, ...(NL() ? { fontSize: UI.title } : {}) }}
             onClick={() => { markNoticesRead(); }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {NL() ? <SectionIcon name="megaphone" size={20} /> : <span style={S.sectionEmoji}>📢</span>}공지사항
+              {NL() ? <SectionIcon name="megaphone" size={20} badge /> : <span style={S.sectionEmoji}>📢</span>}공지사항
               {unreadCount > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 900, background: '#F87171', color: '#fff', borderRadius: 999, padding: '2px 7px' }}>{unreadCount}</span>
               )}
@@ -1563,9 +1563,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       )}
 
       {/* ── 자유게시판 ── */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16, ...(NL() ? { fontSize: UI.title } : {}) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {NL() ? <SectionIcon name="pencil" size={20} /> : <span style={S.sectionEmoji}>📝</span>}커뮤니티 게시판
+          {NL() ? <SectionIcon name="pencil" size={20} badge /> : <span style={S.sectionEmoji}>📝</span>}커뮤니티 게시판
         </span>
         <button className={NL() ? 'dm-hit' : undefined} onClick={() => { if (showBoardForm) cancelBoardForm(); else setShowBoardForm(true); }}
           style={{ fontSize: NL() ? 14 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
@@ -1641,7 +1641,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       )}
 
       {/* 오늘 출석 현황 */}
-      <div style={S.sectionTitle}>{NL() ? <SectionIcon name="checkin" size={20} /> : <span style={S.sectionEmoji}>✋</span>}오늘 출석</div>
+      <div style={NL() ? { ...S.sectionTitle, fontSize: UI.title } : S.sectionTitle}>{NL() ? <SectionIcon name="checkin" size={20} badge /> : <span style={S.sectionEmoji}>✋</span>}오늘 출석</div>
       <div style={S.card}>
         <button onClick={handleCheckin} disabled={!!myCheckin || checkingIn} style={{
           width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: myCheckin ? 'default' : 'pointer', fontWeight: 900, fontSize: 14, fontFamily: 'inherit',
@@ -1689,9 +1689,9 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {loading && <div style={{ padding: 32, textAlign: 'center', color: 'var(--dm-muted)' }}>불러오는 중...</div>}
 
       {/* 일정 섹션 — 달력/리스트 탭 */}
-      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16 }}>
+      <div style={{ ...S.sectionTitle, justifyContent: 'space-between', paddingRight: 16, ...(NL() ? { fontSize: UI.title } : {}) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {NL() ? <SectionIcon name="cal" size={20} /> : <span style={S.sectionEmoji}>📅</span>}커뮤니티 일정
+          {NL() ? <SectionIcon name="cal" size={20} badge /> : <span style={S.sectionEmoji}>📅</span>}커뮤니티 일정
         </span>
         <div style={{ display: 'flex', gap: 4 }}>
           {[{ v: false, label: '≡ 목록' }, { v: true, label: '📅 달력' }].map(({ v, label }) => (

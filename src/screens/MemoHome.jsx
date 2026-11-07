@@ -134,7 +134,7 @@ function MemoHomeInner({
       )}
       <SectionBox on={newDesignOn()}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: newDesignOn() ? UI.titleGap : 10 }}>
-        <span style={{ fontSize: newDesignOn() ? 17 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
+        <span style={{ fontSize: newDesignOn() ? UI.title : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
           <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>

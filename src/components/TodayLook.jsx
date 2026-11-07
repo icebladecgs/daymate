@@ -36,16 +36,25 @@ const COLORS = {
   search: "#5B7CFA", refresh: "#5B7CFA", sprout: "#22C55E",
 };
 
-// 섹션 제목 한 줄 (새 디자인) — 17px 굵게 + 선 아이콘. right에 접기·수정 같은 버튼
+// 섹션 제목 한 줄 (새 디자인) — UI.title(19px) 굵게 + 색 배지 아이콘. right에 접기·수정 같은 버튼
 export function SectionHeading({ icon, children, right, style }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, margin: `0 0 ${UI.headingGap}px`, paddingTop: 10, fontSize: 17, fontWeight: 900, color: "var(--dm-text)", ...style }}>
-      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><SectionIcon name={icon} size={20} />{children}</span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, margin: `0 0 ${UI.headingGap}px`, paddingTop: 10, fontSize: UI.title, fontWeight: 900, color: "var(--dm-text)", ...style }}>
+      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><SectionIcon name={icon} size={20} badge />{children}</span>
       {right}
     </div>
   );
 }
-export function SectionIcon({ name, size = 18 }) {
+// badge: 칸 제목용 — 아이콘 색을 연하게 깐 30px 동그라미 안에 18px 아이콘 (2026-11-07 사용자 확정, 비교 화면에서 고름)
+export function SectionIcon({ name, size = 18, badge = false }) {
+  if (badge) {
+    const color = COLORS[name] || "#5B7CFA";
+    return (
+      <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: "50%", background: `${color}26`, flexShrink: 0 }}>
+        <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{PATHS[name]}</svg>
+      </span>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={COLORS[name] || "currentColor"} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>{PATHS[name]}</svg>
   );
