@@ -226,6 +226,16 @@ export default function HoldingsScanSheet({ holdings, usdKrwRate, onApply, onClo
                           style={{ ...smallInput, borderColor: r.checked && !parseNum(r.avgStr) ? "#F87171" : undefined }} />
                       </div>
                     </div>
+                    {/* 코인은 어느 시세로 연결되는지 (2026-11-07) — 업비트·빗썸 캡처는 그 거래소 원화 시세, 아니면 CoinGecko 코인 */}
+                    {r.item.kind === "coin" && (() => {
+                      const ex = r.item.broker === "업비트" || r.item.broker === "빗썸" ? r.item.broker : null;
+                      const cg = r.holding?.coinId || r.resolved?.coinId;
+                      return (
+                        <div style={{ fontSize: 12, color: ex || cg ? "var(--dm-sub)" : "#F59E0B", margin: "4px 0 0 26px" }}>
+                          {ex ? `시세: ${ex} 원화 (${(r.holding?.exSym || r.holding?.sym || r.sym || "").toUpperCase()})` : cg ? `시세: CoinGecko · ${cg}` : "시세 연결을 못 찾았어요 — 반영 뒤 보유자산에서 확인해 주세요"}
+                        </div>
+                      );
+                    })()}
                     {r.converted && (
                       <div style={{ fontSize: 10, color: "var(--dm-muted)", margin: "4px 0 0 26px" }}>
                         {r.avgPrice != null

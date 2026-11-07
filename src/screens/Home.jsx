@@ -8,7 +8,7 @@ import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import { store } from "../utils/storage.js";
 import { calcDayScore, calcLevel, LEVEL_TITLES, LEVEL_ICONS } from "../data/stats.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
-import { calcPortfolioSummary } from "../utils/portfolioCalc.js";
+import { calcPortfolioSummary, priceRequest } from "../utils/portfolioCalc.js";
 import { isPfHidden, setPfHidden, HIDE_EVENT, MASK, historySeries } from "../utils/portfolioExtras.js";
 import { localPfHistory, notePfValue, syncPfHistory } from "../utils/pfHistory.js";
 import { TrendChart } from "../components/PortfolioCharts.jsx";
@@ -410,10 +410,12 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
   useEffect(() => {
     const holdings = telegramCfg?.holdings || [];
-    if (!pfMarket && holdings.length > 0) {
-      const customRegistry = Object.fromEntries(holdings.map(h => [h.sym, { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) }]));
+    // 오늘 받은 시세에 거래소 시세 이름이 빠져 있으면(예전 형식) 다시 받는다
+    if (holdings.length > 0 && (!pfMarket || priceRequest(holdings).syms.some(k => !(k in pfMarket)))) {
+      // 업비트·빗썸 코인은 거래소 원화 시세도 (utils/portfolioCalc.js priceRequest)
+      const { syms, registry: customRegistry } = priceRequest(holdings);
       setPfLoading(true);
-      fetchMarketDataFromServer([...new Set(holdings.map(h => h.sym))], customRegistry)
+      fetchMarketDataFromServer(syms, customRegistry)
         .then(data => { localStorage.setItem(pfCacheKey, JSON.stringify(data)); setPfMarket(data); })
         .finally(() => setPfLoading(false));
     }

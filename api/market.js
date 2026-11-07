@@ -95,11 +95,55 @@ async function findWeatherPlace(city) {
   return list.find(p => String(p.feature_code || '').startsWith('PPL')) || list[0] || null;
 }
 
+// ── 업비트·빗썸 원화 시세 (2026-11-07, 사용자 승인) — 공개 시세 API, 가입·키 없음 ──
+// 없는 종목이 하나라도 섞이면 시세 요청 전체가 404라서, 종목 목록(1시간 기억)으로 먼저 거른다.
+const EXCHANGES = {
+  upbit: { name: '업비트', list: 'https://api.upbit.com/v1/market/all?isDetails=false', ticker: 'https://api.upbit.com/v1/ticker?markets=' },
+  bithumb: { name: '빗썸', list: 'https://api.bithumb.com/v1/market/all', ticker: 'https://api.bithumb.com/v1/ticker?markets=' },
+};
+const exMarketCache = {};
+const cgIdCache = {}; // 거래소 기호 → CoinGecko id (CoinGecko 무료 검색은 자주 막혀서 서버가 기억)
+async function exchangeMarkets(ex) {
+  const c = exMarketCache[ex];
+  if (c && Date.now() - c.at < 3600_000) return c.list;
+  try {
+    const r = await fetch(EXCHANGES[ex].list);
+    const j = await r.json();
+    const list = (Array.isArray(j) ? j : []).filter(m => String(m.market || '').startsWith('KRW-'))
+      .map(m => ({ sym: m.market.slice(4), ko: String(m.korean_name || ''), en: String(m.english_name || '') }));
+    if (list.length) exMarketCache[ex] = { at: Date.now(), list };
+    return list;
+  } catch (error) {
+    console.error(`[market] ${ex} market list failed:`, error?.message);
+    return c?.list || [];
+  }
+}
+async function exchangeTickers(ex, syms) {
+  const valid = new Set((await exchangeMarkets(ex)).map(m => m.sym));
+  const want = [...new Set(syms)].filter(sym => valid.has(sym));
+  if (!want.length) return {};
+  try {
+    const r = await fetch(EXCHANGES[ex].ticker + want.map(sym => `KRW-${sym}`).join(','));
+    const j = await r.json();
+    const out = {};
+    for (const t of Array.isArray(j) ? j : []) {
+      if (t?.trade_price > 0) out[String(t.market).slice(4)] = { price: t.trade_price, change: t.signed_change_price ?? null, chgPct: t.signed_change_rate != null ? t.signed_change_rate * 100 : null };
+    }
+    return out;
+  } catch (error) {
+    console.error(`[market] ${ex} ticker failed:`, error?.message);
+    return {};
+  }
+}
+const nfc = (v) => String(v || '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
+
 export default async function handler(req, res) {
   // ?type=search&q=삼성전자 → 종목 이름 검색 (한국 주식은 로컬 목록, 나머지는 Yahoo/CoinGecko 실시간 검색)
   if (req.query.type === 'search') {
     const q = (req.query.q || '').trim();
-    if (q.length < 2) return res.status(200).json({ results: [] });
+    if (!q) return res.status(200).json({ results: [] });
+    // 한 글자는 거래소 코인 기호만 정확히 찾는다(빗썸 쿼크에이아이 = Q) — 주식·CoinGecko 검색은 두 글자부터
+    const short = q.length < 2;
 
     const results = [];
     const seenSyms = new Set();
@@ -109,6 +153,7 @@ export default async function handler(req, res) {
       results.push(r);
     };
 
+    if (!short) {
     // 1) 한국 주식 로컬 목록 (한글 검색은 Yahoo/CoinGecko가 지원하지 않아 직접 매핑)
     KR_STOCK_LIST
       .filter(item => item.name.includes(q) || item.code.startsWith(q))
@@ -163,7 +208,47 @@ export default async function handler(req, res) {
       console.error('[market] search(coingecko) failed:', error);
     }
 
-    return res.status(200).json({ results: results.slice(0, 10) });
+    } // !short
+
+    // 업비트·빗썸 목록에서 찾기 — CoinGecko 검색은 한글 이름("쿼크에이아이")을 모른다 (2026-11-07)
+    // 고르면 그 거래소 원화 시세를 쓴다(exchange). CoinGecko 코인 id는 영문 이름으로 찾아 기호가 같을 때만 붙인다(거래소 시세를 못 받을 때 대신 씀)
+    try {
+      const nq = nfc(q);
+      const exHits = [];
+      for (const ex of Object.keys(EXCHANGES)) {
+        for (const m of await exchangeMarkets(ex)) {
+          if (m.sym.toLowerCase() === nq || (!short && (nfc(m.ko).includes(nq) || nfc(m.en).includes(nq)))) exHits.push({ ...m, ex });
+        }
+      }
+      exHits.sort((a, b) => (nfc(a.ko) === nq || a.sym.toLowerCase() === nq ? -1 : 0) - (nfc(b.ko) === nq || b.sym.toLowerCase() === nq ? -1 : 0));
+      const top = exHits.slice(0, 6);
+      const idCache = cgIdCache;
+      let cgCalls = 0;
+      for (const m of top) {
+        if (idCache[m.sym] === undefined || idCache[m.sym] === null) {
+          idCache[m.sym] = null;
+          const known = results.find(x => x.src === 'coingecko' && x.sym === m.sym);
+          if (known?.coinId) idCache[m.sym] = known.coinId;
+          else if (cgCalls++ < 2) {
+            try {
+              const r = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(m.en || m.sym)}`);
+              const j = await r.json();
+              const hit = (j.coins || []).find(c => String(c.symbol || '').toUpperCase() === m.sym);
+              if (hit) idCache[m.sym] = hit.id; else if (Array.isArray(j.coins)) idCache[m.sym] = false;
+            } catch { /* 없으면 거래소 시세만 */ }
+          }
+        }
+      }
+      const exResults = top.map(m => ({
+        sym: m.sym, label: m.ko || m.en, src: 'coingecko', currency: 'USD', exchange: EXCHANGES[m.ex].name,
+        exchangeLabel: `${EXCHANGES[m.ex].name} 원화`, ...(idCache[m.sym] ? { coinId: idCache[m.sym] } : {}),
+      }));
+      results.unshift(...exResults);
+    } catch (error) {
+      console.error('[market] search(exchange) failed:', error?.message);
+    }
+
+    return res.status(200).json({ results: results.slice(0, 12) });
   }
 
   // ?type=fx&from=USD&to=KRW → 환율 조회 (frankfurter.app에 CORS 헤더가 없어 서버 프록시 필요)
@@ -323,6 +408,18 @@ export default async function handler(req, res) {
       } catch (error) {
         console.error(`[market] finnhub quote fetch failed for ${sym}:`, error);
       }
+    }
+  }
+
+  // 업비트·빗썸 원화 시세 — registry[key] = { src: 'upbit'|'bithumb', exSym, label }
+  for (const ex of Object.keys(EXCHANGES)) {
+    const keys = assets.filter(key => registry[key]?.src === ex);
+    if (!keys.length) continue;
+    const exSymOf = (key) => String(registry[key].exSym || key.split('@')[0]).toUpperCase().replace(/^KRW-/, '');
+    const ticks = await exchangeTickers(ex, keys.map(exSymOf));
+    for (const key of keys) {
+      const t = ticks[exSymOf(key)];
+      if (t) data[key] = { label: registry[key].label, ...t, src: ex, currency: 'KRW' };
     }
   }
 

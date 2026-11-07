@@ -147,9 +147,13 @@ export async function resolveScanSymbol(item, search) {
   let results = [];
   try { results = (await search(q)) || []; } catch { results = []; }
   if (item.kind === 'coin') {
-    const r = results.find((x) => x.src === 'coingecko' && x.sym === item.code)
+    // 업비트·빗썸 캡처면 그 거래소 목록에서 찾은 결과를 먼저 (2026-11-07 — 한글 이름·짧은 기호(Q·US)를 CoinGecko가 엉뚱하게 찾았다)
+    const onEx = (x) => x.src === 'coingecko' && x.exchange && x.exchange === item.broker;
+    const r = results.find((x) => onEx(x) && x.sym === item.code)
+      || (!item.code && results.find((x) => onEx(x) && normName(x.label) === normName(item.name)))
+      || results.find((x) => x.src === 'coingecko' && x.sym === item.code)
       || (!item.code && results.find((x) => x.src === 'coingecko'));
-    if (r) return { sym: r.sym, label: item.name || r.label, src: 'coingecko', currency: 'USD', coinId: r.coinId };
+    if (r) return { sym: r.sym, label: item.name || r.label, src: 'coingecko', currency: 'USD', coinId: r.coinId, ...(r.exchange ? { exchange: r.exchange } : {}) };
     return null;
   }
   if (item.kind === 'us_stock') {

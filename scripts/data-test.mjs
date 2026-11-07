@@ -414,6 +414,41 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('지수 비교: 기준 없으면 없음', indexWhatIf(null, 550) === null && indexWhatIf({ qqq: 500, usd: 1 }, 0) === null);
 }
 
+// ── 업비트·빗썸 원화 시세 · 거래소 코인 찾기 (2026-11-07) ──
+{
+  const { calcPortfolioSummary, priceRequest, priceKeyOf, quoteFor } = await load('/src/utils/portfolioCalc.js');
+  const { groupHoldings } = await load('/src/utils/portfolioTabs.js');
+  const { resolveScanSymbol } = await load('/src/utils/holdingsScan.js');
+  const up = { id: 'u', sym: 'XRP', label: '리플', src: 'coingecko', coinId: 'ripple', qty: 100, avgPrice: 1, currency: 'USD', broker: '업비트' };
+  const bt = { id: 'b', sym: 'XRP', label: '리플', src: 'coingecko', coinId: 'ripple', qty: 50, avgPrice: 1, currency: 'USD', broker: '빗썸' };
+  const cg = { id: 'c', sym: 'BTC', src: 'coingecko', coinId: 'bitcoin', qty: 1, avgPrice: 50000, currency: 'USD' };
+  const st = { id: 's', sym: 'TSLA', src: 'finnhub', qty: 1, avgPrice: 100, currency: 'USD' };
+  t('거래소 시세 이름: 업비트·빗썸 코인만', priceKeyOf(up) === 'XRP@upbit' && priceKeyOf(bt) === 'XRP@bithumb' && priceKeyOf(cg) === 'BTC' && priceKeyOf(st) === 'TSLA');
+  const req = priceRequest([up, bt, cg, st], ['QQQ']);
+  t('시세 요청: 거래소 이름 + CoinGecko 이름(대신 쓸 시세)', ['XRP', 'XRP@upbit', 'XRP@bithumb', 'BTC', 'TSLA', 'QQQ'].every(k => req.syms.includes(k)) && req.registry['XRP@bithumb'].src === 'bithumb' && req.registry['XRP@bithumb'].exSym === 'XRP');
+  const md = { XRP: { price: 1.1, chgPct: 0 }, 'XRP@upbit': { price: 1540, change: -14, chgPct: -1, currency: 'KRW' }, 'XRP@bithumb': { price: 1554, change: 0, chgPct: 0, currency: 'KRW' }, BTC: { price: 100000, chgPct: 0 } };
+  const q = quoteFor(up, md, 1400);
+  t('거래소 원화 시세를 환율로 달러 환산', Math.abs(q.d.price - 1.1) < 1e-9 && q.exchange === 'upbit' && q.exPrice === 1540 && Math.abs(q.d.change + 0.01) < 1e-9);
+  t('환율 없으면 CoinGecko 시세로 대신', quoteFor(up, md, null).d.price === 1.1 && quoteFor(up, md, null).exchange === null);
+  t('거래소 시세 없으면 CoinGecko 시세로 대신', quoteFor(up, { XRP: { price: 1.2 } }, 1400).d.price === 1.2);
+  const s = calcPortfolioSummary([up, bt, cg, st], md, 1400);
+  t('원화로 보면 거래소 앱과 같은 금액(업비트 100×1540)', Math.abs(s.rows.find(r => r.id === 'u').value * 1400 - 154000) < 1e-6 && s.rows.find(r => r.id === 'u').priceFrom === 'upbit');
+  const g = groupHoldings(s.rows);
+  const xrp = g.find(r => r.sym === 'XRP');
+  t('같은 코인 업비트+빗썸: 각자 시세로 계산해 더함', xrp.parts.length === 2 && Math.abs(xrp.value * 1400 - (100 * 1540 + 50 * 1554)) < 1e-6 && xrp.priceFrom === 'mixed');
+  t('합친 줄 총액 = 요약 총액(종목 시세 없는 TSLA 제외)', Math.abs(g.filter(r => !r.noData).reduce((a, r) => a + r.value, 0) - s.statsUSD.value) < 1e-6);
+  t('합친 줄: 한쪽 시세가 없으면 "시세 없음"', groupHoldings(calcPortfolioSummary([up, bt], { 'XRP@upbit': md['XRP@upbit'] }, 1400).rows).find(r => r.sym === 'XRP').noData === true);
+
+  const fakeSearch = async (q) => q === 'Q' ? [
+    { sym: 'Q', label: '쿼크에이아이', src: 'coingecko', exchange: '빗썸', coinId: 'quack-ai' },
+    { sym: 'Q', label: 'Some Q Token', src: 'coingecko', exchange: '코인', coinId: 'q-token' },
+  ] : q === '탈루스' ? [{ sym: 'US', label: '탈루스', src: 'coingecko', exchange: '빗썸' }] : [];
+  const rq = await resolveScanSymbol({ name: '쿼크에이아이', code: 'Q', kind: 'coin', broker: '빗썸' }, fakeSearch);
+  t('캡처 코인: 빗썸 캡처는 빗썸 목록 결과를 먼저(엉뚱한 Q 토큰 아님)', rq?.coinId === 'quack-ai' && rq.exchange === '빗썸');
+  const rt = await resolveScanSymbol({ name: '탈루스', code: '', kind: 'coin', broker: '빗썸' }, fakeSearch);
+  t('캡처 코인: 코드 없이 한글 이름으로 찾기(CoinGecko id 없어도 거래소 시세)', rt?.sym === 'US' && rt.exchange === '빗썸');
+}
+
 // ── 수험생 모드: D-day · 공부 시간 · 오답 다시 풀기 (2026-11-01) ──
 {
   const { normalizeExam, upcomingDdays, ddayLabel, studyBySubject, studyTotal, lastWeekStudy, newStudyEntry, reviewWrongNote, firstDue, isDue, studyXp, EXAM_SUBJECTS } = await load('/src/utils/exam.js');

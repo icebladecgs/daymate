@@ -1,6 +1,43 @@
 // 보유자산 계산 공용 유틸 — Portfolio.jsx(관리화면)와 Home.jsx(오늘탭 자산 브리핑)가 동일한 로직을 쓰도록 분리
 // (예전엔 두 화면이 각자 계산식을 따로 구현하고 있어서 값이 서로 달라지는 버그가 있었음)
 
+// ── 업비트·빗썸 원화 시세 (2026-11-07, 사용자 승인) ──
+// 캡처·검색으로 앱 이름(broker)이 붙은 코인은 그 거래소 원화 시세를 쓴다(거래소 앱과 금액이 맞게).
+// 시세 이름은 "WAXP@upbit"처럼 따로 둔다 — 같은 코인을 CoinGecko(직접 입력)·업비트·빗썸에 나눠 가질 수 있어서.
+// 저장된 평균단가는 예전처럼 달러라, 계산할 때 원화 시세를 환율로 달러로 바꾼다. 거래소 시세가 없으면 CoinGecko 시세.
+const EXCHANGE_OF_BROKER = { 업비트: 'upbit', 빗썸: 'bithumb' };
+export const EXCHANGE_NAME = { upbit: '업비트', bithumb: '빗썸' };
+export const exchangeOf = (h) => (h?.src === 'coingecko' ? EXCHANGE_OF_BROKER[h.broker] || null : null);
+export const exSymOf = (h) => String(h?.exSym || h?.sym || '').toUpperCase().replace(/^KRW-/, '');
+export const priceKeyOf = (h) => { const ex = exchangeOf(h); return ex ? `${exSymOf(h)}@${ex}` : h.sym; };
+
+// 시세 요청 목록 — 거래소 코인은 거래소 이름과 CoinGecko 이름 둘 다(대신 쓸 시세)
+export function priceRequest(holdings, extra = []) {
+  const syms = new Set(extra);
+  const registry = {};
+  for (const h of holdings || []) {
+    syms.add(h.sym);
+    registry[h.sym] = { label: h.label, src: h.src, ...(h.coinId ? { coinId: h.coinId } : {}) };
+    const ex = exchangeOf(h);
+    if (ex) { const k = priceKeyOf(h); syms.add(k); registry[k] = { label: h.label, src: ex, exSym: exSymOf(h) }; }
+  }
+  return { syms: [...syms], registry };
+}
+
+// 그 종목에 쓸 시세 (거래소 원화 → 저장 통화로 환산). exchange: 실제로 거래소 시세를 썼으면 'upbit'|'bithumb'
+export function quoteFor(h, marketData, usdKrwRate) {
+  const ex = exchangeOf(h);
+  const exQ = ex ? marketData?.[priceKeyOf(h)] : null;
+  if (exQ && exQ.price > 0) {
+    const want = h.currency || 'USD';
+    if (want === 'KRW') return { d: { ...exQ, currency: 'KRW' }, exchange: ex, exPrice: exQ.price };
+    if (usdKrwRate) {
+      return { d: { ...exQ, price: exQ.price / usdKrwRate, change: exQ.change != null ? exQ.change / usdKrwRate : null, currency: 'USD' }, exchange: ex, exPrice: exQ.price };
+    }
+  }
+  return { d: marketData?.[h.sym] || null, exchange: null, exPrice: null };
+}
+
 // 시세 API가 실제로 반환한 통화(d.currency, yahoo만 KRW/USD 실측치 포함) 기준으로 판정
 export const getMarketCurrency = (h, d) => d?.currency || (h.src === 'yahoo' ? 'KRW' : 'USD');
 
@@ -39,7 +76,7 @@ export function calcPortfolioSummary(holdings, marketData, usdKrwRate, cash = nu
   let usdValue = 0, usdCost = 0, usdDailyChange = 0, usdCount = 0;
   let krwValue = 0, krwCost = 0, krwDailyChange = 0, krwCount = 0;
   const rows = list.map(h => {
-    const d = marketData?.[h.sym];
+    const { d, exchange, exPrice } = quoteFor(h, marketData, usdKrwRate);
     if (!d) return { ...h, noData: true };
     const marketCurrency = getMarketCurrency(h, d);
     if (h.currency && h.currency !== marketCurrency) {
@@ -55,7 +92,7 @@ export function calcPortfolioSummary(holdings, marketData, usdKrwRate, cash = nu
     } else {
       usdValue += value; usdCost += cost; usdDailyChange += dailyChange; usdCount++;
     }
-    return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange };
+    return { ...h, price: d.price, marketCurrency, value, cost, pnl, pnlPct, dailyChange, ...(exchange ? { priceFrom: exchange, exPrice } : {}) };
   });
   if (usdCount === 0 && krwCount === 0 && !hasCash) return null;
 

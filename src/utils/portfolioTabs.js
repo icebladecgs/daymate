@@ -152,7 +152,26 @@ export function groupHoldings(holdings) {
     const qty = parts.reduce((s, h) => s + (Number(h.qty) || 0), 0);
     const cost = parts.reduce((s, h) => s + (Number(h.qty) || 0) * (Number(h.avgPrice) || 0), 0);
     const first = parts[0];
+    // 시세 계산이 끝난 줄(calcPortfolioSummary rows)을 합칠 때 — 앱마다 시세가 다를 수 있어(업비트·빗썸 원화)
+    // 각자 계산한 금액을 더한다. 한 줄이라도 시세가 없으면 합친 줄도 "시세 없음"
+    const computed = parts.some((h) => 'value' in h || h.noData || h.currencyMismatch);
+    let calc = {};
+    if (computed) {
+      if (parts.some((h) => h.currencyMismatch)) calc = { currencyMismatch: true, marketCurrency: first.marketCurrency };
+      else if (parts.some((h) => h.noData || h.value == null)) calc = { noData: true };
+      else {
+        const sum = (k) => parts.reduce((s, h) => s + (Number(h[k]) || 0), 0);
+        const value = sum('value'), cost2 = sum('cost'), pnl = value - cost2;
+        const froms = [...new Set(parts.map((h) => h.priceFrom || ''))];
+        calc = {
+          value, cost: cost2, pnl, pnlPct: cost2 > 0 ? (pnl / cost2) * 100 : 0, dailyChange: sum('dailyChange'),
+          price: qty > 0 ? value / qty : first.price, marketCurrency: first.marketCurrency,
+          ...(froms.length === 1 && froms[0] ? { priceFrom: froms[0] } : froms.some(Boolean) ? { priceFrom: 'mixed' } : {}),
+        };
+      }
+    }
     return {
+      ...calc,
       id: `g:${key}`,
       sym: first.sym,
       label: first.label,
