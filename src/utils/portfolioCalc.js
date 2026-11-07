@@ -4,7 +4,8 @@
 // ── 업비트·빗썸 원화 시세 (2026-11-07, 사용자 승인) ──
 // 캡처·검색으로 앱 이름(broker)이 붙은 코인은 그 거래소 원화 시세를 쓴다(거래소 앱과 금액이 맞게).
 // 시세 이름은 "WAXP@upbit"처럼 따로 둔다 — 같은 코인을 CoinGecko(직접 입력)·업비트·빗썸에 나눠 가질 수 있어서.
-// 저장된 평균단가는 예전처럼 달러라, 계산할 때 원화 시세를 환율로 달러로 바꾼다. 거래소 시세가 없으면 CoinGecko 시세.
+// 평균단가: 2026-11-07부터 거래소 코인은 원화로 저장(currency 'KRW') — 예전에 달러로 저장된 것은 원화 시세를 환율로 달러로 바꿔 계산.
+// 거래소 시세가 없으면 CoinGecko(달러) 시세 — 원화 저장 코인이면 환율로 원화로 바꿔 대신 쓴다.
 const EXCHANGE_OF_BROKER = { 업비트: 'upbit', 빗썸: 'bithumb' };
 export const EXCHANGE_NAME = { upbit: '업비트', bithumb: '빗썸' };
 export const exchangeOf = (h) => (h?.src === 'coingecko' ? EXCHANGE_OF_BROKER[h.broker] || null : null);
@@ -35,7 +36,12 @@ export function quoteFor(h, marketData, usdKrwRate) {
       return { d: { ...exQ, price: exQ.price / usdKrwRate, change: exQ.change != null ? exQ.change / usdKrwRate : null, currency: 'USD' }, exchange: ex, exPrice: exQ.price };
     }
   }
-  return { d: marketData?.[h.sym] || null, exchange: null, exPrice: null };
+  const cg = marketData?.[h.sym] || null;
+  if (cg && ex && (h.currency || 'USD') === 'KRW' && (cg.currency || 'USD') === 'USD') {
+    if (!usdKrwRate) return { d: null, exchange: null, exPrice: null };
+    return { d: { ...cg, price: cg.price * usdKrwRate, change: cg.change != null ? cg.change * usdKrwRate : null, currency: 'KRW' }, exchange: null, exPrice: null };
+  }
+  return { d: cg, exchange: null, exPrice: null };
 }
 
 // 시세 API가 실제로 반환한 통화(d.currency, yahoo만 KRW/USD 실측치 포함) 기준으로 판정

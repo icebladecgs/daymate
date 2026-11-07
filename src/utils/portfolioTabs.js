@@ -140,10 +140,15 @@ export function makeReal(cfg, id) {
 
 // 같은 종목이 여러 앱(업비트·빗썸 등)에 있으면 화면에서 한 줄로 — 수량은 더하고 평균단가는 수량 기준 평균.
 // 저장은 그대로 나눠 둔다(캡처 업데이트가 앱별로 수량을 바꿔야 해서). 통화·시세 출처가 다르면 합치지 않는다.
-export function groupHoldings(holdings) {
+// 단, 시세 계산이 끝난 코인 줄은 통화가 달라도 환율(usdKrwRate)로 맞춰 합친다 — 거래소 코인을 원화 저장으로 바꾸는 동안
+// 업비트 BTC(예전 달러)와 빗썸 BTC(원화)가 섞일 수 있어서 (2026-11-07)
+export function groupHoldings(holdings, { usdKrwRate = null } = {}) {
   const groups = new Map();
-  for (const h of cleanHoldings(holdings)) {
-    const key = `${h.sym}|${h.src || ''}|${h.currency || ''}`;
+  const list = cleanHoldings(holdings);
+  const computedList = list.some((h) => 'value' in h || h.noData);
+  for (const h of list) {
+    const anyCur = computedList && usdKrwRate && h.src === 'coingecko';
+    const key = anyCur ? `${h.sym}|coingecko|*` : `${h.sym}|${h.src || ''}|${h.currency || ''}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(h);
   }
@@ -160,13 +165,18 @@ export function groupHoldings(holdings) {
       if (parts.some((h) => h.currencyMismatch)) calc = { currencyMismatch: true, marketCurrency: first.marketCurrency };
       else if (parts.some((h) => h.noData || h.value == null)) calc = { noData: true };
       else {
-        const sum = (k) => parts.reduce((s, h) => s + (Number(h[k]) || 0), 0);
+        // 통화가 섞였으면 원화로 맞춘다(원화 줄이 하나라도 있으면 원화)
+        const target = parts.some((h) => h.marketCurrency === 'KRW') ? 'KRW' : (first.marketCurrency || 'USD');
+        const conv = (v, from) => (from === target || !usdKrwRate ? v : target === 'KRW' ? v * usdKrwRate : v / usdKrwRate);
+        const sum = (k) => parts.reduce((s, h) => s + conv(Number(h[k]) || 0, h.marketCurrency || 'USD'), 0);
         const value = sum('value'), cost2 = sum('cost'), pnl = value - cost2;
         const froms = [...new Set(parts.map((h) => h.priceFrom || ''))];
+        const mixedCur = parts.some((h) => (h.marketCurrency || 'USD') !== target);
         calc = {
           value, cost: cost2, pnl, pnlPct: cost2 > 0 ? (pnl / cost2) * 100 : 0, dailyChange: sum('dailyChange'),
-          price: qty > 0 ? value / qty : first.price, marketCurrency: first.marketCurrency,
+          price: qty > 0 ? value / qty : first.price, marketCurrency: target,
           ...(froms.length === 1 && froms[0] ? { priceFrom: froms[0] } : froms.some(Boolean) ? { priceFrom: 'mixed' } : {}),
+          ...(mixedCur || target !== (first.currency || 'USD') ? { avgPrice: qty > 0 ? cost2 / qty : 0, currency: target } : {}),
         };
       }
     }
@@ -177,9 +187,9 @@ export function groupHoldings(holdings) {
       label: first.label,
       src: first.src,
       ...(first.coinId ? { coinId: first.coinId } : {}),
-      currency: first.currency,
+      currency: calc.currency || first.currency,
       qty: roundQty(qty),
-      avgPrice: qty > 0 ? cost / qty : 0,
+      avgPrice: calc.avgPrice ?? (qty > 0 ? cost / qty : 0),
       memos: parts.flatMap((h) => (h.memos || []).map((m) => ({ ...m, _hid: h.id }))),
       parts,
     };

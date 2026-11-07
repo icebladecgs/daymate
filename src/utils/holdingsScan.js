@@ -100,7 +100,9 @@ export function planHoldingsUpdate(holdings, items, usdKrwRate) {
     // 같은 앱 표시가 붙은 종목 → 앱 표시가 없는(손으로 넣은) 종목 순. 다른 앱 종목은 건드리지 않는다.
     const holding = pool.find((h) => h.broker === item.broker) || pool.find((h) => !h.broker) || null;
     if (holding) used.add(holding.id);
-    const target = holding ? { currency: holding.currency || defaultTarget(item.kind).currency } : defaultTarget(item.kind);
+    // 업비트·빗썸 코인은 원화로 저장한다 (2026-11-07 — 거래소 원화 시세를 쓰므로 환율로 바꾸지 않는다. 예전에 달러로 저장된 것도 이번에 원화로)
+    const exCoin = item.kind === 'coin' && (item.broker === '업비트' || item.broker === '빗썸') && (!holding || holding.src === 'coingecko');
+    const target = exCoin ? { currency: 'KRW' } : holding ? { currency: holding.currency || defaultTarget(item.kind).currency } : defaultTarget(item.kind);
     const avgPrice = convertPrice(item.avgPrice, item.currency, target.currency, usdKrwRate);
     let status = 'new';
     if (holding) {
@@ -125,7 +127,8 @@ export function applyHoldingsPlan(holdings, accepted, deleteIds = [], now = Date
     .map((h) => {
       const a = byId.get(h.id);
       if (!a) return h;
-      return { ...h, qty: a.qty, avgPrice: a.avgPrice, ...(a.broker ? { broker: a.broker } : {}) };
+      return { ...h, qty: a.qty, avgPrice: a.avgPrice, ...(a.broker ? { broker: a.broker } : {}),
+        ...(h.src === 'coingecko' && a.currency === 'KRW' && a.broker ? { currency: 'KRW' } : {}) };
     });
   (accepted || []).filter((a) => !a.holding).forEach((a, i) => {
     next.push({
@@ -133,7 +136,7 @@ export function applyHoldingsPlan(holdings, accepted, deleteIds = [], now = Date
       sym: a.sym, label: a.label || a.sym, src: a.src,
       ...(a.coinId ? { coinId: a.coinId } : {}),
       qty: a.qty, avgPrice: a.avgPrice,
-      currency: a.src === 'yahoo' ? a.currency : 'USD',
+      currency: a.src === 'yahoo' ? a.currency : (a.src === 'coingecko' && a.currency === 'KRW' && a.broker ? 'KRW' : 'USD'),
       ...(a.broker ? { broker: a.broker } : {}),
     });
   });

@@ -264,10 +264,12 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('캡처: 삼성전자는 기존 종목과 연결', row('키움', '005930')?.holding?.id === 'h1');
   t('캡처: 업비트 BTC는 손으로 넣은 BTC와 연결', row('업비트', 'BTC')?.holding?.id === 'h2');
   t('캡처: 빗썸 BTC는 새 종목(같은 BTC를 두 번 덮지 않음)', row('빗썸', 'BTC')?.status === 'new');
-  t('캡처: 원화 코인 평균단가를 환율로 달러 변환', Math.abs(row('업비트', 'BTC').avgPrice - 100000) < 1e-6);
+  // 2026-11-07부터 업비트·빗썸 코인은 원화로 저장 — 거래소 원화 시세를 쓰므로 환율로 바꾸지 않는다
+  t('캡처: 업비트·빗썸 코인은 원화 평균단가 그대로(환율 변환 안 함)', row('업비트', 'BTC').avgPrice === 140000000 && row('업비트', 'BTC').currency === 'KRW' && !row('업비트', 'BTC').converted);
   t('캡처: 업비트에서 안 보인 ETH는 "캡처에 없음"', plan.missing.some(h => h.id === 'h4'));
   t('캡처: 앱 표시 없는 테슬라는 "캡처에 없음"에도 안 넣음', !plan.missing.some(h => h.id === 'h3'));
-  t('캡처: 환율이 없으면 변환하지 않고 비워 둠(직접 입력)', planHoldingsUpdate(holdings, items, null).rows.find(r => r.item.broker === '업비트' && r.item.code === 'BTC').avgPrice === null);
+  t('캡처: 업비트·빗썸 코인은 환율이 없어도 원화 그대로', planHoldingsUpdate(holdings, items, null).rows.find(r => r.item.broker === '업비트' && r.item.code === 'BTC').avgPrice === 140000000);
+  t('캡처: 거래소가 아닌 원화 단가는 환율이 없으면 비워 둠(직접 입력)', planHoldingsUpdate(holdings, [{ broker: '', name: '테슬라', code: 'TSLA', kind: 'us_stock', qty: 3, avgPrice: 280000, currency: 'KRW' }], null).rows[0].avgPrice === null);
 
   const accepted = plan.rows.map(r => ({
     holding: r.holding, sym: r.holding?.sym || r.item.code, label: r.item.name,
@@ -278,6 +280,8 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('캡처 반영: 수량·평균단가 바뀜', h1.qty === 12 && h1.avgPrice === 71000);
   t('캡처 반영: 기존 메모·코드·시세 설정 유지', same(h1.memos, memos) && h1.sym === '005930.KS' && h1.src === 'yahoo');
   t('캡처 반영: 코인 coinId 유지', next.find(h => h.id === 'h2').coinId === 'bitcoin');
+  t('캡처 반영: 업비트로 반영한 코인은 원화로 저장(예전 달러 저장도 바뀜)', next.find(h => h.id === 'h2').currency === 'KRW' && next.find(h => h.id === 'h2').avgPrice === 140000000);
+  t('캡처 반영: 새 빗썸 코인도 원화', next.find(h => h.broker === '빗썸' && h.sym === 'BTC')?.currency === 'KRW');
   t('캡처 반영: 캡처에 없는 종목은 그대로 남음', next.some(h => h.id === 'h3') && next.some(h => h.id === 'h4'));
   t('캡처 반영: 새 종목 추가', next.length === holdings.length + 2);
   t('캡처 반영: 고른 것만 삭제', applyHoldingsPlan(holdings, [], ['h4']).map(h => h.id).join() === 'h1,h2,h3');
@@ -437,6 +441,20 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const xrp = g.find(r => r.sym === 'XRP');
   t('같은 코인 업비트+빗썸: 각자 시세로 계산해 더함', xrp.parts.length === 2 && Math.abs(xrp.value * 1400 - (100 * 1540 + 50 * 1554)) < 1e-6 && xrp.priceFrom === 'mixed');
   t('합친 줄 총액 = 요약 총액(종목 시세 없는 TSLA 제외)', Math.abs(g.filter(r => !r.noData).reduce((a, r) => a + r.value, 0) - s.statsUSD.value) < 1e-6);
+  const upK = { ...up, id: 'uk', avgPrice: 1400, currency: 'KRW' };
+  const qk = quoteFor(upK, md, 1400);
+  t('원화 저장 거래소 코인: 원화 시세 그대로', qk.d.price === 1540 && qk.d.currency === 'KRW' && qk.exchange === 'upbit');
+  t('원화 저장 거래소 코인: 거래소 시세 없으면 CoinGecko를 원화로', Math.abs(quoteFor(upK, { XRP: { price: 1.1 } }, 1400).d.price - 1540) < 1e-9 && quoteFor(upK, { XRP: { price: 1.1 } }, 1400).d.currency === 'KRW');
+  t('원화 저장 거래소 코인: 환율도 없으면 시세 없음(달러 시세를 원화로 잘못 쓰지 않음)', quoteFor(upK, { XRP: { price: 1.1 } }, null).d === null);
+  const sk = calcPortfolioSummary([upK], md, 1400).rows[0];
+  t('원화 저장 거래소 코인: 손익 원화로(100×(1540−1400))', sk.marketCurrency === 'KRW' && sk.pnl === 14000 && !sk.currencyMismatch);
+  // 원화 저장으로 바뀌는 동안: 업비트 XRP(예전 달러) + 빗썸 XRP(원화)도 한 줄 — 환율로 원화로 맞춰 더함
+  const btK = { ...bt, avgPrice: 1400, currency: 'KRW' };
+  const mixRows = calcPortfolioSummary([up, btK], md, 1400).rows;
+  const mix = groupHoldings(mixRows, { usdKrwRate: 1400 });
+  t('통화 섞인 같은 코인도 한 줄(원화로 맞춤)', mix.length === 1 && mix[0].marketCurrency === 'KRW' && Math.abs(mix[0].value - (100 * 1540 + 50 * 1554)) < 1e-6);
+  t('통화 섞인 한 줄: 평균단가도 원화(원금÷수량)', mix[0].currency === 'KRW' && Math.abs(mix[0].avgPrice - (100 * 1 * 1400 + 50 * 1400) / 150) < 1e-6);
+  t('환율 없이 묶으면 예전처럼 통화별로', groupHoldings(mixRows).length === 2);
   t('합친 줄: 한쪽 시세가 없으면 "시세 없음"', groupHoldings(calcPortfolioSummary([up, bt], { 'XRP@upbit': md['XRP@upbit'] }, 1400).rows).find(r => r.sym === 'XRP').noData === true);
 
   const fakeSearch = async (q) => q === 'Q' ? [

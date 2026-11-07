@@ -3,7 +3,7 @@ import { saveSettings } from "../firebase.js";
 import { store } from "../utils/storage.js";
 import { toDateStr } from "../utils/date.js";
 import { fetchMarketDataFromServer } from "../api/telegram.js";
-import { calcPortfolioSummary, priceRequest, EXCHANGE_NAME } from "../utils/portfolioCalc.js";
+import { calcPortfolioSummary, priceRequest, EXCHANGE_NAME, exchangeOf } from "../utils/portfolioCalc.js";
 import { readTabs, tabHoldings, tabCash, setTabHoldings, setTabCash, addTab, renameTab, removeTab, restoreTab, makeReal, groupHoldings, allTabHoldings, roundQty, PF_MAX_TABS } from "../utils/portfolioTabs.js";
 import { isPfHidden, setPfHidden, HIDE_EVENT, MASK, allocation, historySeries, projectDividends, dividendMonths, dividendTotal, dividendSymOf, INDEX_SYM, indexWhatIf } from "../utils/portfolioExtras.js";
 import { localPfHistory, notePfValue, syncPfHistory } from "../utils/pfHistory.js";
@@ -161,6 +161,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     setFCurrency(r.currency);
     setFCoinId(r.coinId || "");
     setFBroker(r.src === "coingecko" && (r.exchange === "업비트" || r.exchange === "빗썸") ? r.exchange : "");
+    if (r.src === "coingecko" && (r.exchange === "업비트" || r.exchange === "빗썸")) setFCurrency("KRW");
     setShowNameResults(false);
   };
 
@@ -256,7 +257,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       sym, label, src,
       ...(preset?.coinId || fCoinId ? { coinId: preset?.coinId || fCoinId } : {}),
       qty, avgPrice,
-      currency: src === 'yahoo' ? fCurrency : 'USD',
+      currency: src === 'yahoo' ? fCurrency : (formKrw ? 'KRW' : 'USD'), // 업비트·빗썸 코인은 원화
       ...(existing?.memos ? { memos: existing.memos } : {}),
       ...(existing?.broker ? { broker: existing.broker } : {}), // 캡처로 반영한 종목의 앱 표시(업비트·빗썸 등) 유지
       ...(!existing && fBroker && src === "coingecko" ? { broker: fBroker } : {}), // 검색에서 고른 거래소 코인
@@ -275,7 +276,12 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
   const handleEdit = (h) => {
     setEditingId(h.id); setFSym(h.sym); setFLabel(h.label || ""); setFQty(String(h.qty));
-    setFAvgPrice(String(h.avgPrice)); setFCurrency(h.currency || "USD"); setFSrc(h.src || "finnhub");
+    // 거래소 코인을 예전처럼 달러로 저장해 뒀으면 원화로 바꿔 보여 주고, 저장하면 원화로 바뀐다 (2026-11-07)
+    if (exchangeOf(h) && (h.currency || "USD") === "USD" && usdKrwRate) {
+      const krw = h.avgPrice * usdKrwRate;
+      setFAvgPrice(String(Number(krw.toFixed(krw >= 100 ? 0 : krw >= 1 ? 2 : 4)))); setFCurrency("KRW");
+    } else { setFAvgPrice(String(h.avgPrice)); setFCurrency(h.currency || "USD"); }
+    setFSrc(h.src || "finnhub");
     setFCoinId(h.coinId || ""); setShowNameResults(false);
     setShowForm(true);
   };
@@ -359,7 +365,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
 
   // 종목마다 시세 계산 → 같은 종목은 화면에서 한 줄로 합친다(저장은 앱별 그대로, 앱마다 시세가 다를 수 있음)
   const summary = calcPortfolioSummary(holdings, marketData, usdKrwRate, cash);
-  const rows = groupHoldings(summary ? summary.rows : holdings);
+  const rows = groupHoldings(summary ? summary.rows : holdings, { usdKrwRate: summary ? usdKrwRate : null });
   const stats = displayCurrency === "KRW" ? summary?.statsKRW : summary?.statsUSD;
   const setDisplayCurrencyPersist = (cur) => { setDisplayCurrency(cur); store.set("dm_pf_display_currency", cur); };
   // 금액은 이 함수로만 — 👁 숨기기면 가린다 (수익률 %는 그대로)
@@ -424,6 +430,9 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
     color: on ? "#fff" : "var(--dm-text)",
   });
   const panelBtn = { flex: 1, minHeight: UI.touch, padding: "0 12px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-text)" };
+
+  const formBroker = (editingId ? holdings.find(h => h.id === editingId)?.broker : fBroker) || "";
+  const formKrw = fSrc === "coingecko" && (formBroker === "업비트" || formBroker === "빗썸") && fCurrency === "KRW";
 
   // 종목 입력 창 — 새 종목은 "＋ 종목 추가" 자리에, 수정은 그 종목 바로 아래에 (2026-11-07 사용자 요청: 맨 끝에 열려 안 보였다)
   const renderForm = (inline) => (
@@ -509,7 +518,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               placeholder="예: 10" inputMode="decimal" />
           </div>
           <div>
-            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>평균매수가 *</div>
+            <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>평균매수가 ({(fSrc === 'yahoo' ? fCurrency : formKrw ? 'KRW' : 'USD') === 'KRW' ? '원' : '$'}) *</div>
             <input style={inputStyle} value={fAvgPrice} onChange={e => setFAvgPrice(e.target.value)}
               placeholder="예: 250.00" inputMode="decimal" />
           </div>
@@ -519,7 +528,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
             <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>통화</div>
             {fSrc !== 'yahoo' ? (
               <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", padding: "8px 12px", background: "var(--dm-row)", borderRadius: 10, border: "1px solid var(--dm-border)" }}>
-                USD 고정 (시세 통화)
+                {formKrw ? `원화 고정 (${formBroker} 시세)` : "USD 고정 (시세 통화)"}
               </div>
             ) : (
               <select style={{ ...inputStyle, appearance: "none" }} value={fCurrency} onChange={e => setFCurrency(e.target.value)}>
@@ -528,7 +537,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
               </select>
             )}
           </div>
-          {fBroker && fSrc === "coingecko" && !editingId && (
+          {fBroker && fSrc === "coingecko" && !editingId && !formKrw && (
             <div style={{ gridColumn: "1 / -1", fontSize: 13, color: "var(--dm-sub)", marginTop: 4 }}>시세: {fBroker} 원화 ({fSym})</div>
           )}
           {!PRESET_ASSETS.find(p => p.sym === fSym) && fSym && (
@@ -869,7 +878,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--dm-text)" }}>
                             <b>{p.broker || "직접 입력"}</b>
-                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {qtyText(p.qty)}주 · 매수가 {fmtUnit(asKrw ? p.avgPrice * usdKrwRate : p.avgPrice, avgCur)}</span>
+                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {qtyText(p.qty)}주 · 매수가 {(() => { const pk = !!p.priceFrom && !!usdKrwRate && (p.currency || "USD") === "USD"; return fmtUnit(pk ? p.avgPrice * usdKrwRate : p.avgPrice, pk ? "KRW" : p.currency); })()}</span>
                           </div>
                           <button className={NL() ? 'dm-hit-y' : undefined} aria-label={`${p.broker || "직접 입력"} 수정`}
                             onClick={() => (showForm && editingId === p.id) ? resetForm() : handleEdit(p)}
