@@ -831,7 +831,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               type="time"
               value={value}
               onChange={(e) => set(e.target.value)}
-              style={{ ...S.input, width: 110, padding: "8px 10px", marginBottom: 0 }}
+              style={{ ...S.input, width: NL() ? 150 : 110, flexShrink: 0, padding: "8px 10px", marginBottom: 0 }}
             />
           </div>
         ))}
