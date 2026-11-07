@@ -681,7 +681,11 @@ export default function Today({
     // 📌 다가오는 날 — 직접 넣은 D-day + 내 사람들의 생일·기념일 (사람은 7일 안이면 위 칸에 있으니 뺀다)
     upcoming: !hiddenSec.upcoming && (
         <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
-          boxed={newLook} heading={<div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
+          boxed={newLook}
+          // 새 디자인: "＋ 추가"는 제목 줄 오른쪽 (2026-11-07 사용자 요청 — 맨 아래 한 줄을 늘 차지했다)
+          heading={newLook
+            ? (addBtn) => <div style={{ ...secTitle, justifyContent: 'space-between' }}><span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{secIcon('flag', '📌')}다가오는 날</span>{addBtn}</div>
+            : <div style={secTitle}>{secIcon('flag', '📌')}다가오는 날</div>} />
       ),
     habits: !hiddenSec.habits && (<SectionBox on={newLook}>
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(habitsSectionOpen) }}>

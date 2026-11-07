@@ -284,6 +284,57 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('캡처: 못 찾은 코인은 추측하지 않음', (await resolveScanSymbol({ name: '없는코인', code: 'ZZZ', kind: 'coin' }, fakeSearch)) === null);
 }
 
+// ── 보유자산 탭: 기존 종목 유지, 복사, 실계좌 바꾸기, 같은 종목 한 줄 (2026-11-07) ──
+{
+  const { readTabs, tabHoldings, setTabHoldings, addTab, renameTab, removeTab, restoreTab, makeReal, groupHoldings, allTabHoldings } = await load('/src/utils/portfolioTabs.js');
+  const memos = [{ id: 'm1', text: '장기', createdAt: '2026-10-01T00:00:00Z' }];
+  const old = [
+    { id: 'h1', sym: 'TSLA', label: '테슬라', src: 'finnhub', qty: 100, avgPrice: 200, currency: 'USD', memos },
+    { id: 'h2', sym: 'BTC', src: 'coingecko', coinId: 'bitcoin', qty: 0.3, avgPrice: 60000, currency: 'USD', broker: '업비트' },
+    { id: 'h3', sym: 'BTC', src: 'coingecko', coinId: 'bitcoin', qty: 0.2, avgPrice: 90000, currency: 'USD', broker: '빗썸' },
+  ];
+  const cfg0 = { briefingTime: '08:00', weatherCity: '서울', holdings: old }; // 이 기능 전 설정
+  const r0 = readTabs(cfg0);
+  t('탭: 예전 설정은 "계좌1"(실계좌) 하나', r0.tabs.length === 1 && r0.tabs[0].name === '계좌1' && r0.tabs[0].real);
+  t('탭: 예전 종목이 계좌1에 그대로', same(tabHoldings(cfg0, r0.realId), old));
+
+  const { cfg: cfg1, id: copyId } = addTab(cfg0, { fromId: r0.realId, now: 1 });
+  t('탭 복사: 이름 "계좌1 복사"', readTabs(cfg1).tabs[1].name === '계좌1 복사');
+  t('탭 복사: 종목·메모까지 그대로', same(tabHoldings(cfg1, copyId), old));
+  t('탭 복사: 실계좌 종목(holdings)은 안 바뀜', same(cfg1.holdings, old));
+  t('탭 복사: 다른 설정(텔레그램 시간·도시) 유지', cfg1.briefingTime === '08:00' && cfg1.weatherCity === '서울');
+
+  const edited = [{ ...old[0], qty: 50 }, { id: 'h9', sym: 'MRNA', src: 'finnhub', qty: 50, avgPrice: 100, currency: 'USD' }];
+  const cfg2 = setTabHoldings(cfg1, copyId, edited, 5);
+  t('복사본 고치기: 실계좌는 그대로', same(cfg2.holdings, old) && same(tabHoldings(cfg2, r0.realId), old));
+  t('복사본 고치기: 복사본만 바뀌고 저장일 기록', same(tabHoldings(cfg2, copyId), edited) && readTabs(cfg2).tabs[1].updatedAt === 5);
+  t('복사본 고치기: 복사한 메모는 따로(원본 메모 객체 공유 안 함)', tabHoldings(cfg1, copyId)[0].memos !== old[0].memos);
+
+  const cfg3 = makeReal(cfg2, copyId);
+  t('실계좌로: 자산 브리핑(holdings)이 그 탭 종목으로', same(cfg3.holdings, edited) && readTabs(cfg3).realId === copyId);
+  t('실계좌로: 이전 실계좌는 비교용으로 종목 그대로 남음', same(tabHoldings(cfg3, r0.realId), old) && !readTabs(cfg3).tabs[0].real);
+  t('실계좌로: 되돌리면 처음과 같음', same(makeReal(cfg3, r0.realId).holdings, old));
+  t('실계좌는 하나뿐', readTabs(cfg3).tabs.filter(x => x.real).length === 1);
+
+  t('실계좌 탭은 지울 수 없음', removeTab(cfg3, copyId).removed === null);
+  const rm = removeTab(cfg3, r0.realId);
+  t('비교용 탭 지우기', readTabs(rm.cfg).tabs.length === 1 && same(rm.cfg.holdings, edited));
+  const back = restoreTab(rm.cfg, rm.removed, rm.idx);
+  t('지운 탭 되돌리기: 자리·종목 그대로', readTabs(back).tabs[0].id === r0.realId && same(tabHoldings(back, r0.realId), old));
+  t('이름 바꾸기 / 빈 이름은 무시', readTabs(renameTab(cfg3, copyId, ' 테슬라 줄이면 ')).tabs[1].name === '테슬라 줄이면' && same(renameTab(cfg3, copyId, '  '), cfg3));
+  t('저장 모양: 목록은 배열, 실계좌 탭엔 종목을 두 번 두지 않음', Array.isArray(cfg3.pfTabs) && !('holdings' in cfg3.pfTabs.find(x => x.id === copyId)));
+  t('여러 탭 종목 한 번에(시세용)', allTabHoldings(cfg3).length === old.length + edited.length);
+  t('빈 계좌 만들기: 이름 겹치지 않음', readTabs(addTab(cfg3, { now: 9 }).cfg).tabs[2].name === '계좌3');
+
+  const g = groupHoldings(old);
+  const btc = g.find(x => x.sym === 'BTC');
+  t('같은 종목 한 줄: 업비트+빗썸 BTC가 한 줄', g.length === 2 && btc.parts.length === 2);
+  t('같은 종목 한 줄: 수량 합(소수 오차 없음)', btc.qty === 0.5);
+  t('같은 종목 한 줄: 평균단가는 수량 기준(원금 같음)', Math.abs(btc.qty * btc.avgPrice - (0.3 * 60000 + 0.2 * 90000)) < 1e-6);
+  t('같은 종목 한 줄: 한 곳에만 있는 종목은 그대로', g.find(x => x.sym === 'TSLA').id === 'h1');
+  t('통화가 다르면 합치지 않음', groupHoldings([{ id: 'a', sym: 'X', src: 'yahoo', currency: 'KRW', qty: 1, avgPrice: 1 }, { id: 'b', sym: 'X', src: 'yahoo', currency: 'USD', qty: 1, avgPrice: 1 }]).length === 2);
+}
+
 // ── 수험생 모드: D-day · 공부 시간 · 오답 다시 풀기 (2026-11-01) ──
 {
   const { normalizeExam, upcomingDdays, ddayLabel, studyBySubject, studyTotal, lastWeekStudy, newStudyEntry, reviewWrongNote, firstDue, isDue, studyXp, EXAM_SUBJECTS } = await load('/src/utils/exam.js');

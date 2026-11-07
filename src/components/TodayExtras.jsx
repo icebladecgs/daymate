@@ -128,13 +128,13 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
 }
 
 // 직접 넣는 D-day 입력 (새로 넣기·고치기 같이 씀)
-function DdayForm({ initial, minDate, onSave, onDelete, onCancel }) {
+function DdayForm({ initial, minDate, onSave, onDelete, onCancel, first }) {
   const [title, setTitle] = useState(initial?.title || "");
   const [date, setDate] = useState(initial?.date || "");
   const ok = title.trim() && date;
   const save = () => { if (ok) onSave(title, date); };
   return (
-    <div style={{ padding: "10px 0", borderTop: "1px solid var(--dm-row)" }}>
+    <div style={{ padding: first ? "0 0 10px" : "10px 0", borderTop: first ? "none" : "1px solid var(--dm-row)" }}>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="이름 (예: 가족 여행)" maxLength={30} autoFocus
         onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) save(); }}
         style={{ ...S.input, marginBottom: 8 }} />
@@ -169,11 +169,24 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
     if (saved) undo.offer(`"${d.title}" D-day를 지웠어요`, () => setDdays((prev) => putBack(prev, saved, idx)));
   };
 
+  // heading이 함수면 제목 줄 오른쪽에 "＋ 추가"를 넣고, 맨 아래 "＋ D-day 추가" 줄은 뺀다(새 디자인)
+  const headerAdd = typeof heading === "function";
+  const adding = editing === "new";
+  const addBtn = (
+    <button className="dm-hit" onClick={() => setEditing(adding ? null : "new")} aria-expanded={adding}
+      style={{ height: 32, padding: "0 10px", marginLeft: "auto", borderRadius: 10, border: `1.5px solid ${adding ? RAIN_COLOR : "var(--dm-border)"}`, background: adding ? "rgba(91,124,250,.12)" : "transparent", color: RAIN_COLOR, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+      ＋ 추가
+    </button>
+  );
+
   return (
     <SectionBox on={boxed}>
       <UndoBar bar={undo.bar} onUndo={undo.run} />
-      {heading}
+      {headerAdd ? heading(addBtn) : heading}
       <div style={boxed ? {} : { ...S.card, padding: "6px 14px" }}>
+        {headerAdd && all.length === 0 && !adding && (
+          <div style={{ padding: "2px 0 4px", fontSize: 14, color: "var(--dm-muted)" }}>다가오는 날이 없어요</div>
+        )}
         {shown.map((ev, i) => (
           editing === ev.id && ev.kind === "dday" ? (
             <DdayForm key={ev.key} initial={ev} onSave={(t, d) => saveDday(ev.id, t, d)} onDelete={() => removeDday(ev)} onCancel={() => setEditing(null)} />
@@ -190,9 +203,9 @@ export function UpcomingDays({ contacts, ddays, setDdays, dateStr, excludeWithin
             {more ? "접기 ▲" : `${moreCount}개 더 보기 ▼`}
           </button>
         )}
-        {editing === "new" ? (
-          <DdayForm minDate={dateStr} onSave={addDday} onCancel={() => setEditing(null)} />
-        ) : (
+        {adding ? (
+          <DdayForm minDate={dateStr} onSave={addDday} onCancel={() => setEditing(null)} first={headerAdd && all.length === 0} />
+        ) : headerAdd ? null : (
           <button className={boxed ? 'dm-hit' : undefined} onClick={() => setEditing("new")} style={{ display: "block", width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: all.length ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", fontSize: 15, fontWeight: 800, color: RAIN_COLOR, cursor: "pointer" }}>
             ＋ D-day 추가
           </button>
