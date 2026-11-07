@@ -51,7 +51,7 @@ const applyChip = (input, word) => {
 function ReorderButtons({ r }) {
   return [[-1, '▲', '위로', r.canUp], [1, '▼', '아래로', r.canDown]].map(([dir, ch, label, can]) => (
     <button key={dir} onClick={() => r.onMove(dir)} disabled={!can} aria-label={label}
-      style={{ width: 36, height: 36, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? '#5B7CFA' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
+      style={{ width: UI.touch, height: UI.touch, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? '#5B7CFA' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
   ));
 }
 function ReorderToggle({ on, onClick }) {
@@ -660,7 +660,7 @@ export default function Today({
     // 기능이 있는 걸 알 수 있게 하고, 누르면 내 사람들 화면 (예전엔 없으면 숨겨서 찾을 수 없었다)
     people: !hiddenSec.people && (<SectionBox on={newLook}>
       <div style={newLook ? {} : { margin: '0 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? (newLook ? 14 : 8) : 0, paddingTop: newLook ? 0 : 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: contactReminders.length ? (newLook ? UI.titleGap : 8) : 0, paddingTop: newLook ? 0 : 4 }}>
           <span onClick={onOpenPeople} style={newLook
             ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 17, fontWeight: 900, color: 'var(--dm-text)', fontFamily: S.sectionTitle.fontFamily, cursor: onOpenPeople ? 'pointer' : 'default' }
             : { fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', cursor: onOpenPeople ? 'pointer' : 'default' }}>
@@ -775,7 +775,7 @@ export default function Today({
         {/* 순서 바꾸기는 제목 줄 오른쪽 빈자리에 (맨 아래에 두면 답답하다는 사용자 의견, 2026-11-07) */}
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
           {somedayOpen && (somedayList.length > 1 || reorder === 'someday') && (
-            <button onClick={() => setReorder(reorder === 'someday' ? null : 'someday')}
+            <button className="dm-hit" onClick={() => setReorder(reorder === 'someday' ? null : 'someday')}
               style={{ height: 32, padding: '0 10px', borderRadius: 10, border: `1.5px solid ${reorder === 'someday' ? '#5B7CFA' : 'var(--dm-border)'}`, background: reorder === 'someday' ? 'rgba(91,124,250,.12)' : 'transparent', color: reorder === 'someday' ? '#5B7CFA' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
               {reorder === 'someday' ? '✓ 완료' : '↕ 순서'}
             </button>
@@ -787,7 +787,7 @@ export default function Today({
       <div style={innerCard}>
         {(somedayShowAll || reorder === 'someday' ? somedayList : somedayList.slice(0, 3)).map((item, i, shown) => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 12 }) }}>
-            <button disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+            <button className={newLook ? 'dm-hit' : undefined} disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
             <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
               {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: '#6C8EFF', fontWeight: 700, flexShrink: 0, background: 'rgba(108,142,255,.12)', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
@@ -796,7 +796,7 @@ export default function Today({
             </span>
             {reorder === 'someday' ? <ReorderButtons r={somedayReorder(item.id)} /> : (<>
               <button onClick={() => moveSomedayToTask(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? 13 : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
-              <button onClick={() => confirmDeleteSomeday(item)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+              <button className={newLook ? 'dm-hit' : undefined} onClick={() => confirmDeleteSomeday(item)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
             </>)}
           </div>
         ))}
@@ -835,6 +835,7 @@ export default function Today({
         // 새 디자인은 제목 줄과 ‹ 날짜 › 줄이 붙어 보여 위에 여백을 더 둔다(2026-11-07 사용자 지적 — 접기 버튼과 ‹ › 버튼이 맞닿았다)
         <div style={{ ...innerCard, ...(newLook ? { paddingTop: UI.controlGap } : {}) }}>
           <WeeklySchedule
+            roomy={newLook}
             plans={plans}
             habits={habits || []}
             onOpenDate={onOpenDate}
@@ -871,7 +872,7 @@ export default function Today({
           <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 6, minWidth: 0 }}>
             <span style={{ whiteSpace: 'nowrap' }}>{journalDayTitle}</span>
             {[0, 1, -1].includes(journalDayOffset) && !(newLook && journalDayOffset === 0) && (
-              <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
+              <span style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{journalDayDateLabel}</span>
             )}
             {journalDayOffset === 0 && (
               <span style={newLook ? { flexBasis: '100%', fontSize: 13, fontWeight: 400, color: 'var(--dm-muted)', lineHeight: 1.3 } : { fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{newLook ? '22:00 이후 추천' : '(22:00 이후 추천)'}</span>
@@ -888,7 +889,7 @@ export default function Today({
         {/* {label} 한 일 — done tasks 자동 표시 */}
         {journalDoneTasks.length > 0 && (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{journalDayLabel} 한 일</div>
+            <div style={{ fontSize: newLook ? UI.sub : 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{journalDayLabel} 한 일</div>
             {journalDoneTasks.map(t => (
               <div key={t.id} style={{ fontSize: 13, color: 'var(--dm-sub)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: '#4ADE80', fontWeight: 700 }}>✓</span>{t.title}
@@ -918,7 +919,7 @@ export default function Today({
           maxLength={2000}
         />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
+          <div style={{ fontSize: newLook ? UI.sub : 11, color: displayedJournalSaved ? 'var(--dm-muted)' : '#A78BFA', fontWeight: displayedJournalSaved ? 400 : 700, transition: 'color 0.3s' }}>
             {displayedJournalSaved ? '✓ 자동저장' : '저장 중...'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -926,7 +927,7 @@ export default function Today({
               onClick={handleManualJournalSave}
               style={{
                 background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10,
-                padding: '7px 16px', fontSize: 12, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit',
+                padding: '7px 16px', fontSize: newLook ? UI.sub : 12, fontWeight: 900, color: '#A78BFA', cursor: 'pointer', fontFamily: 'inherit',
               }}
             >저장</button>
             {uid && (
@@ -1108,7 +1109,7 @@ export default function Today({
               </button>}
             </span>
             {[0, 1, -1].includes(taskDayOffset) && !(newLook && taskDayOffset === 0) && (
-              <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{taskDayDateLabel}</span>
+              <span style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap', lineHeight: 1.3 }}>{taskDayDateLabel}</span>
             )}
           </span>
         </span>
@@ -1195,7 +1196,7 @@ export default function Today({
         ))}
         {(reorder === 'tasks' || anyTaskMovable) && <ReorderToggle on={reorder === 'tasks'} onClick={() => setReorder(reorder === 'tasks' ? null : 'tasks')} />}
         {targetTasks.filter(t => t.title.trim()).length === 0 && (
-          <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>{taskDayLabel} 할 일을 추가해보세요</div>
+          <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>{taskDayLabel} 할 일을 추가해보세요</div>
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           <input

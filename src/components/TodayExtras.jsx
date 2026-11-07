@@ -15,7 +15,7 @@ const SHOW_MORE = 10;
 // 새 디자인의 칸 접기·펼치기 — 칸 오른쪽 끝 화살표 하나
 export function FoldButton({ open, onClick }) {
   return (
-    <button onClick={onClick} aria-expanded={open} aria-label={open ? "접기" : "펼치기"} title={open ? "접기" : "펼치기"}
+    <button className="dm-hit" onClick={onClick} aria-expanded={open} aria-label={open ? "접기" : "펼치기"} title={open ? "접기" : "펼치기"}
       style={{ width: 28, height: 32, padding: 0, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "var(--dm-muted)", fontSize: 14, cursor: "pointer" }}>
       {open ? "▲" : "▼"}
     </button>

@@ -5,7 +5,10 @@ import S, { UI } from "../styles.js";
 const DOW_KR = ['월', '화', '수', '목', '금', '토', '일'];
 
 // showAll: 첫 할일 "외 n건" 대신 그날 할일을 모두 보여 줌 (PC 대시보드)
-export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
+// roomy: 새 디자인 오늘 탭 기준 — 글씨 13px 이상, ‹ › 40px, 또렷한 요일 색. 달력 탭은 예전 모습 유지라 넘기지 않는다
+export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roomy }) {
+  const fs = (n) => (roomy ? Math.max(n, UI.sub) : n);
+  const navSize = roomy ? UI.touch : 36;
   const today = toDateStr();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = getWeekDates(weekOffset);
@@ -23,14 +26,14 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: showAll ? UI.rowGapDense : UI.rowGap }}>
       {/* 주간 네비게이션 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
-        <button onClick={() => setWeekOffset(o => o - 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>‹</button>
+        <button onClick={() => setWeekOffset(o => o - 1)} aria-label="이전 주" style={{ ...S.btnGhost, marginTop: 0, width: navSize, height: navSize, padding: 0, fontSize: 16 }}>‹</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{weekLabel}</span>
           {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} style={{ fontSize: 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
+            <button onClick={() => setWeekOffset(0)} style={{ fontSize: fs(10), fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
           )}
         </div>
-        <button onClick={() => setWeekOffset(o => o + 1)} style={{ ...S.btnGhost, marginTop: 0, width: 36, height: 36, padding: 0, fontSize: 16 }}>›</button>
+        <button onClick={() => setWeekOffset(o => o + 1)} aria-label="다음 주" style={{ ...S.btnGhost, marginTop: 0, width: navSize, height: navSize, padding: 0, fontSize: 16 }}>›</button>
       </div>
       {weekDates.map((ds, i) => {
         const d = plans[ds];
@@ -66,12 +69,12 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
               background: isToday ? 'rgba(108,142,255,.08)' : 'rgba(255,255,255,.02)',
             }}>
             <div style={{ width: 30, textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 9, color: isToday ? '#AFC0FF' : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
+              <div style={{ fontSize: fs(9), color: isToday ? (roomy ? UI.accent : '#AFC0FF') : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
               <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 900, lineHeight: 1.2 }}>{dateObj.getDate()}</div>
             </div>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
               {isToday && (
-                <span style={{ fontSize: 10, color: '#6C8EFF', fontWeight: 900, background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
+                <span style={{ fontSize: fs(10), color: '#6C8EFF', fontWeight: 900, background: 'rgba(108,142,255,.15)', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
               )}
               {showAll && tasks.length > 0 ? (
                 <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 3 }}>
@@ -82,17 +85,20 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll }) {
                   ))}
                 </span>
               ) : <span style={{
-                fontSize: showAll ? 14 : 12.5, fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
+                fontSize: showAll ? 14 : fs(12.5), fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
                 overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
               }}>{previewLabel}</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              {tasks.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 800, color: allDone ? '#4ADE80' : 'var(--dm-muted)' }}>{done}/{tasks.length}</span>
-              )}
-              {hasHabits && d && (
-                <span style={{ fontSize: 10, color: habitDone === (habits || []).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>습관{habitDone}/{(habits || []).length}</span>
-              )}
+              {/* roomy: 글씨를 키우면 360px에서 제목이 5글자만 남아서 진행 수·습관 수를 위아래로 쌓는다. 아니면 display: contents로 예전 배치 그대로 */}
+              <span style={roomy ? { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.3 } : { display: 'contents' }}>
+                {tasks.length > 0 && (
+                  <span style={{ fontSize: fs(11), fontWeight: 800, color: allDone ? '#4ADE80' : 'var(--dm-muted)' }}>{done}/{tasks.length}</span>
+                )}
+                {hasHabits && d && (
+                  <span style={{ fontSize: fs(10), color: habitDone === (habits || []).length ? '#A78BFA' : 'var(--dm-muted)', fontWeight: 700 }}>습관{habitDone}/{(habits || []).length}</span>
+                )}
+              </span>
               <span style={{ color: 'var(--dm-muted)', fontSize: 14 }}>›</span>
             </div>
           </button>

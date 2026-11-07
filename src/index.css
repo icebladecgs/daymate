@@ -168,6 +168,10 @@ button {
 button:hover {
   border-color: #646cff;
 }
+/* 그림은 그대로 두고 누르는 칸만 40px로 넓힌다 — 배치가 흔들리지 않는다 (2026-11-07, UI.touch와 같은 값) */
+.dm-hit { position: relative; }
+.dm-hit::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 40px); height: max(100%, 40px); transform: translate(-50%, -50%); }
+
 /* 테두리는 키보드로 옮겨 갈 때만 — 예전엔 터치·클릭한 버튼에 남아 화면이 깨져 보였다 (2026-11-07) */
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { TaskDetailBadge, TaskStatIcon } from "./TaskDetailSheet.jsx";
 import { fmtMin, leftText } from "../utils/nowTask.js";
+import { UI } from "../styles.js";
 
 // 오늘 탭 새 화면의 할 일 한 줄 (2026-10-30 1단계).
 // 목록은 보기 전용(CLAUDE.md 14.1) — 체크·언젠가(미완료만)·✕만 바로, 나머지는 줄을 눌러 상세 창.
@@ -13,7 +14,7 @@ const icon = (d) => (
 const TRAY = icon(<><path d="M12 4v10M8 10l4 4 4-4" /><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" /></>);
 const X = icon(<path d="M6 6l12 12M18 6L6 18" />);
 // 전역 button padding(index.css) 때문에 padding: 0 필수
-const iconBtn = { width: 32, height: 40, padding: 0, border: "none", background: "none", color: "var(--dm-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 10 };
+const iconBtn = { width: UI.touch, height: UI.touch, padding: 0, border: "none", background: "none", color: "var(--dm-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: 10 };
 
 // reorder: 순서 편집 중이면 { canUp, canDown, onMove } — 체크·열기·언젠가·✕ 대신 ▲▼만 (체크 실수 방지)
 export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggle, onOpen, onSomeday, onDelete, onFocus, reorder }) {
@@ -60,7 +61,7 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
           </span>
         </div>
         {next != null && !now && !done && (
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#6C8EFF", marginTop: 2 }}>다음 · {leftText(next)} 뒤</div>
+          <div style={{ fontSize: UI.sub, fontWeight: 700, color: "#6C8EFF", marginTop: 2 }}>다음 · {leftText(next)} 뒤</div>
         )}
         {now && !reorder && (
           <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8, marginTop: 10 }}>
