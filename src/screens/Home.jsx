@@ -26,7 +26,7 @@ import { NTH_LABELS, WEEKDAY_LABELS } from "../utils/recurring.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
-import { boxCard } from "../styles.js";
+import { boxCard, UI } from "../styles.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
 function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
@@ -493,7 +493,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           {!newLook && <button onClick={onToggleOpen} style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
             {open ? '접기 ▲' : '펼치기 ▼'}
           </button>}
-          <button onClick={editing ? onSave : onStartEdit} style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+          <button className={newLook ? 'dm-hit' : undefined} onClick={editing ? onSave : onStartEdit} style={{ fontSize: newLook ? 14 : 11, fontWeight: 900, color: editing ? '#4ADE80' : accent, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
             {editing ? '저장 ✓' : '편집'}
           </button>
           {newLook && <FoldButton open={open} onClick={onToggleOpen} />}
@@ -531,7 +531,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               </div>
               {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}
               {onItemClick && (
-                <span style={{ fontSize: 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: newLook ? UI.sub : 11, color: 'var(--dm-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {itemCount?.(i) > 0 ? `📌 ${itemCount(i)}` : ''} <span style={{ fontSize: 15, opacity: 0.6 }}>›</span>
                 </span>
               )}
@@ -539,7 +539,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: 'var(--dm-muted)', padding: '4px 0' }}>편집을 눌러 목표를 추가해보세요</div>
+        <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', padding: '4px 0' }}>편집을 눌러 목표를 추가해보세요</div>
       )}
     </div>
   );
@@ -618,14 +618,14 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       <div style={S.topbar}>
         <div style={newLook ? { flex: 1, minWidth: 0 } : undefined}>
           <div style={S.title}>My</div>
-          <div style={newLook ? { ...S.sub, whiteSpace: 'nowrap' } : S.sub}>{newLook ? formatShortKoreanDate(today) : formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
+          <div style={newLook ? { ...S.sub, fontSize: UI.sub, whiteSpace: 'nowrap' } : S.sub}>{newLook ? formatShortKoreanDate(today) : formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {[
             { icon: isDark ? '☀️' : '🌙', label: isDark ? '밝게' : '어둡게', onClick: () => setIsDark?.(d => !d) },
             { icon: '🤖', label: 'AI 채팅', onClick: onOpenChat },
           ].map(({ icon, label, onClick }) => (
-            <button key={label} onClick={onClick}
+            <button key={label} className={newLook ? 'dm-hit' : undefined} onClick={onClick}
               style={{ ...S.btnGhost, marginTop: 0, padding: '7px 10px', borderRadius: 20, fontSize: 13, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, whiteSpace: 'nowrap' }}>
               <span>{icon}</span>
               <span style={newLook ? { fontSize: 13, color: 'var(--dm-text)', fontWeight: 700 } : { fontSize: 11, color: 'var(--dm-muted)', fontWeight: 600 }}>{label}</span>
@@ -726,18 +726,18 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   newLook ? <FoldButton open={bucketOpen} onClick={() => setBucketOpen(v => !v)} /> : <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
                 {bucketOpen && (
                   <div style={newLook ? {} : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
-                    {bucketList.map(item => (
-                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <button onClick={() => toggleBucketItem(item.id)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
+                    {bucketList.map((item, i) => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === bucketList.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 8 }) }}>
+                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => toggleBucketItem(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, ...(newLook ? { padding: 0 } : {}), border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
                         <span style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
-                        <button onClick={() => copyBucketToSomeday(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
-                        <button onClick={() => deleteBucketItem(item.id)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
+                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => copyBucketToSomeday(item)} style={{ background: 'rgba(108,142,255,.1)', border: '1px solid rgba(108,142,255,.25)', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: '#6C8EFF', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
+                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => deleteBucketItem(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
                       </div>
                     ))}
                     {bucketList.length === 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>죽기 전에 하고 싶은 일을 적어보세요</div>
+                      <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>죽기 전에 하고 싶은 일을 적어보세요</div>
                     )}
-                    {bucketMsg && <div style={{ fontSize: 11, color: '#4ADE80', fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>{bucketMsg}</div>}
+                    {bucketMsg && <div style={{ fontSize: newLook ? UI.sub : 11, color: '#4ADE80', fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>{bucketMsg}</div>}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         style={{ ...S.input, flex: 1, marginBottom: 0 }}
@@ -773,7 +773,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
                   {bcDefault?.photoUrl && (
                     <>
-                      <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
+                      <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
                         {bcUploading ? '업로드 중...' : '＋ 명함 추가'}
                       </button>
                       <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -782,11 +782,11 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                       </div>
                     </>
                   )}
-                  {bcMsg && <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 8, textAlign: 'center' }}>{bcMsg}</div>}
+                  {bcMsg && <div style={{ fontSize: newLook ? UI.sub : 11, color: 'var(--dm-muted)', marginTop: 8, textAlign: 'center' }}>{bcMsg}</div>}
 
                   {businessCards.length > 1 && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dm-row)' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dm-muted)', marginBottom: 8 }}>지난 명함 {businessCards.length - 1}장</div>
+                      <div style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 700, color: 'var(--dm-muted)', marginBottom: 8 }}>지난 명함 {businessCards.length - 1}장</div>
                       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
                         {businessCards.slice().reverse().map(c => (
                           <button key={c.id} onClick={() => { setBcViewerId(c.id); setBcLabelDraft(c.label || ''); }}
@@ -849,34 +849,34 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
       {isSectionVisible('portfolio') && (isMyTab || telegramCfg?.holdings?.length > 0 || pfSummary) && (
         <div style={{ order: getSectionOrder('portfolio'), ...(newLook ? boxCard : {}) }}>
-          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, ...(newLook ? { padding: '0 0 10px' } : {}) }}>
+          <div style={{ ...S.sectionTitle, justifyContent: "space-between", paddingRight: 16, ...(newLook ? { padding: `0 0 ${UI.headingGap}px` } : {}) }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {newLook ? <SectionIcon name="briefcase" size={20} /> : <span style={S.sectionEmoji}>💼</span>}자산 브리핑
             </span>
-            <button onClick={onOpenPortfolio}
+            <button className={newLook ? 'dm-hit' : undefined} onClick={onOpenPortfolio}
               style={{ fontSize: newLook ? 13 : 11, fontWeight: 900, color: "var(--dm-muted)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px" }}>
               관리 →
             </button>
           </div>
           <div style={newLook ? {} : { ...S.card, marginBottom: 10 }}>
-            {pfLoading && <div style={{ textAlign: "center", fontSize: 12, color: "var(--dm-muted)", padding: "12px 0" }}>시세 불러오는 중...</div>}
+            {pfLoading && <div style={{ textAlign: "center", fontSize: newLook ? UI.sub : 12, color: "var(--dm-muted)", padding: "12px 0" }}>시세 불러오는 중...</div>}
             {!pfLoading && pfSummary && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 2 }}>총 평가금액</div>
+                  <div style={{ fontSize: newLook ? UI.sub : 11, color: "var(--dm-muted)", marginBottom: 2 }}>총 평가금액</div>
                   <div style={{ fontSize: 18, fontWeight: 900, color: "var(--dm-text)" }}>
                     ${pfSummary.totalValue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </div>
-                  <div style={{ fontSize: 12, color: pfSummary.pnl >= 0 ? "#4ADE80" : "#F87171", marginTop: 2, fontWeight: 700 }}>
+                  <div style={{ fontSize: newLook ? UI.sub : 12, color: pfSummary.pnl >= 0 ? "#4ADE80" : "#F87171", marginTop: 2, fontWeight: 700 }}>
                     {pfSummary.pnl >= 0 ? "+" : ""}{pfSummary.pnl.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$ ({pfSummary.pnlPct >= 0 ? "+" : ""}{pfSummary.pnlPct.toFixed(1)}%)
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 11, color: "var(--dm-muted)", marginBottom: 2 }}>오늘 변동</div>
+                  <div style={{ fontSize: newLook ? UI.sub : 11, color: "var(--dm-muted)", marginBottom: 2 }}>오늘 변동</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: pfSummary.totalDailyChange >= 0 ? "#4ADE80" : "#F87171" }}>
                     {pfSummary.totalDailyChange >= 0 ? "+" : ""}{pfSummary.totalDailyChange.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$
                   </div>
-                  <div style={{ fontSize: 11, color: pfSummary.dailyChangePct >= 0 ? "#4ADE80" : "#F87171" }}>
+                  <div style={{ fontSize: newLook ? UI.sub : 11, color: pfSummary.dailyChangePct >= 0 ? "#4ADE80" : "#F87171" }}>
                     {pfSummary.dailyChangePct >= 0 ? "+" : ""}{pfSummary.dailyChangePct.toFixed(2)}%
                   </div>
                 </div>
@@ -884,7 +884,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
             )}
             {!pfLoading && !pfSummary && !(telegramCfg?.holdings?.length > 0) && (
               <div style={{ textAlign: "center", padding: "6px 0" }}>
-                <div style={{ fontSize: 12, color: "var(--dm-muted)", marginBottom: 10 }}>
+                <div style={{ fontSize: newLook ? UI.sub : 12, color: "var(--dm-muted)", marginBottom: 10 }}>
                   보유자산을 등록하면 평가금액·오늘 손익을 볼 수 있어요
                 </div>
                 <button onClick={onOpenPortfolio} style={{ ...S.btn, marginTop: 0 }}>
@@ -893,7 +893,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               </div>
             )}
             {!pfLoading && !pfSummary && telegramCfg?.holdings?.length > 0 && (
-              <div style={{ fontSize: 12, color: "var(--dm-muted)", textAlign: "center", padding: "8px 0" }}>
+              <div style={{ fontSize: newLook ? UI.sub : 12, color: "var(--dm-muted)", textAlign: "center", padding: "8px 0" }}>
                 시세 데이터를 불러올 수 없어요
               </div>
             )}
