@@ -356,7 +356,10 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
   };
 
   const saveTelegram = () => {
+    // 기존 값(보유 종목 holdings·계좌 탭 pfTabs 등) 위에 이 화면의 칸만 바꾼다 — 예전엔 통째로 새로 만들어
+    // 앱 안의 보유 종목이 빈 것처럼 되고, 그 상태로 종목을 고치면 서버 목록이 덮어써질 수 있었다 (2026-11-07)
     const cfg = {
+      ...telegramCfg,
       briefingTime, todoTime, assets: selectedAssets, customAssets,
       weatherCity,
     };
