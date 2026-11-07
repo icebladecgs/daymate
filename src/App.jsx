@@ -362,7 +362,8 @@ export default function App() {
   const [isDark, setIsDark] = useState(() => {
     const stored = store.get('dm_theme', null);
     if (stored !== null) return stored === 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches !== false;
+    // 고른 적 없는 기기는 어두운 화면으로 시작 (2026-11-08 사용자 결정 — 예전엔 기기 시스템 설정을 따랐다)
+    return true;
   });
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
