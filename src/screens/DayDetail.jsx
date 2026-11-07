@@ -39,6 +39,14 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   }, [scrollToMemo]);
 
   const toggleDone = (id) => {
+    // 완료로 체크한 직후 5초 되돌리기 (오늘 탭과 같음, 2026-11-07). 저장 경로를 거치므로 능력치도 회수된다
+    const was = data.tasks.find(t => t.id === id);
+    if (was && !was.done && was.title?.trim()) {
+      undo.offer(`"${shortTitle(was.title)}" 완료했어요`, () => setData((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => t.id === id ? { ...t, done: false, checkedAt: null } : t),
+      })));
+    }
     setData((prev) => {
       const next = { ...prev };
       const wasUndone = !prev.tasks.find(t => t.id === id)?.done;
@@ -160,7 +168,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
   return (
     <div ref={contentRef} style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-      <UndoBar bar={undo.bar} onUndo={undo.run} />
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
       {detailTask && (
         <TaskDetailSheet
           key={detailTask.id}

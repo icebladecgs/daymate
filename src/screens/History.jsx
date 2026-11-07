@@ -441,9 +441,21 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     });
   };
 
+  // 완료로 체크한 직후 5초 되돌리기 (오늘 탭과 같음, 2026-11-07). 저장 경로를 거치므로 능력치도 회수된다
+  const togglePreviewTask = (ds, id) => {
+    const was = (plans?.[ds]?.tasks || []).find(t => t.id === id);
+    onToggleTaskForDate?.(ds, id);
+    if (was && !was.done && was.title?.trim() && onUpdateDayData) {
+      undo.offer(`"${shortTitle(was.title)}" 완료했어요`, () => onUpdateDayData(ds, prev => ({
+        ...prev,
+        tasks: (prev.tasks || []).map(t => t.id === id ? { ...t, done: false } : t),
+      })));
+    }
+  };
+
   return (
     <div style={{ ...S.content, overflowX: "hidden" }}>
-      <UndoBar bar={undo.bar} onUndo={undo.run} />
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
       {detailTask && (
         <TaskDetailSheet
           key={`${preview}_${detailTask.id}`}
@@ -453,7 +465,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           onClose={() => setDetailTaskId(null)}
           onError={showToast}
           onDelete={deletePreviewTask}
-          onComplete={onToggleTaskForDate && ((t) => onToggleTaskForDate(preview, t.id))}
+          onComplete={onToggleTaskForDate && ((t) => togglePreviewTask(preview, t.id))}
           order={{
             canUp: canMoveInList(plans[preview]?.tasks, detailTask.id, -1), canDown: canMoveInList(plans[preview]?.tasks, detailTask.id, 1),
             onMove: (dir) => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: moveInList(prev.tasks, detailTask.id, dir) })),
@@ -883,7 +895,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     <div key={t.id || i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
                       borderBottom: i < arr.length - 1 ? "1px solid var(--dm-row)" : "none" }}>
                       {/* 체크박스 */}
-                      <div onClick={() => onToggleTaskForDate?.(preview, t.id)}
+                      <div onClick={() => togglePreviewTask(preview, t.id)}
                         style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
                           background: t.done ? "#4B6FFF" : "transparent",
                           border: t.done ? "none" : "2px solid var(--dm-border2)",
