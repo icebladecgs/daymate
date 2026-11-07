@@ -11,6 +11,10 @@ import Toast from "./Toast.jsx";
 import ChatNotifySettings from "./ChatNotifySettings.jsx";
 import { requestChatPush } from "../utils/chatNotify.js";
 import { useBackClose } from "../utils/useBackClose.js";
+import { UI } from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+const NL = () => newDesignOn();
 
 const MAX_PHOTOS = 10;
 const hhmm = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
@@ -145,13 +149,13 @@ export default function CommunityChat({ communityId, communityName, authUser, my
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       {/* 머리줄 */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 12px", borderBottom: "1px solid var(--dm-border)", flexShrink: 0 }}>
-        <button onClick={onClose} aria-label="뒤로" style={{ width: 36, height: 36, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-text)", fontSize: 18, cursor: "pointer" }}>←</button>
+        <button onClick={onClose} aria-label="뒤로" style={{ width: NL() ? UI.touch : 36, height: NL() ? UI.touch : 36, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-text)", fontSize: 18, cursor: "pointer" }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {communityName || "단체 채팅"}</div>
-          <div style={{ fontSize: 11, color: "var(--dm-muted)" }}>멤버만 볼 수 있어요</div>
+          <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)" }}>멤버만 볼 수 있어요</div>
         </div>
         <button onClick={() => setShowNotify(true)} aria-label="채팅 알림 설정" title="채팅 알림 설정"
-          style={{ width: 36, height: 36, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-card)", fontSize: 17, cursor: "pointer", flexShrink: 0 }}>🔔</button>
+          style={{ width: NL() ? UI.touch : 36, height: NL() ? UI.touch : 36, padding: 0, borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-card)", fontSize: 17, cursor: "pointer", flexShrink: 0 }}>🔔</button>
       </div>
       {showNotify && (
         <div onClick={() => setShowNotify(false)} style={{ position: "absolute", inset: 0, zIndex: 20, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "flex-end" }}>
@@ -168,11 +172,11 @@ export default function CommunityChat({ communityId, communityName, authUser, my
       {/* 메시지 목록 */}
       <div ref={listRef} onScroll={onScroll} onClick={() => { setSelected(null); if (touchDevice()) inputRef.current?.blur(); }} style={{ flex: 1, overflowY: "auto", padding: "10px 12px 16px" }}>
         {hasMore && (
-          <button onClick={loadMore} disabled={loadingOlder} style={{ display: "block", margin: "0 auto 10px", padding: "6px 14px", borderRadius: 999, border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-sub)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={loadMore} disabled={loadingOlder} style={{ display: "block", margin: "0 auto 10px", padding: "6px 14px", borderRadius: 999, border: "1px solid var(--dm-border)", background: "var(--dm-card)", color: "var(--dm-sub)", fontSize: NL() ? UI.sub : 12, fontWeight: 700, cursor: "pointer" }}>
             {loadingOlder ? "불러오는 중…" : "이전 대화 더 보기"}
           </button>
         )}
-        <div style={{ fontSize: 11, color: "var(--dm-muted)", textAlign: "center", lineHeight: 1.6, margin: "4px 8px 12px" }}>
+        <div style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", textAlign: "center", lineHeight: 1.6, margin: "4px 8px 12px" }}>
           🔒 대화는 이 커뮤니티 멤버만 볼 수 있어요. 대화 내용은 서버에 안전하게 저장돼요.
         </div>
         {loading && <div style={{ textAlign: "center", color: "var(--dm-muted)", fontSize: 13, padding: 20 }}>불러오는 중…</div>}
@@ -188,11 +192,11 @@ export default function CommunityChat({ communityId, communityName, authUser, my
             <div key={m.id}>
               {newDay && (
                 <div style={{ textAlign: "center", margin: "14px 0 10px" }}>
-                  <span style={{ fontSize: 11, color: "var(--dm-muted)", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 999, padding: "3px 10px" }}>{formatKoreanDate(dayOf(m.createdAt))}</span>
+                  <span style={{ fontSize: NL() ? UI.sub : 11, color: "var(--dm-muted)", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: 999, padding: "3px 10px" }}>{formatKoreanDate(dayOf(m.createdAt))}</span>
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginTop: sameSender ? 3 : 10 }}>
-                {!mine && !sameSender && <div style={{ fontSize: 12, fontWeight: 800, color: "var(--dm-sub)", margin: "0 0 3px 4px" }}>{m.nickname || "익명"}</div>}
+                {!mine && !sameSender && <div style={{ fontSize: NL() ? UI.sub : 12, fontWeight: 800, color: "var(--dm-sub)", margin: "0 0 3px 4px" }}>{m.nickname || "익명"}</div>}
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 5, flexDirection: mine ? "row-reverse" : "row", maxWidth: "88%" }}>
                   <div onClick={(e) => { e.stopPropagation(); if (canDelete) setSelected(s => (s === m.id ? null : m.id)); }}
                     style={{ minWidth: 0, padding: m.photos?.length && !m.text ? 4 : "8px 12px", borderRadius: 14,
@@ -210,11 +214,11 @@ export default function CommunityChat({ communityId, communityName, authUser, my
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--dm-muted)", flexShrink: 0 }}>{hhmm(m.createdAt)}</div>
+                  <div style={{ fontSize: NL() ? UI.sub : 10, color: "var(--dm-muted)", flexShrink: 0 }}>{hhmm(m.createdAt)}</div>
                 </div>
                 {selected === m.id && (
                   <button onClick={(e) => { e.stopPropagation(); remove(m); }}
-                    style={{ marginTop: 4, padding: "4px 12px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                    style={{ marginTop: 4, padding: "4px 12px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: NL() ? UI.sub : 12, fontWeight: 800, cursor: "pointer" }}>
                     🗑 삭제{!mine ? " (관리자)" : ""}
                   </button>
                 )}

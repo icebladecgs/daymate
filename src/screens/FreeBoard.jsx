@@ -5,7 +5,7 @@ import { db, addFreeBoardPost, updateFreeBoardPost, deleteFreeBoardPost, addFree
 import { formatRelativeTime } from "../utils/date.js";
 import Linkify from "../utils/linkify.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
@@ -167,7 +167,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
     <div style={{ paddingBottom: 80 }}>
       <div style={{ padding: '14px 16px 4px' }}>
         <div style={S.title}>자유게시판</div>
-        <div style={S.sub}>모두가 자유롭게 쓰는 공간이에요</div>
+        <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>모두가 자유롭게 쓰는 공간이에요</div>
       </div>
 
       {/* 내 닉네임 */}
@@ -184,7 +184,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
             style={{ ...S.input, fontSize: NL() ? 14 : 12, padding: '3px 8px', marginBottom: 0, width: 120 }}
           />
         ) : (
-          <button onClick={() => { setNicknameEdit(myNickname); setEditingNickname(true); }}
+          <button className={NL() ? 'dm-hit' : undefined} onClick={() => { setNicknameEdit(myNickname); setEditingNickname(true); }}
             style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
             {myNickname} <span style={{ fontSize: NL() ? 13 : 11 }}>✏️</span>
           </button>
@@ -195,7 +195,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={S.sectionEmoji}>📝</span>게시글
         </span>
-        <button onClick={() => { if (showForm) cancelForm(); else setShowForm(true); }}
+        <button className={NL() ? 'dm-hit' : undefined} onClick={() => { if (showForm) cancelForm(); else setShowForm(true); }}
           style={{ fontSize: NL() ? 13 : 11, fontWeight: 900, color: '#6C8EFF', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
           {showForm ? '취소' : '+ 글쓰기'}
         </button>
@@ -241,12 +241,12 @@ export default function FreeBoard({ authUser, user, setToast }) {
                   <div style={{ fontSize: NL() ? 15 : 13, fontWeight: 700, color: 'var(--dm-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>{p.nickname}</span>
-                    <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
-                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
+                    <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{formatRelativeTime(p.createdAt)}</span>
+                    {p.commentCount > 0 && <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF', fontWeight: 700 }}>💬 {p.commentCount}</span>}
                   </div>
                 </div>
                 {isMine && (
-                  <button onClick={e => { e.stopPropagation(); handleDelete(p.id); }}
+                  <button className={NL() ? 'dm-hit' : undefined} onClick={e => { e.stopPropagation(); handleDelete(p.id); }}
                     style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: NL() ? 16 : 14, cursor: 'pointer', padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
                 )}
               </div>
@@ -295,17 +295,17 @@ export default function FreeBoard({ authUser, user, setToast }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {selectedPost.uid === authUser?.uid && (
                   <button onClick={() => startEdit(selectedPost)}
-                    style={{ background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    style={{ ...(NL() ? { minWidth: UI.touch, minHeight: UI.touch } : {}),  background: 'transparent', border: 'none', color: '#6C8EFF', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
                     수정
                   </button>
                 )}
                 {selectedPost.uid === authUser?.uid && (
                   <button onClick={() => handleDelete(selectedPost.id)}
-                    style={{ background: 'transparent', border: 'none', color: '#F87171', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
+                    style={{ ...(NL() ? { minWidth: UI.touch, minHeight: UI.touch } : {}),  background: 'transparent', border: 'none', color: '#F87171', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: '4px 6px' }}>
                     삭제
                   </button>
                 )}
-                <button onClick={() => setSelectedPost(null)}
+                <button className={NL() ? 'dm-hit' : undefined} onClick={() => setSelectedPost(null)}
                   style={{ background: 'transparent', border: 'none', borderLeft: '1px solid var(--dm-border)', color: 'var(--dm-muted)', fontSize: 20, cursor: 'pointer', padding: '4px 4px 4px 14px', marginLeft: 6, lineHeight: 1 }}>✕</button>
               </div>
             </div>
@@ -341,11 +341,11 @@ export default function FreeBoard({ authUser, user, setToast }) {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                             <span style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: isMine ? '#6C8EFF' : 'var(--dm-text)' }}>{c.nickname}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>
+                              <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>
                                 {formatRelativeTime(c.createdAt)}
                               </span>
                               {isMine && (
-                                <button onClick={() => handleDeleteComment(c.id)}
+                                <button className={NL() ? 'dm-hit' : undefined} onClick={() => handleDeleteComment(c.id)}
                                   style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: NL() ? 15 : 13, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
                               )}
                             </div>

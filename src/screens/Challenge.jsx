@@ -3,7 +3,7 @@ import { calcLevel } from "../data/stats.js";
 import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, syncChallengeMemberCount, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles, isPrimaryAdmin } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
 import { store } from "../utils/storage.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
@@ -50,7 +50,7 @@ function LevelChip({ levelInfo, score = 0, compact = false }) {
       background: 'linear-gradient(135deg, rgba(108,142,255,.16), rgba(75,111,255,.08))',
       border: '1px solid rgba(108,142,255,.22)',
       color: compact ? 'var(--dm-sub)' : 'var(--dm-text)',
-      fontSize: compact ? 10 : 11,
+      fontSize: NL() ? UI.sub : (compact ? 10 : 11),
       fontWeight: compact ? 800 : 900,
       whiteSpace: 'nowrap',
     }}>
@@ -138,7 +138,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
           {editingNickname ? (
             <div style={{ display: 'flex', gap: 6, flex: 1 }}>
               <input value={nicknameInput} onChange={e => setNicknameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveNickname()} placeholder="닉네임 입력" maxLength={20} autoFocus style={{ ...S.input, marginBottom: 0, fontSize: NL() ? 14 : 12, padding: '4px 10px', flex: 1 }} />
-              <button onClick={saveNickname} style={{ ...S.btn, marginTop: 0, padding: '4px 12px', fontSize: NL() ? 14 : 12, width: 'auto' }}>확인</button>
+              <button className={NL() ? 'dm-hit' : undefined} onClick={saveNickname} style={{ ...S.btn, marginTop: 0, padding: '4px 12px', fontSize: NL() ? 14 : 12, width: 'auto' }}>확인</button>
             </div>
           ) : (
             <button onClick={() => { setNicknameInput(nickname); setEditingNickname(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--dm-text)', fontSize: NL() ? 14 : 12, fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -162,7 +162,7 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
             }}>{t.label}</button>
           ))}
         </div>
-        <button onClick={() => setShowCreate(true)} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: NL() ? 15 : 13, width: 'auto', flexShrink: 0 }}>
+        <button className={NL() ? 'dm-hit' : undefined} onClick={() => setShowCreate(true)} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: NL() ? 15 : 13, width: 'auto', flexShrink: 0 }}>
           + 만들기
         </button>
       </div>
@@ -384,7 +384,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       {/* 헤더 */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--dm-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: c.description ? 8 : 0 }}>
-          <button onClick={onBack} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
+          <button onClick={onBack} aria-label="뒤로" style={{ ...S.btnGhost, width: NL() ? UI.touch : 36, height: NL() ? UI.touch : 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--dm-text)' }}>{c.title}</div>
             <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)' }}>👥 {c.memberCount || 1}명 · {isClosed ? closedMeta.line : (daysLeft !== null ? `⏰ ${daysLeft}일 남음` : '기간 없음')}</div>
@@ -509,7 +509,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
       {/* 피드/멤버 탭 */}
       <div style={{ display: 'flex', gap: 6, padding: '4px 16px 12px' }}>
         {[{ key: 'feed', label: `인증 피드 (오늘 ${todayCerts}명)` }, { key: 'members', label: `전체 참여자 ${members.length}명` }].map(t => (
-          <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
+          <button className={NL() ? 'dm-hit' : undefined} key={t.key} onClick={() => setDetailTab(t.key)} style={{
             flex: 1, padding: '7px 0', borderRadius: 10, fontSize: NL() ? 14 : 12, fontWeight: 800, cursor: 'pointer', border: 'none',
             background: detailTab === t.key ? '#6C8EFF' : 'var(--dm-input)',
             color: detailTab === t.key ? '#fff' : 'var(--dm-sub)',
@@ -539,9 +539,9 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                       <LevelChip levelInfo={certLevel} score={certScore} compact />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
-                      <span style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
-                      <span style={{ fontSize: NL() ? 12 : 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
+                      <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{cert.dateKey === today ? '오늘' : cert.dateKey} · {formatRelativeTime(cert.createdAt)}</span>
+                      <span style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{certLevel.title}</span>
+                      <span style={{ fontSize: NL() ? UI.sub : 10, color: '#6C8EFF' }}>{certScore.toLocaleString()} XP</span>
                     </div>
                   </div>
                 </div>
@@ -574,8 +574,8 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                 <div key={member.uid} style={{ background: 'var(--dm-card)', border: `1.5px solid ${rankAccent[index]}55`, borderRadius: 14, padding: '12px 10px', textAlign: 'center', boxShadow: index === 0 ? '0 8px 22px rgba(251,191,36,.12)' : 'none' }}>
                   <div style={{ fontSize: 18, marginBottom: 6 }}>{rankBadge[index]}</div>
                   <div style={{ fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.nickname}</div>
-                  <div style={{ fontSize: NL() ? 12 : 10, color: rankAccent[index], fontWeight: 900, marginBottom: 4 }}>{member.totalCerts}회 인증</div>
-                  <div style={{ fontSize: NL() ? 12 : 10, color: 'var(--dm-muted)' }}>{member.totalScore.toLocaleString()} XP</div>
+                  <div style={{ fontSize: NL() ? UI.sub : 10, color: rankAccent[index], fontWeight: 900, marginBottom: 4 }}>{member.totalCerts}회 인증</div>
+                  <div style={{ fontSize: NL() ? UI.sub : 10, color: 'var(--dm-muted)' }}>{member.totalScore.toLocaleString()} XP</div>
                 </div>
               ))}
             </div>
@@ -600,7 +600,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                   <span style={{ fontSize: NL() ? 15 : 13, fontWeight: 800, color: 'var(--dm-text)' }}>{m.nickname}</span>
-                  {m.uid === authUser.uid && <span style={{ fontSize: NL() ? 12 : 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
+                  {m.uid === authUser.uid && <span style={{ fontSize: NL() ? UI.sub : 10, fontWeight: 900, color: '#6C8EFF', background: 'rgba(108,142,255,.12)', border: '1px solid rgba(108,142,255,.24)', borderRadius: 999, padding: '2px 7px' }}>나</span>}
                   <LevelChip levelInfo={m.levelInfo} score={m.totalScore} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -655,7 +655,7 @@ function CreateChallenge({ authUser, nickname, habits = [], onDone, onBack, show
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--dm-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={onBack} style={{ ...S.btnGhost, width: 36, height: 36, marginTop: 0, padding: 0, fontSize: 18 }}>←</button>
+        <button onClick={onBack} aria-label="뒤로" style={{ ...S.btnGhost, width: NL() ? UI.touch : 36, height: NL() ? UI.touch : 36, marginTop: 0, padding: 0, fontSize: 18 }}>←</button>
         <div style={{ fontSize: 15, fontWeight: 900 }}>챌린지 만들기</div>
       </div>
 
