@@ -832,7 +832,8 @@ export default function Today({
         </button>}
       </div>
       {scheduleOpen && (
-        <div style={innerCard}>
+        // 새 디자인은 제목 줄과 ‹ 날짜 › 줄이 붙어 보여 위에 여백을 더 둔다(2026-11-07 사용자 지적 — 접기 버튼과 ‹ › 버튼이 맞닿았다)
+        <div style={{ ...innerCard, ...(newLook ? { paddingTop: 14 } : {}) }}>
           <WeeklySchedule
             plans={plans}
             habits={habits || []}
