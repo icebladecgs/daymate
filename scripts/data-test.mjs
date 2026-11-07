@@ -232,7 +232,14 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
 
 // ── 보유자산 캡처 반영: 기존 종목의 메모·설정 유지, 캡처에 없는 종목은 지우지 않음 (2026-10-19) ──
 {
-  const { mergeScanResults, planHoldingsUpdate, applyHoldingsPlan, resolveScanSymbol } = await load('/src/utils/holdingsScan.js');
+  const { mergeScanResults, planHoldingsUpdate, applyHoldingsPlan, resolveScanSymbol, normalizeScanItem } = await load('/src/utils/holdingsScan.js');
+  // 평균단가는 매입금액÷수량 우선 (2026-11-07 — 키움 상세 화면에서 엉뚱한 단가 칸을 읽었다)
+  const kw = normalizeScanItem({ name: '삼성전자', code: '005930', kind: 'kr_stock', qty: 30, cost: 1855500, avgPrice: 71000, currency: 'KRW' });
+  t('캡처 정리: 매입금액÷수량이 화면 단가보다 우선', kw.avgPrice === 61850 && kw.avgFrom === 'cost');
+  t('캡처 정리: 매입금액이 없으면 화면 단가', normalizeScanItem({ name: 'x', qty: 3, avgPrice: 100, cost: null }).avgPrice === 100);
+  t('캡처 정리: 수량 0이면 나누지 않음', normalizeScanItem({ name: 'x', qty: 0, cost: 1000, avgPrice: 5 }).avgPrice === 5);
+  t('캡처 정리: 달러는 소수 4자리', normalizeScanItem({ name: 'x', qty: 3, cost: 1000, currency: 'USD' }).avgPrice === 333.3333);
+  t('캡처 정리: 이상한 값은 버림', normalizeScanItem({ name: 'x', qty: -1, cost: 'abc', avgPrice: NaN }).qty === null);
   const memos = [{ id: 'm1', text: '장기 보유', createdAt: '2026-10-01T00:00:00Z' }];
   const holdings = [
     { id: 'h1', sym: '005930.KS', label: '삼성전자', src: 'yahoo', qty: 10, avgPrice: 70000, currency: 'KRW', memos },

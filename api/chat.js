@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { normalizeScanItem } from '../src/utils/holdingsScan.js';
 
 if (!getApps().length) {
   initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
@@ -369,13 +370,14 @@ ${habitLines}
     const prompt = `이 사진은 증권사 또는 코인 거래소 앱(키움증권·업비트·빗썸 등)의 잔고/보유자산 화면 캡처야.
 화면에 보이는 보유 종목만 아래 JSON으로 뽑아줘. JSON만 출력하고 다른 글은 쓰지 마.
 
-{"broker":"키움|업비트|빗썸|기타","items":[{"name":"종목명(화면 그대로)","code":"종목코드나 티커(보이면, 없으면 빈 문자열)","kind":"kr_stock|us_stock|coin","qty":0,"avgPrice":0,"currency":"KRW|USD"}],"notes":"읽기 어려웠던 점(없으면 빈 문자열)"}
+{"broker":"키움|업비트|빗썸|기타","items":[{"name":"종목명(화면 그대로)","code":"종목코드나 티커(보이면, 없으면 빈 문자열)","kind":"kr_stock|us_stock|coin","qty":0,"cost":0,"avgPrice":0,"currency":"KRW|USD"}],"notes":"읽기 어려웠던 점(없으면 빈 문자열)"}
 
 규칙:
 - broker: 화면 모양·로고·문구로 판단. "영웅문"이나 "키움" 글자가 보이면 반드시 "키움", 업비트는 "업비트", 빗썸은 "빗썸". 정말 모를 때만 "기타".
 - qty: 보유 수량. 쉼표 없는 숫자, 코인 소수점은 화면 그대로.
-- avgPrice: 1주(1개)당 평균 매수가(매수평균가·평균단가·매입단가). 매입금액·평가금액·현재가가 아니다. 평균단가가 안 보이고 매입금액과 수량만 보이면 매입금액÷수량.
-- currency: avgPrice의 화폐 단위. 업비트·빗썸 원화 마켓은 KRW, 미국 주식이 달러로 보이면 USD.
+- cost: 그 종목을 사는 데 쓴 총액(매입금액·매수금액·투자원금). 평가금액·평가손익·현재가가 아니다. 화면에 안 보이면 null.
+- avgPrice: 1주(1개)당 평균 매수가(매수평균가·평균단가·매입단가). 매입금액·평가금액·현재가·손익분기가가 아니다. 안 보이면 null.
+- currency: cost·avgPrice의 화폐 단위(둘은 같은 단위). 업비트·빗썸 원화 마켓은 KRW, 미국 주식이 달러로 보이면 USD.
 - kind: 한국 주식/ETF는 kr_stock, 미국 등 해외 주식은 us_stock, 코인은 coin.
 - code: 화면에 글자로 보이는 코드만 옮겨 써. 한국 주식은 6자리 숫자, 코인은 BTC 같은 영문 티커, 미국 주식은 TSLA 같은 티커. 화면에 코드가 안 보이면 알고 있는 종목이라도 빈 문자열로 둬(앱이 이름으로 찾는다).
 - 현금·예수금·원화(KRW) 잔고·주문가능금액·총평가 합계 줄은 넣지 마.
@@ -398,15 +400,8 @@ ${habitLines}
       const m = text.match(/\{[\s\S]*\}/);
       let data = {};
       try { data = m ? JSON.parse(m[0]) : {}; } catch { data = {}; }
-      const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
-      const items = (Array.isArray(data.items) ? data.items : []).slice(0, 60).map(it => ({
-        name: String(it?.name || '').slice(0, 40),
-        code: String(it?.code || '').slice(0, 20),
-        kind: ['kr_stock', 'us_stock', 'coin'].includes(it?.kind) ? it.kind : 'kr_stock',
-        qty: toNum(it?.qty),
-        avgPrice: toNum(it?.avgPrice),
-        currency: it?.currency === 'USD' ? 'USD' : 'KRW',
-      })).filter(it => it.name || it.code);
+      // 평균단가는 매입금액÷수량을 우선 (src/utils/holdingsScan.js normalizeScanItem)
+      const items = (Array.isArray(data.items) ? data.items : []).slice(0, 60).map(normalizeScanItem).filter(it => it.name || it.code);
       const broker = ['키움', '업비트', '빗썸'].includes(data.broker) ? data.broker : '기타';
       return res.status(200).json({ broker, items, notes: String(data.notes || '').slice(0, 200) });
     } catch (e) {

@@ -18,6 +18,32 @@ const num = (v) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
+// AI가 읽은 한 줄을 정리 (서버 api/chat.js holdings-scan이 부른다 — 브라우저 기능을 쓰지 않는다)
+// 평균단가는 매입금액÷수량을 우선한다 (2026-11-07 사용자 지적 — 키움 상세 화면은 단가 칸이 여러 개라
+// AI가 엉뚱한 칸을 평균단가로 읽을 수 있다). 매입금액이 안 보이면 화면의 평균단가를 쓴다.
+export function normalizeScanItem(raw) {
+  const toNum = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+  const qty = toNum(raw?.qty);
+  const cost = toNum(raw?.cost);
+  const currency = raw?.currency === 'USD' ? 'USD' : 'KRW';
+  let avgPrice = toNum(raw?.avgPrice);
+  let avgFrom = avgPrice != null ? 'screen' : null;
+  if (cost > 0 && qty > 0) {
+    const digits = currency === 'USD' ? 4 : 2;
+    avgPrice = Math.round((cost / qty) * 10 ** digits) / 10 ** digits;
+    avgFrom = 'cost';
+  }
+  return {
+    name: String(raw?.name || '').slice(0, 40),
+    code: String(raw?.code || '').slice(0, 20),
+    kind: ['kr_stock', 'us_stock', 'coin'].includes(raw?.kind) ? raw.kind : 'kr_stock',
+    qty,
+    avgPrice,
+    avgFrom,
+    currency,
+  };
+}
+
 // 여러 장의 결과를 한 목록으로. 같은 앱 캡처를 스크롤해서 여러 장 찍으면 겹치는 줄이 생기므로
 // 같은 앱 안의 같은 종목은 더하지 않고 하나만 남긴다(뒤에 읽은 값). 다른 앱의 같은 종목은 따로 둔다.
 export function mergeScanResults(scans) {
