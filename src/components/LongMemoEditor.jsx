@@ -14,7 +14,7 @@ import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
-import { boxCard } from "../styles.js";
+import { boxCard, UI } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
@@ -299,7 +299,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       </div>
 
       {boxed && (
-        <button onClick={() => setTagsOpen(v => { store.set('dm_section_open_memo_tags', !v); return !v; })} aria-expanded={tagsOpen}
+        <button className="dm-hit" onClick={() => setTagsOpen(v => { store.set('dm_section_open_memo_tags', !v); return !v; })} aria-expanded={tagsOpen}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '6px 0', marginBottom: tagsOpen ? 8 : 0, background: 'none', border: 'none', borderRadius: 0, fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', cursor: 'pointer' }}>
           <span>🏷 태그</span><span style={{ fontSize: 14, color: 'var(--dm-muted)' }}>{tagsOpen ? '▲' : '▼'}</span>
         </button>
@@ -417,24 +417,24 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
   return (
     <div className="dm-memo-panel" style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
-        {!hideBack && <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
+        {!hideBack && <button className={newLook ? 'dm-hit' : undefined} aria-label="뒤로" onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{extraContent ? '새 메모' : '긴 메모'}</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
-        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
+        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
         {/* 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다 */}
         <button onClick={() => {
           const id = idRef.current;
           if (!id || id === 'legacy') { onPhotoError?.('내용을 먼저 쓰고 저장한 뒤 잠가 주세요'); return; }
           handleClose();
           setTimeout(() => requestMemoLock(id, 'lock'), 50);
-        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔒</button>
-        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>⚙️</button>
-        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', lineHeight: 1 }}>🔍</button>}
+        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>🔒</button>
+        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>⚙️</button>
+        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>🔍</button>}
         <button
           onClick={handleSaveClick}
-          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px' } : {}) }}
+          style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 10, padding: '8px 18px', fontSize: newLook ? 15 : 13, fontWeight: 900, color: newLook ? '#8B5CF6' : '#A78BFA', cursor: 'pointer', fontFamily: 'inherit', ...(newLook ? { height: UI.touch, whiteSpace: 'nowrap', flexShrink: 0, padding: '8px 14px' } : {}) }}
         >저장</button>
       </div>
       {!uid && onRequireLogin && <LoginNotice onLogin={onRequireLogin} />}

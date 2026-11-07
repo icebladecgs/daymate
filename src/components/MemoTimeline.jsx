@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import Linkify from "../utils/linkify.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
 
 // 새 디자인(설정 → 앱 관리)일 때 메모 줄 글씨를 키운다
 const NL = () => newDesignOn();
+const rowBtn = () => (NL() ? { width: UI.touch, height: UI.touch, padding: 0 } : {});
 
 function getMemoTime() {
   const now = new Date();
@@ -44,7 +45,7 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
           style={{ flex: 1, minWidth: 0, fontSize: NL() ? 15 : 13, lineHeight: 1.6, color: 'var(--dm-muted)', padding: '8px 10px', background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', borderRadius: 8, cursor: 'pointer' }}>
           {item.starred && <span style={{ marginRight: 4 }}>⭐</span>}🔒 잠긴 메모 <span style={{ fontSize: NL() ? 13 : 11 }}>(눌러서 열기)</span>
         </div>
-        <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+        <button onClick={() => onDelete(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1, ...rowBtn() }}>✕</button>
       </div>
     );
   }
@@ -102,12 +103,12 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
         {item.text.trim() ? item.text.replace(/\n/g, ' ') : (item.photos?.length > 0 ? '(사진)' : '')}
       </div>
       {onToggleStar && (
-        <button onClick={() => onToggleStar(item.id, !item.starred)} style={{ background: 'none', border: 'none', color: item.starred ? '#FBBF24' : '#888', cursor: 'pointer', fontSize: 16, padding: '4px 4px', flexShrink: 0, lineHeight: 1 }}>{item.starred ? '★' : '☆'}</button>
+        <button onClick={() => onToggleStar(item.id, !item.starred)} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: item.starred ? '#FBBF24' : '#888', cursor: 'pointer', fontSize: 16, padding: '4px 4px', flexShrink: 0, lineHeight: 1, ...rowBtn() }}>{item.starred ? '★' : '☆'}</button>
       )}
       {isLong && (
-        <button onClick={() => setMode('expanded')} style={{ background: 'none', border: 'none', color: '#6C8EFF', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0 }}>∨</button>
+        <button onClick={() => setMode('expanded')} aria-label="펼쳐 보기" style={{ background: 'none', border: 'none', color: '#6C8EFF', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0, ...rowBtn() }}>∨</button>
       )}
-      <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+      <button onClick={() => onDelete(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: 16, padding: '8px 2px', flexShrink: 0, lineHeight: 1, ...rowBtn() }}>✕</button>
     </div>
   );
 }

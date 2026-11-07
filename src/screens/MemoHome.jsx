@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { formatKoreanDate, addDays } from "../utils/date.js";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
 import LongMemoEditor from "../components/LongMemoEditor.jsx";
 import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimeline.jsx";
@@ -133,11 +133,11 @@ function MemoHomeInner({
         </div>
       )}
       <SectionBox on={newDesignOn()}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: newDesignOn() ? UI.titleGap : 10 }}>
         <span style={{ fontSize: newDesignOn() ? 17 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: 36, height: 36, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
-          <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: 36, height: 36, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>
+          <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
+          <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>
         </div>
       </div>
       <MemoTimeline

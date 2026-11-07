@@ -70,6 +70,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const [big, setBig] = useState(false);
   const [viewMode, setViewMode] = useState(false);
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
+  const hit = nl && !wide ? "dm-hit" : undefined; // 모양·배치는 그대로, 누르는 범위만 40px
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
     window.addEventListener("resize", onResize);
@@ -241,7 +242,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const filterButton = (id, label, icon, indent = false) => {
     const active = filter === id;
     return (
-      <button key={id} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
+      <button key={id} className={hit} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
         style={wide
           ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "rgba(108,142,255,.18)" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
           : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
@@ -273,7 +274,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   ) : (
     <>
       {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
-      <button onClick={() => setTagsOpen(o => !o)}
+      <button className={hit} onClick={() => setTagsOpen(o => !o)}
         style={{ flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "rgba(108,142,255,.15)" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         {tagChipLabel} {tagsOpen ? "▴" : "▾"}
       </button>
@@ -303,7 +304,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const pickBar = filter !== "trash" && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
       {!picking ? (
-        <button onClick={() => setPicking(true)} style={bulkBtn}>☑ 여러 개 고르기</button>
+        <button className={hit} onClick={() => setPicking(true)} style={bulkBtn}>☑ 여러 개 고르기</button>
       ) : (
         <>
           <span style={{ fontSize: z(12, 14), fontWeight: 800, ...ink }}>{picked.size}개</span>
@@ -407,9 +408,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit" }}>
       {/* 상단: 닫기 · 새 메모 · 검색 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: border, flexShrink: 0, flexWrap: wide ? "nowrap" : "wrap" }}>
-        <button onClick={onClose} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 15), fontWeight: z(400, 700), cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
+        <button className={hit} onClick={onClose} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 15), fontWeight: z(400, 700), cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
         <div style={{ fontSize: z(15, 17), fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
-        <button onClick={addMemo} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: z(13, 15), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
+        <button className={hit} onClick={addMemo} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: z(13, 15), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 200 }}>
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); rememberQuery(); move(1); } else if (e.key === "ArrowDown" && (query || !recentQs.length)) { e.preventDefault(); move(1); } else if (e.key === "ArrowUp" && (query || !recentQs.length)) { e.preventDefault(); move(-1); } }}
@@ -417,9 +418,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             placeholder="검색 (메모·일정·일기)" autoFocus={canAutoFocus()}
             style={{ flex: 1, minWidth: 0, padding: z("7px 10px", "9px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 16), fontFamily: "inherit", outline: "none" }} />
           <datalist id="dm-memo-recent-q">{recentQs.map(q => <option key={q} value={q} />)}</datalist>
-          <button onClick={() => move(1)} aria-label="다음" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▼</button>
-          <button onClick={() => move(-1)} aria-label="이전" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▲</button>
-          <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: z(14, 16), flexShrink: 0 }}>⚙️</button>
+          <button className={hit} onClick={() => move(1)} aria-label="다음" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▼</button>
+          <button className={hit} onClick={() => move(-1)} aria-label="이전" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▲</button>
+          <button className={hit} onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: z(14, 16), flexShrink: 0 }}>⚙️</button>
           <span style={{ fontSize: z(12, 14), ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), whiteSpace: "nowrap" }}>{list.length}개</span>
           {filter === "trash" && list.length > 0 && (
             <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
