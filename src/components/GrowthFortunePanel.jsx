@@ -173,9 +173,12 @@ export default function GrowthFortunePanel({
               <button className={nl ? "dm-hit" : undefined}
                 onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(v => !v); }}
                 title="배틀 닉네임 설정"
-                style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 999, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
+                // 새 디자인: 보라 대신 강조색 하나(D안) — 바탕만 연하게, 테두리 없음 (2026-11-08)
+                style={nl
+                  ? { background: "var(--dm-accent-soft, rgba(139,92,246,.12))", border: "none", borderRadius: 999, padding: "2px 10px", cursor: "pointer", fontFamily: "inherit" }
+                  : { background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.35)", borderRadius: 999, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
               >
-                <span style={{ fontSize: nl ? UI.sub : 10, color: nl ? "#8B5CF6" : "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
+                <span style={{ fontSize: nl ? UI.sub : 10, color: nl ? "var(--dm-accent, #8B5CF6)" : "#c4b5fd", fontWeight: 700 }}>🏷️ {battleNickname || "닉네임"}</span>
               </button>
             )}
             {nl ? (

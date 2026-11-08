@@ -54,11 +54,15 @@ function ReorderButtons({ r }) {
       style={{ width: UI.touch, height: UI.touch, padding: 0, border: 'none', background: 'none', fontSize: 17, fontWeight: 800, flexShrink: 0, color: can ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-muted)', opacity: can ? 1 : 0.3, cursor: can ? 'pointer' : 'default' }}>{ch}</button>
   ));
 }
+// 새 디자인(D안): 테두리 없이 파랑 글자, 켜지면 연한 파랑 바탕 (회색 테두리는 꺼진 버튼처럼 보였다, 2026-11-08)
+const textToggle = (on) => todayNewLookOn()
+  ? { border: 'none', background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: 'var(--dm-accent, #5B7CFA)' }
+  : { border: `1.5px solid ${on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)' };
 function ReorderToggle({ on, onClick }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '2px 0 10px' }}>
       <button className="dm-hit" onClick={onClick}
-        style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+        style={{ height: UI.chip, padding: '0 14px', borderRadius: 10, ...textToggle(on), fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
         {on ? '✓ 순서 완료' : '↕ 순서 바꾸기'}
       </button>
     </div>
@@ -140,7 +144,16 @@ export default function Today({
   const closeOnboard = () => { store.set('dm_onboard', 'done'); setOnboard('done'); };
   const onboardStep1 = Object.values(plans || {}).some(d => (d?.tasks || []).some(t => t.title?.trim())) || tasks.some(t => t.title?.trim());
   const onboardStep2 = !!hasGoal;
-  useEffect(() => { if (onboard === 'show' && onboardStep1 && onboardStep2) closeOnboard(); }, [onboard, onboardStep1, onboardStep2]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 자동으로 숨김 (2026-11-08): 처음 보인 지 7일이 지났거나, 할일이 있는 날이 3일 이상이면 이미 쓰는 사람이다
+  // (로그인 전 빈 기록으로 'show'가 남은 기존 사용자, 목표를 안 적는 사람에게 계속 보였다)
+  const onboardUsedDays = Object.values(plans || {}).filter(d => (d?.tasks || []).some(t => t.title?.trim())).length;
+  useEffect(() => {
+    if (onboard !== 'show') return;
+    let since = store.get('dm_onboard_since', null);
+    if (!since) { since = dateStr; store.set('dm_onboard_since', since); }
+    const days = Math.floor((new Date(dateStr) - new Date(since)) / 86400000);
+    if ((onboardStep1 && onboardStep2) || onboardUsedDays >= 3 || days >= 7) closeOnboard();
+  }, [onboard, onboardStep1, onboardStep2, onboardUsedDays, dateStr]); // eslint-disable-line react-hooks/exhaustive-deps
   const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초)
   // 앱 아이콘을 길게 눌러 "할일 추가"로 열면(?add=1) 입력칸에 바로 커서 — 사용자가 직접 고른 동작이라 휴대폰에서도 키보드를 띄운다
   const taskInputRef = useRef(null);
@@ -810,7 +823,7 @@ export default function Today({
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
           {somedayOpen && (somedayList.length > 1 || reorder === 'someday') && (
             <button className="dm-hit" onClick={() => setReorder(reorder === 'someday' ? null : 'someday')}
-              style={{ height: 32, padding: '0 10px', borderRadius: 10, border: `1.5px solid ${reorder === 'someday' ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`, background: reorder === 'someday' ? 'var(--dm-accent-soft, rgba(91,124,250,.12))' : 'transparent', color: reorder === 'someday' ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              style={{ height: 32, padding: '0 10px', borderRadius: 10, ...textToggle(reorder === 'someday'), fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
               {reorder === 'someday' ? '✓ 완료' : '↕ 순서'}
             </button>
           )}
