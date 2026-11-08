@@ -31,6 +31,7 @@ import {
   serverTimestamp,
   Timestamp,
   deleteField,
+  runTransaction,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -442,6 +443,40 @@ export async function loadTodayCommunityEvents(communityIds, date) {
 
 // 커뮤니티 "최근 활동" — 출석·채팅·게시판 글·댓글·공지·일정 때 서버 시각으로 (2026-11-03).
 // 예전엔 출석·채팅·게시판 새 글 때만, 쓴 사람 기기 시계로 기록했다. 실패해도 글쓰기는 그대로 (보안 규칙: 멤버는 이 칸만 바꿀 수 있음)
+// ── 협동 보스전 (2026-11-08, 계산은 utils/bossRaid.js) ──
+// communities/{id}/raids/{주 월요일} = { week, level, bossId, hpMax, createdAt, defeatedAt?, defeatedBy? }
+// communities/{id}/raids/{주}/hits/{uid} = { uid, nickname, dmg, byStat, at } — 본인 것만 쓴다
+const raidRef = (cid, week) => doc(db, 'communities', cid, 'raids', week);
+export async function loadRaid(cid, week) {
+  const [r, h] = await Promise.all([getDoc(raidRef(cid, week)), getDocs(collection(db, 'communities', cid, 'raids', week, 'hits'))]);
+  return { raid: r.exists() ? { id: r.id, ...r.data() } : null, hits: h.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+// 이번 주 보스가 없으면 만든다 (여러 멤버가 동시에 열어도 하나만 — 트랜잭션)
+export async function ensureRaid(cid, week, { level, bossId, hpMax }) {
+  return runTransaction(db, async (tx) => {
+    const ref = raidRef(cid, week);
+    const snap = await tx.get(ref);
+    if (snap.exists()) return { id: snap.id, ...snap.data() };
+    const data = { week, level, bossId, hpMax, createdAt: new Date().toISOString() };
+    tx.set(ref, data);
+    return { id: week, ...data };
+  });
+}
+export function saveRaidHit(cid, week, uid, { nickname, dmg, byStat }) {
+  return setDoc(doc(db, 'communities', cid, 'raids', week, 'hits', uid),
+    { uid, nickname: nickname || '', dmg, byStat: byStat || {}, at: new Date().toISOString() });
+}
+// 처치 표시 — 먼저 표시한 한 사람만 true (채팅 한 줄을 그 사람이 남긴다)
+export async function markRaidDefeated(cid, week, uid) {
+  return runTransaction(db, async (tx) => {
+    const ref = raidRef(cid, week);
+    const snap = await tx.get(ref);
+    if (!snap.exists() || snap.data().defeatedAt) return false;
+    tx.update(ref, { defeatedAt: new Date().toISOString(), defeatedBy: uid });
+    return true;
+  });
+}
+
 export function touchCommunity(communityId) {
   return updateDoc(doc(db, 'communities', communityId), { lastActivityAt: serverTimestamp() }).catch(() => {});
 }

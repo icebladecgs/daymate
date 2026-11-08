@@ -18,6 +18,8 @@ import S, { UI } from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
 import { SectionIcon } from "../components/TodayLook.jsx";
 import { useBackClose } from "../utils/useBackClose.js";
+import BossRaidCard from "../components/BossRaid.jsx";
+import { raidHiddenOn } from "../utils/bossRaid.js";
 // 새 디자인(설정 → 앱 관리) — 소셜 탭: 섹션 제목 17px 선 아이콘, 작은 글씨 키우기
 const NL = () => newDesignOn();
 
@@ -172,7 +174,7 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onNewsChanged, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn }) {
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onNewsChanged, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn, raidBase, statXp, raidClaims, onRaidClaim }) {
   const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge | freeboard
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
@@ -1384,6 +1386,12 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             fontSize: NL() ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
           }}>+ 다른 커뮤니티 추가</button>
         </div>
+      )}
+
+      {/* 협동 보스전 (2026-11-08) — 이 기기에서 숨길 수 있음(설정 → 앱 관리) */}
+      {authUser && !raidHiddenOn() && (
+        <BossRaidCard key={communityId} communityId={communityId} uid={authUser.uid} nickname={myNickname} members={members}
+          memberCount={community?.memberCount || 0} raidBase={raidBase} statXp={statXp} claims={raidClaims} onClaim={onRaidClaim} setToast={setToast} />
       )}
 
       {/* 단체 채팅 */}

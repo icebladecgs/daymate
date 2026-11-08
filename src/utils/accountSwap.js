@@ -14,7 +14,7 @@ import { freezeStore } from "./storage.js";
 export const OWNER_KEY = "dm_local_owner";
 const DEVICE_KEYS = new Set([
   "dm_app_lock", "dm_app_lock_fail", "dm_app_lock_req", "dm_first_run_done", "dm_font_scale", "dm_theme", "dm_subs_today",
-  "dm_today_new_look", "dm_today_done_group", "dm_today_hidden", "dm_today_order", "dm_weather_cache", "dm_weather_open", "dm_task_alarm_lead", "dm_alarm_fired", "dm_memo_autolist", "dm_battle_skip_scene", "dm_battle_stats_open",
+  "dm_today_new_look", "dm_today_done_group", "dm_today_hidden", "dm_today_order", "dm_weather_cache", "dm_weather_open", "dm_task_alarm_lead", "dm_alarm_fired", "dm_memo_autolist", "dm_battle_skip_scene", "dm_battle_stats_open", "dm_raid_hidden",
   "dm_chat_sound", "dm_community_sound", "dm_chunk_reload_at", "dm_desktop_update_snooze", "dm_install_dismissed",
   "dm_seen_app_commit", "dm_shortcut_tip_dismissed", "dm_home_mode", "dm_home_prefs", "dm_home_section_order",
   "dm_open_settings_subpage", "dm_pf_display_currency", "dm_pf_hide",

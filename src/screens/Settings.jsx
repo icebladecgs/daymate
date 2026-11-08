@@ -17,6 +17,7 @@ import { GROWTH_STAT_MAP } from "../data/growthStats.js";
 import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
+import { raidHiddenOn, RAID_HIDDEN_KEY } from "../utils/bossRaid.js";
 import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection, TODAY_ORDER_SECTIONS, todaySectionOrder, moveTodaySection } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
@@ -150,6 +151,20 @@ function Toggle({ value, onChange, disabled }) {
       position: 'relative', opacity: disabled ? 0.5 : 1, flexShrink: 0,
     }}>
       <div style={{ position: 'absolute', top: 4, left: value && !disabled ? 28 : 4, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+    </div>
+  );
+}
+
+// 협동 보스전 칸 보이기 (기기마다 — utils/bossRaid.js RAID_HIDDEN_KEY). 숨겨도 공격량은 계속 올라간다
+function RaidToggleRow() {
+  const [shown, setShown] = useState(() => !raidHiddenOn());
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div>
+        <div style={{ fontWeight: 900, fontSize: NL() ? 15 : 13 }}>커뮤니티에 이번 주 보스 보이기</div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>평소 오르는 능력치 XP로 멤버들과 보스를 같이 쓰러뜨려요 · 숨겨도 내 공격은 계속 들어가요 · 이 기기에만 적용</div>
+      </div>
+      <Toggle value={shown} onChange={(on) => { try { localStorage.setItem(RAID_HIDDEN_KEY, on ? 'false' : 'true'); } catch { /* 저장 못 함 */ } setShown(on); }} />
     </div>
   );
 }
@@ -1409,6 +1424,9 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           </div>
         ))}
       </div>
+
+      <div style={S.sectionTitle}>⚔️ 협동 보스전</div>
+      <div style={S.card}><RaidToggleRow /></div>
 
       <div style={S.sectionTitle}>🌱 성장 능력치</div>
       <div style={S.card}>

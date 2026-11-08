@@ -130,6 +130,30 @@ service cloud.firestore {
         allow create: if isCreator('uid') && isMember(communityId);
         allow delete: if isOwner('uid') || isCommunityAdmin(communityId) || isAppAdmin();
       }
+      // 협동 보스전 (2026-11-08): 이번 주 보스는 멤버가 만들고(정해진 칸·범위만), 처치 표시(defeatedAt·defeatedBy)만 한 번 바꿀 수 있다.
+      // 공격량(hits/{uid})은 본인 것만 쓴다. 공격량은 각자 앱이 계산해 올리는 값이라 부풀릴 수는 있다(챌린지 연속 기록과 같은 한계).
+      match /raids/{week} {
+        allow read: if isMember(communityId) || isAppAdmin();
+        allow create: if isMember(communityId)
+          && request.resource.data.keys().hasOnly(['week', 'level', 'bossId', 'hpMax', 'createdAt'])
+          && request.resource.data.week == week
+          && request.resource.data.level is int && request.resource.data.level >= 1 && request.resource.data.level <= 999
+          && request.resource.data.hpMax is int && request.resource.data.hpMax >= 100 && request.resource.data.hpMax <= 1000000;
+        allow update: if isMember(communityId)
+          && resource.data.get('defeatedAt', null) == null
+          && onlyChanges(['defeatedAt', 'defeatedBy'])
+          && request.resource.data.defeatedBy == request.auth.uid;
+        allow delete: if isCommunityAdmin(communityId) || isAppAdmin();
+        match /hits/{userId} {
+          allow read: if isMember(communityId) || isAppAdmin();
+          allow create, update: if request.auth != null && request.auth.uid == userId && isMember(communityId)
+            && request.resource.data.uid == userId
+            && request.resource.data.keys().hasOnly(['uid', 'nickname', 'dmg', 'byStat', 'at'])
+            && request.resource.data.dmg is int && request.resource.data.dmg >= 0 && request.resource.data.dmg <= 1000000;
+          allow delete: if (request.auth != null && request.auth.uid == userId)
+            || isCommunityAdmin(communityId) || isAppAdmin();
+        }
+      }
       match /board/{postId} {
         allow read: if isMember(communityId) || isAppAdmin();
         allow create: if isCreator('uid') && isMember(communityId);

@@ -27,6 +27,8 @@ import { prepareAccount } from "./utils/accountSwap.js";
 import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImportedGcalTask, dedupeDayTasks, mergeTasksIntoDay, mergeImportedGcalTasks } from "./utils/dayMerge.js";
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
+import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
+import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
 import OfflineBar from "./components/OfflineBar.jsx";
@@ -408,6 +410,9 @@ export default function App() {
   );
   const [habits, setHabits] = useState(() => store.get("dm_habits", []));
   const [statXp, setStatXp] = useState(() => store.get("dm_stat_xp", DEFAULT_STAT_XP));
+  // 협동 보스전 (2026-11-08, utils/bossRaid.js): 이번 주가 시작될 때의 능력치(raidBase)와 받은 처치 보상(raidClaims)
+  const [raidBase, setRaidBase] = useState(() => store.get("dm_raid_base", null));
+  const [raidClaims, setRaidClaims] = useState(() => store.get("dm_raid_claims", []));
   const [statFeedback, setStatFeedback] = useState(null); // { statId, xp, key } | null — 체크 순간 피드백
   // 분류 안 된 할일 능력치 묻기 — 고른 답은 "내 단어"(statWords)로 기억해 다음부터 자동 분류 (계정 설정에 동기화)
   const [statWords, setStatWords] = useState(() => store.get("dm_stat_words", []));
@@ -1498,6 +1503,8 @@ export default function App() {
             }
             if (s.scores && typeof s.scores === 'object') { setScores(s.scores); store.set("dm_scores", s.scores); }
             if (s.statXp && typeof s.statXp === 'object') { setStatXp({ ...DEFAULT_STAT_XP, ...s.statXp }); store.set("dm_stat_xp", { ...DEFAULT_STAT_XP, ...s.statXp }); }
+            if (s.raidBase?.week) { setRaidBase(s.raidBase); store.set("dm_raid_base", s.raidBase); }
+            if (Array.isArray(s.raidClaims)) { setRaidClaims(s.raidClaims); store.set("dm_raid_claims", s.raidClaims); }
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             if (s.inviteCode) { setMyInviteCode(s.inviteCode); store.set("dm_invite_code", s.inviteCode); }
             if (s.usedInviteCodes) { setUsedInviteCodes(s.usedInviteCodes); store.set("dm_used_invite_codes", s.usedInviteCodes); }
@@ -1623,6 +1630,40 @@ export default function App() {
     store.set("dm_stat_xp", statXp);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { statXp }).catch(() => {});
   }, [statXp, authUser]);
+  // 협동 보스전: 주가 바뀌면 지금 능력치를 기준값으로 남기고(계정에 — 기기마다 다르면 공격량이 달라진다),
+  // 능력치가 바뀌면 15초 뒤 내 커뮤니티마다 공격량을 올린다 (utils/bossRaid.js)
+  const raidWeek = raidWeekOf();
+  useEffect(() => {
+    if (!authUser || !syncReadyRef.current) return;
+    const next = nextRaidBase(raidBase, raidWeek, statXp);
+    if (next === raidBase) return;
+    setRaidBase(next);
+    store.set("dm_raid_base", next);
+    saveSettings(authUser.uid, { raidBase: next }).catch(() => {});
+  }, [authUser, syncStatus, raidWeek, raidBase, statXp]);
+  const raidPushedRef = useRef({});
+  useEffect(() => {
+    if (!authUser || !syncReadyRef.current || raidBase?.week !== raidWeek || !communityIds.length) return undefined;
+    const t = setTimeout(() => {
+      const { dmg, byStat } = raidDamage(raidBase.xp, statXp);
+      communityIds.forEach((cid) => {
+        const k = `${cid}_${raidWeek}`;
+        const last = raidPushedRef.current[k];
+        if (last === dmg || (last === undefined && dmg === 0)) return;
+        raidPushedRef.current[k] = dmg; // 실패해도(멤버가 아님 등) 같은 값으로 다시 시도하지 않는다
+        saveRaidHit(cid, raidWeek, authUser.uid, { nickname: user.name, dmg, byStat }).catch(() => {});
+      });
+    }, 15000);
+    return () => clearTimeout(t);
+  }, [authUser, syncStatus, statXp, raidBase, raidWeek, communityIds, user.name]);
+  const claimRaid = (key, byStat) => {
+    if (raidClaims.includes(key)) return;
+    grantStatXp(raidRewardStat(byStat) || 'ACHIEVE', RAID_REWARD_XP);
+    const next = [...raidClaims, key].slice(-60);
+    setRaidClaims(next);
+    store.set("dm_raid_claims", next);
+    if (authUser) saveSettings(authUser.uid, { raidClaims: next }).catch(() => {});
+  };
   useEffect(() => { store.set("dm_notif_enabled", notifEnabled); }, [notifEnabled]);
   useEffect(() => {
     store.set("dm_stat_words", statWords);
@@ -2461,6 +2502,7 @@ export default function App() {
           reorderCommunityId={reorderCommunityId}
           addCommunityId={addCommunityId}
           removeCommunityId={removeCommunityId}
+          raidBase={raidBase} statXp={statXp} raidClaims={raidClaims} onRaidClaim={claimRaid}
           getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal}
           setToast={setToast}
           todayCompletion={todayCompletion}

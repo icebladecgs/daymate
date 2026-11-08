@@ -668,6 +668,29 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('구독: 직접 만든 분류 합계', subsSummary(withCustom, '2026-11-08', 1400).byCat.some(([id, v]) => id === 'c:운동' && v === 50000));
 }
 
+// ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──
+{
+  const B = await load('/src/utils/bossRaid.js');
+  t('보스전: 주는 월요일 날짜(일요일은 그 전 월요일)', B.raidWeekOf(new Date(2026, 10, 8)) === '2026-11-02' && B.raidWeekOf(new Date(2026, 10, 9)) === '2026-11-09');
+  t('보스전: 지난주', B.prevRaidWeek('2026-11-02') === '2026-10-26' && B.prevRaidWeek('2026-01-05') === '2025-12-29');
+  t('보스전: 남은 날(일요일 0, 월요일 6)', B.raidDaysLeft(new Date(2026, 10, 8)) === 0 && B.raidDaysLeft(new Date(2026, 10, 9)) === 6);
+  const d = B.raidDamage({ STR: 10, INT: 5, LIFE: 3 }, { STR: 13, INT: 4, LIFE: 3, ACHIEVE: 5 });
+  t('보스전: 오른 XP × 10, 내려간 건 0', d.dmg === 80 && d.byStat.STR === 30 && d.byStat.ACHIEVE === 50 && !('INT' in d.byStat), JSON.stringify(d));
+  const base = B.nextRaidBase(null, '2026-11-02', { STR: 7 });
+  t('보스전: 기준값 새로', base.week === '2026-11-02' && base.xp.STR === 7 && base.xp.INT === 0);
+  t('보스전: 같은 주면 기준값 그대로(같은 객체)', B.nextRaidBase(base, '2026-11-02', { STR: 99 }) === base);
+  t('보스전: 주가 바뀌면 지금 값으로', B.nextRaidBase(base, '2026-11-09', { STR: 99 }).xp.STR === 99);
+  t('보스전: 체력 = 멤버당 500 × 레벨', B.raidHpFor(1, 4) === 2000 && B.raidHpFor(3, 4) === 2400 && B.raidHpFor(1, 0) === 500 && B.raidHpFor(1, 50) === 5000);
+  t('보스전: 지난주 처치하면 레벨 +1, 못 하면 그대로, 처음은 1', B.nextRaidLevel({ level: 2, hpMax: 100 }, [{ dmg: 60 }, { dmg: 40 }]) === 3
+    && B.nextRaidLevel({ level: 2, hpMax: 100 }, [{ dmg: 99 }]) === 2 && B.nextRaidLevel(null, []) === 1);
+  t('보스전: 처치 판정', B.raidDefeated({ hpMax: 100 }, [{ dmg: 100 }]) && !B.raidDefeated({ hpMax: 100 }, [{ dmg: 99 }]) && !B.raidDefeated(null, [{ dmg: 999 }]));
+  t('보스전: 보상 능력치 = 가장 많이 오른 것', B.raidRewardStat({ STR: 30, ACHIEVE: 50 }) === 'ACHIEVE' && B.raidRewardStat({}) === null);
+  let mapsOk = true;
+  for (let lv = 1; lv <= 4; lv++) { const b = B.raidBoss(lv); if (b.map.length !== 12 || b.map.some((r) => r.length !== 12) || B.bossPixels(b).length !== 144) mapsOk = false; }
+  t('보스전: 보스 그림 모두 12×12', mapsOk);
+  t('보스전: 레벨 5는 첫 보스로 돌아감', B.raidBoss(5).id === B.raidBoss(1).id && B.raidBoss(5).level === 5);
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;
