@@ -12,11 +12,12 @@ import { useBackClose } from "../utils/useBackClose.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { SectionIcon } from "../components/TodayLook.jsx";
 import {
-  SUB_CATS, subCatLabel, normalizeSubs, newSubId, nextBillDate, isActive, subsSummary, toKrw, monthlyOf,
+  SUB_CATS, subCatLabel, allSubCats, isCustomCat, customCatId, customCatIds, normalizeSubs, newSubId, nextBillDate, isActive, subsSummary, toKrw, monthlyOf,
   fmtMoney, fmtKrw, billDayLabel, payOptions, SUBS_TODAY_KEY,
 } from "../utils/subscriptions.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
+const MONTH_COLOR = "#FF9500"; // 결제 월 — 결제 일(파랑)과 색으로 구분
 
 const ddayText = (n) => (n === 0 ? "오늘" : n === 1 ? "내일" : `D-${n}`);
 
@@ -63,7 +64,7 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
   const [showToday, setShowToday] = useState(() => store.get(SUBS_TODAY_KEY, true) !== false);
   const undo = useUndo();
 
-  const cats = SUB_CATS.filter((c) => list.some((s) => s.cat === c.id));
+  const cats = allSubCats(list).filter((c) => list.some((s) => s.cat === c.id));
   const rows = useMemo(() => list
     .filter((s) => filter === "all" || s.cat === filter)
     .map((s) => ({ s, ds: nextBillDate(s, today), active: isActive(s, today) }))
@@ -173,7 +174,7 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
       {editing && (
         <SubSheet
           initial={editing === "new" ? null : list.find((s) => s.id === editing)}
-          payChoices={payOptions(list)} rate={rate}
+          payChoices={payOptions(list)} customCats={customCatIds(list)} rate={rate}
           onSave={save} onDelete={remove} onClose={() => setEditing(null)}
         />
       )}
@@ -182,7 +183,7 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
 }
 
 // 추가·고치기 창 (토스 "구독 추가" 참고) — 분류 → 이름 → 금액·주기 → 결제일 → 결제수단 → 종료일·메모
-function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
+function SubSheet({ initial, payChoices, customCats = [], rate, onSave, onDelete, onClose }) {
   useBackClose(onClose);
   const [cat, setCat] = useState(initial?.cat || "ott");
   const [name, setName] = useState(initial?.name || "");
@@ -193,21 +194,35 @@ function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
   const [month, setMonth] = useState(initial?.month || Number(toDateStr().slice(5, 7)));
   const [pay, setPay] = useState(initial?.pay || "");
   const [endDate, setEndDate] = useState(initial?.endDate || "");
-  const [trial, setTrial] = useState(!!initial?.trial);
+  const [term, setTerm] = useState(!initial?.endDate ? "keep" : initial.trial ? "trial" : "end");
   const [memo, setMemo] = useState(initial?.memo || "");
+  // 직접 만든 분류 — 이미 쓰는 것 + 이 창에서 새로 만든 것 (구독에 붙어 저장되므로 안 쓰면 사라진다)
+  const [extraCats, setExtraCats] = useState([]);
+  const [newCat, setNewCat] = useState(null); // null이면 입력칸 닫힘
   const nameRef = useRef(null);
 
+  const allCats = [...SUB_CATS, ...[...new Set([...customCats, ...extraCats, ...(isCustomCat(cat) ? [cat] : [])])].map((id) => ({ id, label: subCatLabel(id), services: [] }))];
+  const addCat = () => {
+    const v = (newCat || "").trim().slice(0, 12);
+    if (!v) { setNewCat(null); return; }
+    const found = allCats.find((c) => c.label === v);
+    const id = found ? found.id : customCatId(v);
+    if (!found) setExtraCats((p) => [...p, id]);
+    setCat(id); setNewCat(null);
+  };
+
   const num = Number(String(amount).replace(/,/g, ""));
-  const valid = name.trim() && num > 0;
+  const needDate = term !== "keep";
+  const valid = name.trim() && num > 0 && (!needDate || endDate);
   const monthly = num > 0 ? (cycle === "year" ? num / 12 : num) : 0;
   const monthlyKrw = toKrw(monthly, cur, rate);
-  const services = (SUB_CATS.find((c) => c.id === cat) || SUB_CATS[0]).services;
+  const services = (allCats.find((c) => c.id === cat) || { services: [] }).services;
 
   const submit = () => {
     if (!valid) { nameRef.current?.focus(); return; }
     onSave({
       id: initial?.id || newSubId(), cat, name: name.trim(), amount: num, cur, cycle, day, month,
-      pay: pay.trim(), endDate, trial: !!endDate && trial, memo: memo.trim(),
+      pay: pay.trim(), endDate: needDate ? endDate : "", trial: term === "trial", memo: memo.trim(),
     });
   };
 
@@ -216,6 +231,9 @@ function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
   const pill = (on) => ({ height: 38, padding: "0 14px", borderRadius: 999, border: "none", background: on ? ACCENT : "var(--dm-input)", color: on ? "#fff" : "var(--dm-text)", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" });
   const seg = (on) => ({ flex: 1, height: 38, border: "none", borderRadius: 10, background: on ? ACCENT : "transparent", color: on ? "#fff" : "var(--dm-sub)", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", padding: 0 });
   const dayCell = (on) => ({ height: 40, border: "none", borderRadius: 10, background: on ? ACCENT : "var(--dm-input)", color: on ? "#fff" : "var(--dm-text)", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", padding: 0 });
+  // 결제 월 칸은 주황 — 안 고른 칸도 주황 기운을 살짝 깔아 일 칸과 구분
+  const monthCell = (on) => ({ ...dayCell(on), background: on ? MONTH_COLOR : "rgba(255,149,0,.13)", color: on ? "#fff" : MONTH_COLOR });
+  const subLabel = (color) => ({ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 900, color, marginBottom: 6 });
 
   return createPortal(
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -228,8 +246,19 @@ function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
         <div style={{ overflowY: "auto", padding: "0 20px 16px" }}>
           <span style={{ ...label, marginTop: 8 }}>분류</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {SUB_CATS.map((c) => <button key={c.id} onClick={() => setCat(c.id)} aria-pressed={cat === c.id} style={pill(cat === c.id)}>{c.label}</button>)}
+            {allCats.map((c) => <button key={c.id} onClick={() => setCat(c.id)} aria-pressed={cat === c.id} style={pill(cat === c.id)}>{c.label}</button>)}
+            {newCat === null && (
+              <button onClick={() => setNewCat("")} style={{ ...pill(false), background: "transparent", border: "1.5px dashed var(--dm-border2)", color: ACCENT }}>＋ 분류</button>
+            )}
           </div>
+          {newCat !== null && (
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <input id="sub-newcat" autoFocus value={newCat} onChange={(e) => setNewCat(e.target.value)} maxLength={12} placeholder="새 분류 이름"
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addCat(); if (e.key === "Escape") setNewCat(null); }} style={{ ...input, flex: 1, minWidth: 0 }} />
+              <button onClick={addCat} style={{ height: 46, padding: "0 16px", border: "none", borderRadius: 12, background: ACCENT, color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>추가</button>
+              <button onClick={() => setNewCat(null)} aria-label="취소" style={{ height: 46, width: 46, padding: 0, border: "none", borderRadius: 12, background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: 16, cursor: "pointer" }}>✕</button>
+            </div>
+          )}
 
           <label style={label} htmlFor="sub-name">서비스 이름</label>
           <input id="sub-name" ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} maxLength={30} placeholder="직접 쓰거나 아래에서 고르기" style={input} />
@@ -255,16 +284,25 @@ function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
           </div>
 
           <span style={label}>결제일</span>
+          {/* 매년: 결제 월(주황)과 결제 일(파랑)을 제목·색으로 나눈다 (2026-11-08 사용자 요청 — 구분이 안 됐다) */}
           {cycle === "year" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 6, marginBottom: 8 }}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <button key={m} onClick={() => setMonth(m)} aria-pressed={month === m} style={dayCell(month === m)}>{m}월</button>)}
-            </div>
+            <>
+              <div style={subLabel(MONTH_COLOR)}>결제 월</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 6, marginBottom: 14 }}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <button key={m} onClick={() => setMonth(m)} aria-pressed={month === m} style={monthCell(month === m)}>{m}월</button>)}
+              </div>
+              <div style={subLabel(ACCENT)}>결제 일</div>
+            </>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
             {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <button key={d} onClick={() => setDay(d)} aria-pressed={day === d} aria-label={`${d}일`} style={dayCell(day === d)}>{d}</button>)}
             <button onClick={() => setDay(0)} aria-pressed={day === 0} style={{ ...dayCell(day === 0), gridColumn: "span 4", fontSize: 14 }}>말일</button>
           </div>
-          <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 6 }}>{cycle === "year" ? `매년 ${month}월 ${day === 0 ? "말일" : `${day}일`}` : `매월 ${day === 0 ? "말일" : `${day}일`}`}{day > 28 ? " · 그 날이 없는 달은 말일" : ""}</div>
+          <div style={{ fontSize: 14, color: "var(--dm-sub)", marginTop: 8, fontWeight: 700 }}>
+            {cycle === "year" ? <>매년 <b style={{ color: MONTH_COLOR }}>{month}월</b> </> : "매월 "}
+            <b style={{ color: ACCENT }}>{day === 0 ? "말일" : `${day}일`}</b>
+            <span style={{ fontWeight: 500, color: "var(--dm-muted)" }}>{day > 28 ? " · 그 날이 없는 달은 말일" : ""}</span>
+          </div>
 
           <label style={label} htmlFor="sub-pay">결제수단 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>(별명만, 카드번호는 쓰지 마세요)</span></label>
           <input id="sub-pay" value={pay} onChange={(e) => setPay(e.target.value)} maxLength={20} placeholder="예: 신한카드 개인, 토스 계좌" style={input} />
@@ -274,16 +312,20 @@ function SubSheet({ initial, payChoices, rate, onSave, onDelete, onClose }) {
             </div>
           )}
 
-          <label style={label} htmlFor="sub-end">이용 종료일 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>(선택)</span></label>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input id="sub-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ ...input, flex: 1, minWidth: 0 }} />
-            {endDate && <button onClick={() => { setEndDate(""); setTrial(false); }} style={{ height: 44, padding: "0 12px", border: "none", borderRadius: 12, background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>지우기</button>}
+          {/* 이용 기간: 계속(해지할 때까지, 기본) · 종료일 · 무료 체험 (2026-11-08 사용자 요청) */}
+          <span style={label}>이용 기간</span>
+          <div style={{ display: "flex", gap: 2, padding: 3, borderRadius: 12, background: "var(--dm-input)" }}>
+            <button onClick={() => setTerm("keep")} aria-pressed={term === "keep"} style={seg(term === "keep")}>계속</button>
+            <button onClick={() => setTerm("end")} aria-pressed={term === "end"} style={seg(term === "end")}>종료일</button>
+            <button onClick={() => setTerm("trial")} aria-pressed={term === "trial"} style={seg(term === "trial")}>무료 체험</button>
           </div>
-          {endDate && (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 15, color: "var(--dm-text)", cursor: "pointer" }}>
-              <input type="checkbox" checked={trial} onChange={(e) => setTrial(e.target.checked)} style={{ width: 20, height: 20 }} />
-              무료 체험이에요 (끝나기 3일 전에 알려 줘요)
-            </label>
+          {term === "keep" ? (
+            <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 6 }}>해지할 때까지 계속 결제돼요</div>
+          ) : (
+            <>
+              <label htmlFor="sub-end" style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--dm-sub)", margin: "10px 0 6px" }}>{term === "trial" ? "무료 체험 끝나는 날 (3일 전에 알려 줘요)" : "이용 끝나는 날"}</label>
+              <input id="sub-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={input} />
+            </>
           )}
 
           <label style={label} htmlFor="sub-memo">메모 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>(선택)</span></label>

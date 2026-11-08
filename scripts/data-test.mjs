@@ -655,6 +655,11 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const up = upcomingSubEvents(subs, '2026-11-08', 3);
   t('구독: 다가오는 날에 체험 끝 3일 전', up.some((e) => e.title.includes('무료 체험 끝') && e.dday === 2));
   t('구독: 3일 밖 결제는 안 넣음', !up.some((e) => e.id === 'a'));
+  const { customCatId, subCatLabel, customCatIds, allSubCats } = await load('/src/utils/subscriptions.js');
+  const withCustom = normalizeSubs([...subs, { id: 'e', name: '헬스장', amount: 50000, cycle: 'month', day: 5, cat: customCatId('운동') }]);
+  t('구독: 직접 만든 분류 이름', subCatLabel(customCatId('운동')) === '운동');
+  t('구독: 직접 만든 분류가 목록에', customCatIds(withCustom).join() === 'c:운동' && allSubCats(withCustom).some((c) => c.label === '운동'));
+  t('구독: 직접 만든 분류 합계', subsSummary(withCustom, '2026-11-08', 1400).byCat.some(([id, v]) => id === 'c:운동' && v === 50000));
 }
 
 await vite.close();

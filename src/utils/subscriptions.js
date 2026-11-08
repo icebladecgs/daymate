@@ -14,7 +14,14 @@ export const SUB_CATS = [
   { id: "ai", label: "AI", services: ["ChatGPT Plus", "Claude Pro", "Gemini", "Perplexity", "Midjourney"] },
   { id: "etc", label: "기타", services: ["iCloud+", "구글 원", "마이크로소프트 365", "통신 부가서비스"] },
 ];
-export const subCatLabel = (id) => (SUB_CATS.find((c) => c.id === id) || SUB_CATS[SUB_CATS.length - 1]).label;
+// 직접 만든 분류 (2026-11-08) — 따로 저장하지 않고 구독의 cat에 "c:이름"으로 붙인다(그 분류의 구독이 없어지면 목록에서도 사라짐)
+const CUSTOM = "c:";
+export const isCustomCat = (id) => typeof id === "string" && id.startsWith(CUSTOM);
+export const customCatId = (label) => `${CUSTOM}${String(label).trim().slice(0, 12)}`;
+export const subCatLabel = (id) => (isCustomCat(id) ? id.slice(CUSTOM.length) : (SUB_CATS.find((c) => c.id === id) || SUB_CATS[SUB_CATS.length - 1]).label);
+export const customCatIds = (subs) => [...new Set(normalizeSubs(subs).map((s) => s.cat).filter(isCustomCat))];
+// 목록·필터에 쓸 분류 — 기본 분류 + 직접 만든 분류
+export const allSubCats = (subs) => [...SUB_CATS, ...customCatIds(subs).map((id) => ({ id, label: subCatLabel(id), services: [] }))];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const pad = (n) => String(n).padStart(2, "0");
