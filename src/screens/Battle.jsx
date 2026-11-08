@@ -7,12 +7,13 @@ import { store } from "../utils/storage.js";
 import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
 import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
 import { GROWTH_STATS } from "../data/growthStats.js";
-import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance } from "../data/battle/engine.js";
+import { createPlayerFighter, createNpcFighter, createBattleState, resolveRoundFirstTurn, resolveRoundSecondTurn, getAvailableSpecials, calcBattleReward, getTurnOrderChance, pickAutoAction } from "../data/battle/engine.js";
 
 // 선공 결과를 보여준 뒤 후공까지의 간격 — 전투 장면을 볼 때는 선공 동작(0.6초)이 끝날 즈음, 생략하면 짧게
 const ROUND_GAP_MS = 700;
 const ROUND_GAP_SKIP_MS = 350;
 const SKIP_KEY = 'dm_battle_skip_scene'; // 전투 장면 생략 (기기마다 기억)
+const AUTO_KEY = 'dm_battle_auto'; // 자동 배틀 (기기마다 기억)
 
 const FLASH_COLOR = {
   crit: 'rgba(252,211,77,0.55)',   // 크리티컬 — 노랑
@@ -156,6 +157,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const removePop = (side, key) => setPops(prev => ({ ...prev, [side]: prev[side].filter(p => p.key !== key) }));
   // 전투 장면(기본) — 새 기록을 차례로 재생. 생략하면 예전 좌우 칸 화면
   const [skipScene, setSkipScene] = useState(() => store.get(SKIP_KEY, false) === true);
+  const [auto, setAuto] = useState(() => store.get(AUTO_KEY, false) === true);
   const [stageEvents, setStageEvents] = useState([]);
   const [stageBusy, setStageBusy] = useState(false);
   const onStageBusy = useCallback((b) => setStageBusy(b), []);
@@ -172,17 +174,6 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   // 떠돌이 도전자 보상 — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
   const [startBagIds, setStartBagIds] = useState(() => new Set((bag || []).map(x => x.id)));
   const reward = npcDef?.isWanderer && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
-
-  if (!npcDef) {
-    return (
-      <div style={S.content}>
-        <div style={S.topbar}>
-          <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer' }}>←</button>
-        </div>
-        <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)' }}>상대를 찾을 수 없어요</div>
-      </div>
-    );
-  }
 
   const { player, npc, status, log } = state;
   // 라운드별로 묶어서 최신 라운드가 위로 (각 칸 = 그 라운드에서 그쪽이 한 행동)
@@ -256,6 +247,26 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     }, skipScene ? ROUND_GAP_SKIP_MS : ROUND_GAP_MS);
   };
 
+  // ▶ 자동 배틀 (2026-11-08) — 켜면 내 차례마다 알아서 고른다(pickAutoAction). 이 기기에 기억해서 다음 배틀도 자동으로 시작
+  useEffect(() => {
+    if (!auto || state.status !== 'ongoing' || busy) return undefined;
+    const t = setTimeout(() => act(pickAutoAction(state.player, state.npc)), skipScene ? 250 : 450);
+    return () => clearTimeout(t);
+  }, [auto, state, busy]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleAuto = () => setAuto(v => { store.set(AUTO_KEY, !v); return !v; });
+
+  // 상대를 못 찾으면 — 훅(useState·useEffect)을 모두 부른 뒤에 돌려준다 (자동 배틀 효과가 아래에 생기면서 옮김)
+  if (!npcDef) {
+    return (
+      <div style={S.content}>
+        <div style={S.topbar}>
+          <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer' }}>←</button>
+        </div>
+        <div style={{ ...S.card, textAlign: 'center', color: 'var(--dm-muted)' }}>상대를 찾을 수 없어요</div>
+      </div>
+    );
+  }
+
   const retryBattle = () => {
     setStartBagIds(new Set((bag || []).map(x => x.id)));
     setResolving(false);
@@ -321,6 +332,16 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
       {/* 공격 버튼 — 기록이 길어져도 찾기 쉽게 캐릭터 칸 바로 아래, 라운드 기록 위 */}
       {status === 'ongoing' ? (
+        <div style={{ margin: '0 16px 14px' }}>
+          <button onClick={toggleAuto} aria-pressed={auto}
+            style={{ width: '100%', height: 46, marginBottom: 10, border: 'none', borderRadius: 12, background: auto ? '#FF9F0A' : 'var(--dm-input)', color: auto ? '#fff' : 'var(--dm-text)', fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {auto ? '⏸ 자동 배틀 멈추기' : '▶ 자동 배틀'}
+          </button>
+        </div>
+      ) : null}
+      {status === 'ongoing' ? (auto ? (
+        <div style={{ margin: '-4px 16px 14px', fontSize: 13, color: 'var(--dm-sub)', textAlign: 'center' }}>알아서 싸우는 중 — 위험하면 회복·보호막, 필살기가 준비되면 바로 써요</div>
+      ) : (
         <div style={{ margin: '0 16px 14px', opacity: busy ? 0.6 : 1, transition: 'opacity 0.15s' }}>
           <button onClick={() => act({ type: 'basic' })} disabled={busy} style={{ ...S.btn, marginTop: 0, marginBottom: 10, cursor: busy ? 'default' : 'pointer' }}>⚔️ 기본공격 · {player.basicMove || '기본공격'}</button>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8, letterSpacing: '0.06em' }}>SPECIAL</div>
@@ -347,7 +368,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
             </div>
           )}
         </div>
-      ) : !skipScene && stageBusy ? (
+      )) : !skipScene && stageBusy ? (
         <div style={{ height: 8 }} /> /* 마지막 장면(쓰러짐)이 끝난 뒤 결과를 보여 준다 */
       ) : (
         <div style={{ ...S.card, textAlign: 'center' }}>

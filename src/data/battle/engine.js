@@ -234,6 +234,23 @@ function tickTraits(fighter, round) {
   }
 }
 
+// 자동 배틀 (2026-11-08) — 내 차례에 고를 행동. 위험하면 회복·보호막, 준비된 공격 필살기, 크리 확정 버프, 아니면 기본공격.
+// 상대 방어(생활력)가 높으면 '분석'(방어 무시)을, 아니면 '강타'(1.5배)를 먼저.
+export function pickAutoAction(player, npc) {
+  const ready = getAvailableSpecials(player).filter(sp => !sp.onCooldown);
+  const has = (type) => ready.filter(sp => sp.type === type);
+  const hp = player.energyMax ? player.energy / player.energyMax : 1;
+  if (hp < 0.45 && has('heal').length) return { type: 'special', stat: has('heal')[0].stat };
+  if (hp < 0.6 && !player.shield && has('shield').length) return { type: 'special', stat: has('shield')[0].stat };
+  const attacks = has('attack');
+  if (attacks.length) {
+    const prefer = (npc?.stats?.LIFE || 0) >= 40 ? 'INT' : 'STR';
+    return { type: 'special', stat: (attacks.find(sp => sp.stat === prefer) || attacks[0]).stat };
+  }
+  if (!player.critGuaranteed && has('buff').length) return { type: 'special', stat: has('buff')[0].stat };
+  return { type: 'basic' };
+}
+
 function pickNpcAction(npc) {
   const available = STAT_IDS.filter(id => (npc.stats[id] || 0) >= 10 && (npc.cooldowns[id] || 0) === 0);
   if (available.length > 0 && npc.energy > npc.energyMax * 0.15 && Math.random() < 0.35) {

@@ -745,6 +745,16 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('떠돌이: 이기면 희귀 이상 1개', !!wr.item && wr.item.rarity !== 'common' && wr.gear.wander.won);
   t('떠돌이: 같은 날 두 번째 승리는 보상 없음', !G.wanderReward(wr.gear, '2026-11-08', seq(0.5)).item);
   t('떠돌이: 다음 날은 다시 보상', !!G.wanderReward(wr.gear, '2026-11-09', seq(0.5)).item);
+  // ▶ 자동 배틀 행동 고르기
+  const strong = E.createPlayerFighter(2000, { STR: 900, INT: 900, WEALTH: 900, REL: 900, ACHIEVE: 900, LIFE: 900 });
+  const foe = { stats: { LIFE: 10 } };
+  t('자동: 위험하면 회복', E.pickAutoAction({ ...strong, energy: 800 }, foe).stat === 'WEALTH');
+  t('자동: 조금 위험하면 보호막', ['REL', 'LIFE'].includes(E.pickAutoAction({ ...strong, energy: 1100 }, foe).stat));
+  t('자동: 괜찮으면 공격 필살기(방어 낮은 상대는 강타)', E.pickAutoAction(strong, foe).stat === 'STR');
+  t('자동: 방어 높은 상대는 분석', E.pickAutoAction(strong, { stats: { LIFE: 60 } }).stat === 'INT');
+  const cooled = { ...strong, cooldowns: { ...strong.cooldowns, STR: 2, INT: 2 } };
+  t('자동: 공격 필살기 쿨다운이면 크리 버프', E.pickAutoAction(cooled, foe).stat === 'ACHIEVE');
+  t('자동: 필살기 없으면 기본공격', E.pickAutoAction(E.createPlayerFighter(150, {}), foe).type === 'basic');
 }
 
 // ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──
