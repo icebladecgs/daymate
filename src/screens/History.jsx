@@ -18,8 +18,9 @@ import { projectDividends, dividendSymOf, isPfHidden, MASK } from "../utils/port
 import { fetchDividends } from "../api/dividends.js";
 import { useBackClose } from "../utils/useBackClose.js";
 import { canMoveInList, moveInList } from "../utils/taskOrder.js";
+import { normalizeSubs, billsInMonth, billsOnDate, fmtMoney, fmtKrw } from "../utils/subscriptions.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal, pfHoldings = [] }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal, pfHoldings = [], subscriptions = [], onOpenSubs }) {
   const [year, setYear] = useState(new Date().getFullYear());
   // 📈 증시 일정의 "내 배당" (2026-11-07) — 실계좌 종목의 지난 1년 배당을 1년 뒤로 옮긴 예상 배당락일
   const [divEvents, setDivEvents] = useState([]);
@@ -785,6 +786,39 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
         );
       })()}
 
+      {/* 💳 이번 달 구독 결제 (2026-11-08) — 증시 일정처럼 날짜 칸에는 넣지 않고 달력 아래 목록 + 날짜 미리보기에 한 줄. 구독이 있을 때만 */}
+      {onOpenSubs && normalizeSubs(subscriptions).length > 0 && (() => {
+        const bills = billsInMonth(subscriptions, year, month0 + 1);
+        const WD = ["일", "월", "화", "수", "목", "금", "토"];
+        const krw = bills.filter(b => b.sub.cur === "KRW").reduce((a, b) => a + b.sub.amount, 0);
+        const usd = bills.filter(b => b.sub.cur === "USD").reduce((a, b) => a + b.sub.amount, 0);
+        return (
+          <div style={{ margin: "0 10px 14px", padding: "12px 14px", borderRadius: 14, background: "var(--dm-card)", border: "1px solid var(--dm-card-line, var(--dm-border))" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: "var(--dm-text)", marginRight: "auto" }}>💳 이번 달 구독 결제</span>
+              <button onClick={onOpenSubs} style={{ padding: "6px 4px", background: "none", border: "none", color: "var(--dm-accent, #5B7CFA)", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>관리 ›</button>
+            </div>
+            {bills.length === 0 ? <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 6 }}>이번 달 결제할 구독이 없어요.</div> : (
+              <>
+                <div style={{ fontSize: 14, color: "var(--dm-sub)", margin: "2px 0 4px" }}>
+                  {bills.length}건 · {[krw ? fmtKrw(krw) : null, usd ? fmtMoney(usd, "USD") : null].filter(Boolean).join(" + ")}
+                </div>
+                {bills.map((b, i) => {
+                  const d = new Date(`${b.ds}T12:00:00`);
+                  return (
+                    <button key={`${b.sub.id}${b.ds}`} onClick={onOpenSubs} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit", opacity: b.ds < today ? 0.45 : 1 }}>
+                      <span style={{ width: 78, flexShrink: 0, whiteSpace: "nowrap", fontSize: 14, fontWeight: 800, color: b.ds === today ? "var(--dm-accent, #5B7CFA)" : "var(--dm-text)" }}>{d.getMonth() + 1}/{d.getDate()} ({WD[d.getDay()]})</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.sub.name}{b.sub.pay && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-sub)" }}> · {b.sub.pay}</span>}</span>
+                      <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 800, color: "var(--dm-text)", fontVariantNumeric: "tabular-nums" }}>{fmtMoney(b.sub.amount, b.sub.cur)}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* 빈 상태: 이번 달 기록이 하나도 없을 때 */}
       {(() => {
         const hasAnyRecord = Array(daysInMonth).fill(null).some((_, i) => {
@@ -883,6 +917,12 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     {mood && <span style={{ fontSize: 18, marginLeft: 8 }}>{moodMap[mood] || ''}</span>}
                   </div>
                   {(() => { const l = solarToLunar(preview); return l ? <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 2 }}>음력 {l.leap ? '윤' : ''}{l.month}월 {l.day}일</div> : null; })()}
+                  {/* 💳 그날 구독 결제 (2026-11-08) */}
+                  {billsOnDate(subscriptions, preview).map(b => (
+                    <button key={b.sub.id} onClick={() => { setPreview(null); onOpenSubs?.(); }} style={{ display: 'block', padding: 0, marginTop: 3, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: 'var(--dm-sub)' }}>
+                      💳 {b.sub.name} 결제 · {fmtMoney(b.sub.amount, b.sub.cur)}{b.sub.pay ? ` · ${b.sub.pay}` : ''}
+                    </button>
+                  ))}
                   {tasks.length > 0 && (
                     <div style={{ fontSize: 12, color: done === tasks.length ? '#4ADE80' : 'var(--dm-muted)', fontWeight: 700, marginTop: 2 }}>
                       {done === tasks.length ? '✓ 전체 완료' : `${done}/${tasks.length} 완료`}

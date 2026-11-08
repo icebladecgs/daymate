@@ -87,6 +87,8 @@ export default function Today({
   onSetWeatherCity,
   ddays = [],
   setDdays,
+  subscriptions = [],
+  onOpenSubs,
   exam, setExam, onStudyXp, wrongDue = 0, onOpenWrong,
   workHours,
   dashboard = false, // PC 대시보드 안: 머리글과 오늘의 할일만 보여 줌 (나머지 칸은 오늘 탭에 그대로)
@@ -702,7 +704,7 @@ export default function Today({
       </SectionBox>),
     // 📌 다가오는 날 — 직접 넣은 D-day + 내 사람들의 생일·기념일 (사람은 7일 안이면 위 칸에 있으니 뺀다)
     upcoming: !hiddenSec.upcoming && (
-        <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
+        <UpcomingDays contacts={contacts} ddays={ddays} setDdays={setDdays} subs={subscriptions} onOpenSubs={onOpenSubs} dateStr={dateStr} excludeWithin={hiddenSec.people ? -1 : 7} onOpen={onOpenPeople}
           boxed={newLook}
           // 새 디자인: "＋ 추가"는 제목 줄 오른쪽 (2026-11-07 사용자 요청 — 맨 아래 한 줄을 늘 차지했다)
           heading={newLook

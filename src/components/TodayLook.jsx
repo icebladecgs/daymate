@@ -25,6 +25,8 @@ const PATHS = {
   // 달력 탭
   search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
   refresh: <><path d="M21 12a9 9 0 11-2.6-6.4" /><path d="M21 3v6h-6" /></>,
+  // 구독 (2026-11-08)
+  wallet: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
   sprout: <><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></>,
 };
 
@@ -40,7 +42,7 @@ const BADGE = {
   today: "#007AFF", people: "#FF2D55", repeat: "#34C759", inbox: "#AF52DE", cal: "#FF9500", book: "#30B0C7",
   target: "#FF3B30", flag: "#FF9500", card: "#5856D6", sparkle: "#AF52DE", briefcase: "#FF9500",
   megaphone: "#FF9500", pencil: "#007AFF", checkin: "#34C759", globe: "#30B0C7",
-  search: "#007AFF", refresh: "#007AFF", sprout: "#34C759",
+  search: "#007AFF", refresh: "#007AFF", sprout: "#34C759", wallet: "#34C759",
 };
 
 // 섹션 제목 한 줄 (새 디자인) — UI.title(19px) 굵게 + 색 배지 아이콘. right에 접기·수정 같은 버튼

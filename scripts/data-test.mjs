@@ -629,6 +629,34 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('지난 D-day: 다가오는 날과 겹치지 않음', !buildUpcomingDays([], dd, '2026-11-06').some(d => d.title === '최근'));
 }
 
+// ── 구독 (2026-11-08, utils/subscriptions.js) ──
+{
+  const { normalizeSubs, nextBillDate, billDateIn, subsSummary, billsOnDate, upcomingSubEvents } = await load('/src/utils/subscriptions.js');
+  const subs = normalizeSubs([
+    { id: 'a', name: '넷플릭스', amount: 17000, cur: 'KRW', cycle: 'month', day: 15, pay: '신한카드', cat: 'ott' },
+    { id: 'b', name: 'ChatGPT', amount: 20, cur: 'USD', cycle: 'month', day: 31, pay: '신한카드', cat: 'ai' },
+    { id: 'c', name: '쿠팡 와우', amount: 120000, cur: 'KRW', cycle: 'year', month: 3, day: 0, pay: '토스', cat: 'shop' },
+    { id: 'd', name: '체험', amount: 9900, cycle: 'month', day: 1, endDate: '2026-11-10', trial: true },
+    { id: 'x', name: '', amount: 1000 },
+  ]);
+  t('구독: 이름 없는 것은 버림', subs.length === 4);
+  t('구독: 31일 결제는 30일인 달에 말일', billDateIn(subs[1], 2026, 11) === '2026-11-30');
+  t('구독: 2월 말일', billDateIn(subs[1], 2026, 2) === '2026-02-28');
+  t('구독: 매년은 그 달에만', billDateIn(subs[2], 2026, 11) === null && billDateIn(subs[2], 2027, 3) === '2027-03-31');
+  t('구독: 오늘이 결제일이면 오늘', nextBillDate(subs[0], '2026-11-15') === '2026-11-15');
+  t('구독: 지났으면 다음 달', nextBillDate(subs[0], '2026-11-16') === '2026-12-15');
+  t('구독: 종료일 뒤로는 결제 없음', nextBillDate(subs[3], '2026-11-08') === null);
+  const sum = subsSummary(subs, '2026-11-08', 1400);
+  t('구독: 월 합계(연 결제는 12로, 달러는 환율, 체험 포함)', Math.round(sum.monthly) === 17000 + 28000 + 10000 + 9900, String(sum.monthly));
+  t('구독: 결제수단별 합계', Math.round(sum.byPay.find(([p]) => p === '신한카드')[1]) === 45000);
+  t('구독: 환율 없으면 달러는 빼고 알림', subsSummary(subs, '2026-11-08', null).missingFx === 1);
+  t('구독: 종료일 지나면 합계에서 빠짐', subsSummary(subs, '2026-11-11', 1400).count === 3);
+  t('구독: 그날 결제 목록', billsOnDate(subs, '2026-11-15').map((b) => b.sub.id).join() === 'a');
+  const up = upcomingSubEvents(subs, '2026-11-08', 3);
+  t('구독: 다가오는 날에 체험 끝 3일 전', up.some((e) => e.title.includes('무료 체험 끝') && e.dday === 2));
+  t('구독: 3일 밖 결제는 안 넣음', !up.some((e) => e.id === 'a'));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;
