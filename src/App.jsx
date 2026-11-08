@@ -2406,7 +2406,7 @@ export default function App() {
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
           subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")}
-          wishes={wishes} places={places} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : "wishes")}
+          wishes={wishes} places={places} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : kind === "bucket" ? "my" : "wishes")}
           onAddMemo={(text, time) => setTodayData(prev => ({
             ...prev,
             memos: [...(prev.memos || []), { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`, text, createdAt: time }],
@@ -2446,7 +2446,7 @@ export default function App() {
           contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
           ddays={ddays} setDdays={setDdays}
           subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")}
-          wishes={wishes} places={places} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : "wishes")}
+          wishes={wishes} places={places} bucketList={bucketList} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : kind === "bucket" ? "my" : "wishes")}
           weatherCity={telegramCfg?.weatherCity}
           onSetWeatherCity={(city) => {
             const cfg = { ...telegramCfg, weatherCity: city };

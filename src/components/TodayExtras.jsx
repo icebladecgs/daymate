@@ -5,7 +5,7 @@ import { store } from "../utils/storage.js";
 import { buildUpcomingDays, ddayDateLabel, newDday, pastDdays } from "../utils/ddays.js";
 import { ddayLabel } from "../utils/exam.js";
 import { upcomingSubEvents, SUBS_TODAY_KEY } from "../utils/subscriptions.js";
-import { upcomingDreamEvents } from "../utils/dreams.js";
+import { upcomingDreamEvents, bucketToDream } from "../utils/dreams.js";
 import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
 import UndoBar from "./UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
@@ -151,7 +151,7 @@ function DdayForm({ initial, minDate, onSave, onDelete, onCancel, first }) {
   );
 }
 
-export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs, wishes = [], places = [], onOpenDreams, dateStr, excludeWithin, onOpen, heading, boxed }) {
+export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs, wishes = [], places = [], bucketList = [], onOpenDreams, dateStr, excludeWithin, onOpen, heading, boxed }) {
   const [more, setMore] = useState(false);
   const undo = useUndo();
   const [editing, setEditing] = useState(null); // 'new' 또는 고치는 D-day id
@@ -164,8 +164,9 @@ export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs,
     ...buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }),
     ...(subsOn ? upcomingSubEvents(subs, dateStr, 3) : []),
     ...upcomingDreamEvents(wishes, "wish", dateStr), ...upcomingDreamEvents(places, "place", dateStr),
+    ...upcomingDreamEvents((bucketList || []).map(bucketToDream).filter(Boolean), "bucket", dateStr),
   ].sort((a, b) => a.dday - b.dday),
-  [contacts, ddays, dateStr, excludeWithin, subs, subsOn, wishes, places]);
+  [contacts, ddays, dateStr, excludeWithin, subs, subsOn, wishes, places, bucketList]);
   const shown = all.slice(0, more ? SHOW_MORE : 3);
   const moreCount = Math.min(all.length, SHOW_MORE) - 3;
 

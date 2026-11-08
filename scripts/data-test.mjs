@@ -688,6 +688,21 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const ev = D.upcomingDreamEvents(list, 'wish', '2026-11-08');
   t('꿈 목록: 다가오는 날은 7일 안·못 이룬 것만', ev.map((e) => e.id).join() === 'a' && ev[0].dday === 4 && ev[0].title.startsWith('🛒'));
   t('꿈 목록: 가고 싶은 곳은 📍', D.upcomingDreamEvents(list, 'place', '2026-11-08')[0].title.startsWith('📍'));
+  // 🪣 버킷리스트 — 예전 항목({id, text, done}) 그대로 읽고, 저장할 때 원래 칸 지킴
+  const long = '가'.repeat(60);
+  const old = [{ id: 'bk_1', text: '오로라 보기', done: false }, { id: 'bk_2', text: '마라톤 완주', done: true }, { id: 'bk_3', text: long, done: false, extra: 'keep' }];
+  const asDream = old.map(D.bucketToDream);
+  t('버킷: 예전 항목 읽기', asDream[0].name === '오로라 보기' && !asDream[0].done && asDream[0].id === 'bk_1');
+  t('버킷: 예전 체크는 해낸 것(날짜 모름)', asDream[1].done && asDream[1].doneAt === '');
+  t('버킷: 60자 글자 안 잘림', asDream[2].name.length === 60);
+  const back = D.dreamToBucket({ ...asDream[2], why: '꼭', photo: { url: 'https://x/p.jpg', path: 'users/u/dreams/p.jpg' } }, old[2]);
+  t('버킷: 저장하면 원래 칸(id·text·done·다른 칸) 유지 + 새 칸', back.id === 'bk_3' && back.text === long && back.done === false && back.extra === 'keep' && back.why === '꼭' && back.photo.path.endsWith('p.jpg') && !('name' in back));
+  const doneBack = D.dreamToBucket({ ...asDream[0], doneAt: '2026-11-08', done: true }, old[0]);
+  t('버킷: 해냈어요 → done·날짜', doneBack.done === true && doneBack.doneAt === '2026-11-08');
+  const undone = D.dreamToBucket({ ...D.bucketToDream(doneBack), doneAt: '', done: false }, doneBack);
+  t('버킷: 다시 목록으로 → done false', undone.done === false && undone.doneAt === '');
+  const BL = D.dreamLists(asDream);
+  t('버킷: 날짜 모르는 해낸 것도 해낸 것으로', BL.done.map((x) => x.id).join() === 'bk_2' && BL.active.length === 2);
 }
 
 // ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──

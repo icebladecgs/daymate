@@ -13,11 +13,10 @@ import { daysUntil } from "../utils/exam.js";
 import { openLink } from "../utils/links.js";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
-import { DREAM_KINDS, dreamLists, normalizeDreams, newDreamId, safeLink, fmtWon } from "../utils/dreams.js";
+import { DREAM_KINDS, dreamLists, normalizeDreams, newDreamId, safeLink, fmtWon, doneDateLabel } from "../utils/dreams.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
 const ddayText = (n) => (n === 0 ? "오늘" : n === 1 ? "내일" : n > 0 ? `D-${n}` : `${-n}일 지남`);
-const shortDate = (ds) => `${Number(ds.slice(5, 7))}/${Number(ds.slice(8, 10))}`;
 
 // 사진이 없으면 이름 첫 글자를 색 칸에
 function Thumb({ item, size, radius = 12, color }) {
@@ -94,7 +93,7 @@ export default function Dreams({ kind, items, setItems, uid, onBack }) {
     undo.offer(`"${item.name}"을(를) 지웠어요`, () => setItems((prev) => putBack(normalizeDreams(prev), item, idx)), () => item.photo?.path && deletePhoto(item.photo.path));
   };
   const markDone = (item, on) => {
-    save({ ...item, doneAt: on ? today : "" });
+    save({ ...item, doneAt: on ? today : "", done: on });
     if (on) setToast(cfg.doneToast);
   };
 
@@ -149,7 +148,7 @@ export default function Dreams({ kind, items, setItems, uid, onBack }) {
             <button key={x.id} onClick={() => setEditing(x.id)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 0", marginTop: i ? 0 : 8, background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit", color: "var(--dm-text)" }}>
               <Thumb item={x} size={44} radius={10} color={KIND_COLOR[kind]} />
               <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
-              <span style={{ fontSize: 14, color: "var(--dm-sub)", flexShrink: 0 }}>{x.doneAt.slice(0, 4) === today.slice(0, 4) ? shortDate(x.doneAt) : x.doneAt.replace(/-/g, ".")}</span>
+              <span style={{ fontSize: 14, color: "var(--dm-sub)", flexShrink: 0 }}>{doneDateLabel(x.doneAt, today)}</span>
             </button>
           ))}
         </div>
@@ -164,8 +163,10 @@ export default function Dreams({ kind, items, setItems, uid, onBack }) {
   );
 }
 
-function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose }) {
+// 추가·고치기 창 — 갖고 싶은 것·가고 싶은 곳·버킷리스트(Home.jsx)가 같이 쓴다. extra: 본문 맨 아래에 붙일 버튼(버킷리스트 "언젠가로")
+export function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose, extra = null }) {
   const cfg = DREAM_KINDS[kind];
+  const isDone = !!initial?.done;
   const [name, setName] = useState(initial?.name || "");
   const [price, setPrice] = useState(initial?.price ? String(initial.price) : "");
   const [link, setLink] = useState(initial?.link || "");
@@ -206,9 +207,9 @@ function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose }) {
   const num = Number(String(price).replace(/[^\d]/g, ""));
   const cleanLink = safeLink(link);
   const valid = name.trim().length > 0 && !uploading;
-  const build = (extra = {}) => ({
+  const build = (more = {}) => ({
     id: initial?.id || newDreamId(), name: name.trim(), price: num > 0 ? num : null, link: cleanLink, photo, why: why.trim(), when,
-    createdAt: initial?.createdAt || new Date().toISOString(), doneAt: initial?.doneAt || "", ...extra,
+    createdAt: initial?.createdAt || new Date().toISOString(), doneAt: initial?.doneAt || "", done: isDone, ...more,
   });
   const submit = () => { if (valid) onSave(build()); };
 
@@ -221,7 +222,7 @@ function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose }) {
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={initial ? `${cfg.title} 고치기` : `${cfg.title} 추가`}
         style={{ width: "100%", maxWidth: 430, maxHeight: "92vh", display: "flex", flexDirection: "column", background: "var(--dm-bg)", borderRadius: "20px 20px 0 0", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", padding: "16px 20px 6px" }}>
-          <div style={{ flex: 1, fontSize: 21, fontWeight: 900, color: "var(--dm-text)" }}>{cfg.emoji} {initial ? (initial.doneAt ? cfg.doneTitle : "고치기") : `${cfg.title} 추가`}</div>
+          <div style={{ flex: 1, fontSize: 21, fontWeight: 900, color: "var(--dm-text)" }}>{cfg.emoji} {initial ? (isDone ? cfg.doneTitle : "고치기") : `${cfg.title} 추가`}</div>
           <button className="dm-hit" onClick={close} aria-label="닫기" style={{ width: 32, height: 32, padding: 0, background: "none", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ overflowY: "auto", padding: "0 20px 16px" }}>
@@ -245,7 +246,7 @@ function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose }) {
           </div>
 
           <label style={label} htmlFor="dream-name">이름</label>
-          <input id="dream-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder={cfg.namePh} style={input} />
+          <input id="dream-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={cfg.namePh} style={input} />
 
           <label style={label} htmlFor="dream-price">{cfg.priceLabel} <span style={{ fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>(선택)</span></label>
           <input id="dream-price" inputMode="numeric" value={price ? Number(String(price).replace(/[^\d]/g, "") || 0).toLocaleString("ko-KR") : ""} onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} placeholder={`${cfg.pricePh} (원)`} style={input} />
@@ -265,14 +266,15 @@ function DreamSheet({ kind, uid, initial, onSave, onDelete, onDone, onClose }) {
             <input id="dream-when" type="date" value={when} onChange={(e) => setWhen(e.target.value)} style={{ ...input, flex: 1, minWidth: 0 }} />
             {when && <button onClick={() => setWhen("")} style={{ ...smallBtn, height: 46 }}>지우기</button>}
           </div>
-          {initial?.doneAt && <div style={{ fontSize: 14, color: "#30D158", fontWeight: 800, marginTop: 14 }}>🎉 {initial.doneAt.replace(/-/g, ".")}에 이뤘어요</div>}
+          {isDone && <div style={{ fontSize: 14, color: "#30D158", fontWeight: 800, marginTop: 14 }}>🎉 {initial.doneAt ? `${initial.doneAt.replace(/-/g, ".")}에 이뤘어요` : "이뤘어요 (날짜 모름)"}</div>}
+          {extra}
         </div>
         <div style={{ display: "flex", gap: 8, padding: "10px 20px calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid var(--dm-row)" }}>
           {initial && <button onClick={() => onDelete(initial)} style={{ height: 50, padding: "0 16px", border: "none", borderRadius: 14, background: "var(--dm-input)", color: "#FF3B30", fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>삭제</button>}
           {initial && (
-            <button onClick={() => { if (valid) onDone(build(), !initial.doneAt); }} disabled={!valid}
-              style={{ height: 50, padding: "0 14px", border: "none", borderRadius: 14, background: initial.doneAt ? "var(--dm-input)" : "#30D158", color: initial.doneAt ? "var(--dm-text)" : "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-              {initial.doneAt ? "다시 목록으로" : cfg.doneBtn}
+            <button onClick={() => { if (valid) onDone(build(), !isDone); }} disabled={!valid}
+              style={{ height: 50, padding: "0 14px", border: "none", borderRadius: 14, background: isDone ? "var(--dm-input)" : "#30D158", color: isDone ? "var(--dm-text)" : "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+              {isDone ? "다시 목록으로" : cfg.doneBtn}
             </button>
           )}
           <button onClick={submit} disabled={!valid} style={{ flex: 1, height: 50, border: "none", borderRadius: 14, background: valid ? ACCENT : "var(--dm-input)", color: valid ? "#fff" : "var(--dm-muted)", fontSize: 17, fontWeight: 900, cursor: valid ? "pointer" : "default", fontFamily: "inherit" }}>저장</button>

@@ -30,7 +30,11 @@ import { newDesignOn } from "../utils/todayLook.js";
 import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
 import { SubsCard } from "./Subscriptions.jsx";
-import { DreamCard } from "./Dreams.jsx";
+import { DreamCard, DreamSheet } from "./Dreams.jsx";
+import { bucketToDream, dreamToBucket, doneDateLabel } from "../utils/dreams.js";
+import { useUndo, putBack } from "../utils/useUndo.js";
+import UndoBar from "../components/UndoBar.jsx";
+import { daysUntil } from "../utils/exam.js";
 import { boxCard, UI } from "../styles.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
@@ -118,10 +122,32 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     setBucketList([...bucketList, { id: `bk_${Date.now()}`, text, done: false }]);
     setBucketInput('');
   };
-  const toggleBucketItem = (id) => setBucketList(bucketList.map(b => b.id === id ? { ...b, done: !b.done } : b));
-  const deleteBucketItem = (id) => setBucketList(bucketList.filter(b => b.id !== id));
+  // 🪣 상세 창 (2026-11-08) — 목록은 보기만, 누르면 갖고 싶은 것과 같은 창(DreamSheet). 데이터는 예전 bucketList에 새 칸만 덧붙인다
+  const [bucketEditing, setBucketEditing] = useState(null); // 'new' 또는 id
+  const bucketUndo = useUndo();
+  const bucketItems = useMemo(() => (bucketList || []).map(bucketToDream).filter(Boolean), [bucketList]);
+  const bucketShown = useMemo(() => [...bucketItems.filter(x => !x.done), ...bucketItems.filter(x => x.done)], [bucketItems]); // 해낸 것은 아래로
+  const bucketToday = toDateStr();
+  const saveBucket = (d) => {
+    const old = (bucketList || []).find(b => b.id === d.id);
+    setBucketList(prev => (prev || []).some(b => b.id === d.id) ? prev.map(b => (b.id === d.id ? dreamToBucket(d, b) : b)) : [...(prev || []), dreamToBucket(d)]);
+    if (old?.photo?.path && old.photo.path !== d.photo?.path) deletePhoto(old.photo.path);
+    setBucketEditing(null);
+  };
+  const markBucketDone = (d, on) => {
+    saveBucket({ ...d, doneAt: on ? bucketToday : '', done: on });
+    if (on) { setBucketMsg('해냈군요! 해낸 날을 남겨 둘게요 🎉'); setTimeout(() => setBucketMsg(''), 2500); }
+  };
+  const removeBucket = (d) => {
+    const orig = (bucketList || []).find(b => b.id === d.id);
+    const idx = (bucketList || []).findIndex(b => b.id === d.id);
+    setBucketList(prev => (prev || []).filter(b => b.id !== d.id));
+    setBucketEditing(null);
+    if (orig) bucketUndo.offer(`"${d.name}"을(를) 지웠어요`, () => setBucketList(prev => putBack(prev, orig, idx)), () => orig.photo?.path && deletePhoto(orig.photo.path));
+  };
   const copyBucketToSomeday = (item) => {
-    setSomeday([...(someday || []), { id: `sd${Date.now()}`, title: item.text, done: false }]);
+    setSomeday([...(someday || []), { id: `sd${Date.now()}`, title: item.name, done: false }]);
+    setBucketEditing(null);
     setBucketMsg('언젠가할일에 추가했어요 ✅');
     setTimeout(() => setBucketMsg(''), 1800);
   };
@@ -750,18 +776,37 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
                   newLook ? <FoldButton open={bucketOpen} onClick={() => setBucketOpen(v => !v)} /> : <button onClick={() => setBucketOpen(v => !v)} style={{ fontSize: newLook ? 13 : 11, fontWeight: 700, color: 'var(--dm-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: newLook ? '4px 0' : undefined, flexShrink: 0 }}>{bucketOpen ? '접기 ▲' : '펼치기 ▼'}</button>)}
                 {bucketOpen && (
                   <div style={newLook ? {} : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px' }}>
-                    {bucketList.map((item, i) => (
-                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === bucketList.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 8 }) }}>
-                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => toggleBucketItem(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, ...(newLook ? { padding: 0 } : {}), border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
-                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => copyBucketToSomeday(item)} style={{ background: 'var(--dm-accent-soft, rgba(108,142,255,.1))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 8, padding: '4px 8px', fontSize: newLook ? UI.sub : 11, color: 'var(--dm-accent, #6C8EFF)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}>언젠가</button>
-                        <button className={newLook ? 'dm-hit' : undefined} onClick={() => deleteBucketItem(item.id)} aria-label="삭제" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}>✕</button>
-                      </div>
-                    ))}
+                    {/* 목록은 보기만 — 줄을 누르면 상세 창(사진·메모·언제쯤·해냈어요·언젠가로·삭제) (2026-11-08) */}
+                    {bucketShown.map((item, i) => {
+                      const d = !item.done && item.when ? daysUntil(item.when, bucketToday) : null;
+                      return (
+                        <button key={item.id} onClick={() => setBucketEditing(item.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', borderRadius: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--dm-text)', ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === bucketShown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { padding: '4px 0', marginBottom: 6 }) }}>
+                          {item.photo?.url
+                            ? <img src={item.photo.url} alt="" loading="lazy" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0, opacity: item.done ? 0.6 : 1 }} />
+                            : <span aria-hidden="true" style={{ width: newLook ? 22 : 18, height: newLook ? 22 : 18, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', background: item.done ? '#30D158' : 'transparent', border: item.done ? 'none' : '2px solid var(--dm-muted)', boxSizing: 'border-box' }}>{item.done ? '✓' : ''}</span>}
+                          <span style={{ flex: 1, minWidth: 0, fontSize: newLook ? 16 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                          {item.done
+                            ? <span style={{ fontSize: 13, color: '#30D158', fontWeight: 800, flexShrink: 0 }}>🎉 {item.doneAt ? doneDateLabel(item.doneAt, bucketToday) : '해냄'}</span>
+                            : d != null && <span style={{ fontSize: 13, fontWeight: 800, flexShrink: 0, color: d >= 0 && d <= 7 ? '#FF3B30' : 'var(--dm-sub)' }}>{d === 0 ? '오늘' : d > 0 ? `D-${d}` : `${-d}일 지남`}</span>}
+                        </button>
+                      );
+                    })}
                     {bucketList.length === 0 && (
                       <div style={{ fontSize: newLook ? UI.sub : 12, color: 'var(--dm-muted)', textAlign: 'center', padding: '8px 0 12px' }}>죽기 전에 하고 싶은 일을 적어보세요</div>
                     )}
                     {bucketMsg && <div style={{ fontSize: newLook ? UI.sub : 11, color: '#4ADE80', fontWeight: 700, textAlign: 'center', marginBottom: 8 }}>{bucketMsg}</div>}
+                    <UndoBar bar={bucketUndo.bar} onUndo={bucketUndo.run} />
+                    {bucketEditing && (
+                      <DreamSheet kind="bucket" uid={authUser?.uid}
+                        initial={bucketItems.find(x => x.id === bucketEditing) || null}
+                        onSave={saveBucket} onDelete={removeBucket} onDone={markBucketDone} onClose={() => setBucketEditing(null)}
+                        extra={(() => {
+                          const cur = bucketItems.find(x => x.id === bucketEditing);
+                          return cur && !cur.done ? (
+                            <button onClick={() => copyBucketToSomeday(cur)} style={{ display: 'block', width: '100%', height: 46, marginTop: 18, border: 'none', borderRadius: 12, background: 'var(--dm-input)', color: 'var(--dm-accent, #5B7CFA)', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>📋 언젠가할일로 보내기</button>
+                          ) : null;
+                        })()} />
+                    )}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         style={{ ...S.input, flex: 1, marginBottom: 0 }}
