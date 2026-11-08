@@ -47,6 +47,14 @@ const seed = async () => {
 // 앱 joinCommunity가 보내는 모양
 const join = (uid, cid, proof = {}) => setDoc(doc(as(uid), `communities/${cid}/members/${uid}`),
   { nickname: uid, joinedAt: '2026-11-01T00:00:00.000Z', isAdmin: false, ...proof });
+// 비밀번호 있는 커뮤니티는 규칙으로 직접 가입할 수 없다(2026-11-08, 서버가 횟수를 세며 확인 — 14-community-join-limit.mjs).
+// 맞는 비밀번호로도 직접 가입은 막히는지 본 뒤, 서버가 만드는 것처럼 규칙 없이 멤버 문서를 넣는다.
+const serverJoin = (uid, cid) => env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), `communities/${cid}/members/${uid}`),
+  { nickname: uid, joinedAt: '2026-11-08T00:00:00.000Z', isAdmin: false }));
+const pwJoin = async (name, uid, cid, proof) => {
+  await t(`차단: ${name} — 맞는 비밀번호라도 직접 가입은 안 됨`, assertFails(join(uid, cid, proof)));
+  await serverJoin(uid, cid);
+};
 
 await seed();
 
@@ -105,15 +113,15 @@ await t('허용: 코드로 커뮤니티 찾기(findCommunityByCode)', assertSucc
 await t('허용: 없는 코드 조회(없음 확인)', assertSucceeds(getDoc(doc(as('outsider'), 'inviteCodes/NONE00'))));
 await t('허용: 가입 전 내 멤버 문서 확인(joinCommunity)', assertSucceeds(getDoc(doc(as('outsider'), 'communities/priv/members/outsider'))));
 await t('허용: 내 커뮤니티 복구(loadMyCommunityIds)', assertSucceeds(getDoc(doc(as('member'), 'communities/priv/members/member'))));
-await t('허용: 코드+비밀번호로 비공개 가입', assertSucceeds(join('ok1', 'priv', { joinCode: 'PRV123', joinKey: '1234' })));
+await pwJoin('코드+비밀번호로 비공개 가입', 'ok1', 'priv', { joinCode: 'PRV123', joinKey: '1234' });
 await t('허용: 가입 뒤 확인용 값 지우기', assertSucceeds(updateDoc(doc(as('ok1'), 'communities/priv/members/ok1'), { joinCode: deleteField(), joinKey: deleteField() })));
 await t('허용: 가입 뒤 인원수 +1', assertSucceeds(updateDoc(doc(as('ok1'), 'communities/priv'), { memberCount: increment(1) })));
 await t('허용: 가입한 뒤 게시판 읽기', assertSucceeds(getDocs(collection(as('ok1'), 'communities/priv/board'))));
 await t('허용: 공개·비밀번호 없음은 그냥 가입', assertSucceeds(join('ok2', 'pubNoPw')));
-await t('허용: 공개·비밀번호 있음은 비밀번호로 가입', assertSucceeds(join('ok3', 'pubPw', { joinKey: '5555' })));
-await t('허용: 공개 커뮤니티를 코드로 찾아 가입', assertSucceeds(join('ok4', 'pubPw', { joinCode: 'PUB222', joinKey: '5555' })));
+await pwJoin('공개·비밀번호 있음', 'ok3', 'pubPw', { joinKey: '5555' });
+await pwJoin('공개 커뮤니티를 코드로 찾아', 'ok4', 'pubPw', { joinCode: 'PUB222', joinKey: '5555' });
 await t('허용: 코드만 있는 비공개는 코드로 가입', assertSucceeds(join('ok5', 'privNoPw', { joinCode: 'NOP333' })));
-await t('허용: 옛 커뮤니티도 코드+비밀번호로 가입', assertSucceeds(join('ok6', 'old', { joinCode: 'OLD444', joinKey: '7777' })));
+await pwJoin('옛 커뮤니티 코드+비밀번호', 'ok6', 'old', { joinCode: 'OLD444', joinKey: '7777' });
 await t('허용: 앱 관리자가 게시판·비밀번호 보기', assertSucceeds(Promise.all([
   getDocs(collection(as('appAdmin'), 'communities/priv/board')),
   getDoc(doc(as('appAdmin'), 'communities/priv/private/secret')),
@@ -124,7 +132,7 @@ await t('허용: 만들기 1) 커뮤니티 문서', assertSucceeds(setDoc(doc(as
 await t('허용: 만들기 2) 비밀번호·초대 코드', assertSucceeds(setDoc(doc(as('maker'), 'communities/newc/private/secret'), { inviteCode: 'NEW555', password: '2468' })));
 await t('허용: 만들기 3) 초대 코드 등록', assertSucceeds(setDoc(doc(as('maker'), 'inviteCodes/NEW555'), { communityId: 'newc' })));
 await t('허용: 만들기 4) 만든 사람 멤버 문서', assertSucceeds(setDoc(doc(as('maker'), 'communities/newc/members/maker'), { nickname: 'mk', joinedAt: 'now', isAdmin: true })));
-await t('허용: 만든 커뮤니티에 코드+비밀번호로 가입', assertSucceeds(join('ok7', 'newc', { joinCode: 'NEW555', joinKey: '2468' })));
+await pwJoin('만든 커뮤니티에 코드+비밀번호', 'ok7', 'newc', { joinCode: 'NEW555', joinKey: '2468' });
 
 // 관리자가 비밀번호 바꾸기 (setCommunityPassword)
 await t('허용: 관리자가 비밀번호 바꾸기', assertSucceeds(setDoc(doc(as('leader'), 'communities/priv/private/secret'), { password: '9999' }, { merge: true })));
@@ -132,16 +140,16 @@ await t('허용: 관리자가 비밀번호 표시 바꾸기', assertSucceeds(upd
 // 비밀번호 4~6자리 (2026-11-01) — 6자리로 바꾸기
 await t('허용: 관리자가 6자리 비밀번호로 바꾸기', assertSucceeds(setDoc(doc(as('leader'), 'communities/pubPw/private/secret'), { password: '135790' }, { merge: true })));
 await t('차단: 6자리 중 앞 4자리만', assertFails(join('j11', 'pubPw', { joinKey: '1357' })));
-await t('허용: 6자리 비밀번호로 가입', assertSucceeds(join('ok10', 'pubPw', { joinKey: '135790' })));
+await t('차단: 6자리 비밀번호로도 직접 가입(서버로만)', assertFails(join('ok10', 'pubPw', { joinKey: '135790' })));
 await t('차단: 바뀌기 전 비밀번호로 가입', assertFails(join('j9', 'priv', { joinCode: 'PRV123', joinKey: '1234' })));
-await t('허용: 바뀐 비밀번호로 가입', assertSucceeds(join('ok8', 'priv', { joinCode: 'PRV123', joinKey: '9999' })));
+await t('차단: 바뀐 비밀번호로도 직접 가입(서버로만)', assertFails(join('ok8', 'priv', { joinCode: 'PRV123', joinKey: '9999' })));
 
 // 옛 커뮤니티 옮기기 (migrateCommunitySecret) — 커뮤니티 관리자
 await t('허용: 옮기기 1) 비밀번호·코드 복사', assertSucceeds(setDoc(doc(as('leader'), 'communities/old/private/secret'), { inviteCode: 'OLD444', password: '7777' }, { merge: true })));
 await t('허용: 옮기기 2) 초대 코드 등록', assertSucceeds(setDoc(doc(as('leader'), 'inviteCodes/OLD444'), { communityId: 'old' })));
 await t('허용: 옮기기 3) 커뮤니티 문서에서 지우기', assertSucceeds(updateDoc(doc(as('leader'), 'communities/old'), { inviteCode: deleteField(), password: deleteField(), hasPassword: true })));
 await t('차단: 옮긴 뒤 비밀번호 없이 가입', assertFails(join('j10', 'old', { joinCode: 'OLD444' })));
-await t('허용: 옮긴 뒤 코드+비밀번호로 가입', assertSucceeds(join('ok9', 'old', { joinCode: 'OLD444', joinKey: '7777' })));
+await t('차단: 옮긴 뒤 코드+비밀번호로 직접 가입(서버로만)', assertFails(join('ok9', 'old', { joinCode: 'OLD444', joinKey: '7777' })));
 
 // 앱 관리자 (관리자 화면 옮기기·삭제)
 await seed();

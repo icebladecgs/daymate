@@ -341,8 +341,23 @@ export async function loadPublicCommunities() {
   return snap.docs.map(d => ({ id: d.id, ...publicCommunityInfo(d.data()) }));
 }
 
-// 공개 목록·초대 코드로 가입. 코드·비밀번호 확인은 보안 규칙이 한다(틀리면 permission-denied).
+// 공개 목록·초대 코드로 가입. 비밀번호가 있으면 서버가 확인하고 틀린 횟수를 센다(2026-11-08 — 규칙으로는 직접 못 함).
+// 비밀번호가 없으면(공개·코드만) 예전처럼 보안 규칙이 코드를 확인한다.
+// 실패: Error.message = 'wrong password'(e.left 남은 기회) | 'locked'(e.retryAt) | 'join denied'
 export async function joinPublicCommunity(uid, communityId, nickname, password, joinCode = null) {
+  if (password) {
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const r = await fetch('/api/chat?action=community-join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ communityId, nickname, password, joinCode }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) return;
+    const err = new Error(body.error === 'wrong-password' ? 'wrong password' : body.error === 'locked' ? 'locked' : 'join denied');
+    err.left = body.left; err.retryAt = body.retryAt;
+    throw err;
+  }
   try {
     await joinCommunity(uid, communityId, nickname, { joinCode, joinKey: password || null });
   } catch (e) {

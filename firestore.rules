@@ -35,8 +35,10 @@ service cloud.firestore {
       return exists(p) ? get(p).data
         : get(/databases/$(database)/documents/communities/$(communityId)).data;
     }
-    // 가입 확인: 공개 커뮤니티가 아니면 초대 코드(joinCode), 비밀번호가 있으면 비밀번호(joinKey)가 맞아야 함.
-    // 예전엔 비밀번호를 화면에서만 확인해서, 로그인한 누구나 비밀번호를 읽고 바로 가입할 수 있었다.
+    // 가입 확인: 공개 커뮤니티가 아니면 초대 코드(joinCode)가 맞아야 함.
+    // 비밀번호가 있는 커뮤니티는 여기서 가입할 수 없다 — 서버(api/chat.js?action=community-join)가
+    // 비밀번호를 확인하고 틀린 횟수를 세어 막는다(2026-11-08). 규칙은 횟수를 셀 수 없어 몇 번이든 대입할 수 있었다.
+    // 틀린 횟수 기록(joinAttempts)은 match가 없어 앱에서 읽지도 쓰지도 못한다(서버만).
     function canJoin(communityId) {
       let comm = get(/databases/$(database)/documents/communities/$(communityId)).data;
       let s = communitySecret(communityId);
@@ -44,8 +46,7 @@ service cloud.firestore {
       let pw = s.get('password', null);
       let codeOk = comm.get('isPublic', false) == true
         || (code != null && request.resource.data.get('joinCode', null) == code);
-      let pwOk = pw == null || pw == ''
-        || string(request.resource.data.get('joinKey', '')) == string(pw);
+      let pwOk = pw == null || pw == '';
       return codeOk && pwOk;
     }
 

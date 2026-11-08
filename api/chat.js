@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { normalizeScanItem } from '../src/utils/holdingsScan.js';
+import { joinCommunityOnServer } from '../src/utils/communityJoin.js';
 
 if (!getApps().length) {
   initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
@@ -125,10 +127,23 @@ export default async function handler(req, res) {
   const authHeader = req.headers.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   if (!idToken) return res.status(401).json({ error: '로그인 후 이용할 수 있어요' });
+  let uid;
   try {
-    await getAuth().verifyIdToken(idToken);
+    uid = (await getAuth().verifyIdToken(idToken)).uid;
   } catch {
     return res.status(401).json({ error: '로그인이 만료됐어요. 다시 로그인해 주세요' });
+  }
+
+  // ?action=community-join → 비밀번호 있는 커뮤니티 가입 (틀린 횟수 제한, 2026-11-08)
+  // AI와 상관없지만 Vercel Hobby 서버 함수 12개 제한 때문에 로그인 확인이 있는 이 파일에 둔다
+  if (req.query.action === 'community-join') {
+    try {
+      const r = await joinCommunityOnServer(getFirestore(), uid, req.body || {});
+      return res.status(r.status).json(r.body);
+    } catch (e) {
+      console.error('[community-join]', e);
+      return res.status(500).json({ error: 'server' });
+    }
   }
 
   // ?action=life-coach → 인생 코칭 액션플랜 생성

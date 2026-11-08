@@ -632,6 +632,17 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
     setSubmitting(false);
   };
 
+  // 가입 실패 안내 — 비밀번호를 여러 번 틀리면 서버가 잠시 막는다 (2026-11-08)
+  const joinErrorText = (e) => {
+    if (e.message === 'locked') {
+      const min = Math.max(1, Math.ceil(((e.retryAt || 0) - Date.now()) / 60000));
+      const wait = min >= 60 * 20 ? '내일' : min >= 60 ? `${Math.round(min / 60)}시간 뒤에` : `${min}분 뒤에`;
+      return `비밀번호를 여러 번 틀렸어요. ${wait} 다시 해 보세요 ⏳`;
+    }
+    if (e.message === 'wrong password') return e.left && e.left <= 2 ? `비밀번호가 틀렸어요 ❌ (${e.left}번 더 틀리면 잠시 막혀요)` : '비밀번호가 틀렸어요 ❌';
+    return '가입 실패 ❌';
+  };
+
   const handleJoin = async () => {
     if (!foundCommunity || !nicknameInput.trim()) return;
     if (foundCommunity.hasPassword && !codePassword.trim()) { setToast('비밀번호를 입력해주세요 🔑'); return; }
@@ -641,7 +652,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       addCommunityId(foundCommunity.communityId);
       setMode(null); setShowHome(true);
     } catch (e) {
-      setToast(e.message === 'wrong password' ? '비밀번호가 틀렸어요 ❌' : '가입 실패 ❌');
+      setToast(joinErrorText(e));
     }
     setSubmitting(false);
   };
@@ -655,7 +666,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       addCommunityId(selectedPublic.id);
       setMode(null); setShowHome(true);
     } catch (e) {
-      setToast(e.message === 'wrong password' ? '비밀번호가 틀렸어요 ❌' : '가입 실패 ❌');
+      setToast(joinErrorText(e));
     }
     setSubmitting(false);
   };
