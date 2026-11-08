@@ -30,6 +30,8 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
+import { normalizeGear, rollDrop, wanderReward, RARITIES, gearBonus, makeWanderer } from "./utils/gear.js";
+import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
 import UnsyncedBar from "./components/UnsyncedBar.jsx";
@@ -471,6 +473,7 @@ export default function App() {
       const wasDone = !!prevTask?.done;
       if (task.done === wasDone) return task;
       if (task.done) {
+        maybeDropGear(`t:${ds}:${task.id}`, 'task');
         const statId = resolveTaskStat(task);
         if (!statId) maybeAskStat(ds, task); // 사전에도 내 단어에도 없는 할일 — 어느 능력치인지 한 번 묻는다
         if (!statId || statId === 'NONE') return task;
@@ -529,10 +532,38 @@ export default function App() {
   const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
   const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
   const [battleNpcId, setBattleNpcId] = useState(null);
+  // 🎒 배틀 장비·🧭 떠돌이 도전자 (2026-11-08, utils/gear.js) — 계정 설정 battleGear
+  const [battleGear, setBattleGear] = useState(() => normalizeGear(store.get("dm_battle_gear", null)));
+  const battleGearRef = useRef(battleGear);
+  useEffect(() => { battleGearRef.current = battleGear; }, [battleGear]);
+  const updateGear = (next) => {
+    const v = typeof next === "function" ? next(battleGearRef.current) : next; // 되돌리기는 최신 값 기준으로
+    battleGearRef.current = v; setBattleGear(v);
+  };
+  // 할일·습관을 끝냈을 때 가끔 장비가 떨어진다 (같은 할일·습관·날짜는 한 번만 굴림 — 체크를 풀었다 다시 해도 같음)
+  const maybeDropGear = (key, source) => {
+    const r = rollDrop(battleGearRef.current, key, source, toDateStr());
+    if (r.gear !== battleGearRef.current) updateGear(r.gear);
+    if (r.item) setTimeout(() => setToast(`🎁 장비를 주웠어요! [${RARITIES[r.item.rarity].label}] ${r.item.name}`), 1300);
+    else if (r.full) setTimeout(() => setToast('🎒 가방이 꽉 차서 장비를 못 주웠어요 — 배틀 화면에서 정리해 주세요'), 1300);
+  };
   const [battleNickname, setBattleNickname] = useState(() => store.get("dm_battle_nickname", ""));
   const onBattleEnd = (npcDef, won) => {
+    // 떠돌이 도전자: 이기면 하루 한 번 희귀 이상 장비. 날마다 다른 상대라 상대별 전적·격파 목록에는 넣지 않는다
+    // 받은 장비는 돌려줘서 전투 화면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
+    let reward = null;
+    if (npcDef.isWanderer && won) {
+      const r = wanderReward(battleGearRef.current, toDateStr());
+      if (r.gear !== battleGearRef.current) updateGear(r.gear);
+      reward = { item: r.item, full: !!r.full };
+    }
     setBattleRecord(prev => {
       const next = { ...prev };
+      if (npcDef.isWanderer) {
+        if (won) { next.wins = (prev.wins || 0) + 1; next.streak = (prev.streak || 0) + 1; next.bestStreak = Math.max(prev.bestStreak || 0, next.streak); next.fame = (prev.fame || 0) + 10 * npcDef.level; }
+        else { next.losses = (prev.losses || 0) + 1; next.streak = 0; }
+        return next;
+      }
       // 상대별 전적 — 이 필드가 생기기 전 전적은 상대별로 남아있지 않아 지금부터 새로 쌓는다
       const vsPrev = prev.vsRecord?.[npcDef.id] || { wins: 0, losses: 0 };
       next.vsRecord = { ...(prev.vsRecord || {}), [npcDef.id]: { ...vsPrev, [won ? 'wins' : 'losses']: (vsPrev[won ? 'wins' : 'losses'] || 0) + 1 } };
@@ -548,6 +579,7 @@ export default function App() {
       }
       return next;
     });
+    return reward;
   };
   const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
 
@@ -1506,6 +1538,8 @@ export default function App() {
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
             if (s.battleRecord) { setBattleRecord({ ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); store.set("dm_battle_record", { ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); }
+            if (s.battleGear) { const g = normalizeGear(s.battleGear); updateGear(g); store.set("dm_battle_gear", g); }
+            else if (normalizeGear(store.get("dm_battle_gear", null)).items.length) saveSettings(firebaseUser.uid, { battleGear: normalizeGear(store.get("dm_battle_gear", null)) }).catch(() => {});
             if (s.battleNickname) { setBattleNickname(s.battleNickname); store.set("dm_battle_nickname", s.battleNickname); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
@@ -1761,6 +1795,11 @@ export default function App() {
     store.set("dm_battle_record", battleRecord);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleRecord }).catch(() => {});
   }, [battleRecord, authUser]);
+  useEffect(() => {
+    store.set("dm_battle_gear", battleGear);
+    // saveSettings는 merge 저장 — 목록(items·rolled)은 배열이라 통째로 바뀌고, 끼운 칸(equipped)은 세 칸을 늘 다 보내서(빈 칸 null) 지운 칸이 남지 않는다
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleGear }).catch(() => {});
+  }, [battleGear, authUser]);
   useEffect(() => {
     store.set("dm_battle_nickname", battleNickname);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleNickname }).catch(() => {});
@@ -2126,6 +2165,7 @@ export default function App() {
       const allHabitsDone = habits.length > 0 && habits.every(h => habitChecks[h.id]);
       if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
       else setToast(`✅ 습관 체크 · +5 XP`);
+      maybeDropGear(`h:${todayStr}:${habitId}`, 'habit');
       const habit = habits.find(h => h.id === habitId);
       const statId = habit ? (habit.statTag || classifyTodoStat(habit.name)) : null; // 직접 고른 능력치 우선
       if (statId && statId !== 'NONE') {
@@ -2568,6 +2608,9 @@ export default function App() {
     if (screen === "stats") {
       return <Stats plans={plans} habits={habits} authUser={authUser} user={user} onBack={() => history.back()} />;
     }
+    // 🧭 오늘의 떠돌이 도전자 — 날짜·계정으로 정해지고, 강함은 장비를 뺀 내 힘에 맞춘다(장비를 끼면 쉬워지게)
+    const wanderer = (screen === "battle-arena" || screen === "battle")
+      ? makeWanderer(toDateStr(), authUser?.uid || "local", createPlayerFighter(battleTotalScore, statXp)) : null;
     if (screen === "battle-arena") {
       return (
         <BattleArena
@@ -2578,6 +2621,7 @@ export default function App() {
           onSetBattleNickname={setBattleNickname}
           onBack={() => changeScreen("today")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
+          gear={battleGear} setGear={updateGear} wanderer={wanderer}
         />
       );
     }
@@ -2590,6 +2634,9 @@ export default function App() {
           battleNickname={battleNickname}
           onExit={() => changeScreen("battle-arena")}
           onBattleEnd={onBattleEnd}
+          gear={gearBonus(battleGear)}
+          npcOverride={battleNpcId === "wander" ? wanderer : null}
+          bag={battleGear.items}
         />
       );
     }

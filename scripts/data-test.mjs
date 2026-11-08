@@ -705,6 +705,48 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('버킷: 날짜 모르는 해낸 것도 해낸 것으로', BL.done.map((x) => x.id).join() === 'bk_2' && BL.active.length === 2);
 }
 
+// ── 배틀 장비·떠돌이 도전자 (2026-11-08, utils/gear.js) ──
+{
+  const G = await load('/src/utils/gear.js');
+  const E = await load('/src/data/battle/engine.js');
+  const seq = (...xs) => { let i = 0; return () => xs[i++ % xs.length]; };
+  t('장비: 등급 뽑기(누적 확률)', G.rollRarity(0) === 'common' && G.rollRarity(0.59) === 'common' && G.rollRarity(0.6) === 'rare' && G.rollRarity(0.99) === 'legend');
+  t('장비: 떠돌이 보상은 희귀 이상', G.rollRarity(0, G.WANDER_RARITY) === 'rare' && G.rollRarity(0.95, G.WANDER_RARITY) === 'legend');
+  const w = G.makeItem('epic', seq(0.5), 'weapon');
+  t('장비: 영웅 무기 = 공격력 약 +25.6%', w.slot === 'weapon' && Math.abs(w.atk - 0.256) < 0.001, JSON.stringify(w));
+  const lg = G.makeItem('legend', seq(0.5), 'armor');
+  t('장비: 전설은 효과 하나 더', lg.hp > 0 && G.itemEffects(lg).length === 2);
+  // 줍기: 같은 키는 한 번만, 하루 3개, 가방 40개, 끄기
+  let g = G.normalizeGear(null);
+  let r = G.rollDrop(g, 't:2026-11-08:1', 'task', '2026-11-08', seq(0.05, 0.1, 0.5));
+  t('장비: 확률 안이면 줍는다(할일 10%)', !!r.item && r.gear.items.length === 1 && r.item.at === '2026-11-08');
+  const again = G.rollDrop(r.gear, 't:2026-11-08:1', 'task', '2026-11-08', seq(0.0));
+  t('장비: 같은 할일은 다시 굴리지 않음(체크 풀었다 다시)', !again.item && again.gear.items.length === 1);
+  t('장비: 확률 밖이면 없음', !G.rollDrop(G.normalizeGear(null), 'h:x', 'habit', '2026-11-08', seq(0.06)).item);
+  g = { items: [1, 2, 3].map((i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `c${i}`, at: '2026-11-08' })), equipped: {} };
+  t('장비: 하루 3개까지', !G.rollDrop(g, 't:new', 'task', '2026-11-08', seq(0)).item);
+  g = { items: Array.from({ length: 40 }, (_, i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `b${i}`, at: '2026-11-01' })) };
+  t('장비: 가방이 차면 못 줍고 알림', G.rollDrop(g, 't:new', 'task', '2026-11-08', seq(0)).full === true);
+  t('장비: 끄면 안 굴림', !G.rollDrop({ dropsOff: true }, 't:z', 'task', '2026-11-08', seq(0)).item);
+  // 끼운 효과 → 엔진
+  const a = G.makeItem('rare', seq(0.5), 'armor');
+  const gear = G.normalizeGear({ items: [w, a], equipped: { weapon: w.id, armor: a.id, charm: 'nope' } });
+  t('장비: 없는 장비를 끼운 칸은 비움', gear.equipped.charm === null);
+  const b = G.gearBonus(gear);
+  const p0 = E.createPlayerFighter(1000, {}), p1 = E.createPlayerFighter(1000, {}, b);
+  t('장비: 엔진 — 에너지·공격력 반영, 장비 없으면 예전과 같음', p0.energyMax === 1000 && !p0.trait && p0.gearDamageMult === 1 && p1.energyMax === Math.round(1000 * (1 + b.hp)) && Math.abs(p1.gearDamageMult - (1 + w.atk)) < 1e-9);
+  // 떠돌이 도전자: 같은 날 같은 상대, 다른 날 다른 상대, 보상은 하루 한 번
+  const me = E.createPlayerFighter(2000, { STR: 900, INT: 400 });
+  const d1 = G.makeWanderer('2026-11-08', 'u1', me), d1b = G.makeWanderer('2026-11-08', 'u1', me), d2 = G.makeWanderer('2026-11-09', 'u1', me);
+  t('떠돌이: 같은 날은 같은 상대', JSON.stringify(d1) === JSON.stringify(d1b));
+  t('떠돌이: 날이 바뀌면 달라짐', JSON.stringify(d1) !== JSON.stringify(d2));
+  t('떠돌이: 에너지는 내 힘의 80~105%', d1.energyMax >= 1600 && d1.energyMax <= 2100 && d1.isWanderer && d1.trait?.label);
+  const wr = G.wanderReward(G.normalizeGear(null), '2026-11-08', seq(0.5));
+  t('떠돌이: 이기면 희귀 이상 1개', !!wr.item && wr.item.rarity !== 'common' && wr.gear.wander.won);
+  t('떠돌이: 같은 날 두 번째 승리는 보상 없음', !G.wanderReward(wr.gear, '2026-11-08', seq(0.5)).item);
+  t('떠돌이: 다음 날은 다시 보상', !!G.wanderReward(wr.gear, '2026-11-09', seq(0.5)).item);
+}
+
 // ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──
 {
   const B = await load('/src/utils/bossRaid.js');

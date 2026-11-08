@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import S from "../styles.js";
 import BattleStage from "../components/battle/BattleStage.jsx";
 import { tierOfLevel } from "../components/battle/armor.js";
+import { RARITIES, itemEffects } from "../utils/gear.js";
 import { store } from "../utils/storage.js";
 import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
 import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
@@ -132,14 +133,16 @@ function tagRound(prevLog, nextLog, round) {
   return [...prevLog, ...nextLog.slice(prevLog.length).map(e => ({ ...e, round }))];
 }
 
-export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd }) {
+// gear: 끼운 장비 효과(utils/gear.js gearBonus), npcOverride: 떠돌이 도전자처럼 NPC 목록에 없는 상대 (2026-11-08)
+export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd, gear = null, npcOverride = null, bag = [] }) {
   const playerLabel = battleNickname?.trim() || '나';
-  const npcDef = getNpcById(npcId);
+  const npcDef = npcOverride || getNpcById(npcId);
+  const npcAvatar = npcOverride?.emoji || getNpcAvatar(npcId);
   // 기본공격 이름: 나는 가장 높은 능력치, 상대는 전용 기술 (표시용)
   const makeState = () => {
-    const p = createPlayerFighter(totalScore, statXp);
+    const p = createPlayerFighter(totalScore, statXp, gear);
     const n = createNpcFighter(npcDef || { id: 'unknown', level: 1, name: '???', energyMax: 100, stats: {}, trait: null });
-    return createBattleState({ ...p, basicMove: PLAYER_BASIC_MOVES[p.primaryStat] || '기본공격' }, { ...n, basicMove: getNpcBasicMove(n.id) });
+    return createBattleState({ ...p, basicMove: PLAYER_BASIC_MOVES[p.primaryStat] || '기본공격' }, { ...n, basicMove: npcDef?.basicMove || getNpcBasicMove(n.id) });
   };
   const [state, setState] = useState(makeState);
   const [resolving, setResolving] = useState(false);
@@ -166,6 +169,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     if (!npcDef) return;
     if (state.status !== 'ongoing') onBattleEnd(npcDef, state.status === 'win');
   }, [state.status]); // eslint-disable-line
+  // 떠돌이 도전자 보상 — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
+  const [startBagIds, setStartBagIds] = useState(() => new Set((bag || []).map(x => x.id)));
+  const reward = npcDef?.isWanderer && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
 
   if (!npcDef) {
     return (
@@ -251,6 +257,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   };
 
   const retryBattle = () => {
+    setStartBagIds(new Set((bag || []).map(x => x.id)));
     setResolving(false);
     setFlash(null);
     setPops({ player: [], npc: [] });
@@ -281,7 +288,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
       {!skipScene && (
         <BattleStage events={stageEvents} player={player} npc={npc} playerLabel={playerLabel} npcLabel={npc.name}
-          npcEmoji={getNpcAvatar(npcId)} playerTier={tierOfLevel(player.level)} onBusyChange={onStageBusy} />
+          npcEmoji={npcAvatar} playerTier={tierOfLevel(player.level)} onBusyChange={onStageBusy} />
       )}
       {!skipScene && status === 'ongoing' && (
         <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#A78BFA', margin: '-4px 0 10px' }}>⚡ {playerLabel} 선공 확률 {playerFirstChance}%</div>
@@ -297,7 +304,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           <FighterPanel side="player" label={playerLabel} fighter={player} color="#4B6FFF" avatar={PLAYER_AVATAR}
             pops={pops.player} onPopEnd={removePop} shakeKey={shake.player} callout={callouts.player} />
           <div style={{ alignSelf: 'center', fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', flexShrink: 0 }}>VS</div>
-          <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={getNpcAvatar(npcId)}
+          <FighterPanel side="npc" label={npc.name} fighter={npc} color="#F87171" avatar={npcAvatar}
             pops={pops.npc} onPopEnd={removePop} shakeKey={shake.npc} callout={callouts.npc} />
         </div>
         <div key={narration?.key || 'none'} className={narration ? 'dm-battle-narration' : ''}
@@ -350,6 +357,13 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           </div>
           {status === 'win' && (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 6 }}>명성 +{calcBattleReward(npc, true).fame}</div>
+          )}
+          {reward && (
+            <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,159,10,.12)' }}>
+              <div style={{ fontSize: 13, color: 'var(--dm-sub)' }}>🎁 떠돌이 도전자 보상</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: RARITIES[reward.rarity].color, marginTop: 2 }}>[{RARITIES[reward.rarity].label}] {reward.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginTop: 2 }}>{itemEffects(reward).join(' · ')} — 배틀 화면 가방에서 끼울 수 있어요</div>
+            </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={onExit} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>나가기</button>

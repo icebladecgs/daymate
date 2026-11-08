@@ -3,16 +3,21 @@ import S from "../styles.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
+import GearPanel, { WandererCard } from "../components/battle/GearPanel.jsx";
+import { gearBonus } from "../utils/gear.js";
+import { toDateStr } from "../utils/date.js";
 
 const NICKNAME_MAX = 10;
 
-export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle }) {
+export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer }) {
   const [showAll, setShowAll] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
   const levelInfo = calcLevel(totalScore || 0);
   const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
-  const energyMax = Math.max(150, Math.round(totalScore || 0));
+  // 장비 갑옷의 에너지 +%까지 (배틀 엔진 createPlayerFighter와 같은 계산)
+  const energyMax = Math.round(Math.max(150, Math.round(totalScore || 0)) * (1 + (gear ? gearBonus(gear).hp : 0)));
+  const wanderDone = !!gear?.wander?.won && gear.wander.date === toDateStr();
   // 내 레벨보다 너무 높은 상대는 기본적으로 접어두고, 원하면 "더 보기"로 펼쳐서 도전 가능
   const visibleNpcs = showAll ? NPCS : NPCS.filter(n => n.level <= levelInfo.level + 2);
   const hiddenCount = NPCS.length - visibleNpcs.length;
@@ -99,6 +104,10 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
           </div>
         </div>
       </div>
+
+      {/* 🧭 오늘의 떠돌이 도전자 · 🎒 내 장비 (2026-11-08) */}
+      <WandererCard wanderer={wanderer} done={wanderDone} onStart={() => onStartBattle('wander')} />
+      {setGear && <GearPanel gear={gear} setGear={setGear} />}
 
       {/* NPC 목록 */}
       <div style={S.sectionTitle}>

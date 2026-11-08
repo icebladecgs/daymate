@@ -61,13 +61,19 @@ function emptyCooldowns() {
 
 // ── 파이터 생성 ──
 // 실제 XP/스탯을 "읽기만" 해서 전투용 스냅샷을 만든다. 원본 상태는 절대 변경하지 않는다.
-export function createPlayerFighter(totalScore, statXp) {
+// gear: 끼운 장비 효과 합계 (utils/gear.js gearBonus — { atk, hp, crit, dodge, def }, 2026-11-08). 없으면 예전과 같다.
+export function createPlayerFighter(totalScore, statXp, gear = null) {
   const stats = Object.fromEntries(GROWTH_STATS.map(s => [s.id, calcStatScore(statXp?.[s.id] || 0)]));
-  const energyMax = Math.max(150, Math.round(totalScore || 0));
+  const g = gear || {};
+  const energyMax = Math.round(Math.max(150, Math.round(totalScore || 0)) * (1 + (g.hp || 0)));
+  const hasTrait = g.crit || g.dodge || g.def;
   return {
     id: 'player', name: '나', isNpc: false, level: calcLevel(totalScore || 0).level,
     energyMax, energy: energyMax, stats, primaryStat: getPrimaryStat(stats),
-    cooldowns: emptyCooldowns(), shield: null, critGuaranteed: false, trait: null, debuffMult: 1,
+    cooldowns: emptyCooldowns(), shield: null, critGuaranteed: false, debuffMult: 1,
+    // 장비의 크리·회피·방어는 NPC 개성과 같은 칸(trait)으로, 공격력은 gearDamageMult로
+    trait: hasTrait ? { id: 'gear', critFlatBonus: g.crit || 0, dodgeFlatBonus: g.dodge || 0, defenseFlatBonus: g.def || 0 } : null,
+    gearDamageMult: 1 + (g.atk || 0),
   };
 }
 
@@ -129,6 +135,7 @@ function resolveAttack(attacker, defender, { useStat, mult = 1, ignoreDefense = 
     dmg *= attacker.trait.basicAttackDamageMult;
   }
   if (attacker.debuffMult) dmg *= attacker.debuffMult;
+  if (attacker.gearDamageMult) dmg *= attacker.gearDamageMult; // 장비 무기 (플레이어만)
 
   dmg *= (1 - (ignoreDefense ? 0 : defensePct(defender)));
 
