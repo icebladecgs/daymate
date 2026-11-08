@@ -198,6 +198,7 @@ export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs,
             <button key={ev.key} onClick={ev.kind === "dday" ? () => setEditing(ev.id) : ev.kind === "sub" ? onOpenSubs : onOpen} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", color: "var(--dm-text)", cursor: "pointer" }}>
               <span style={{ width: 62, flexShrink: 0, fontSize: 15, fontWeight: 900, color: ev.dday <= 7 ? "#EF4444" : RAIN_COLOR }}>{ddayLabel(ev.dday)}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</span>
+              {ev.amount && <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{ev.amount}</span>}
               <span style={{ flexShrink: 0, fontSize: 14, color: "var(--dm-muted)" }}>{ddayDateLabel(ev.date, dateStr)}</span>
             </button>
           )

@@ -12,7 +12,7 @@ import { useBackClose } from "../utils/useBackClose.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { SectionIcon } from "../components/TodayLook.jsx";
 import {
-  SUB_CATS, subCatLabel, allSubCats, isCustomCat, customCatId, customCatIds, normalizeSubs, newSubId, nextBillDate, isActive, subsSummary, toKrw, monthlyOf,
+  SUB_CATS, subCatLabel, allSubCats, isCustomCat, customCatId, customCatIds, normalizeSubs, newSubId, nextBillDate, isActive, inTrial, subsSummary, toKrw, monthlyOf,
   fmtMoney, fmtKrw, billDayLabel, payOptions, SUBS_TODAY_KEY,
 } from "../utils/subscriptions.js";
 
@@ -20,6 +20,11 @@ const ACCENT = "var(--dm-accent, #5B7CFA)";
 const MONTH_COLOR = "#FF9500"; // 결제 월 — 결제 일(파랑)과 색으로 구분
 
 const ddayText = (n) => (n === 0 ? "오늘" : n === 1 ? "내일" : `D-${n}`);
+// 종료·체험 끝 날짜 — 올해가 아니면 연도도 (2026-11-08 사용자 데이터 점검: "종료 11/7"이 이미 끝난 것처럼 보였다)
+const endLabel = (ds) => {
+  const [y, m, d] = ds.split("-").map(Number);
+  return y === Number(toDateStr().slice(0, 4)) ? `${m}/${d}` : `${y}.${m}.${d}`;
+};
 
 // My 탭 칸 — 월 합계 + 다음 결제 한 줄, 누르면 구독 화면
 export function SubsCard({ subs, onOpen, style }) {
@@ -102,6 +107,7 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
         <div style={{ fontSize: 14, fontWeight: 800, color: "var(--dm-sub)" }}>한 달 구독료 (월 환산)</div>
         <div style={{ fontSize: 34, fontWeight: 900, color: "var(--dm-text)", fontVariantNumeric: "tabular-nums", margin: "2px 0 4px" }}>{fmtKrw(sum.monthly)}</div>
         <div style={{ fontSize: 14, color: "var(--dm-sub)" }}>구독 {sum.count}개 · 1년 {fmtKrw(sum.yearly)}</div>
+        {sum.trialCount > 0 && <div style={{ fontSize: 13, color: "#34C759", fontWeight: 700, marginTop: 4 }}>무료 체험 중 {sum.trialCount}개는 빼고 계산 · 체험이 끝나면 한 달 +{fmtKrw(sum.trialMonthly)}</div>}
         {sum.missingFx > 0 && <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 4 }}>환율을 못 받아 달러 구독 {sum.missingFx}개는 빠졌어요</div>}
         {rate && list.some((s) => s.cur === "USD") && <div style={{ fontSize: 13, color: "var(--dm-muted)", marginTop: 4 }}>달러는 오늘 환율 {Math.round(rate).toLocaleString("ko-KR")}원으로 계산</div>}
         {sum.byPay.length > 0 && (
@@ -145,9 +151,10 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 17, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
                 <span style={{ display: "block", fontSize: 14, color: "var(--dm-sub)", marginTop: 2 }}>
-                  {active ? billDayLabel(s) : (s.trial ? "무료 체험 끝남" : "이용 끝남")}{s.pay ? ` · ${s.pay}` : ""}
-                  {active && ds && <b style={{ color: daysUntil(ds, today) <= 3 ? "#FF3B30" : ACCENT, fontWeight: 800 }}> · {ddayText(daysUntil(ds, today))}</b>}
-                  {active && s.endDate && <span> · {s.trial ? "체험" : "종료"} {Number(s.endDate.slice(5, 7))}/{Number(s.endDate.slice(8, 10))}</span>}
+                  {inTrial(s, today) && <b style={{ color: "#34C759", fontWeight: 800 }}>무료 체험 {endLabel(s.endDate)}까지 · </b>}
+                  {active ? billDayLabel(s) : "이용 끝남"}{s.pay ? ` · ${s.pay}` : ""}
+                  {active && ds && <b style={{ color: daysUntil(ds, today) <= 3 ? "#FF3B30" : ACCENT, fontWeight: 800, whiteSpace: "nowrap" }}> · {ddayText(daysUntil(ds, today))}</b>}
+                  {active && s.endDate && !s.trial && <span style={{ whiteSpace: "nowrap" }}> · 종료 {endLabel(s.endDate)}</span>}
                 </span>
               </span>
               <span style={{ flexShrink: 0, textAlign: "right" }}>

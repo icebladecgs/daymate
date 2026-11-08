@@ -645,12 +645,18 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('구독: 매년은 그 달에만', billDateIn(subs[2], 2026, 11) === null && billDateIn(subs[2], 2027, 3) === '2027-03-31');
   t('구독: 오늘이 결제일이면 오늘', nextBillDate(subs[0], '2026-11-15') === '2026-11-15');
   t('구독: 지났으면 다음 달', nextBillDate(subs[0], '2026-11-16') === '2026-12-15');
-  t('구독: 종료일 뒤로는 결제 없음', nextBillDate(subs[3], '2026-11-08') === null);
+  // 무료 체험(2026-11-08 테스트 중 발견): 체험 중엔 결제 없음, 끝나면 다음 결제일부터 결제
+  t('구독: 무료 체험 중에는 결제 없음', billDateIn(subs[3], 2026, 11) === null);
+  t('구독: 무료 체험 끝나면 다음 결제일부터', nextBillDate(subs[3], '2026-11-08') === '2026-12-01');
+  const ended = normalizeSubs([{ id: 'z', name: '끝', amount: 5000, cycle: 'month', day: 1, endDate: '2026-11-10' }])[0];
+  t('구독: 종료일 뒤로는 결제 없음', nextBillDate(ended, '2026-11-08') === null && billDateIn(ended, 2026, 11) === '2026-11-01');
   const sum = subsSummary(subs, '2026-11-08', 1400);
-  t('구독: 월 합계(연 결제는 12로, 달러는 환율, 체험 포함)', Math.round(sum.monthly) === 17000 + 28000 + 10000 + 9900, String(sum.monthly));
+  t('구독: 월 합계(연 결제는 12로, 달러는 환율, 체험 중은 뺌)', Math.round(sum.monthly) === 17000 + 28000 + 10000, String(sum.monthly));
+  t('구독: 체험 중 개수·끝나면 늘 돈', sum.trialCount === 1 && sum.trialMonthly === 9900);
+  t('구독: 체험 끝나면 합계에 들어감', Math.round(subsSummary(subs, '2026-11-11', 1400).monthly) === 17000 + 28000 + 10000 + 9900);
   t('구독: 결제수단별 합계', Math.round(sum.byPay.find(([p]) => p === '신한카드')[1]) === 45000);
   t('구독: 환율 없으면 달러는 빼고 알림', subsSummary(subs, '2026-11-08', null).missingFx === 1);
-  t('구독: 종료일 지나면 합계에서 빠짐', subsSummary(subs, '2026-11-11', 1400).count === 3);
+  t('구독: 종료일 지나면 합계에서 빠짐', subsSummary([...subs, ended], '2026-11-11', 1400).count === 4);
   t('구독: 그날 결제 목록', billsOnDate(subs, '2026-11-15').map((b) => b.sub.id).join() === 'a');
   const up = upcomingSubEvents(subs, '2026-11-08', 3);
   t('구독: 다가오는 날에 체험 끝 3일 전', up.some((e) => e.title.includes('무료 체험 끝') && e.dday === 2));

@@ -46,7 +46,12 @@ const dayIn = (y, m, day) => (day === 0 ? lastDay(y, m) : Math.min(day, lastDay(
 export function billDateIn(sub, y, m) {
   if (sub.cycle === "year" && sub.month !== m) return null;
   const ds = `${y}-${pad(m)}-${pad(dayIn(y, m, sub.day))}`;
-  if (sub.endDate && ds > sub.endDate) return null;
+  if (sub.endDate) {
+    // 무료 체험: 끝나는 날까지는 결제 없음, 그 뒤 결제일부터 결제 (해지 전까지 계속)
+    if (sub.trial) { if (ds <= sub.endDate) return null; }
+    // 종료일: 그 뒤로 결제 없음
+    else if (ds > sub.endDate) return null;
+  }
   return ds;
 }
 
@@ -56,25 +61,29 @@ export function nextBillDate(sub, todayStr) {
   for (let i = 0; i < 25; i++) {
     const ds = billDateIn(sub, y, m);
     if (ds && ds >= todayStr) return ds;
-    if (sub.endDate && `${y}-${pad(m)}-01` > sub.endDate) return null;
+    if (sub.endDate && !sub.trial && `${y}-${pad(m)}-01` > sub.endDate) return null;
     m += 1; if (m > 12) { m = 1; y += 1; }
   }
   return null;
 }
 
-export const isActive = (sub, todayStr) => !sub.endDate || sub.endDate >= todayStr;
+// 이용 중(종료일 지나면 끝) — 무료 체험은 체험이 끝나도 해지 전까지 이용 중
+export const isActive = (sub, todayStr) => !sub.endDate || sub.trial || sub.endDate >= todayStr;
+export const inTrial = (sub, todayStr) => !!(sub.trial && sub.endDate && sub.endDate >= todayStr);
 
 // 원화로 — 달러는 환율이 있을 때만(없으면 null)
 export const toKrw = (amount, cur, usdKrw) => (cur === "USD" ? (usdKrw ? amount * usdKrw : null) : amount);
 export const monthlyOf = (sub) => (sub.cycle === "year" ? sub.amount / 12 : sub.amount);
 
 // 합계: 월 환산(원), 연 환산, 결제수단별·분류별(월 환산), 환율이 없어 못 더한 달러 구독 수
+// 무료 체험 중인 구독은 지금 돈이 안 나가므로 합계에서 빼고 trialCount·trialMonthly(끝나면 늘어날 돈)로 따로 준다
 export function subsSummary(subs, todayStr, usdKrw) {
   const active = normalizeSubs(subs).filter((s) => isActive(s, todayStr));
-  let monthly = 0, missingFx = 0;
+  let monthly = 0, missingFx = 0, trialCount = 0, trialMonthly = 0;
   const byPay = {}, byCat = {};
   for (const s of active) {
     const v = toKrw(monthlyOf(s), s.cur, usdKrw);
+    if (inTrial(s, todayStr)) { trialCount++; trialMonthly += v || 0; continue; }
     if (v == null) { missingFx++; continue; }
     monthly += v;
     const p = s.pay || "결제수단 미정";
@@ -82,7 +91,7 @@ export function subsSummary(subs, todayStr, usdKrw) {
     byCat[s.cat] = (byCat[s.cat] || 0) + v;
   }
   const sortObj = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]);
-  return { count: active.length, monthly, yearly: monthly * 12, byPay: sortObj(byPay), byCat: sortObj(byCat), missingFx };
+  return { count: active.length, monthly, yearly: monthly * 12, byPay: sortObj(byPay), byCat: sortObj(byCat), missingFx, trialCount, trialMonthly };
 }
 
 // 그 달의 결제 목록(달력 아래 칸·미리보기) — 날짜순
@@ -97,7 +106,8 @@ export function upcomingSubEvents(subs, todayStr, within = 3) {
   const out = [];
   for (const s of normalizeSubs(subs)) {
     const next = nextBillDate(s, todayStr);
-    if (next && next <= limit) out.push({ key: `sub_${s.id}_${next}`, kind: "sub", id: s.id, title: `💳 ${s.name} 결제 · ${fmtMoney(s.amount, s.cur)}`, date: next, dday: daysUntil(next, todayStr) });
+    // amount는 따로 — 좁은 화면에서 이름만 줄이고 금액은 늘 보이게 (UpcomingDays)
+    if (next && next <= limit) out.push({ key: `sub_${s.id}_${next}`, kind: "sub", id: s.id, title: `💳 ${s.name}`, amount: fmtMoney(s.amount, s.cur), date: next, dday: daysUntil(next, todayStr) });
     if (s.endDate && s.endDate >= todayStr && s.endDate <= limit) {
       out.push({ key: `subend_${s.id}`, kind: "sub", id: s.id, title: `💳 ${s.name} ${s.trial ? "무료 체험 끝" : "이용 종료"}`, date: s.endDate, dday: daysUntil(s.endDate, todayStr) });
     }
