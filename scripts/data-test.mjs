@@ -668,6 +668,28 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('구독: 직접 만든 분류 합계', subsSummary(withCustom, '2026-11-08', 1400).byCat.some(([id, v]) => id === 'c:운동' && v === 50000));
 }
 
+// ── 갖고 싶은 것·가고 싶은 곳 (2026-11-08, utils/dreams.js) ──
+{
+  const D = await load('/src/utils/dreams.js');
+  t('꿈 목록: 링크는 http(s)만, 주소만 쓰면 https 붙임', D.safeLink('coupang.com/vp/1') === 'https://coupang.com/vp/1' && D.safeLink('javascript:alert(1)') === '' && D.safeLink('http://a.kr') === 'http://a.kr/');
+  const list = D.normalizeDreams([
+    { id: 'a', name: '에어팟', price: '350000', when: '2026-11-12' },
+    { id: 'b', name: '캠핑 의자', price: -1 },
+    { id: 'c', name: '책상', when: '2026-11-09', doneAt: '2026-11-08' },
+    { id: 'd', name: '' },
+    { id: 'e', name: '모니터', price: 400000, when: '2026-11-30', link: 'javascript:x', photo: { url: 'https://x/p.jpg', path: 'users/u/dreams/p.jpg' } },
+  ]);
+  t('꿈 목록: 이름 없는 것은 버림', list.length === 4);
+  t('꿈 목록: 가격 정리(음수·글자)', list[0].price === 350000 && list[1].price === null);
+  t('꿈 목록: 이상한 링크는 빈칸, 사진 유지', list[3].link === '' && list[3].photo.path === 'users/u/dreams/p.jpg');
+  const L = D.dreamLists(list);
+  t('꿈 목록: 못 이룬 것은 날짜 가까운 순 → 날짜 없는 것', L.active.map((x) => x.id).join() === 'a,e,b', L.active.map((x) => x.id).join());
+  t('꿈 목록: 이룬 것 따로, 합계는 못 이룬 것만', L.done.map((x) => x.id).join() === 'c' && L.total === 750000);
+  const ev = D.upcomingDreamEvents(list, 'wish', '2026-11-08');
+  t('꿈 목록: 다가오는 날은 7일 안·못 이룬 것만', ev.map((e) => e.id).join() === 'a' && ev[0].dday === 4 && ev[0].title.startsWith('🛒'));
+  t('꿈 목록: 가고 싶은 곳은 📍', D.upcomingDreamEvents(list, 'place', '2026-11-08')[0].title.startsWith('📍'));
+}
+
 // ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──
 {
   const B = await load('/src/utils/bossRaid.js');

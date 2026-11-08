@@ -30,6 +30,7 @@ import { newDesignOn } from "../utils/todayLook.js";
 import { buildGoalProgress, goalKey, goalProgressLine } from "../utils/goalProgress.js";
 import { SectionHeading, SectionIcon } from "../components/TodayLook.jsx";
 import { SubsCard } from "./Subscriptions.jsx";
+import { DreamCard } from "./Dreams.jsx";
 import { boxCard, UI } from "../styles.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
@@ -95,7 +96,7 @@ function SortableHabitRow({ habit, setHabits, onRemove, isOverlay = false }) {
 }
 
 
-export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, lifeGoalActions = [], setLifeGoalActions, isMyTab = false, todayData, plans, onToggleTask, habits, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, telegramCfg, onOpenPortfolio, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {}, growthPanel = null, subscriptions = [], onOpenSubs }) {
+export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [], setLifeGoals = () => {}, lifeGoalActions = [], setLifeGoalActions, isMyTab = false, todayData, plans, onToggleTask, habits, installPrompt, handleInstall, showInstallBanner, dismissInstallBanner, isIOS, isSamsung, isStandalone, scores, event, inviteBonus, onOpenChat, isDark, setIsDark, someday, setSomeday, bucketList = [], setBucketList = () => {}, onLuckyXp, invitePromptCode, recentInviteReward, onOpenInviteFlow, onDismissInvitePrompt, onDismissInviteReward, levelUpInfo, onDismissLevelUp, telegramCfg, onOpenPortfolio, businessCards = [], setBusinessCards = () => {}, authUser, contacts = [], onOpenPeople = () => {}, growthPanel = null, subscriptions = [], onOpenSubs, wishes = [], places = [], onOpenDreams }) {
   const today = toDateStr();
   const yearGoals = getYearGoals(goals);
   const monthGoals = getMonthGoals(goals, getCurrentGoalMonthKey());
@@ -872,6 +873,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
       {/* 💳 구독 (2026-11-08) — 자산 브리핑 바로 아래, My 탭에서만 */}
       {isMyTab && onOpenSubs && <SubsCard subs={subscriptions} onOpen={onOpenSubs} style={{ order: getSectionOrder('portfolio') + 1 }} />}
+      {/* 🛒 갖고 싶은 것 · 📍 가고 싶은 곳 (2026-11-08) — 구독 칸 바로 아래 */}
+      {isMyTab && onOpenDreams && <DreamCard kind="wish" items={wishes} onOpen={() => onOpenDreams('wish')} style={{ order: getSectionOrder('portfolio') + 1 }} />}
+      {isMyTab && onOpenDreams && <DreamCard kind="place" items={places} onOpen={() => onOpenDreams('place')} style={{ order: getSectionOrder('portfolio') + 1 }} />}
 
       {isSectionVisible('portfolio') && (isMyTab || telegramCfg?.holdings?.length > 0 || pfSummary) && (
         <div style={{ order: getSectionOrder('portfolio'), ...(newLook ? boxCard : {}) }}>

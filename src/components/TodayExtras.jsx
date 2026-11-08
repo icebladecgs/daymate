@@ -5,6 +5,7 @@ import { store } from "../utils/storage.js";
 import { buildUpcomingDays, ddayDateLabel, newDday, pastDdays } from "../utils/ddays.js";
 import { ddayLabel } from "../utils/exam.js";
 import { upcomingSubEvents, SUBS_TODAY_KEY } from "../utils/subscriptions.js";
+import { upcomingDreamEvents } from "../utils/dreams.js";
 import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
 import UndoBar from "./UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
@@ -150,7 +151,7 @@ function DdayForm({ initial, minDate, onSave, onDelete, onCancel, first }) {
   );
 }
 
-export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs, dateStr, excludeWithin, onOpen, heading, boxed }) {
+export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs, wishes = [], places = [], onOpenDreams, dateStr, excludeWithin, onOpen, heading, boxed }) {
   const [more, setMore] = useState(false);
   const undo = useUndo();
   const [editing, setEditing] = useState(null); // 'new' 또는 고치는 D-day id
@@ -158,8 +159,13 @@ export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs,
   const past = useMemo(() => pastDdays(ddays, dateStr), [ddays, dateStr]);
   // 💳 구독 결제일·체험 끝나는 날은 3일 전부터 (구독 화면에서 이 기기만 끌 수 있음, 2026-11-08)
   const subsOn = store.get(SUBS_TODAY_KEY, true) !== false;
-  const all = useMemo(() => [...buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }), ...(subsOn ? upcomingSubEvents(subs, dateStr, 3) : [])].sort((a, b) => a.dday - b.dday),
-    [contacts, ddays, dateStr, excludeWithin, subs, subsOn]);
+  // 🛒·📍 "언제쯤"을 정한 갖고 싶은 것·가고 싶은 곳은 7일 전부터 (2026-11-08)
+  const all = useMemo(() => [
+    ...buildUpcomingDays(contacts, ddays, dateStr, { excludeWithin }),
+    ...(subsOn ? upcomingSubEvents(subs, dateStr, 3) : []),
+    ...upcomingDreamEvents(wishes, "wish", dateStr), ...upcomingDreamEvents(places, "place", dateStr),
+  ].sort((a, b) => a.dday - b.dday),
+  [contacts, ddays, dateStr, excludeWithin, subs, subsOn, wishes, places]);
   const shown = all.slice(0, more ? SHOW_MORE : 3);
   const moreCount = Math.min(all.length, SHOW_MORE) - 3;
 
@@ -195,7 +201,7 @@ export function UpcomingDays({ contacts, ddays, setDdays, subs = [], onOpenSubs,
           editing === ev.id && ev.kind === "dday" ? (
             <DdayForm key={ev.key} initial={ev} onSave={(t, d) => saveDday(ev.id, t, d)} onDelete={() => removeDday(ev)} onCancel={() => setEditing(null)} />
           ) : (
-            <button key={ev.key} onClick={ev.kind === "dday" ? () => setEditing(ev.id) : ev.kind === "sub" ? onOpenSubs : onOpen} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", color: "var(--dm-text)", cursor: "pointer" }}>
+            <button key={ev.key} onClick={ev.kind === "dday" ? () => setEditing(ev.id) : ev.kind === "sub" ? onOpenSubs : ev.kind === "dream" ? () => onOpenDreams?.(ev.dreamKind) : onOpen} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", borderTop: i ? "1px solid var(--dm-row)" : "none", borderRadius: 0, textAlign: "left", color: "var(--dm-text)", cursor: "pointer" }}>
               <span style={{ width: 62, flexShrink: 0, fontSize: 15, fontWeight: 900, color: ev.dday <= 7 ? "#EF4444" : RAIN_COLOR }}>{ddayLabel(ev.dday)}</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</span>
               {ev.amount && <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{ev.amount}</span>}

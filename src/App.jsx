@@ -7,6 +7,8 @@ import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
 import { normalizeDdays } from "./utils/ddays.js";
 import { normalizeSubs } from "./utils/subscriptions.js";
+import { normalizeDreams } from "./utils/dreams.js";
+import Dreams from "./screens/Dreams.jsx";
 import { normalizeWorkHours } from "./utils/workHours.js";
 import AlarmSnoozeBar from "./components/AlarmSnoozeBar.jsx";
 import WrongNotes from "./components/WrongNotes.jsx";
@@ -425,6 +427,9 @@ export default function App() {
   const [ddays, setDdays] = useState(() => normalizeDdays(store.get("dm_ddays", [])));
   // 💳 구독 (2026-11-08) — 계정 설정 subscriptions, D-day와 같은 방식으로 동기화
   const [subscriptions, setSubscriptions] = useState(() => normalizeSubs(store.get("dm_subs", [])));
+  // 🛒 갖고 싶은 것 · 📍 가고 싶은 곳 (2026-11-08, utils/dreams.js) — 계정 설정 wishes / places
+  const [wishes, setWishes] = useState(() => normalizeDreams(store.get("dm_wishes", [])));
+  const [places, setPlaces] = useState(() => normalizeDreams(store.get("dm_places", [])));
   const [workHours, setWorkHours] = useState(() => store.get("dm_work_hours", null) || { start: "09:00", end: "18:00" });
   const [alarmBar, setAlarmBar] = useState([]); // 할일 알림의 "나중에" 띠
   const [wrongNotes, setWrongNotes] = useState(null); // 오답 노트 (null = 아직 안 불러옴) — 수험생 모드일 때 로그인하면 불러옴
@@ -1201,6 +1206,8 @@ export default function App() {
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
     if (Array.isArray(s?.ddays) && !same(normalizeDdays(s.ddays), ddays)) setDdays(normalizeDdays(s.ddays));
     if (Array.isArray(s?.subscriptions) && !same(normalizeSubs(s.subscriptions), subscriptions)) setSubscriptions(normalizeSubs(s.subscriptions));
+    if (Array.isArray(s?.wishes) && !same(normalizeDreams(s.wishes), wishes)) setWishes(normalizeDreams(s.wishes));
+    if (Array.isArray(s?.places) && !same(normalizeDreams(s.places), places)) setPlaces(normalizeDreams(s.places));
     if (s?.workHours && !same(s.workHours, workHours)) setWorkHours(s.workHours);
     if (Array.isArray(s?.habits) && !same(s.habits, habits)) setHabits(s.habits);
     if (s?.memoLock && !same(s.memoLock, memoLockCfg)) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
@@ -1484,6 +1491,14 @@ export default function App() {
               const localSubs = normalizeSubs(store.get("dm_subs", []));
               if (localSubs.length) saveSettings(firebaseUser.uid, { subscriptions: localSubs }).catch(() => {});
             }
+            // 🛒 갖고 싶은 것 · 📍 가고 싶은 곳 — 구독과 같은 방식 (로그인 전 이 기기 것은 서버에 없을 때 한 번 올림)
+            for (const [key, sk, setFn] of [["wishes", "dm_wishes", setWishes], ["places", "dm_places", setPlaces]]) {
+              if (Array.isArray(s[key])) { const v = normalizeDreams(s[key]); setFn(v); store.set(sk, v); }
+              else {
+                const local = normalizeDreams(store.get(sk, []));
+                if (local.length) saveSettings(firebaseUser.uid, { [key]: local }).catch(() => {});
+              }
+            }
             if (s.diaryQuestions?.length) { setDiaryQuestions(s.diaryQuestions); store.set("dm_diary_questions", s.diaryQuestions); }
             if (s.birthDate !== undefined) { setBirthDate(s.birthDate); store.set("dm_birth_date", s.birthDate); }
             if (s.birthTime !== undefined) { setBirthTime(s.birthTime); store.set("dm_birth_time", s.birthTime); }
@@ -1696,6 +1711,16 @@ export default function App() {
     prefsLocalChangeRef.current = Date.now();
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { subscriptions }).catch(() => {});
   }, [subscriptions, authUser]);
+  useEffect(() => {
+    store.set("dm_wishes", wishes);
+    prefsLocalChangeRef.current = Date.now();
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { wishes }).catch(() => {});
+  }, [wishes, authUser]);
+  useEffect(() => {
+    store.set("dm_places", places);
+    prefsLocalChangeRef.current = Date.now();
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { places }).catch(() => {});
+  }, [places, authUser]);
   useEffect(() => {
     if (!authUser) { setWrongNotes(null); return; }
     if (!exam.on) return;
@@ -2381,6 +2406,7 @@ export default function App() {
           telegramCfg={telegramCfg}
           onOpenPortfolio={() => changeScreen("portfolio")}
           subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")}
+          wishes={wishes} places={places} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : "wishes")}
           onAddMemo={(text, time) => setTodayData(prev => ({
             ...prev,
             memos: [...(prev.memos || []), { id: `m_${Date.now()}_${Math.random().toString(36).slice(2,5)}`, text, createdAt: time }],
@@ -2420,6 +2446,7 @@ export default function App() {
           contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
           ddays={ddays} setDdays={setDdays}
           subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")}
+          wishes={wishes} places={places} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : "wishes")}
           weatherCity={telegramCfg?.weatherCity}
           onSetWeatherCity={(city) => {
             const cfg = { ...telegramCfg, weatherCity: city };
@@ -2476,6 +2503,10 @@ export default function App() {
     }
     if (screen === "subs") {
       return <Subscriptions subs={subscriptions} setSubs={setSubscriptions} onBack={() => history.back()} />;
+    }
+    if (screen === "wishes" || screen === "places") {
+      const isPlace = screen === "places";
+      return <Dreams key={screen} kind={isPlace ? "place" : "wish"} items={isPlace ? places : wishes} setItems={isPlace ? setPlaces : setWishes} uid={authUser?.uid} onBack={() => history.back()} />;
     }
     if (screen === "invest" || screen === "portfolio") {
       return (
