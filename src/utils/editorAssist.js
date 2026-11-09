@@ -160,6 +160,35 @@ function replaceRange(ta, start, end, text, caret) {
   }
   const pos = caret ?? start + text.length;
   ta.setSelectionRange(pos, pos);
+  revealCaret(ta);
+  requestAnimationFrame(() => { if (document.activeElement === ta) revealCaret(ta); }); // 화면이 다시 그려진 뒤 한 번 더
+}
+
+// 커서가 입력칸 밖(아래)에 있으면 입력칸을 그만큼 내린다 (2026-11-09 사용자 제보 — 맨 아래 "- "·"1." 줄에서 Enter를 치면
+// 새 줄이 안 보이고 글자를 쳐야 내려갔다. 브라우저 Enter와 달리 여기서 바꿔 넣은 글은 커서 쪽으로 스크롤되지 않는다)
+// 커서 위치는 같은 글꼴·폭의 보이지 않는 복사본에서 잰다(자동 줄바꿈까지 맞게).
+function caretBox(ta, pos) {
+  const cs = getComputedStyle(ta);
+  const div = document.createElement("div");
+  for (const p of ["fontFamily", "fontSize", "fontWeight", "fontStyle", "letterSpacing", "lineHeight", "textTransform", "wordSpacing", "tabSize", "textIndent", "paddingTop", "paddingLeft", "paddingRight"]) div.style[p] = cs[p];
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  Object.assign(div.style, { position: "absolute", visibility: "hidden", top: "0", left: "-9999px", boxSizing: "content-box", width: `${Math.max(0, ta.clientWidth - padX)}px`, whiteSpace: "pre-wrap", overflowWrap: "break-word", wordBreak: cs.wordBreak, border: "0", margin: "0" });
+  div.textContent = ta.value.slice(0, pos);
+  const mark = document.createElement("span");
+  mark.textContent = "​";
+  div.appendChild(mark);
+  document.body.appendChild(div);
+  const box = { top: mark.offsetTop, h: mark.offsetHeight || parseFloat(cs.lineHeight) || 20, padB: parseFloat(cs.paddingBottom) || 0, padT: parseFloat(cs.paddingTop) || 0 };
+  div.remove();
+  return box;
+}
+export function revealCaret(ta) {
+  try {
+    if (!ta || ta.scrollHeight <= ta.clientHeight) return;
+    const { top, h, padB, padT } = caretBox(ta, ta.selectionEnd);
+    if (top + h > ta.scrollTop + ta.clientHeight - padB) ta.scrollTop = top + h - ta.clientHeight + padB;
+    else if (top < ta.scrollTop + padT) ta.scrollTop = Math.max(0, top - padT);
+  } catch { /* 재기 실패해도 입력은 그대로 */ }
 }
 
 function currentLine(ta) {
