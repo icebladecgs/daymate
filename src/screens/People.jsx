@@ -864,7 +864,7 @@ export default function People({
       {importCandidates && (
         <ContactImportSheet candidates={importCandidates} allTags={contactTags} onImport={finishImport} onClose={() => setImportCandidates(null)} />
       )}
-      {importGuide && <ContactPermissionGuide mode={importGuide} onContinue={openPicker} onClose={() => setImportGuide(null)} />}
+      {importGuide && <ContactPermissionGuide mode={importGuide} onContinue={openPicker} onClose={() => setImportGuide(null)} onFile={() => { setImportGuide(null); setVcfGuide(true); }} />}
       {vcfGuide && <VcfGuide onPick={pickVcf} onClose={() => setVcfGuide(false)} />}
       {undo}
       <div style={{ height: 80 }} />

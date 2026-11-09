@@ -7,7 +7,7 @@ import { useBackClose } from "../utils/useBackClose.js";
 // 연락처 가져오기 전·실패 시 안내 창
 // mode 'before': 선택 창을 열기 전에 "허용 → 모두 선택" 순서를 알려줌 (첫 성공 전까지)
 // mode 'empty' : 아무 연락처도 안 넘어왔을 때 크롬 연락처 권한 켜는 방법 + 다시 시도
-export function ContactPermissionGuide({ mode, onContinue, onClose }) {
+export function ContactPermissionGuide({ mode, onContinue, onClose, onFile }) {
   useBackClose(onClose);
   const step = (n, text) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
@@ -40,13 +40,16 @@ export function ContactPermissionGuide({ mode, onContinue, onClose }) {
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginBottom: 16, lineHeight: 1.5 }}>
               목록이 비어 있었다면 <b>크롬에 연락처 권한이 꺼져 있을 가능성</b>이 커요. (예전에 거부하면 다시 묻지 않아요)
             </div>
-            {step(1, <>휴대폰 <b>설정 → 애플리케이션 → Chrome</b></>)}
+            {/* 웹은 설정 화면을 바로 열 수 없어서(크롬이 막음) 가장 짧은 길을 안내한다 (2026-11-09) */}
+            {step(1, <>홈 화면의 <b>크롬 아이콘을 길게 누르기 → ⓘ 앱 정보</b> (또는 설정 → 애플리케이션 → Chrome)</>)}
             {step(2, <><b>권한 → 연락처 → 허용</b></>)}
             {step(3, <>DayMate로 돌아와 <b>다시 시도</b></>)}
             <div style={{ fontSize: 11, color: 'var(--dm-muted)', lineHeight: 1.5, margin: '4px 0 14px' }}>
               연락처 창에서 검색 후 키보드 검색(엔터)을 누르면 창이 그냥 닫혀요. 검색하지 말고 <b>모두 선택 → 확인</b>을 눌러주세요.
             </div>
             <button onClick={onContinue} style={{ ...S.btn, marginBottom: 8 }}>다시 시도</button>
+            {/* 권한을 켜지 않아도 되는 길 — 연락처 파일(.vcf) */}
+            {onFile && <button onClick={onFile} style={{ ...S.btnGhost, marginTop: 0, marginBottom: 8 }}>📇 권한 없이 파일로 가져오기</button>}
             <button onClick={onClose} style={{ ...S.btnGhost, marginTop: 0 }}>닫기</button>
           </>
         )}
