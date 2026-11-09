@@ -60,7 +60,7 @@ const S = {
   title: {
     fontSize: 18,
     fontWeight: 900,
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: "inherit", // 앱 글꼴(Pretendard)을 따른다 — 예전 Plus Jakarta Sans는 한글이 없어 제목 한글만 기기 글꼴로 나왔다 (2026-11-09)
     background: "var(--dm-title-grad)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
@@ -87,7 +87,7 @@ const S = {
     letterSpacing: "0.01em",
     color: "var(--dm-text)",
     fontWeight: 900,
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: "inherit", // 앱 글꼴(Pretendard)을 따른다 — 예전 Plus Jakarta Sans는 한글이 없어 제목 한글만 기기 글꼴로 나왔다 (2026-11-09)
     textTransform: "none",
     display: "flex",
     alignItems: "center",

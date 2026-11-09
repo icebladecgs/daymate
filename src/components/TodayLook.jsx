@@ -64,11 +64,12 @@ export function SectionHeading({ icon, children, right, style }) {
 // badge: 칸 제목용 — 아이콘 색을 연하게 깐 30px 동그라미 안에 18px 아이콘 (2026-11-07 사용자 확정, 비교 화면에서 고름)
 export function SectionIcon({ name, size = 18, badge = false }) {
   if (badge) {
-    // 2026-11-08 D안: 색이 꽉 찬 동그라미 + 흰 아이콘(아이폰 설정 방식). 색은 아이폰 기본 색에 맞춘 BADGE
+    // 칸 제목 아이콘 — 2026-11-09 사용자 선택: 동그라미 바탕 없이 칸마다 색 선 아이콘(BADGE 색).
+    // (2026-11-08 D안의 색 꽉 찬 동그라미는 칸마다 색 점이 많아 화면이 알록달록했다)
     const color = BADGE[name] || COLORS[name] || "#007AFF";
     return (
-      <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: "50%", background: color, flexShrink: 0 }}>
-        <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{PATHS[name]}</svg>
+      <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 30, flexShrink: 0 }}>
+        <svg viewBox="0 0 24 24" width={23} height={23} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{PATHS[name]}</svg>
       </span>
     );
   }

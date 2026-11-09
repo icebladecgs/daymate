@@ -468,7 +468,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   };
 
   return (
-    <div style={{ ...S.content, overflowX: "hidden" }}>
+    <div className="dm-keep-look" style={{ ...S.content, overflowX: "hidden" }}>{/* 달력 탭은 예전 모습 유지 — index.css 새 디자인 굵기 조정에서 뺀다 */}
       <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
       {detailTask && (
         <TaskDetailSheet
