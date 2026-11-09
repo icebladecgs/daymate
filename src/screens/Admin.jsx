@@ -76,6 +76,8 @@ export default function Admin({ authUser, onBack }) {
   const currentYM = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
   const currentMonthLabel = `${new Date().getMonth() + 1}월`;
 
+  // 관리자만 읽는 사용자 목록의 이메일 — 랭킹 탭에서 닉네임 아래 보여 준다
+  const emailByUid = useMemo(() => new Map(users.map(u => [u.uid, u.email]).filter(([, e]) => e)), [users]);
   const sortedRankings = useMemo(() => {
     const list = [...rankings];
     if (rankTab === 'month') {
@@ -300,9 +302,12 @@ export default function Admin({ authUser, onBack }) {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {/* 순위표는 닉네임만 (2026-11-09 사용자 결정 — 이메일은 순위표에 저장하지 않음) */}
+                          {/* 순위표 기록엔 닉네임만 (2026-11-09) — 이메일은 관리자만 읽는 사용자 목록(users)에서 이어 붙여 관리자 화면에만 보인다 */}
                           {r.nickname || <span style={{ color: 'var(--dm-muted)', fontWeight: 400 }}>닉네임 없음</span>}
                         </div>
+                        {emailByUid.get(r.uid) && (
+                          <div style={{ fontSize: 12, color: 'var(--dm-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emailByUid.get(r.uid)}</div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                           <LevelPill levelInfo={levelInfo} score={r.totalScore || 0} compact />
                           <span style={{ fontSize: 11, color: 'var(--dm-muted)' }}>{r.daysCount || 0}일 기록</span>
