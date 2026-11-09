@@ -191,7 +191,7 @@ export default function DayDetail({ dateStr, data, setData, onBack, toast, setTo
           ←
         </button>
         <div style={{ flex: 1 }}>
-          <div style={S.title}>{formatKoreanDate(dateStr)}</div>
+          <div className="dm-page-title" style={S.title}>{formatKoreanDate(dateStr)}</div>
           <div style={S.sub}>
             {doneCount}/{filledCount} 완료
             {isPerfect && " · 🎉 완벽한 하루"}

@@ -284,7 +284,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
       <div style={S.topbar}>
         <button onClick={onExit} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, paddingLeft: 8 }}>
-          <div style={S.title}>⚔️ 배틀</div>
+          <div className="dm-page-title" style={S.title}>⚔️ 배틀</div>
           <div style={S.sub}>Lv.{npc.level} {npc.name} · 「{npc.trait?.label}」</div>
         </div>
       </div>

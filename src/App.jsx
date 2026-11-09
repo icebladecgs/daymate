@@ -2667,7 +2667,7 @@ export default function App() {
             <div style={S.topbar}>
               <button onClick={() => history.back()} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
               <div style={{ flex: 1 }}>
-                <div style={S.title}>기록</div>
+                <div className="dm-page-title" style={S.title}>기록</div>
                 <div style={S.sub}>데이터 없음</div>
               </div>
               <div />

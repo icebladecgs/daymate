@@ -1,5 +1,6 @@
 import { useState } from "react";
-import S from "../styles.js";
+import S, { UI } from "../styles.js";
+import { newDesignOn } from "../utils/todayLook.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
@@ -31,11 +32,12 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
   const hiddenCount = NPCS.length - visibleNpcs.length;
 
   return (
-    <div style={S.content}>
+    // dm-min13: 새 디자인에서 13px보다 작은 글씨를 13px로 (index.css, 2026-11-09)
+    <div className="dm-min13" style={S.content}>
       <div style={S.topbar}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, paddingLeft: 8 }}>
-          <div style={S.title}>⚔️ 배틀</div>
+          <div className="dm-page-title" style={S.title}>⚔️ 배틀</div>
           <div style={S.sub}>내 캐릭터로 NPC와 겨뤄보세요</div>
         </div>
       </div>
@@ -120,7 +122,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       {setGear && <GearPanel gear={gear} setGear={setGear} />}
 
       {/* NPC 목록 */}
-      <div style={S.sectionTitle}>
+      <div style={newDesignOn() ? { ...S.sectionTitle, fontSize: UI.title } : S.sectionTitle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🥋</span>도전 상대</span>
       </div>
       {visibleNpcs.map(npc => {

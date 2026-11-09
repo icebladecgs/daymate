@@ -148,7 +148,7 @@ export default function Admin({ authUser, onBack }) {
       <div style={S.content}>
         <div style={S.topbar}>
           <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
-          <div style={{ flex: 1 }}><div style={S.title}>관리자</div></div>
+          <div style={{ flex: 1 }}><div className="dm-page-title" style={S.title}>관리자</div></div>
           <div style={{ width: 56 }} />
         </div>
         <div style={{ padding: 24, textAlign: "center" }}>
@@ -181,7 +181,7 @@ export default function Admin({ authUser, onBack }) {
       <div style={S.content}>
         <div style={S.topbar}>
           <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
-          <div style={{ flex: 1 }}><div style={S.title}>관리자</div></div>
+          <div style={{ flex: 1 }}><div className="dm-page-title" style={S.title}>관리자</div></div>
           <div style={{ width: 56 }} />
         </div>
         <div style={{ padding: 24 }}>
@@ -221,7 +221,7 @@ export default function Admin({ authUser, onBack }) {
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1 }}>
-          <div style={S.title}>관리자 대시보드</div>
+          <div className="dm-page-title" style={S.title}>관리자 대시보드</div>
           <div style={S.sub}>{authUser?.email}</div>
         </div>
         <button onClick={init} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10, fontSize: 18 }}>↻</button>

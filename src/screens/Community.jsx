@@ -864,7 +864,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
   if (!authUser) return (
     <div style={S.content}>
-      <div style={S.topbar}><div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div></div></div>
+      <div style={S.topbar}><div style={{ flex: 1 }}><div className="dm-page-title" style={S.title}>커뮤니티</div></div></div>
       <div style={{ padding: '32px 20px', textAlign: 'center' }}>
         {/* 새 디자인: 로그인하면 무엇을 할 수 있는지 먼저 보여 준다 (2026-11-07 — 빈 화면에 한 줄뿐이었다) */}
         {NL() && (
@@ -964,7 +964,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         <div style={{ paddingBottom: 80 }}>
           {/* 상단 */}
           <div style={{ padding: '14px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={S.title}>커뮤니티</div>
+            <div className="dm-page-title" style={S.title}>커뮤니티</div>
             <button className={NL() ? 'dm-hit' : undefined} onClick={() => setMode('create')} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: 13, width: 'auto' }}>+ 만들기</button>
           </div>
 
@@ -1115,7 +1115,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
       {mainTab === 'community' && <>
       <div style={S.topbar}>
-        <div style={{ flex: 1 }}><div style={S.title}>커뮤니티</div><div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>함께하는 일정 공유</div></div>
+        <div style={{ flex: 1 }}><div className="dm-page-title" style={S.title}>커뮤니티</div><div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>함께하는 일정 공유</div></div>
         {communityIds.length > 0 && mode !== null && (
           <button className={NL() ? 'dm-hit' : undefined} onClick={() => setMode(null)} style={{ background: 'transparent', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '4px 8px' }}>✕</button>
         )}
@@ -1335,7 +1335,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       <div style={S.topbar}>
         <button onClick={() => setShowHome(true)} aria-label="뒤로" style={{ ...S.btnGhost, width: NL() ? UI.touch : 36, height: NL() ? UI.touch : 36, marginTop: 0, padding: 0, fontSize: 18, flexShrink: 0 }}>←</button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={NL() ? { ...S.title, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all', overflowWrap: 'anywhere', lineHeight: 1.3 } : S.title}>{community?.name || '커뮤니티'}</div>
+          <div className="dm-page-title" style={NL() ? { ...S.title, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all', overflowWrap: 'anywhere', lineHeight: 1.3 } : S.title}>{community?.name || '커뮤니티'}</div>
           <div style={{ ...S.sub, ...(NL() ? { fontSize: UI.sub } : {}), display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             멤버 {community?.memberCount || 0}명 · <span style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>초대코드: <b style={{ color: 'var(--dm-text)', letterSpacing: 2 }}>{community?.inviteCode}</b>
             <button className={NL() ? 'dm-hit' : undefined} onClick={() => {

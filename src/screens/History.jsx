@@ -495,7 +495,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       )}
       <div style={S.topbar}>
         <div>
-          <div style={S.title}>달력</div>
+          <div className="dm-page-title" style={S.title}>달력</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => window.dispatchEvent(new CustomEvent('dm:navigate', { detail: 'manager' }))} title="메모 관리자에서 찾기" aria-label="찾기" style={{ ...S.btnGhost, marginTop: 0, padding: '6px 12px', fontSize: 13, width: 'auto', minHeight: 36 }}>🔍</button>

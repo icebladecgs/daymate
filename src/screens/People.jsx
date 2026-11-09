@@ -830,7 +830,7 @@ export default function People({
             <button key={c.id} onClick={() => { setSelectedId(c.id); setView("detail"); }}
               style={{ width: "100%", textAlign: "left", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: NL() ? UI.box.radius - 4 : 14, padding: NL() ? "13px 14px" : "12px 14px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", display: "block" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: NL() ? UI.body : 14, fontWeight: 900, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: NL() ? UI.item : 14, fontWeight: 900, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
                 {d?.due && <span style={{ flexShrink: 0, fontSize: NL() ? 13 : 10, fontWeight: 900, color: "#EC4899", background: "rgba(236,72,153,.12)", borderRadius: 999, padding: "2px 8px" }}>연락할 때</span>}
               </div>
               {(c.company || c.title) && <div style={{ fontSize: subFs(), color: "var(--dm-sub)", marginTop: 2 }}>{[c.company, c.title].filter(Boolean).join(" · ")}</div>}

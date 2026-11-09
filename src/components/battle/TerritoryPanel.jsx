@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import S, { UI, boxCard } from "../../styles.js";
+import { newDesignOn } from "../../utils/todayLook.js";
 import { chatFetch } from "../../api/chatFetch.js";
 import { RARITIES, BAG_MAX, itemEffects, normalizeGear } from "../../utils/gear.js";
 import { fameRate, territoryFame, shortName, TRIES_PER_DAY } from "../../utils/territory.js";
@@ -83,7 +84,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
   return (
     <div style={{ ...boxCard, border: "1.5px solid rgba(48,176,199,.45)" }}>
       <div style={head}>
-        <span style={{ fontSize: 17, fontWeight: 900, color: "var(--dm-text)" }}>🗺️ 내 동네 영토</span>
+        <span style={{ fontSize: newDesignOn() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)" }}>🗺️ 내 동네 영토</span>
         {mine && mine.length > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: "#30B0C7" }}>{mine.length}곳 · 영토 명성 {fame.toLocaleString()}</span>}
       </div>
 

@@ -70,7 +70,7 @@ export default function JournalViewer({ plans, onClose, focusDate = null, onSave
       <div style={{ ...S.topbar, flexShrink: 0 }}>
         <button onClick={onClose} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1 }}>
-          <div style={S.title}>{focusDate ? '일기 보기' : '일기 몰아보기'}</div>
+          <div className="dm-page-title" style={S.title}>{focusDate ? '일기 보기' : '일기 몰아보기'}</div>
           <div style={S.sub}>{focusDate ? formatKoreanDate(focusDate) : `${journalEntries.length}일치 일기`}</div>
         </div>
         <button onClick={copyAll} style={{

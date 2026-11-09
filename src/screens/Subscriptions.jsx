@@ -98,7 +98,7 @@ export default function Subscriptions({ subs, setSubs, onBack }) {
       <div style={S.topbar}>
         <button className="dm-hit" onClick={onBack} aria-label="뒤로" style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
         <div style={{ flex: 1, marginLeft: 10 }}>
-          <div style={S.title}>💳 구독</div>
+          <div className="dm-page-title" style={S.title}>💳 구독</div>
           <div style={{ ...S.sub, fontSize: UI.sub }}>흩어진 구독과 정기결제를 한눈에</div>
         </div>
       </div>

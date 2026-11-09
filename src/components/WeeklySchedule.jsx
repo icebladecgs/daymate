@@ -28,7 +28,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
         <button onClick={() => setWeekOffset(o => o - 1)} aria-label="이전 주" style={{ ...S.btnGhost, marginTop: 0, width: navSize, height: navSize, padding: 0, fontSize: 16 }}>‹</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--dm-text)' }}>{weekLabel}</span>
+          <span style={{ fontSize: roomy ? 14 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{weekLabel}</span>
           {weekOffset !== 0 && (
             <button onClick={() => setWeekOffset(0)} style={{ fontSize: fs(10), fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', border: '1px solid var(--dm-accent-line, rgba(108,142,255,.25))', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>이번주</button>
           )}
@@ -68,12 +68,20 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
               border: isToday ? '1.5px solid var(--dm-accent-line, rgba(108,142,255,.5))' : '1px solid var(--dm-border)',
               background: isToday ? 'var(--dm-accent-soft, rgba(108,142,255,.08))' : 'rgba(255,255,255,.02)',
             }}>
+            {roomy ? (
+              // 새 디자인 오늘 탭: "9(월)" 한 줄 (2026-11-09 사용자 요청 — 요일·날짜를 세로로 쌓으면 읽기 어렵다). 토 파랑·일 빨강
+              <div style={{ width: 52, flexShrink: 0, fontSize: UI.item, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+                color: isToday ? UI.accent : i === 6 ? '#EF4444' : i === 5 ? UI.accent : 'var(--dm-text)' }}>
+                {dateObj.getDate()}<span style={{ fontSize: 14, fontWeight: 500, color: isToday || i >= 5 ? 'inherit' : 'var(--dm-sub)' }}>({DOW_KR[i]})</span>
+              </div>
+            ) : (
             <div style={{ width: 30, textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: fs(9), color: isToday ? (roomy ? UI.accent : '#AFC0FF') : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
               <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 900, lineHeight: 1.2 }}>{dateObj.getDate()}</div>
             </div>
+            )}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {isToday && (
+              {isToday && !roomy && ( /* 새 디자인은 날짜가 파랑·줄이 강조라 "오늘" 칩을 뺀다 */
                 <span style={{ fontSize: fs(10), color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, background: 'var(--dm-accent-soft, rgba(108,142,255,.15))', borderRadius: 999, padding: '2px 6px', flexShrink: 0 }}>오늘</span>
               )}
               {showAll && tasks.length > 0 ? (
@@ -85,7 +93,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
                   ))}
                 </span>
               ) : <span style={{
-                fontSize: showAll ? 14 : fs(12.5), fontWeight: 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
+                fontSize: showAll ? 14 : roomy ? (tasks.length ? UI.item : 14) : 12.5, fontWeight: roomy ? 400 : 700, color: tasks.length > 0 ? 'var(--dm-text)' : 'var(--dm-muted)',
                 overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
               }}>{previewLabel}</span>}
             </div>

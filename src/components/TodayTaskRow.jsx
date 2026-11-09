@@ -52,8 +52,8 @@ export default function TodayTaskRow({ task, now, next, last, riseDelay, onToggl
           </div>
         )}
         {/* 시간·제목·아이콘을 한 문장처럼 이어 써서, 길면 자연스럽게 다음 줄로 */}
-        <div style={{ fontSize: now ? 20 : 17, fontWeight: now ? 800 : 500, lineHeight: 1.4, color: done ? "var(--dm-muted)" : "var(--dm-text)", wordBreak: "keep-all", overflowWrap: "anywhere" }}>
-          {timeText && !now && <span style={{ fontSize: 15, fontWeight: 600, color: done ? "var(--dm-muted)" : "var(--dm-sub)", marginRight: 7, whiteSpace: "nowrap" }}>{timeText}</span>}
+        <div style={{ fontSize: now ? 18 : UI.item, fontWeight: now ? 800 : 500, lineHeight: 1.4, color: done ? "var(--dm-muted)" : "var(--dm-text)", wordBreak: "keep-all", overflowWrap: "anywhere" }}>
+          {timeText && !now && <span style={{ fontSize: 14, fontWeight: 600, color: done ? "var(--dm-muted)" : "var(--dm-sub)", marginRight: 7, whiteSpace: "nowrap" }}>{timeText}</span>}
           {/* 취소선이 왼쪽부터 그어진다 (text-decoration은 움직일 수 없어 배경 선으로) */}
           <span style={{ backgroundImage: "linear-gradient(currentColor, currentColor)", backgroundRepeat: "no-repeat", backgroundPosition: "0 58%", backgroundSize: done ? "100% 1.5px" : "0% 1.5px", transition: "background-size .3s ease, color .2s" }}>{task.title}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginLeft: 6, verticalAlign: "middle" }}>

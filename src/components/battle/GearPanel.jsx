@@ -1,6 +1,8 @@
 // 🎒 내 장비 · 🧭 오늘의 떠돌이 도전자 (2026-11-08) — 배틀 화면(BattleArena) 위쪽. 계산은 utils/gear.js
 import { useState } from "react";
-import S from "../../styles.js";
+import S, { UI } from "../../styles.js";
+import { newDesignOn } from "../../utils/todayLook.js";
+const NL = () => newDesignOn(); // 새 디자인 글자 단계 (2026-11-09) — 칸 제목 19px
 import UndoBar from "../UndoBar.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
@@ -13,7 +15,7 @@ export function WandererCard({ wanderer, done, onStart }) {
   if (!wanderer) return null;
   return (
     <div style={{ ...S.card, border: "1.5px solid rgba(255,159,10,.45)", background: "rgba(255,159,10,.07)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "#FF9F0A", marginBottom: 8 }}>🧭 오늘의 떠돌이 도전자 <span style={{ marginLeft: "auto", color: "var(--dm-muted)", fontWeight: 600 }}>자정에 떠나요</span></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: NL() ? UI.title : 13, fontWeight: NL() ? 900 : 800, color: "#FF9F0A", marginBottom: NL() ? 12 : 8 }}>🧭 오늘의 떠돌이 도전자 <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--dm-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>자정에 떠나요</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--dm-input)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, flexShrink: 0 }}>{wanderer.emoji}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -57,7 +59,7 @@ export default function GearPanel({ gear, setGear }) {
     <div style={S.card}>
       <UndoBar bar={undo.bar} onUndo={undo.run} />
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 17, fontWeight: 900, color: "var(--dm-text)" }}>🎒 내 장비</span>
+        <span style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)" }}>🎒 내 장비</span>
         <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--dm-sub)" }}>{total.length ? total.join(" · ") : "아직 끼운 장비가 없어요"}</span>
       </div>
       {GEAR_SLOTS.map((s) => {

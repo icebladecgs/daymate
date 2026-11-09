@@ -716,7 +716,7 @@ export default function Today({
           <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
             {contactReminders.map((it, i) => (
               // 누르면 그 사람 상세 (2026-11-09) — 사람이 정해지지 않은 줄("n명 더")은 목록
-              <div key={it.key} onClick={onOpenPeople ? () => onOpenPeople(it.contactId || null) : undefined} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onOpenPeople ? 'pointer' : 'default' }}>{it.icon || '🎂'} {it.text}</div>
+              <div key={it.key} onClick={onOpenPeople ? () => onOpenPeople(it.contactId || null) : undefined} style={{ fontSize: newLook ? UI.item : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onOpenPeople ? 'pointer' : 'default' }}>{it.icon || '🎂'} {it.text}</div>
             ))}
           </div>
         )}
@@ -804,7 +804,7 @@ export default function Today({
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${checked ? 'rgba(74,222,128,.4)' : 'var(--dm-border)'}`, background: checked ? 'rgba(74,222,128,.1)' : (newLook ? 'transparent' : 'var(--dm-input)'), cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                   {/* 습관 이모지 대신 체크하면 오를 능력치 아이콘 (분류 안 되면 빈자리) */}
                   <span style={{ minWidth: 24, textAlign: 'center', flexShrink: 0 }}><TaskStatIcon task={{ statTag: h.statTag, title: h.name }} size={20} /></span>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
+                  <span style={{ flex: 1, fontSize: newLook ? UI.item : 14, fontWeight: newLook ? 500 : 700, color: checked ? '#4ADE80' : 'var(--dm-text)', fontFamily: 'inherit' }}>{h.name || '이름 없는 습관'}</span>
                   {(() => { const n = habitStreak(plans, h.id, dateStr, checked); return n >= 2 ? <span style={{ fontSize: 14, fontWeight: 800, color: '#F97316', flexShrink: 0 }}>🔥 {n}일</span> : null; })()}
                   {checked && <span style={{ fontSize: 16, color: '#4ADE80' }}>✓</span>}
                   {!checked && newLook && <span aria-hidden style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--dm-muted)', flexShrink: 0, boxSizing: 'border-box' }} />}
@@ -843,7 +843,7 @@ export default function Today({
         {(somedayShowAll || reorder === 'someday' ? somedayList : somedayList.slice(0, 3)).map((item, i, shown) => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, ...(newLook ? { padding: `${UI.rowPadY}px 0`, borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--dm-row)' } : { marginBottom: 12 }) }}>
             <button className={newLook ? 'dm-hit' : undefined} disabled={reorder === 'someday'} onClick={() => toggleSomeday(item.id)} aria-label={item.done ? '완료 취소' : '완료'} style={{ width: newLook ? 26 : 20, height: newLook ? 26 : 20, borderRadius: newLook ? 8 : 6, padding: 0, border: `1.5px solid ${item.done ? 'rgba(74,222,128,.5)' : 'var(--dm-border)'}`, background: item.done ? 'rgba(74,222,128,.15)' : 'var(--dm-input)', fontSize: newLook ? 15 : 11, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ADE80' }}>{item.done ? '✓' : ''}</button>
-            <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? 15 : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span onClick={() => reorder !== 'someday' && setDetailSomedayId(item.id)} style={{ flexWrap: newLook ? 'wrap' : 'nowrap', flex: 1, minWidth: 0, fontSize: newLook ? UI.item : 13, color: item.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: item.done ? 'line-through' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>{item.title}</span>
               {item.time && <span style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, flexShrink: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{item.time}</span>}
               <TaskStatIcon task={item} />
@@ -1122,7 +1122,7 @@ export default function Today({
           </div>
         ) : (
         <div style={{ flex: 1 }}>
-          <div style={S.title}>오늘의 페이지</div>
+          <div className="dm-page-title" style={S.title}>오늘의 페이지</div>
           <div style={S.sub}>{formatKoreanDate(dateStr)} · {clock} · {filledCount ? `완료 ${doneCount}/${filledCount}` : '할일 없음'}</div>
         </div>
         )}
@@ -1355,7 +1355,7 @@ export default function Today({
                     <button key={t.id} onClick={() => goTomorrow(false)}
                       style={{ display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', padding: `${UI.rowPadY}px 0`, margin: 0, background: 'none', border: 'none', borderTop: i ? '1px solid var(--dm-row)' : 'none', borderRadius: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
                       <span style={{ width: 48, flexShrink: 0, fontSize: 14, fontWeight: 800, color: t.time ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.time || ''}</span>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: t.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: UI.item, color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: t.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t.recurring || /^r.+_\d{4}-\d{2}-\d{2}$/.test(String(t.id)) ? '🔁 ' : ''}{t.title}
                       </span>
                     </button>

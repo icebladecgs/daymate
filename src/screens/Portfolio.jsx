@@ -573,7 +573,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
       <div style={S.topbar}>
         <button className={NL() ? 'dm-hit' : undefined} onClick={onBack} style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
         <div style={{ flex: 1, marginLeft: 10 }}>
-          <div style={S.title}>💼 보유자산</div>
+          <div className="dm-page-title" style={S.title}>💼 보유자산</div>
           <div style={{ ...(NL() ? { ...S.sub, fontSize: UI.sub } : S.sub), wordBreak: "keep-all" }}>수량 · 단가 입력 후 평가손익 확인</div>
         </div>
         <button onClick={() => setPfHidden(!hidden)} aria-label={hidden ? "금액 보이기" : "금액 숨기기"} aria-pressed={hidden} title={hidden ? "금액 보이기" : "금액 숨기기"}

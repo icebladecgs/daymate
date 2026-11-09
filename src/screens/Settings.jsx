@@ -55,7 +55,7 @@ function MenuRow({ icon, title, sub, right, onClick }) {
 function MenuGroup({ label, children }) {
   return (
     <>
-      {label && <div style={S.sectionTitle}>{label}</div>}
+      {label && <div style={NL() ? { ...S.sectionTitle, fontSize: UI.title } : S.sectionTitle}>{label}</div>}{/* 새 디자인: 칸 제목과 같은 19px (2026-11-09 글자 단계) */}
       <div style={{ margin: '0 16px 6px', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--dm-border)' }}>
         {children}
       </div>
@@ -1599,7 +1599,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
 
       <div style={S.topbar}>
         <div style={{ flex: 1 }}>
-          <div style={S.title}>설정</div>
+          <div className="dm-page-title" style={S.title}>설정</div>
           <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>연결 상태와 개인 환경을 관리</div>
         </div>
         <button className={NL() ? 'dm-hit' : undefined}
@@ -1641,7 +1641,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
       <div style={menuHits ? { display: 'none' } : undefined}>
 
         <div style={{ ...S.card, marginBottom: 14 }}>
-          <div style={todayNewLook ? { fontSize: 16, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
+          <div style={todayNewLook ? { fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 12 } : { fontSize: NL() ? 14 : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 12, letterSpacing: '0.06em' }}>현재 상태</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10 }}>
             <SummaryTile
               label="계정"

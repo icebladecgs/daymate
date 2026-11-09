@@ -166,7 +166,7 @@ export default function FreeBoard({ authUser, user, setToast }) {
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ padding: '14px 16px 4px' }}>
-        <div style={S.title}>자유게시판</div>
+        <div className="dm-page-title" style={S.title}>자유게시판</div>
         <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>모두가 자유롭게 쓰는 공간이에요</div>
       </div>
 

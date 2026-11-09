@@ -536,7 +536,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
     <div style={newLook ? { padding: '12px 0', borderTop: '1px solid var(--dm-row)' } : { borderRadius: 14, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: open && !(newLook && !items.length && !editing) ? 8 : 0 }}>
         <div>
-          <div style={{ fontSize: newLook ? 16 : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
+          <div style={{ fontSize: newLook ? UI.group : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{emoji} {title}</div>
           <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2 }}>{items.length > 0 ? `${items.length}개 등록됨` : (newLook ? '아직 비어 있어요 · 편집으로 추가' : '아직 비어 있어요')}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 12 }}>
@@ -574,9 +574,9 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
           {items.map((g, i) => (
             <div key={i} onClick={onItemClick ? () => onItemClick(i) : undefined}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onItemClick ? 'pointer' : 'default' }}>
-              <div style={{ width: 18, height: 18, borderRadius: 999, background: accent, color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
+              <div style={{ width: newLook ? 22 : 18, height: newLook ? 22 : 18, borderRadius: 999, background: accent, color: '#fff', fontSize: newLook ? UI.sub : 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: newLook ? 16 : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+                <div style={{ fontSize: newLook ? UI.item : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
                 {progressOf?.(i) && <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 1 }}>{progressOf(i)}</div>}
               </div>
               {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}
@@ -667,7 +667,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
       )}
       <div style={S.topbar}>
         <div style={newLook ? { flex: 1, minWidth: 0 } : undefined}>
-          <div style={S.title}>My</div>
+          <div className="dm-page-title" style={S.title}>My</div>
           <div style={newLook ? { ...S.sub, fontSize: UI.sub, whiteSpace: 'nowrap' } : S.sub}>{newLook ? formatShortKoreanDate(today) : formatKoreanDate(today)} · {clock.toLocaleTimeString('ko-KR', newLook ? { hour12: false, hour: '2-digit', minute: '2-digit' } : { hour12: false })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

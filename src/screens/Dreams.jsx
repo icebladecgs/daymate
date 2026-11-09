@@ -104,7 +104,7 @@ export default function Dreams({ kind, items, setItems, uid, onBack }) {
       <div style={S.topbar}>
         <button className="dm-hit" onClick={onBack} aria-label="뒤로" style={{ background: "transparent", border: "none", color: "var(--dm-text)", fontSize: 22, cursor: "pointer", padding: 0 }}>←</button>
         <div style={{ flex: 1, marginLeft: 10 }}>
-          <div style={S.title}>{cfg.emoji} {cfg.title}</div>
+          <div className="dm-page-title" style={S.title}>{cfg.emoji} {cfg.title}</div>
           <div style={{ ...S.sub, fontSize: UI.sub }}>{active.length}개{total > 0 ? ` · 모두 ${fmtWon(total)}` : ""}{done.length ? ` · ${cfg.doneTitle} ${done.length}개` : ""}</div>
         </div>
         <button className="dm-hit" onClick={() => setEditing("new")} style={{ height: 36, padding: "0 6px", background: "none", border: "none", color: ACCENT, fontSize: 16, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>＋ 추가</button>

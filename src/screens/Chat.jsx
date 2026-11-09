@@ -136,7 +136,7 @@ export default function Chat({ user, todayData, habits, scores, onBack, onSetTod
       <div style={S.topbar}>
         <button onClick={onBack} style={{ ...S.btnGhost, width: 56, marginTop: 0, padding: 10 }}>←</button>
         <div style={{ flex: 1 }}>
-          <div style={S.title}>AI 어시스턴트</div>
+          <div className="dm-page-title" style={S.title}>AI 어시스턴트</div>
           <div style={S.sub}>DayMate Claude</div>
         </div>
         <button onClick={() => setMessages([{ role: 'assistant', content: `안녕하세요 ${user?.name || ''}님! 오늘 하루 어떻게 도와드릴까요?` }])}
