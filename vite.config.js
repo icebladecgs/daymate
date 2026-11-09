@@ -34,6 +34,11 @@ export default defineConfig({
             return 'daymate-data';
           }
 
+          // 지도 도구는 전국 지도를 열 때만 받는다 (2026-11-09 — vendor에 넣으면 앱을 켤 때마다 150KB 더 받음)
+          if (normalizedId.includes('node_modules/leaflet')) {
+            return 'leaflet';
+          }
+
           if (normalizedId.includes('node_modules')) {
             return 'vendor';
           }

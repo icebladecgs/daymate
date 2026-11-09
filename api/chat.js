@@ -156,6 +156,7 @@ export default async function handler(req, res) {
       const r = a === 'territory-here' ? await T.territoryHere(db, uid, req.body || {})
         : a === 'territory-challenge' ? await T.territoryChallenge(db, uid, req.body || {})
         : a === 'territory-mine' ? await T.myTerritories(db, uid)
+        : a === 'territory-all' ? await T.allTerritories(db, uid)
         : { status: 400, body: { error: 'unknown' } };
       return res.status(r.status).json(r.body);
     } catch (e) {

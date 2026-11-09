@@ -80,6 +80,15 @@ const [a, b] = await Promise.all([S.territoryChallenge(db, 'strong1', HAEUNDAE, 
 const caps = [a, b].filter((x) => x.body.captured).length;
 t('동시에 이겨도 한 명만 차지', caps === 1 && [a, b].every((x) => x.body.won), JSON.stringify([a.body.captured, b.body.captured]));
 
+// 전국 지도·영토 순위 — 주인 있는 땅만, 계정 id는 내보내지 않음
+const ownerNow = (await db.doc(`territories/${CODE}`).get()).data().ownerUid; // 비등한 강자끼리라 누가 가졌는지는 그때그때 다름
+const all = await S.allTerritories(db, ownerNow, NOW + 2000);
+const allJson = JSON.stringify(all.body);
+t('지도: 주인 있는 땅 목록·내 땅 표시', all.status === 200 && all.body.list.length >= 2 && all.body.list.every((x) => x.c && x.o && x.k && typeof x.m === 'boolean') && all.body.list.some((x) => x.m), allJson.slice(0, 200));
+t('지도: 계정 id(uid)는 응답에 없음', !allJson.includes('strong1') && !allJson.includes('strong2') && !allJson.includes('ownerUid'));
+const owners = new Set(all.body.list.map((x) => x.k));
+t('순위: 땅 수 순, 사람마다 한 줄', all.body.ranking.length === owners.size && (all.body.ranking.length < 2 || all.body.ranking[0].count >= all.body.ranking[1].count) && all.body.ranking.filter((r) => r.mine).length === 1);
+
 // 사람이 차지한 땅의 강함은 차지할 때 그대로 (나중에 성장해도)
 await user('strong1', 9000000, BIG, '강한1');
 const owner = (await db.doc(`territories/${CODE}`).get()).data();

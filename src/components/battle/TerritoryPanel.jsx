@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import S, { UI, boxCard } from "../../styles.js";
 import { chatFetch } from "../../api/chatFetch.js";
@@ -6,38 +6,21 @@ import { RARITIES, BAG_MAX, itemEffects, normalizeGear } from "../../utils/gear.
 import { fameRate, territoryFame, shortName, TRIES_PER_DAY } from "../../utils/territory.js";
 import { useBackClose } from "../../utils/useBackClose.js";
 import TerritoryReplay from "./TerritoryReplay.jsx";
+const TerritoryMap = lazy(() => import("./TerritoryMap.jsx")); // 지도 도구(Leaflet)는 지도를 열 때만 받는다
 
 // 🗺️ 내 동네 영토 (2026-11-09, CLAUDE.md "영토 확장 계획") — 배틀 화면 위쪽 칸.
 // 위치는 "확인"·"도전"을 누를 때만 한 번 읽어 서버에 보내고, 서버는 어느 동인지만 찾는다(위치는 저장하지 않음).
 // 승패·소유는 서버가 정한다(api/chat.js?action=territory-*). 이 화면은 결과를 보여 주고 받은 장비를 가방에 넣기만 한다.
-const OK_KEY = "dm_territory_ok"; // 위치 안내에 동의한 기기 (accountSwap DEVICE_KEYS)
-const ATTRIBUTION = "행정동 경계: 통계청 SGIS(공공누리 제1유형) · github.com/vuski/admdongkor (CC BY 4.0)";
-
-const readOk = () => { try { return localStorage.getItem(OK_KEY) === "1"; } catch { return false; } };
-function getPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error("이 기기에서는 위치를 쓸 수 없어요")); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      (e) => reject(new Error(e.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저(앱) 설정에서 위치를 허용해 주세요" : "위치를 확인하지 못했어요. 밖이나 창가에서 다시 해 보세요")),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-    );
-  });
-}
-async function call(action, body) {
-  const r = await chatFetch(`/api/chat?action=${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || "잠시 후 다시 시도해 주세요");
-  return j;
-}
+import { ATTRIBUTION, readOk, markOk, getPosition, territoryCall as call } from "../../utils/territoryClient.js";
 const daysHeld = (ms) => (ms ? Math.max(1, Math.floor((Date.now() - ms) / 86400000) + 1) : 1);
 
-function ConsentSheet({ onOk, onClose }) {
+export function ConsentSheet({ onOk, onClose, onTop = false }) {
   useBackClose(onClose);
-  const target = document.querySelector(".dm-phone") || document.body;
+  // 전국 지도(body 위, zIndex 2000) 위에서 열 때는 onTop
+  const target = (!onTop && document.querySelector(".dm-phone")) || document.body;
   const p = { fontSize: 14, color: "var(--dm-text)", lineHeight: 1.6, marginBottom: 8 };
   return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 310, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: onTop ? 2100 : 310, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--dm-bg)", borderRadius: 18, border: "1px solid var(--dm-border)", padding: "20px 20px 16px" }}>
         <div style={{ fontSize: 17, fontWeight: 900, color: "var(--dm-text)", marginBottom: 10 }}>📍 위치 사용 안내</div>
         <div style={p}>영토는 <b>지금 있는 읍·면·동</b>에서만 도전할 수 있어요.</div>
@@ -60,6 +43,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
   const [mine, setMine] = useState(null); // 내 영토 목록
   const [consent, setConsent] = useState(null); // 동의 뒤 할 일 ('here' | 'challenge')
   const [showLog, setShowLog] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [replay, setReplay] = useState(null); // 도전 결과를 지금 배틀의 전투 장면으로 다시 보기
 
   const loadMine = () => { if (loggedIn) call("territory-mine").then((j) => setMine(j.list || [])).catch(() => setMine([])); };
@@ -171,6 +155,10 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
               </button>
             )}
           </div>
+          {/* 🗺️ 전국 지도 · 영토 순위 (2026-11-09) — 누구 땅인지 보고 갈 곳을 고른다 */}
+          <button onClick={() => setShowMap(true)} style={{ ...S.btnGhost, marginTop: 8, minHeight: UI.touch, color: "#30B0C7", borderColor: "rgba(48,176,199,.45)" }}>
+            🗺️ 전국 지도 · 🏆 영토 순위
+          </button>
 
           {mine && mine.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -189,8 +177,9 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
           <div style={{ fontSize: UI.sub, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.4 }}>{ATTRIBUTION}</div>
         </>
       )}
+      {showMap && <Suspense fallback={null}><TerritoryMap onClose={() => setShowMap(false)} /></Suspense>}
       {replay && <TerritoryReplay result={replay} playerLabel={String(nickname || "").trim() || "나"} onClose={() => setReplay(null)} />}
-      {consent && <ConsentSheet onClose={() => setConsent(null)} onOk={() => { try { localStorage.setItem(OK_KEY, "1"); } catch { /* 이번엔 그대로 */ } const w = consent; setConsent(null); run(w); }} />}
+      {consent && <ConsentSheet onClose={() => setConsent(null)} onOk={() => { markOk(); const w = consent; setConsent(null); run(w); }} />}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPlayerFighter } from "../data/battle/engine.js";
 import { normalizeGear, gearBonus, makeItem, rollRarity, npcRarityWeights } from "./gear.js";
-import { TIERS, TRIES_PER_DAY, regionTier, keeperLevel, keeperDef, ownerDef, snapshotOf, runAutoBattle, decodeRegions, locateRegion } from "./territory.js";
+import { TIERS, TRIES_PER_DAY, regionTier, keeperLevel, keeperDef, ownerDef, snapshotOf, runAutoBattle, decodeRegions, locateRegion, territoryFame } from "./territory.js";
 
 let REGIONS = null;
 let Q = 1e5;
@@ -116,6 +116,30 @@ export async function territoryChallenge(db, uid, body = {}, now = Date.now(), r
   // 보상 장비 — 지킴이 레벨 기준 등급 (가방은 앱이 넣는다)
   const reward = makeItem(rollRarity(rand(), npcRarityWeights(def.level)), rand);
   return { status: 200, body: { ...base, won: true, captured: true, reward, lostFrom: before?.ownerUid ? (before.owner?.name || "누군가") : null } };
+}
+
+// 🗺️ 전국 지도·영토 순위 (2026-11-09) — 주인 있는 땅만 (빈 땅은 화면이 지킴이를 계산)
+// 계정 id는 내보내지 않고 색을 정할 짧은 키(k)·닉네임만. 순위는 땅 수 → 영토 명성 순
+const ownerKey = (uid) => { let h = 2166136261; for (const c of String(uid)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+export async function allTerritories(db, uid, now = Date.now()) {
+  const snap = await db.collection("territories").where("ownerUid", "!=", null).limit(4000).get();
+  const list = [];
+  const byOwner = new Map();
+  for (const d of snap.docs) {
+    const t = d.data();
+    if (!t.ownerUid) continue;
+    const at = tsMs(t.capturedAt);
+    const name = t.owner?.name || "이름 없는 영주";
+    list.push({ c: t.code, l: t.level, o: name, k: ownerKey(t.ownerUid), m: t.ownerUid === uid, d: t.defenses || 0, t: at });
+    const o = byOwner.get(t.ownerUid) || { name, k: ownerKey(t.ownerUid), mine: t.ownerUid === uid, count: 0, items: [] };
+    o.count++; o.items.push({ level: t.level, capturedAtMs: at });
+    byOwner.set(t.ownerUid, o);
+  }
+  const ranking = [...byOwner.values()]
+    .map((o) => ({ name: o.name, k: o.k, mine: o.mine, count: o.count, fame: territoryFame(o.items, now) }))
+    .sort((a, b) => b.count - a.count || b.fame - a.fame)
+    .slice(0, 50);
+  return { status: 200, body: { list, ranking } };
 }
 
 // 내 영토 목록
