@@ -17,7 +17,7 @@ const DEVICE_KEYS = new Set([
   "dm_today_new_look", "dm_today_done_group", "dm_today_hidden", "dm_today_order", "dm_weather_cache", "dm_weather_open", "dm_task_alarm_lead", "dm_alarm_fired", "dm_memo_autolist", "dm_battle_skip_scene", "dm_battle_stats_open", "dm_raid_hidden",
   "dm_chat_sound", "dm_community_sound", "dm_chunk_reload_at", "dm_desktop_update_snooze", "dm_install_dismissed",
   "dm_seen_app_commit", "dm_shortcut_tip_dismissed", "dm_home_mode", "dm_home_prefs", "dm_home_section_order",
-  "dm_open_settings_subpage", "dm_pf_display_currency", "dm_pf_hide", "dm_people_sort", "dm_territory_ok",
+  "dm_open_settings_subpage", "dm_pf_display_currency", "dm_pf_hide", "dm_people_sort", "dm_territory_ok", "dm_map_base",
   "dm_notif_sound", "dm_notif_sound_style", "dm_notif_tts", "dm_notif_vibration",
 ]);
 const DEVICE_PREFIXES = ["dm_section_open_", "dm_fx_usd_krw_"];

@@ -13,13 +13,32 @@ import { ConsentSheet } from "./TerritoryPanel.jsx";
 // 지도는 보기만 — 도전은 그 동에 있을 때 영토 칸에서. 큰 글씨(zoom)가 걸린 .dm-phone 밖(body)에 그린다(안에 그리면 누른 위치가 어긋남).
 const KOREA = [[32.9, 124.4], [38.75, 131.2]];
 const MINE = "#30D158";
+// 세력 지도처럼 땅을 꽉 채워 칠한다 (2026-11-09 사용자 요청 — "삼국지2처럼 색칠", 형식만 빌리고 그림·색은 직접)
+// 빈 땅 = 지킴이 등급 색(은은하게), 사람 땅 = 진한 단색 + 굵은 테두리, 내 땅 = 초록 + 금색 테두리
+const TIER_COLORS = { myeon: "#9BD46A", eup: "#F5CF4C", city: "#F59E4B", metro: "#F088B0", seoul: "#A98BF0", center: "#E5484D" };
+const BASE_KEY = "dm_map_base"; // 바탕 지도 켜기/끄기 (기기마다, accountSwap DEVICE_KEYS)
+const readBase = () => { try { return localStorage.getItem(BASE_KEY) !== "0"; } catch { return true; } };
 
-function styleFor(own, level, selected) {
+function styleFor(own, name, selected) {
   const base = own
-    ? { fillColor: own.m ? MINE : ownerColor(own.k), fillOpacity: 0.55, color: own.m ? "#0a7a2a" : "#333", weight: 0.8, opacity: 0.6 }
-    : { fillColor: "#6B7280", fillOpacity: 0.04 + level * 0.016, color: "#6B7280", weight: 0.4, opacity: 0.35 };
-  return selected ? { ...base, color: "#FF9F0A", weight: 3, opacity: 1 } : base;
+    ? (own.m
+      ? { fillColor: MINE, fillOpacity: 0.85, color: "#FFD60A", weight: 2.5, opacity: 1 }
+      : { fillColor: ownerColor(own.k), fillOpacity: 0.85, color: "#1F2937", weight: 1.6, opacity: 0.9 })
+    : { fillColor: TIER_COLORS[regionTier(name)], fillOpacity: 0.6, color: "#ffffff", weight: 0.3, opacity: 0.35 };
+  return selected ? { ...base, color: "#FF9F0A", weight: 3.5, opacity: 1 } : base;
 }
+// 이름표 자리 — 가장 큰 고리의 가운데(대략)
+function centerOf(rings) {
+  let best = rings[0], area = -1;
+  for (const r of rings) {
+    let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][1] + r[i][1]) * (r[j][0] - r[i][0]);
+    if (Math.abs(a) > area) { area = Math.abs(a); best = r; }
+  }
+  let la0 = Infinity, la1 = -Infinity, ln0 = Infinity, ln1 = -Infinity;
+  for (const [la, ln] of best) { la0 = Math.min(la0, la); la1 = Math.max(la1, la); ln0 = Math.min(ln0, ln); ln1 = Math.max(ln1, ln); }
+  return [(la0 + la1) / 2, (ln0 + ln1) / 2];
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 export default function TerritoryMap({ onClose }) {
   useBackClose(onClose);
@@ -27,6 +46,11 @@ export default function TerritoryMap({ onClose }) {
   const mapRef = useRef(null);
   const layersRef = useRef(new Map()); // 코드 → 다각형
   const selRef = useRef(null);
+  const tileRef = useRef(null);
+  const labelsRef = useRef(null);
+  const sidoRef = useRef(null);
+  const [baseOn, setBaseOn] = useState(readBase);
+  const [view, setView] = useState(0); // 확대·이동할 때마다 +1 → 이름표 다시 그림
   const [tab, setTab] = useState("map");
   const [regions, setRegions] = useState(null);
   const [owned, setOwned] = useState(null); // { list, ranking }
@@ -48,12 +72,47 @@ export default function TerritoryMap({ onClose }) {
     if (!boxRef.current || mapRef.current) return undefined;
     const map = L.map(boxRef.current, { preferCanvas: true, zoomControl: true, minZoom: 6, maxZoom: 16, maxBounds: [[31.5, 122.5], [39.8, 133]], attributionControl: true });
     map.fitBounds(KOREA);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · 행정동 경계 통계청 SGIS·admdongkor',
-    }).addTo(map);
+    // 바탕 지도는 흐리게(회색·연하게) — 땅 색이 돋보이게. 끄면 경계와 색만 남는 전략 지도
+    tileRef.current = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, className: "dm-basemap", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+    });
+    if (readBase()) tileRef.current.addTo(map);
     map.attributionControl.setPrefix(false);
+    map.attributionControl.addAttribution("행정동 경계 통계청 SGIS·admdongkor");
+    labelsRef.current = L.layerGroup().addTo(map);
+    map.on("zoomend moveend", () => setView((v) => v + 1));
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; layersRef.current = new Map(); };
+  }, []);
+
+  // 바탕 지도 켜기/끄기
+  useEffect(() => {
+    const map = mapRef.current, tile = tileRef.current;
+    if (!map || !tile) return;
+    if (baseOn && !map.hasLayer(tile)) tile.addTo(map);
+    if (!baseOn && map.hasLayer(tile)) tile.remove();
+    try { localStorage.setItem(BASE_KEY, baseOn ? "1" : "0"); } catch { /* 이번엔 그대로 */ }
+  }, [baseOn]);
+
+  // 시·도 경계 굵은 선 (public/sido-lines.json — 이웃 동의 시·도가 다른 경계만 모은 선)
+  useEffect(() => {
+    let alive = true;
+    fetch("/sido-lines.json").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      const map = mapRef.current;
+      if (!alive || !d || !map) return;
+      const q = d.q || 1e4;
+      if (!map.getPane("sido")) map.createPane("sido").style.zIndex = 450; // 땅(400) 위, 이름표(600) 아래
+      const renderer = L.canvas({ padding: 0.3, pane: "sido" });
+      const group = L.layerGroup();
+      for (const ints of d.l) {
+        const pts = []; let x = 0, y = 0;
+        for (let i = 0; i < ints.length; i += 2) { x += ints[i]; y += ints[i + 1]; pts.push([y / q, x / q]); }
+        L.polyline(pts, { renderer, color: "#1F2937", weight: 2.2, opacity: 0.75, interactive: false }).addTo(group);
+      }
+      group.addTo(map);
+      sidoRef.current = group;
+    }).catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   // 구역 그리기 — 경계·주인 정보가 오면
@@ -66,19 +125,50 @@ export default function TerritoryMap({ onClose }) {
     layers.clear();
     for (const r of regions) {
       const own = ownedByCode.get(r.c);
-      const poly = L.polygon(r.rings, { renderer, ...styleFor(own, keeperLevel(r.c, r.n), false) });
+      const poly = L.polygon(r.rings, { renderer, ...styleFor(own, r.n, false) });
       poly.on("click", () => setSel(r.c));
       poly.addTo(map);
       layers.set(r.c, poly);
     }
   }, [regions, owned, ownedByCode]);
 
+  // 이름표 — 확대하면 주인 있는 땅에 🚩 닉네임(Lv.8~), 더 확대하면 빈 땅 동 이름(Lv.12~). 화면 안의 것만, 많으면 줄인다
+  const centers = useMemo(() => new Map((regions || []).map((r) => [r.c, centerOf(r.rings)])), [regions]);
+  useEffect(() => {
+    const map = mapRef.current, group = labelsRef.current;
+    if (!map || !group || !regions || !owned) return;
+    group.clearLayers();
+    const z = map.getZoom();
+    const bounds = map.getBounds().pad(0.1);
+    const inView = (c) => { const p = centers.get(c); return p && bounds.contains(p); };
+    if (z >= 8) {
+      let n = 0;
+      for (const t of owned.list || []) {
+        if (n >= 150 || !inView(t.c)) continue;
+        n++;
+        const color = t.m ? MINE : ownerColor(t.k);
+        L.marker(centers.get(t.c), {
+          interactive: false, keyboard: false,
+          icon: L.divIcon({ className: "dm-flag", iconSize: null, html: `<span style="border-color:${color}">${t.m ? "👑" : "🚩"} ${esc(t.o)}</span>` }),
+        }).addTo(group);
+      }
+    }
+    if (z >= 12) {
+      let n = 0;
+      for (const r of regions) {
+        if (n >= 120 || ownedByCode.has(r.c) || !inView(r.c)) continue;
+        n++;
+        L.marker(centers.get(r.c), { interactive: false, keyboard: false, icon: L.divIcon({ className: "dm-dong", iconSize: null, html: `<span>${esc(shortName(r.n))}</span>` }) }).addTo(group);
+      }
+    }
+  }, [view, regions, owned, centers, ownedByCode]);
+
   // 고른 구역 강조
   useEffect(() => {
     const layers = layersRef.current;
     const prev = selRef.current;
-    if (prev && layers.get(prev)) layers.get(prev).setStyle(styleFor(ownedByCode.get(prev), keeperLevel(prev, nameByCode.get(prev)), false));
-    if (sel && layers.get(sel)) { layers.get(sel).setStyle(styleFor(ownedByCode.get(sel), keeperLevel(sel, nameByCode.get(sel)), true)); layers.get(sel).bringToFront(); }
+    if (prev && layers.get(prev)) layers.get(prev).setStyle(styleFor(ownedByCode.get(prev), nameByCode.get(prev), false));
+    if (sel && layers.get(sel)) { layers.get(sel).setStyle(styleFor(ownedByCode.get(sel), nameByCode.get(sel), true)); layers.get(sel).bringToFront(); }
     selRef.current = sel;
   }, [sel, ownedByCode, nameByCode]);
 
@@ -125,10 +215,15 @@ export default function TerritoryMap({ onClose }) {
           <button onClick={locate} disabled={locating} style={{ height: UI.touch, padding: "0 14px", borderRadius: 999, border: "none", background: "#fff", color: "#111", fontSize: 14, fontWeight: 900, boxShadow: "0 2px 10px rgba(0,0,0,.25)", cursor: "pointer", fontFamily: "inherit" }}>
             {locating ? "확인 중…" : "📍 내 위치"}
           </button>
-          <div style={{ background: "rgba(255,255,255,.92)", color: "#111", borderRadius: 10, padding: "6px 9px", fontSize: 12, lineHeight: 1.6, boxShadow: "0 2px 10px rgba(0,0,0,.2)" }}>
-            <div><span style={{ color: MINE }}>■</span> 내 땅 {mineCount}</div>
-            <div><span style={{ color: "#E4572E" }}>■</span> 남의 땅 {ownedCount - mineCount}</div>
-            <div><span style={{ color: "#9CA3AF" }}>■</span> 빈 땅 (진할수록 강함)</div>
+          <button onClick={() => setBaseOn((v) => !v)} style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "none", background: "#fff", color: "#111", fontSize: 13, fontWeight: 800, boxShadow: "0 2px 10px rgba(0,0,0,.25)", cursor: "pointer", fontFamily: "inherit" }}>
+            {baseOn ? "🗺 바탕 지도 끄기" : "🗺 바탕 지도 켜기"}
+          </button>
+          <div style={{ background: "rgba(255,255,255,.94)", color: "#111", borderRadius: 10, padding: "6px 9px", fontSize: 12, lineHeight: 1.55, boxShadow: "0 2px 10px rgba(0,0,0,.2)" }}>
+            <div><span style={{ color: MINE }}>■</span> 내 땅 {mineCount} · <span style={{ color: "#1F2937" }}>■</span> 남의 땅 {ownedCount - mineCount}</div>
+            <div style={{ color: "#555", marginTop: 2 }}>빈 땅 지킴이</div>
+            {[["myeon", "면 Lv1~5"], ["eup", "읍 4~9"], ["city", "시 동 7~12"], ["metro", "광역시 10~15"], ["seoul", "서울·세종 13~18"], ["center", "중심지 19~21"]].map(([k, l]) => (
+              <div key={k}><span style={{ color: TIER_COLORS[k] }}>■</span> {l}</div>
+            ))}
           </div>
         </div>
         {err && <div style={{ position: "absolute", top: 12, left: 12, right: 150, zIndex: 1000, background: "rgba(255,69,58,.95)", color: "#fff", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{err}</div>}
@@ -177,7 +272,10 @@ export default function TerritoryMap({ onClose }) {
         </div>
       )}
       {consent && <ConsentSheet onTop onClose={() => setConsent(false)} onOk={() => { markOk(); setConsent(false); setTimeout(locate, 0); }} />}
-      <style>{`.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:10px}`}</style>
+      <style>{`.leaflet-container{font-family:inherit;background:#cfdde9}.leaflet-control-attribution{font-size:10px}
+.dm-basemap{filter:grayscale(1) contrast(.85) brightness(1.08);opacity:.5}
+.dm-flag span{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;background:rgba(255,255,255,.95);color:#111;font-size:12px;font-weight:900;padding:2px 7px;border-radius:999px;border:2px solid #333;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.dm-dong span{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;color:#1F2937;font-size:11px;font-weight:700;text-shadow:0 0 3px #fff,0 0 3px #fff}`}</style>
     </div>,
     document.body,
   );
