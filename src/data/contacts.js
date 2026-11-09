@@ -39,6 +39,20 @@ export function normalizePhone(phone) {
   return d;
 }
 
+// 화면에 보일 전화번호 모양 (2026-11-10 — 저장된 글자 그대로 보여 "010-000-00000"처럼 나오던 것).
+// 저장 값은 바꾸지 않고 숫자만 다시 끊는다: 휴대폰 010-0000-0000(10자리는 3-3-4), 서울 02-000(0)-0000, 지역 031-000(0)-0000,
+// 대표번호 1588-0000, 070·050 인터넷 전화. 모르는 모양이면 저장된 글자 그대로
+export function formatPhone(phone) {
+  const raw = String(phone || "").trim();
+  const d = normalizePhone(raw);
+  if (!d || /[^\d\s()+\-.]/.test(raw)) return raw; // 내선·메모가 섞이면 그대로
+  if (/^01\d/.test(d)) return d.length === 11 ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}` : d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : raw;
+  if (/^02/.test(d)) return d.length === 10 ? `02-${d.slice(2, 6)}-${d.slice(6)}` : d.length === 9 ? `02-${d.slice(2, 5)}-${d.slice(5)}` : raw;
+  if (/^0\d{2}/.test(d)) return d.length === 11 ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}` : d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : raw;
+  if (/^1[5-9]\d{2}/.test(d) && d.length === 8) return `${d.slice(0, 4)}-${d.slice(4)}`;
+  return raw;
+}
+
 // 휴대폰 연락처 선택 결과([{ name:[], tel:[], email:[] }])를 가져오기 후보로 변환.
 // 이미 등록된 사람(같은 전화번호, 전화번호가 없으면 같은 이름)은 dup=true로 표시.
 // 안드로이드 선택 창에서 "모두 선택"으로 전체를 넘겨받은 뒤 앱에서 골라 등록하는 흐름이라 기본은 모두 체크 해제.

@@ -905,7 +905,7 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   let g = {}; for (let i = 0; i < 20; i++) g = G.rollDrop(g, `t:${i}`, 'task', D, () => 0.99).gear;
   t('골드: 할일·습관은 하루 60까지', g.gold === G.TASK_GOLD_CAP && G.rollDrop(g, 't:new', 'task', '2026-11-11', () => 0.99).gear.gold === G.TASK_GOLD_CAP + 5);
   let b = { gear: {} }; for (let i = 0; i < 8; i++) b = G.addGold(b.gear, D, 'battle', G.battleGoldFor(15));
-  t('골드: 배틀은 상대 레벨 10~30, 하루 100까지', G.battleGoldFor(1) === 10 && G.battleGoldFor(40) === 30 && b.gear.gold === 100 && b.added === 0 && G.battleGoldLeft(b.gear, D) === 0);
+  t('골드: 배틀은 상대 레벨 10~30, 하루 50까지', G.battleGoldFor(1) === 10 && G.battleGoldFor(40) === 30 && b.gear.gold === G.BATTLE_GOLD_CAP && G.BATTLE_GOLD_CAP === 50 && b.added === 0 && G.battleGoldLeft(b.gear, D) === 0);
   const shop = G.shopItems(D, 'u1');
   t('상점: 하루 3칸, 무기·갑옷·부적 하나씩, 같은 날·계정이면 같음, 전설 없음',
     shop.length === 3 && new Set(shop.map((x) => x.slot)).size === 3 && JSON.stringify(shop.map((x) => x.name)) === JSON.stringify(G.shopItems(D, 'u1').map((x) => x.name))

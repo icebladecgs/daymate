@@ -165,7 +165,7 @@ export function npcReward(gear, npc, todayStr, rand = Math.random) {
 // 상점은 날마다 바뀌는 3칸(떠돌이 도전자처럼 날짜+계정으로 정해짐), 일반~희귀 + 가끔 영웅, 전설은 팔지 않는다(줍기·떠돌이에서만).
 export const GOLD = { task: 5, habit: 3 };
 export const TASK_GOLD_CAP = 60;    // 할일·습관 골드 하루 최대 (할일을 만들고 지우며 모으지 못하게)
-export const BATTLE_GOLD_CAP = 100; // 배틀 골드 하루 최대
+export const BATTLE_GOLD_CAP = 50;  // 배틀 골드 하루 최대 (2026-11-10 사용자 결정 100→50 — 골드는 할일·습관에서 주로)
 export const battleGoldFor = (level) => Math.max(10, Math.min(30, 9 + (Number(level) || 1))); // 상대 레벨 1 → 10G … 21 이상 → 30G
 export const SHOP_SIZE = 3;
 export const SHOP_RARITY = { common: 45, uncommon: 35, rare: 17, epic: 3 };

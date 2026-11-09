@@ -11,7 +11,7 @@ import {
   newContact, genSubId, buildImportCandidates, buildSearchIndex, prepareSearchQuery, matchSearchIndex,
   getNextSolarOccurrence, daysUntil,
   CONTACT_EVERY_OPTIONS, contactEveryLabel, contactDue, lastContactDate, daysBetween, agoLabel,
-  CONTACT_SORTS, sortContacts, renameContactTag, removeContactTag,
+  CONTACT_SORTS, sortContacts, renameContactTag, removeContactTag, formatPhone,
 } from "../data/contacts.js";
 import { parseVCards } from "../utils/vcard.js";
 import { useBackClose } from "../utils/useBackClose.js";
@@ -320,7 +320,7 @@ function ContactDetail({ contact, plans, onBack, onEdit, onDelete, onUpdate, onA
       {(contact.company || contact.title || contact.phone || contact.email || (contact.tags || []).length > 0) && (
         <div style={card()}>
           {(contact.company || contact.title) && <div style={{ fontSize: bodyFs(), color: "var(--dm-sub)", marginBottom: 4 }}>{[contact.company, contact.title].filter(Boolean).join(" · ")}</div>}
-          {contact.phone && <div style={{ fontSize: bodyFs(), color: "var(--dm-text)" }}>{contact.phone}</div>}
+          {contact.phone && <div style={{ fontSize: bodyFs(), color: "var(--dm-text)" }}>{formatPhone(contact.phone)}</div>}
           {contact.email && <div style={{ fontSize: bodyFs(), color: "var(--dm-text)", wordBreak: "break-all" }}>{contact.email}</div>}
           {(contact.tags || []).length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -545,6 +545,21 @@ export default function People({
   const uid = authUser?.uid;
   const selected = contacts.find(c => c.id === selectedId) || null;
   const today = toDateStr();
+  // 사람을 열면 맨 위부터, 목록으로 돌아오면 보던 자리로 (2026-11-10 — 목록에서 내려온 자리 그대로 열려 중간부터 보였다)
+  // 페이지 전체가 스크롤되는 화면이라 window와 .dm-phone 둘 다 맞춘다
+  const listScrollRef = useRef(0);
+  const prevViewRef = useRef(view);
+  useEffect(() => {
+    const prev = prevViewRef.current;
+    prevViewRef.current = view;
+    if (prev === view) return;
+    const box = document.querySelector('.dm-phone');
+    const to = (y) => { window.scrollTo(0, y); if (box?.scrollTo) box.scrollTo(0, y); };
+    to(view === 'list' ? listScrollRef.current : 0);
+    // 뒤로가기로 돌아오면 브라우저가 스크롤을 한 번 더 바꾼다 — 조금 뒤에 한 번 더 맞춘다
+    const t = setTimeout(() => to(view === 'list' ? listScrollRef.current : 0), 60);
+    return () => clearTimeout(t);
+  }, [view, selectedId]);
 
   // 검색 정보는 목록이 바뀔 때만 계산하고, 입력은 목록 갱신과 분리한다 (예전엔 글자마다 모든 사람의 초성을 다시 계산)
   const indexed = useMemo(() => contacts.map(c => ({ c, idx: buildSearchIndex(c) })), [contacts]);
@@ -827,7 +842,7 @@ export default function People({
           const everyLine = d ? `${contactEveryLabel(d.every)}마다` : "";
           const meta = [lastLine, everyLine].filter(Boolean).join(" · ");
           return (
-            <button key={c.id} onClick={() => { setSelectedId(c.id); setView("detail"); }}
+            <button key={c.id} onClick={() => { listScrollRef.current = Math.max(window.scrollY || 0, document.querySelector('.dm-phone')?.scrollTop || 0); setSelectedId(c.id); setView("detail"); }}
               style={{ width: "100%", textAlign: "left", background: "var(--dm-card)", border: "1px solid var(--dm-border)", borderRadius: NL() ? UI.box.radius - 4 : 14, padding: NL() ? "13px 14px" : "12px 14px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", display: "block" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0, fontSize: NL() ? UI.item : 14, fontWeight: 900, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>

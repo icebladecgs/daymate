@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import S from "../styles.js";
-import { prepareSearchQuery, matchSearchIndex } from "../data/contacts.js";
+import { prepareSearchQuery, matchSearchIndex, formatPhone } from "../data/contacts.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
 // 연락처 가져오기 전·실패 시 안내 창
@@ -69,7 +69,7 @@ const ImportRow = memo(function ImportRow({ x, onToggle }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</div>
         <div style={{ fontSize: 11, color: 'var(--dm-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {[x.phone, x.email].filter(Boolean).join(' · ') || '연락처 정보 없음'}
+          {[x.phone && formatPhone(x.phone), x.email].filter(Boolean).join(' · ') || '연락처 정보 없음'}
         </div>
       </div>
       {x.dup && <span style={{ fontSize: 10, color: '#FBBF24', background: 'rgba(251,191,36,.12)', borderRadius: 6, padding: '2px 6px', flexShrink: 0 }}>이미 등록됨</span>}
