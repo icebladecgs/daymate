@@ -1,7 +1,8 @@
 // 🎒 배틀 장비 · 🧭 떠돌이 도전자 (2026-11-08 사용자 요청 — "레벨이 안 오르면 깰 수가 없어 지루하고 의외성이 부족")
 // 레벨 말고도 강해지는 길(장비)과 매일 다른 상대(떠돌이 도전자). 돈·뽑기 결제 없음, 이름·그림은 직접 만든 것.
 // 장비는 할일·습관을 끝낼 때 가끔 떨어진다(실제로 해야 강해짐). 계정 설정 battleGear 하나에 저장.
-// battleGear = { items: [{id, slot, rarity, name, atk, hp, crit, dodge, def, at}], equipped: {weapon, armor, charm}, rolled: [키], wander: {date, won}, dropsOff }
+// battleGear = { items: [{id, slot, rarity, name, atk, hp, crit, dodge, def, at}], equipped: {weapon, armor, charm}, rolled: [키], wander: {date, won}, dropsOff,
+//               gold, earned: {date, task, battle}, shop: {date, bought: [칸]} }  (골드·상점 2026-11-10)
 // 효과는 배틀 엔진(createPlayerFighter)에서만 쓰고, 능력치·레벨은 건드리지 않는다. 계산은 이 파일 한 곳 (test:data).
 
 export const GEAR_SLOTS = [
@@ -103,6 +104,10 @@ export function normalizeGear(g) {
       ...(Array.isArray(g?.npcDrops?.ids) ? g.npcDrops.ids : []),
     ].map(String))].slice(0, 100),
     dropsOff: !!g?.dropsOff,
+    // 🪙 골드·상점 (2026-11-10) — gold: 가진 골드, earned: 오늘 받은 양(상한 확인용), shop: 오늘 상점에서 산 칸
+    gold: Math.max(0, Math.floor(Number(g?.gold) || 0)),
+    earned: g?.earned?.date ? { date: String(g.earned.date), task: Math.max(0, Number(g.earned.task) || 0), battle: Math.max(0, Number(g.earned.battle) || 0) } : null,
+    shop: g?.shop?.date ? { date: String(g.shop.date), bought: (Array.isArray(g.shop.bought) ? g.shop.bought : []).map(Number).filter((i) => i >= 0 && i < SHOP_SIZE) } : null,
   };
 }
 
@@ -120,13 +125,17 @@ export function gearBonus(gear) {
 // 할일·습관을 끝냈을 때 — 같은 키는 한 번만 굴린다(체크를 풀었다 다시 해도). 결과: { gear, item|null, full }
 export function rollDrop(gear, key, source, todayStr, rand = Math.random) {
   const g = normalizeGear(gear);
-  if (g.dropsOff || g.rolled.includes(key)) return { gear: g, item: null };
-  const next = { ...g, rolled: [...g.rolled, key].slice(-300) };
+  if (g.rolled.includes(key)) return { gear: g, item: null, gold: 0 };
+  // 골드는 장비 줍기를 꺼도 받는다 (같은 키는 한 번만 — 체크를 풀었다 다시 해도 같음)
+  const paid = addGold(g, todayStr, 'task', GOLD[source] || 0);
+  const next = { ...paid.gear, rolled: [...g.rolled, key].slice(-300) };
+  const gold = paid.added;
+  if (g.dropsOff) return { gear: next, item: null, gold };
   const todayCount = g.items.filter((x) => x.at === todayStr).length;
-  if (todayCount >= DROPS_PER_DAY || rand() >= (DROP_CHANCE[source] || 0)) return { gear: next, item: null };
-  if (g.items.length >= BAG_MAX) return { gear: next, item: null, full: true };
+  if (todayCount >= DROPS_PER_DAY || rand() >= (DROP_CHANCE[source] || 0)) return { gear: next, item: null, gold };
+  if (g.items.length >= BAG_MAX) return { gear: next, item: null, full: true, gold };
   const item = { ...makeItem(rollRarity(rand()), rand), at: todayStr };
-  return { gear: { ...next, items: [...next.items, item] }, item };
+  return { gear: { ...next, items: [...next.items, item] }, item, gold };
 }
 
 // 떠돌이 도전자 보상 — 하루 한 번
@@ -149,6 +158,54 @@ export function npcReward(gear, npc, todayStr, rand = Math.random) {
   const marked = { ...g, npcClaimed: [...g.npcClaimed, String(npc.id)] };
   const item = { ...makeItem(rollRarity(rand(), npcRarityWeights(npc.level)), rand), at: todayStr };
   return { gear: { ...marked, items: [...marked.items, item] }, item };
+}
+
+// ── 🪙 골드·상점 (2026-11-10 사용자 요청 — "배틀에서 이기면 골드, 그 골드로 장비를 산다") ──
+// 원칙: 골드는 할일·습관에서 주로, 배틀은 보너스(하루 상한). 자동 배틀로 끝없이 모으지 못하게 상한을 둔다.
+// 상점은 날마다 바뀌는 3칸(떠돌이 도전자처럼 날짜+계정으로 정해짐), 일반~희귀 + 가끔 영웅, 전설은 팔지 않는다(줍기·떠돌이에서만).
+export const GOLD = { task: 5, habit: 3 };
+export const TASK_GOLD_CAP = 60;    // 할일·습관 골드 하루 최대 (할일을 만들고 지우며 모으지 못하게)
+export const BATTLE_GOLD_CAP = 100; // 배틀 골드 하루 최대
+export const battleGoldFor = (level) => Math.max(10, Math.min(30, 9 + (Number(level) || 1))); // 상대 레벨 1 → 10G … 21 이상 → 30G
+export const SHOP_SIZE = 3;
+export const SHOP_RARITY = { common: 45, uncommon: 35, rare: 17, epic: 3 };
+export const SHOP_PRICE = { common: 60, uncommon: 150, rare: 400, epic: 1000 }; // 모의 전투(2026-11-10): 고급 3개만 껴도 바로 위 레벨 승률이 20%대→80~90%대라 줍기(희귀 3개 ≈ 50일)보다 너무 빠르지 않게
+
+// kind: 'task'(할일·습관) | 'battle'. 하루 상한을 넘는 만큼은 버린다. 결과 { gear, added }
+export function addGold(gear, todayStr, kind, amount) {
+  const g = normalizeGear(gear);
+  const earned = g.earned?.date === todayStr ? g.earned : { date: todayStr, task: 0, battle: 0 };
+  const cap = kind === 'battle' ? BATTLE_GOLD_CAP : TASK_GOLD_CAP;
+  const added = Math.max(0, Math.min(Math.floor(amount) || 0, cap - earned[kind]));
+  if (!added) return { gear: g, added: 0 };
+  return { gear: { ...g, gold: g.gold + added, earned: { ...earned, [kind]: earned[kind] + added } }, added };
+}
+export const battleGoldLeft = (gear, todayStr) => { const e = normalizeGear(gear).earned; return BATTLE_GOLD_CAP - (e?.date === todayStr ? e.battle : 0); };
+
+// 오늘 상점 — 같은 날·같은 계정이면 기기가 달라도 같은 3칸. 칸마다 무기·갑옷·부적이 겹치지 않게
+export function shopItems(dateStr, seed) {
+  const r = seededRand(`shop|${dateStr}|${seed}`);
+  const slots = ['weapon', 'armor', 'charm'].map((x) => [x, r()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+  return slots.slice(0, SHOP_SIZE).map((slot, i) => {
+    const rarity = rollRarity(r(), SHOP_RARITY);
+    const item = makeItem(rarity, r, slot);
+    return { ...item, id: `shop_${dateStr}_${i}`, price: SHOP_PRICE[rarity] };
+  });
+}
+export const shopBought = (gear, dateStr) => { const s = normalizeGear(gear).shop; return s?.date === dateStr ? s.bought : []; };
+
+// 사기 — 결과 { gear, item } 또는 { gear, error: 'bought'|'gold'|'full' }
+export function buyShopItem(gear, dateStr, seed, index) {
+  const g = normalizeGear(gear);
+  const it = shopItems(dateStr, seed)[index];
+  if (!it) return { gear: g, error: 'bought' };
+  const bought = shopBought(g, dateStr);
+  if (bought.includes(index)) return { gear: g, error: 'bought' };
+  if (g.gold < it.price) return { gear: g, error: 'gold' };
+  if (g.items.length >= BAG_MAX) return { gear: g, error: 'full' };
+  const { price, ...rest } = it;
+  const item = { ...rest, id: `g${Date.now().toString(36)}s${index}`, at: dateStr, bought: price };
+  return { gear: { ...g, gold: g.gold - price, items: [...g.items, item], shop: { date: dateStr, bought: [...bought, index] } }, item };
 }
 
 // ── 떠돌이 도전자: 날짜로 정해지는 상대 (같은 날은 같은 상대, 기기가 달라도 같음) ──

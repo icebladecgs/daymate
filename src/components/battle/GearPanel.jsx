@@ -6,7 +6,8 @@ const NL = () => newDesignOn(); // 새 디자인 글자 단계 (2026-11-09) — 
 import UndoBar from "../UndoBar.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
-import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects } from "../../utils/gear.js";
+import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
+  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem } from "../../utils/gear.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
 const rarityChip = (r) => ({ fontSize: 12, fontWeight: 900, color: "#fff", background: RARITIES[r].color, borderRadius: 6, padding: "1px 6px", flexShrink: 0 });
@@ -115,6 +116,72 @@ export default function GearPanel({ gear, setGear }) {
           <span style={{ position: "absolute", top: 3, left: g.dropsOff ? 3 : 21, width: 22, height: 22, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
         </span>
       </button>
+    </div>
+  );
+}
+
+// 🏪 오늘의 상점 (2026-11-10 사용자 요청) — 골드로 장비 사기. 날마다 바뀌는 3칸(utils/gear.js shopItems), 전설은 팔지 않는다.
+// 산 것은 5초 안에 되돌릴 수 있다(확인창 대신, CLAUDE.md 14.1) — 그 사이 끼웠어도 빼고 골드를 돌려준다
+export function ShopCard({ gear, setGear, seed }) {
+  const g = normalizeGear(gear);
+  const today = toDateStr();
+  const undo = useUndo();
+  const items = shopItems(today, seed);
+  const bought = shopBought(g, today);
+  const earned = g.earned?.date === today ? g.earned : { task: 0, battle: 0 };
+  const [msg, setMsg] = useState('');
+
+  const buy = (i) => {
+    const r = buyShopItem(g, today, seed, i);
+    if (r.error) { setMsg(r.error === 'gold' ? '골드가 모자라요' : r.error === 'full' ? '가방이 꽉 찼어요 — 장비를 정리해 주세요' : '이미 샀어요'); return; }
+    setMsg('');
+    setGear(r.gear);
+    const price = items[i].price;
+    undo.offer(`🪙 ${price} · 샀어요`, () => setGear((cur) => {
+      const c = normalizeGear(cur);
+      if (!c.items.some((x) => x.id === r.item.id)) return c; // 이미 버렸으면 그대로
+      const equipped = Object.fromEntries(Object.entries(c.equipped).map(([k, v]) => [k, v === r.item.id ? null : v]));
+      return { ...c, gold: c.gold + price, items: c.items.filter((x) => x.id !== r.item.id), equipped,
+        shop: c.shop?.date === today ? { ...c.shop, bought: c.shop.bought.filter((x) => x !== i) } : c.shop };
+    }));
+  };
+
+  return (
+    <div style={S.card}>
+      <UndoBar bar={undo.bar} onUndo={undo.run} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)", whiteSpace: "nowrap" }}>🏪 오늘의 상점</span>
+        <span style={{ marginLeft: "auto", fontSize: 17, fontWeight: 900, color: "#FF9F0A", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>🪙 {g.gold.toLocaleString()}</span>
+      </div>
+      <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>
+        오늘 받은 골드 · 할일·습관 {earned.task}/{TASK_GOLD_CAP} · 배틀 {earned.battle}/{BATTLE_GOLD_CAP} · 물건은 내일 바뀌어요
+      </div>
+      {items.map((it, i) => {
+        const done = bought.includes(i);
+        const can = !done && g.gold >= it.price;
+        const slot = GEAR_SLOTS.find((s) => s.id === it.slot);
+        return (
+          <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid var(--dm-row)", opacity: done ? 0.55 : 1 }}>
+            <span style={{ fontSize: 20, width: 26, textAlign: "center", flexShrink: 0 }}>{slot?.emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <span style={rarityChip(it.rarity)}>{RARITIES[it.rarity].label}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span>
+              </div>
+              <div style={{ fontSize: 13, color: "var(--dm-sub)", marginTop: 2 }}>{itemEffects(it).join(" · ")}</div>
+            </div>
+            <button className="dm-hit" disabled={!can} onClick={() => buy(i)}
+              style={{ flexShrink: 0, minWidth: 72, height: 36, padding: "0 10px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 900, fontFamily: "inherit", whiteSpace: "nowrap",
+                cursor: can ? "pointer" : "default", background: done ? "var(--dm-input)" : can ? "#FF9F0A" : "var(--dm-input)", color: done ? "var(--dm-muted)" : can ? "#fff" : "var(--dm-muted)" }}>
+              {done ? "샀어요" : `🪙 ${it.price}`}
+            </button>
+          </div>
+        );
+      })}
+      {msg && <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700, marginTop: 4 }}>{msg}</div>}
+      <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
+        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀에서 이길 때 +10~30 (하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}). 전설 장비는 상점에서 팔지 않아요.
+      </div>
     </div>
   );
 }

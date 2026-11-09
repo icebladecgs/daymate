@@ -30,7 +30,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer } from "./utils/gear.js";
+import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleGoldFor } from "./utils/gear.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
@@ -555,8 +555,10 @@ export default function App() {
     if (won) {
       // 레벨별 상대도 이기면 상대마다 딱 한 번(처음 이겼을 때) 장비 (2026-11-09, 레벨이 높을수록 좋은 등급)
       const r = npcDef.isWanderer ? wanderReward(battleGearRef.current, toDateStr()) : npcReward(battleGearRef.current, npcDef, toDateStr());
-      if (r.gear !== battleGearRef.current) updateGear(r.gear);
-      reward = { item: r.item, full: !!r.full };
+      // 🪙 이길 때마다 골드 (상대 레벨 1 → 10G … 30G, 하루 상한 — utils/gear.js). 장비 보상과 별개로 매번
+      const paid = addGold(r.gear, toDateStr(), 'battle', battleGoldFor(npcDef.level));
+      if (paid.gear !== battleGearRef.current) updateGear(paid.gear);
+      reward = { item: r.item, full: !!r.full, gold: paid.added };
     }
     setBattleRecord(prev => {
       const next = { ...prev };
@@ -2640,7 +2642,7 @@ export default function App() {
           onSetBattleNickname={setBattleNickname}
           onBack={() => changeScreen("today")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
-          gear={battleGear} setGear={updateGear} wanderer={wanderer} loggedIn={!!authUser}
+          gear={battleGear} setGear={updateGear} wanderer={wanderer} loggedIn={!!authUser} shopSeed={authUser?.uid || "local"}
         />
       );
     }
@@ -2656,6 +2658,7 @@ export default function App() {
           gear={gearBonus(battleGear)}
           npcOverride={battleNpcId === "wander" ? wanderer : null}
           bag={battleGear.items}
+          gold={battleGear.gold}
         />
       );
     }

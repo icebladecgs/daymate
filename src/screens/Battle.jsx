@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import S from "../styles.js";
 import BattleStage from "../components/battle/BattleStage.jsx";
 import { tierOfLevel } from "../components/battle/armor.js";
-import { RARITIES, itemEffects, BAG_MAX } from "../utils/gear.js";
+import { RARITIES, itemEffects, BAG_MAX, BATTLE_GOLD_CAP } from "../utils/gear.js";
 import { store } from "../utils/storage.js";
 import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
 import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
@@ -135,7 +135,7 @@ function tagRound(prevLog, nextLog, round) {
 }
 
 // gear: 끼운 장비 효과(utils/gear.js gearBonus), npcOverride: 떠돌이 도전자처럼 NPC 목록에 없는 상대 (2026-11-08)
-export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd, gear = null, npcOverride = null, bag = [] }) {
+export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd, gear = null, npcOverride = null, bag = [], gold = 0 }) {
   const playerLabel = battleNickname?.trim() || '나';
   const npcDef = npcOverride || getNpcById(npcId);
   const npcAvatar = npcOverride?.emoji || getNpcAvatar(npcId);
@@ -174,6 +174,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   // 승리 보상(떠돌이 도전자·레벨별 상대 모두) — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
   const [startBagIds, setStartBagIds] = useState(() => new Set((bag || []).map(x => x.id)));
   const reward = npcDef && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
+  // 🪙 이긴 판에 받은 골드 — 시작할 때 골드와 비교 (2026-11-10, 하루 상한을 넘으면 0)
+  const [startGold, setStartGold] = useState(gold);
+  const goldGain = npcDef && state.status === 'win' ? Math.max(0, gold - startGold) : 0;
 
   const { player, npc, status, log } = state;
   // 라운드별로 묶어서 최신 라운드가 위로 (각 칸 = 그 라운드에서 그쪽이 한 행동)
@@ -269,6 +272,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
   const retryBattle = () => {
     setStartBagIds(new Set((bag || []).map(x => x.id)));
+    setStartGold(gold);
     setResolving(false);
     setFlash(null);
     setPops({ player: [], npc: [] });
@@ -378,6 +382,11 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           </div>
           {status === 'win' && (
             <div style={{ fontSize: 12, color: 'var(--dm-muted)', marginTop: 6 }}>명성 +{calcBattleReward(npc, true).fame}</div>
+          )}
+          {status === 'win' && (
+            <div style={{ fontSize: 14, fontWeight: 800, color: goldGain ? '#FF9F0A' : 'var(--dm-muted)', marginTop: 6 }}>
+              {goldGain ? `🪙 +${goldGain} 골드 · 가진 골드 ${gold}` : `🪙 오늘 배틀 골드는 다 받았어요 (하루 ${BATTLE_GOLD_CAP})`}
+            </div>
           )}
           {reward && (
             <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,159,10,.12)' }}>

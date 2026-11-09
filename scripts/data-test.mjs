@@ -895,6 +895,29 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('영토: 남한 밖은 판정 안 함', !T.inKorea(39.03, 125.75) && T.inKorea(37.57, 126.97) && !T.inKorea(NaN, 127));
 }
 
+// ── 🪙 골드·상점 (2026-11-10, utils/gear.js) ──
+{
+  const G = await load('/src/utils/gear.js');
+  const D = '2026-11-10';
+  const r1 = G.rollDrop({}, 't:a', 'task', D, () => 0.99);
+  t('골드: 할일 끝내면 +5, 같은 할일 다시 체크해도 한 번만', r1.gold === 5 && r1.gear.gold === 5 && G.rollDrop(r1.gear, 't:a', 'task', D).gold === 0);
+  t('골드: 습관 +3, 장비 줍기를 꺼도 골드는 받음', G.rollDrop({ dropsOff: true }, 'h:x', 'habit', D).gear.gold === 3);
+  let g = {}; for (let i = 0; i < 20; i++) g = G.rollDrop(g, `t:${i}`, 'task', D, () => 0.99).gear;
+  t('골드: 할일·습관은 하루 60까지', g.gold === G.TASK_GOLD_CAP && G.rollDrop(g, 't:new', 'task', '2026-11-11', () => 0.99).gear.gold === G.TASK_GOLD_CAP + 5);
+  let b = { gear: {} }; for (let i = 0; i < 8; i++) b = G.addGold(b.gear, D, 'battle', G.battleGoldFor(15));
+  t('골드: 배틀은 상대 레벨 10~30, 하루 100까지', G.battleGoldFor(1) === 10 && G.battleGoldFor(40) === 30 && b.gear.gold === 100 && b.added === 0 && G.battleGoldLeft(b.gear, D) === 0);
+  const shop = G.shopItems(D, 'u1');
+  t('상점: 하루 3칸, 무기·갑옷·부적 하나씩, 같은 날·계정이면 같음, 전설 없음',
+    shop.length === 3 && new Set(shop.map((x) => x.slot)).size === 3 && JSON.stringify(shop.map((x) => x.name)) === JSON.stringify(G.shopItems(D, 'u1').map((x) => x.name))
+    && [...Array(200)].every((_, i) => G.shopItems(`2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`, `s${i}`).every((x) => x.rarity !== 'legend')));
+  const rich = { gold: 5000 };
+  const p1 = G.buyShopItem(rich, D, 'u1', 0);
+  t('상점: 사면 골드가 줄고 가방에 들어감, 같은 칸은 다시 못 삼', !p1.error && p1.gear.gold === 5000 - shop[0].price && p1.gear.items.length === 1 && G.buyShopItem(p1.gear, D, 'u1', 0).error === 'bought');
+  t('상점: 골드가 모자라면 못 삼', G.buyShopItem({ gold: 10 }, D, 'u1', 1).error === 'gold');
+  t('상점: 다음 날은 다시 살 수 있음', !G.buyShopItem(p1.gear, '2026-11-11', 'u1', 0).error);
+  t('골드: 저장 값 정리(음수·글자)', G.normalizeGear({ gold: -5 }).gold === 0 && G.normalizeGear({ gold: '12' }).gold === 12);
+}
+
 // ── 🌙 하루 시간대·내일 미리보기 (2026-11-09, utils/dayPhase.js) ──
 {
   const P = await load('/src/utils/dayPhase.js');
