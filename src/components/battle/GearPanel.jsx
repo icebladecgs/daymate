@@ -58,10 +58,9 @@ export default function GearPanel({ gear, setGear }) {
   return (
     <div style={S.card}>
       <UndoBar bar={undo.bar} onUndo={undo.run} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)" }}>🎒 내 장비</span>
-        <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--dm-sub)" }}>{total.length ? total.join(" · ") : "아직 끼운 장비가 없어요"}</span>
-      </div>
+      {/* 제목 한 줄, 효과 요약은 그 아래 한 줄 (2026-11-10 — 19px로 키운 뒤 효과 글자에 밀려 "내 장비"가 두 줄로 깨졌다) */}
+      <div style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)", whiteSpace: "nowrap" }}>🎒 내 장비</div>
+      <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>{total.length ? total.join(" · ") : "아직 끼운 장비가 없어요"}</div>
       {GEAR_SLOTS.map((s) => {
         const it = g.items.find((x) => x.id === g.equipped[s.id]);
         return (
