@@ -96,20 +96,36 @@ export function ownerDef(code, snap) {
   };
 }
 
-// 서버가 끝까지 자동으로 싸운다 (한 턴씩 고를 수 없음 — 사용자 동의 2026-11-09). 결과: { won, rounds, log }
+// 서버가 끝까지 자동으로 싸운다 (한 턴씩 고를 수 없음 — 사용자 동의 2026-11-09). 결과: { won, rounds, log, frames, fighters }
+// frames: 기록 한 줄마다 그 직후 양쪽 상태 — 화면이 지금 배틀의 전투 장면(BattleStage)으로 그대로 다시 보여 준다(2026-11-09 사용자 요청)
+export const MAX_FRAMES = 240;
+const fstate = (f) => ({ energy: Math.max(0, Math.round(f.energy)), shield: f.shield ? 1 : 0, crit: f.critGuaranteed ? 1 : 0 });
 export function runAutoBattle(playerFighter, defDef) {
   const npc = createNpcFighter(defDef);
   if (defDef.gearAtk) npc.gearDamageMult = 1 + defDef.gearAtk;
   let state = createBattleState(playerFighter, npc);
+  const frames = [];
+  const record = (prevLen) => {
+    const ps = fstate(state.player), ns = fstate(state.npc);
+    for (const e of state.log.slice(prevLen)) if (frames.length < MAX_FRAMES) frames.push({ e, p: ps, n: ns });
+  };
   while (state.status === "ongoing" && state.round <= MAX_ROUNDS) {
     const action = pickAutoAction(state.player, state.npc);
+    let len = state.log.length;
     state = resolveRoundFirstTurn(state, action);
+    record(len);
     if (state.status !== "ongoing") break;
+    len = state.log.length;
     state = resolveRoundSecondTurn(state, action);
+    record(len);
   }
   // 60라운드 안에 안 끝나면 남은 에너지 비율로 (지킴이가 같으면 지킴이 승)
   const won = state.status === "win" || (state.status === "ongoing" && state.player.energy / state.player.energyMax > state.npc.energy / state.npc.energyMax);
-  return { won, rounds: Math.min(state.round, MAX_ROUNDS), log: state.log.slice(-160), playerLeft: state.player.energy, npcLeft: state.npc.energy };
+  const fighters = {
+    player: { level: playerFighter.level, energyMax: playerFighter.energyMax },
+    npc: { level: npc.level, energyMax: npc.energyMax, name: defDef.name, emoji: defDef.emoji },
+  };
+  return { won, rounds: Math.min(state.round, MAX_ROUNDS), log: state.log.slice(-160), frames, fighters, playerLeft: state.player.energy, npcLeft: state.npc.energy };
 }
 
 // 영토 명성 — 지금 가진 땅마다 (하루 명성 × 가진 날수). 잃으면 그 땅 몫도 빠진다(지켜야 유지)

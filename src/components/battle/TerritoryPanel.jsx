@@ -5,6 +5,7 @@ import { chatFetch } from "../../api/chatFetch.js";
 import { RARITIES, BAG_MAX, itemEffects, normalizeGear } from "../../utils/gear.js";
 import { fameRate, territoryFame, shortName, TRIES_PER_DAY } from "../../utils/territory.js";
 import { useBackClose } from "../../utils/useBackClose.js";
+import TerritoryReplay from "./TerritoryReplay.jsx";
 
 // 🗺️ 내 동네 영토 (2026-11-09, CLAUDE.md "영토 확장 계획") — 배틀 화면 위쪽 칸.
 // 위치는 "확인"·"도전"을 누를 때만 한 번 읽어 서버에 보내고, 서버는 어느 동인지만 찾는다(위치는 저장하지 않음).
@@ -51,7 +52,7 @@ function ConsentSheet({ onOk, onClose }) {
   );
 }
 
-export default function TerritoryPanel({ loggedIn, gear, setGear }) {
+export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [here, setHere] = useState(null); // territory-here 결과
@@ -59,6 +60,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear }) {
   const [mine, setMine] = useState(null); // 내 영토 목록
   const [consent, setConsent] = useState(null); // 동의 뒤 할 일 ('here' | 'challenge')
   const [showLog, setShowLog] = useState(false);
+  const [replay, setReplay] = useState(null); // 도전 결과를 지금 배틀의 전투 장면으로 다시 보기
 
   const loadMine = () => { if (loggedIn) call("territory-mine").then((j) => setMine(j.list || [])).catch(() => setMine([])); };
   useEffect(loadMine, [loggedIn]);
@@ -72,6 +74,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear }) {
       else {
         const j = await call("territory-challenge", pos);
         setResult(j); setShowLog(false);
+        if (j.frames?.length) setReplay(j);
         setHere((h) => (h ? { ...h, triesLeft: j.triesLeft, defender: j.captured ? { ...h.defender, mine: true } : h.defender } : h));
         // 이겨서 차지하면: 보상 장비를 가방에 넣고, 빼앗긴 사람에게 알림
         if (j.won && j.captured) {
@@ -143,6 +146,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear }) {
                 </div>
               )}
               {result.bagFull && <div style={{ marginTop: 6, fontSize: 13, color: "#FF9F0A" }}>🎒 가방이 꽉 차서 보상 장비를 못 받았어요</div>}
+              {result.frames?.length > 0 && <button onClick={() => setReplay(result)} style={{ background: "none", border: "none", padding: 0, marginTop: 6, marginRight: 14, color: UI.accent, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>🎬 전투 다시 보기</button>}
               <button onClick={() => setShowLog((v) => !v)} style={{ background: "none", border: "none", padding: 0, marginTop: 6, color: UI.accent, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
                 전투 기록 {showLog ? "접기 ▲" : "보기 ▼"}
               </button>
@@ -185,6 +189,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear }) {
           <div style={{ fontSize: UI.sub, color: "var(--dm-muted)", marginTop: 10, lineHeight: 1.4 }}>{ATTRIBUTION}</div>
         </>
       )}
+      {replay && <TerritoryReplay result={replay} playerLabel={String(nickname || "").trim() || "나"} onClose={() => setReplay(null)} />}
       {consent && <ConsentSheet onClose={() => setConsent(null)} onOk={() => { try { localStorage.setItem(OK_KEY, "1"); } catch { /* 이번엔 그대로 */ } const w = consent; setConsent(null); run(w); }} />}
     </div>
   );

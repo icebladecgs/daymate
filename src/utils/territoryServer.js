@@ -90,7 +90,7 @@ export async function territoryChallenge(db, uid, body = {}, now = Date.now(), r
 
   const result = runAutoBattle(player, def);
   const triesLeft = TRIES_PER_DAY - allowed;
-  const base = { region: regionInfo(r.code, r.name), defender: publicDefender(def, before, uid), rounds: result.rounds, log: result.log, triesLeft };
+  const base = { region: regionInfo(r.code, r.name), defender: publicDefender(def, before, uid), rounds: result.rounds, log: result.log, frames: result.frames, fighters: result.fighters, triesLeft };
 
   if (!result.won) {
     // 다른 사람이 지킨 땅이면 "지켜 낸 횟수" +1

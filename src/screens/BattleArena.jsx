@@ -115,7 +115,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
 
       {/* 🧭 오늘의 떠돌이 도전자 · 🎒 내 장비 (2026-11-08) */}
       {/* 🗺️ 내 동네 영토 (2026-11-09) */}
-      <TerritoryPanel loggedIn={loggedIn} gear={gear} setGear={setGear} />
+      <TerritoryPanel loggedIn={loggedIn} gear={gear} setGear={setGear} nickname={battleNickname} />
       <WandererCard wanderer={wanderer} done={wanderDone} onStart={() => onStartBattle('wander')} />
       {setGear && <GearPanel gear={gear} setGear={setGear} />}
 

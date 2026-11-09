@@ -883,6 +883,14 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('영토: 하루 명성', T.fameRate(1) === 1 && T.fameRate(5) === 2 && T.fameRate(14) === 3 && T.fameRate(21) === 5);
   const now = Date.parse('2026-11-10T00:00:00Z');
   t('영토: 영토 명성 = 하루 명성 × 가진 날', T.territoryFame([{ level: 14, capturedAtMs: now - 2 * 86400000 }, { level: 1, capturedAtMs: now }], now) === 3 * 3 + 1);
+  // 다시 보기용 기록 — 한 줄마다 그 직후 양쪽 에너지, 마지막 줄이 결과
+  const E = await load('/src/data/battle/engine.js');
+  const me = E.createPlayerFighter(20000, { STR: 3000, INT: 3000, ACHIEVE: 2000 });
+  const rb = T.runAutoBattle(me, T.keeperDef('5181033000', '강원특별자치도 인제군 기린면'));
+  const lastF = rb.frames[rb.frames.length - 1];
+  t('영토 다시 보기: 기록마다 상태, 끝은 결과 줄', rb.frames.length > 0 && rb.frames.every((f) => f.e && Number.isFinite(f.p.energy) && Number.isFinite(f.n.energy))
+    && lastF.e.kind === 'result' && (rb.won ? lastF.n.energy === 0 : true), `${rb.frames.length} ${lastF?.e?.kind}`);
+  t('영토 다시 보기: 양쪽 정보(레벨·최대 에너지·이름)', rb.fighters.player.energyMax === me.energyMax && rb.fighters.npc.name.startsWith('기린면 ') && rb.frames.length <= T.MAX_FRAMES);
   t('영토: 남한 밖은 판정 안 함', !T.inKorea(39.03, 125.75) && T.inKorea(37.57, 126.97) && !T.inKorea(NaN, 127));
 }
 
