@@ -1,15 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings } from "../firebase.js";
+import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings, clearRankingEmails } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
 import AdminErrorLogs from "../components/AdminErrorLogs.jsx";
-
-function maskEmail(email) {
-  if (!email) return '익명';
-  const [local, domain] = email.split('@');
-  return `${local.slice(0, 4)}****@${domain}`;
-}
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -119,7 +113,9 @@ export default function Admin({ authUser, onBack }) {
       setSuggestions(suggs);
       setChallenges(challs);
       setCommunities(comms.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0)));
-      setRankings(rankList);
+      // 예전에 순위표에 저장된 이메일 정리 (그 사람이 앱을 다시 열기 전이라도) — 화면엔 닉네임만
+      clearRankingEmails(rankList).catch(() => {});
+      setRankings(rankList.map(({ email: _e, ...r }) => r)); // eslint-disable-line no-unused-vars
       setRankLoading(false);
       setStatus("ready");
       loadDaysCounts(list);
@@ -304,7 +300,8 @@ export default function Admin({ authUser, onBack }) {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {r.email || maskEmail(r.email)}
+                          {/* 순위표는 닉네임만 (2026-11-09 사용자 결정 — 이메일은 순위표에 저장하지 않음) */}
+                          {r.nickname || <span style={{ color: 'var(--dm-muted)', fontWeight: 400 }}>닉네임 없음</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                           <LevelPill levelInfo={levelInfo} score={r.totalScore || 0} compact />

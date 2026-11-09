@@ -218,8 +218,17 @@ export function googleSignInWithDriveScope() {
 
 // ---------- Rankings ----------
 
+// 순위표(rankings)는 로그인한 누구나 읽으므로 이메일을 두지 않는다 (2026-11-09 사용자 결정 — 닉네임만).
+// 예전에 저장된 이메일은 다음 저장 때 지운다. 이메일은 관리자만 읽는 users/{uid}에만 있다.
 export async function updateRanking(uid, data) {
-  await setDoc(doc(db, 'rankings', uid), data, { merge: true });
+  const { email: _drop, ...rest } = data || {};
+  await setDoc(doc(db, 'rankings', uid), { ...rest, email: deleteField() }, { merge: true });
+}
+// 관리자 화면: 아직 앱을 안 연 사람의 순위표에 남은 이메일 지우기 (규칙상 관리자는 email 칸 지우기만 할 수 있다)
+export async function clearRankingEmails(list) {
+  const left = (list || []).filter(r => r?.uid && r.email);
+  await Promise.all(left.map(r => updateDoc(doc(db, 'rankings', r.uid), { email: deleteField() }).catch(() => {})));
+  return left.length;
 }
 
 // 내 초대 코드를 inviteCodes 컬렉션에 등록 (로그인 시 호출)

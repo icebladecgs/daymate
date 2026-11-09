@@ -903,7 +903,7 @@ export default function App() {
           monthlyScores[ym] = (monthlyScores[ym] || 0) + score;
         });
         updateRanking(authUser.uid, {
-          email: authUser.email,
+          nickname: store.get("dm_battle_nickname", "") || "",
           totalScore: total,
           level: lvInfo.level,
           daysCount: Object.keys(next).length,
@@ -957,7 +957,7 @@ export default function App() {
       const todayYm = todayStr.slice(0, 7);
       monthlyScores[todayYm] = (monthlyScores[todayYm] || 0) + todayScore;
       updateRanking(authUser.uid, {
-        email: authUser.email,
+        nickname: store.get("dm_battle_nickname", "") || "",
         totalScore: total,
         level: lvInfo.level,
         daysCount: Object.keys(scores).length,
@@ -1806,7 +1806,10 @@ export default function App() {
   }, [battleGear, authUser]);
   useEffect(() => {
     store.set("dm_battle_nickname", battleNickname);
-    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleNickname }).catch(() => {});
+    if (authUser && syncReadyRef.current) {
+      saveSettings(authUser.uid, { battleNickname }).catch(() => {});
+      updateRanking(authUser.uid, { nickname: battleNickname || "" }).catch(() => {}); // 순위표는 닉네임만 (2026-11-09)
+    }
   }, [battleNickname, authUser]);
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
