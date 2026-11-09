@@ -131,6 +131,12 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
         </div>
       )}
 
+      {/* 제목 + 설명 한 줄 → 닉네임 (2026-11-10 사용자 요청 — 자유게시판과 같은 순서) */}
+      <div style={{ padding: '14px 16px 4px' }}>
+        <div className="dm-page-title" style={S.title}>챌린지</div>
+        <div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>다른 사람들과 함께 매일 인증하며 습관을 만들어요</div>
+      </div>
+
       {/* 닉네임 */}
       <div style={{ padding: '8px 16px 0', display: 'grid', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

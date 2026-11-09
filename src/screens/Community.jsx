@@ -965,8 +965,10 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {/* 상단 */}
           <div style={{ padding: '14px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div className="dm-page-title" style={S.title}>커뮤니티</div>
-            <button className={NL() ? 'dm-hit' : undefined} onClick={() => setMode('create')} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: 13, width: 'auto' }}>+ 만들기</button>
+            <button className={NL() ? 'dm-hit' : undefined} onClick={() => setMode('create')} style={{ ...S.btn, marginTop: 0, padding: '8px 14px', fontSize: 13, width: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>+ 만들기</button>
           </div>
+          {/* 제목 아래 설명 한 줄 — 자유게시판·챌린지와 같은 모양 (2026-11-10 사용자 문구). 만들기 버튼이 눌리지 않게 줄을 따로 둔다 */}
+          <div style={{ ...(NL() ? { ...S.sub, fontSize: UI.sub } : S.sub), padding: '0 16px 8px', marginTop: -6, wordBreak: 'keep-all' }}>다른 사람들과 함께 의견도 나누고, 퀘스트도 정복해요.</div>
 
           {/* 내 커뮤니티 */}
           {communityIds.length > 0 && (
