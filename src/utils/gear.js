@@ -9,30 +9,45 @@ export const GEAR_SLOTS = [
   { id: 'armor', label: '갑옷', emoji: '🛡️' },
   { id: 'charm', label: '부적', emoji: '🔮' },
 ];
+// 등급 5단계 (2026-11-09 사용자 요청 — "희귀템은 정말 구하기 어렵게"). 저장 키는 그대로 두고(예전 장비 유지)
+// 일반(예전 '보통')과 희귀 사이에 고급(uncommon)을 넣었다. weight = 할일·습관에서 주울 때 확률(합 100)
 export const RARITIES = {
-  common: { label: '보통', color: '#8E8E93', weight: 60, mult: 1 },
-  rare: { label: '희귀', color: '#0A84FF', weight: 28, mult: 2 },
-  epic: { label: '영웅', color: '#BF5AF2', weight: 10, mult: 3.2 },
-  legend: { label: '전설', color: '#FF9F0A', weight: 2, mult: 5 },
+  common: { label: '일반', color: '#8E8E93', weight: 55, mult: 1 },
+  uncommon: { label: '고급', color: '#30D158', weight: 30, mult: 1.5 },
+  rare: { label: '희귀', color: '#0A84FF', weight: 12, mult: 2 },
+  epic: { label: '영웅', color: '#BF5AF2', weight: 2.5, mult: 3.2 },
+  legend: { label: '전설', color: '#FF9F0A', weight: 0.5, mult: 5 },
 };
-export const RARITY_ORDER = ['legend', 'epic', 'rare', 'common'];
+export const RARITY_ORDER = ['legend', 'epic', 'rare', 'uncommon', 'common'];
+const RARITY_UP = ['common', 'uncommon', 'rare', 'epic', 'legend'];
 export const DROP_CHANCE = { task: 0.10, habit: 0.05 };
 export const DROPS_PER_DAY = 3;
 export const BAG_MAX = 40;
-export const WANDER_RARITY = { rare: 60, epic: 30, legend: 10 }; // 떠돌이 도전자를 이기면 희귀 이상
+export const WANDER_RARITY = { rare: 70, epic: 27, legend: 3 }; // 떠돌이 도전자를 이기면 희귀 이상 (전설 10% → 3%, 2026-11-09)
+
+// 레벨별 상대를 이기면 상대마다 하루 한 번 장비 1개 (2026-11-09) — 저레벨은 일반·고급, 높을수록 좋은 등급.
+// 같은 상대를 계속 이겨 전설을 노리지 못하게 하루 한 번, 전설은 최고 레벨대에서도 3%
+export const NPC_RARITY = [
+  { max: 5, w: { common: 80, uncommon: 20 } },
+  { max: 10, w: { common: 50, uncommon: 38, rare: 12 } },
+  { max: 15, w: { common: 25, uncommon: 42, rare: 30, epic: 3 } },
+  { max: 20, w: { uncommon: 40, rare: 47, epic: 12, legend: 1 } },
+  { max: Infinity, w: { rare: 55, epic: 42, legend: 3 } },
+];
+export const npcRarityWeights = (level) => NPC_RARITY.find((b) => (Number(level) || 1) <= b.max).w;
 
 // 이름은 직접 지은 것 (다른 게임 아이템 이름을 쓰지 않는다)
 const NAMES = {
   weapon: {
-    common: ['연습용 목검', '녹슨 단검', '나무 몽둥이'], rare: ['강철 장검', '은빛 창', '쌍날 도끼'],
+    common: ['연습용 목검', '녹슨 단검', '나무 몽둥이'], uncommon: ['무쇠 단검', '사냥꾼의 활', '단단한 곤봉'], rare: ['강철 장검', '은빛 창', '쌍날 도끼'],
     epic: ['청룡의 창', '불꽃 대검', '번개 활'], legend: ['새벽을 가르는 검', '천둥 망치'],
   },
   armor: {
-    common: ['헌 가죽옷', '두꺼운 천 조끼', '나무 방패'], rare: ['사슬 갑옷', '강철 흉갑', '바람막이 망토'],
+    common: ['헌 가죽옷', '두꺼운 천 조끼', '나무 방패'], uncommon: ['질긴 가죽 갑옷', '징 박은 조끼', '둥근 철방패'], rare: ['사슬 갑옷', '강철 흉갑', '바람막이 망토'],
     epic: ['용비늘 갑옷', '달빛 망토', '얼음 방패'], legend: ['불사조 갑옷', '별의 갑주'],
   },
   charm: {
-    common: ['네잎클로버', '행운 동전', '조약돌 목걸이'], rare: ['수호 부적', '바람 깃털', '부엉이 배지'],
+    common: ['네잎클로버', '행운 동전', '조약돌 목걸이'], uncommon: ['참새 깃털', '은방울', '매듭 팔찌'], rare: ['수호 부적', '바람 깃털', '부엉이 배지'],
     epic: ['여우 구슬', '달의 눈물', '호랑이 발톱'], legend: ['시간의 모래시계', '용의 심장'],
   },
 };
@@ -43,7 +58,7 @@ const round3 = (v) => Math.round(v * 1000) / 1000;
 export function rollRarity(r, weights = Object.fromEntries(Object.entries(RARITIES).map(([k, v]) => [k, v.weight]))) {
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let x = r * total;
-  for (const k of ['common', 'rare', 'epic', 'legend']) {
+  for (const k of RARITY_UP) {
     if (!weights[k]) continue;
     if (x < weights[k]) return k;
     x -= weights[k];
@@ -81,6 +96,8 @@ export function normalizeGear(g) {
     items, equipped,
     rolled: (Array.isArray(g?.rolled) ? g.rolled : []).slice(-300),
     wander: g?.wander?.date ? { date: String(g.wander.date), won: !!g.wander.won } : null,
+    // 레벨별 상대 보상을 받은 날·상대 (하루 한 번씩) — 날이 바뀌면 비운다
+    npcDrops: g?.npcDrops?.date ? { date: String(g.npcDrops.date), ids: (Array.isArray(g.npcDrops.ids) ? g.npcDrops.ids : []).map(String).slice(0, 50) } : null,
     dropsOff: !!g?.dropsOff,
   };
 }
@@ -116,6 +133,22 @@ export function wanderReward(gear, todayStr, rand = Math.random) {
   if (g.items.length >= BAG_MAX) return { gear: won, item: null, full: true };
   const item = { ...makeItem(rollRarity(rand(), WANDER_RARITY), rand), at: todayStr };
   return { gear: { ...won, items: [...won.items, item] }, item };
+}
+
+// 레벨별 상대를 이겼을 때 — 상대마다 하루 한 번. 결과: { gear, item|null, full }
+export const npcRewardDone = (gear, npcId, todayStr) => {
+  const d = normalizeGear(gear).npcDrops;
+  return !!d && d.date === todayStr && d.ids.includes(String(npcId));
+};
+export function npcReward(gear, npc, todayStr, rand = Math.random) {
+  const g = normalizeGear(gear);
+  if (!npc?.id || npcRewardDone(g, npc.id, todayStr)) return { gear: g, item: null };
+  // 가방이 차면 받은 것으로 치지 않는다 — 정리하고 다시 이기면 받는다
+  if (g.items.length >= BAG_MAX) return { gear: g, item: null, full: true };
+  const prevIds = g.npcDrops?.date === todayStr ? g.npcDrops.ids : [];
+  const marked = { ...g, npcDrops: { date: todayStr, ids: [...prevIds, String(npc.id)] } };
+  const item = { ...makeItem(rollRarity(rand(), npcRarityWeights(npc.level)), rand), at: todayStr };
+  return { gear: { ...marked, items: [...marked.items, item] }, item };
 }
 
 // ── 떠돌이 도전자: 날짜로 정해지는 상대 (같은 날은 같은 상대, 기기가 달라도 같음) ──

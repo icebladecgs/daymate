@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import S from "../styles.js";
 import BattleStage from "../components/battle/BattleStage.jsx";
 import { tierOfLevel } from "../components/battle/armor.js";
-import { RARITIES, itemEffects } from "../utils/gear.js";
+import { RARITIES, itemEffects, BAG_MAX } from "../utils/gear.js";
 import { store } from "../utils/storage.js";
 import { getNpcById, getNpcAvatar, getNpcBasicMove } from "../data/battle/npcs.js";
 import { PLAYER_BASIC_MOVES, SPECIALS_TIER10 } from "../data/battle/specials.js";
@@ -171,9 +171,9 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
     if (!npcDef) return;
     if (state.status !== 'ongoing') onBattleEnd(npcDef, state.status === 'win');
   }, [state.status]); // eslint-disable-line
-  // 떠돌이 도전자 보상 — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
+  // 승리 보상(떠돌이 도전자·레벨별 상대 모두) — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
   const [startBagIds, setStartBagIds] = useState(() => new Set((bag || []).map(x => x.id)));
-  const reward = npcDef?.isWanderer && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
+  const reward = npcDef && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
 
   const { player, npc, status, log } = state;
   // 라운드별로 묶어서 최신 라운드가 위로 (각 칸 = 그 라운드에서 그쪽이 한 행동)
@@ -381,10 +381,13 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           )}
           {reward && (
             <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,159,10,.12)' }}>
-              <div style={{ fontSize: 13, color: 'var(--dm-sub)' }}>🎁 떠돌이 도전자 보상</div>
+              <div style={{ fontSize: 13, color: 'var(--dm-sub)' }}>🎁 {npcDef?.isWanderer ? '떠돌이 도전자 보상' : '승리 보상'}</div>
               <div style={{ fontSize: 16, fontWeight: 900, color: RARITIES[reward.rarity].color, marginTop: 2 }}>[{RARITIES[reward.rarity].label}] {reward.name}</div>
               <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginTop: 2 }}>{itemEffects(reward).join(' · ')} — 배틀 화면 가방에서 끼울 수 있어요</div>
             </div>
+          )}
+          {status === 'win' && !reward && (bag || []).length >= BAG_MAX && (
+            <div style={{ marginTop: 10, fontSize: 13, color: '#FF9F0A' }}>🎒 가방이 꽉 차서 장비를 못 받았어요 — 정리하고 다시 이기면 받아요</div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={onExit} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>나가기</button>

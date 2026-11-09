@@ -30,7 +30,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, RARITIES, gearBonus, makeWanderer } from "./utils/gear.js";
+import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer } from "./utils/gear.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
@@ -552,8 +552,9 @@ export default function App() {
     // 떠돌이 도전자: 이기면 하루 한 번 희귀 이상 장비. 날마다 다른 상대라 상대별 전적·격파 목록에는 넣지 않는다
     // 받은 장비는 돌려줘서 전투 화면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
     let reward = null;
-    if (npcDef.isWanderer && won) {
-      const r = wanderReward(battleGearRef.current, toDateStr());
+    if (won) {
+      // 레벨별 상대도 이기면 상대마다 하루 한 번 장비 (2026-11-09, 레벨이 높을수록 좋은 등급)
+      const r = npcDef.isWanderer ? wanderReward(battleGearRef.current, toDateStr()) : npcReward(battleGearRef.current, npcDef, toDateStr());
       if (r.gear !== battleGearRef.current) updateGear(r.gear);
       reward = { item: r.item, full: !!r.full };
     }

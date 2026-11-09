@@ -4,10 +4,16 @@ import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
 import GearPanel, { WandererCard } from "../components/battle/GearPanel.jsx";
-import { gearBonus } from "../utils/gear.js";
+import { gearBonus, npcRewardDone, npcRarityWeights, RARITIES, RARITY_ORDER } from "../utils/gear.js";
 import { toDateStr } from "../utils/date.js";
 
 const NICKNAME_MAX = 10;
+// "일반~고급" — 그 레벨 상대에게서 나올 수 있는 등급 범위
+const rarityRangeLabel = (level) => {
+  const keys = RARITY_ORDER.filter((k) => npcRarityWeights(level)[k]);
+  const lo = RARITIES[keys[keys.length - 1]].label, hi = RARITIES[keys[0]].label;
+  return lo === hi ? lo : `${lo}~${hi}`;
+};
 
 export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer }) {
   const [showAll, setShowAll] = useState(false);
@@ -17,7 +23,8 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
   const record = battleRecord || { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
   // 장비 갑옷의 에너지 +%까지 (배틀 엔진 createPlayerFighter와 같은 계산)
   const energyMax = Math.round(Math.max(150, Math.round(totalScore || 0)) * (1 + (gear ? gearBonus(gear).hp : 0)));
-  const wanderDone = !!gear?.wander?.won && gear.wander.date === toDateStr();
+  const today = toDateStr();
+  const wanderDone = !!gear?.wander?.won && gear.wander.date === today;
   // 내 레벨보다 너무 높은 상대는 기본적으로 접어두고, 원하면 "더 보기"로 펼쳐서 도전 가능
   const visibleNpcs = showAll ? NPCS : NPCS.filter(n => n.level <= levelInfo.level + 2);
   const hiddenCount = NPCS.length - visibleNpcs.length;
@@ -128,6 +135,10 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
               <div style={{ fontSize: 11, color: 'var(--dm-muted)', marginTop: 2 }}>
                 Energy {npc.energyMax.toLocaleString()} · 「{npc.trait?.label}」
                 {vs && <span style={{ color: '#6C8EFF', fontWeight: 700 }}> · 상대전적 {vs.wins || 0}승 {vs.losses || 0}패</span>}
+              </div>
+              {/* 레벨별 상대 보상 (2026-11-09) — 상대마다 하루 한 번, 레벨이 높을수록 좋은 등급 */}
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3, color: npcRewardDone(gear, npc.id, today) ? 'var(--dm-muted)' : '#FF9F0A' }}>
+                {npcRewardDone(gear, npc.id, today) ? '✓ 오늘 장비 받음' : `🎁 이기면 장비 1개 (${rarityRangeLabel(npc.level)})`}
               </div>
             </div>
             <button onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>
