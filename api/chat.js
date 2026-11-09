@@ -146,6 +146,24 @@ export default async function handler(req, res) {
     }
   }
 
+  // ?action=territory-here|territory-challenge|territory-mine → 🗺️ 영토 (2026-11-09, src/utils/territoryServer.js)
+  // 승패·소유는 서버만 정한다. 위치는 구역을 찾는 데만 쓰고 저장·기록하지 않는다(로그에도 남기지 않음)
+  if (String(req.query.action || '').startsWith('territory-')) {
+    try {
+      const T = await import('../src/utils/territoryServer.js');
+      const db = getFirestore();
+      const a = req.query.action;
+      const r = a === 'territory-here' ? await T.territoryHere(db, uid, req.body || {})
+        : a === 'territory-challenge' ? await T.territoryChallenge(db, uid, req.body || {})
+        : a === 'territory-mine' ? await T.myTerritories(db, uid)
+        : { status: 400, body: { error: 'unknown' } };
+      return res.status(r.status).json(r.body);
+    } catch (e) {
+      console.error('[territory]', req.query.action, e?.message); // 요청 내용(위치)은 남기지 않는다
+      return res.status(500).json({ error: '잠시 후 다시 시도해 주세요' });
+    }
+  }
+
   // ?action=life-coach → 인생 코칭 액션플랜 생성
   if (req.query.action === 'life-coach') {
     const { answers = [], userName = '사용자' } = req.body || {};

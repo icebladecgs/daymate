@@ -94,9 +94,53 @@ async function chatPush(req, res) {
   return res.status(200).json({ ok: true, sent });
 }
 
+// ── 🗺️ 영토를 빼앗겼을 때 (type: 'territory', 2026-11-09) ──
+// 새 주인이 차지한 직후 부른다. 서버가 영토 기록을 직접 보고(이 사람이 주인·차지한 지 5분 안·아직 안 보냄) 이전 주인에게만 보낸다.
+// 받는 사람 설정: users/{uid}/data/settings.territoryPush === false 면 안 보냄
+async function territoryPush(req, res) {
+  const uid = await uidFromRequest(req);
+  if (!uid) return res.status(401).json({ ok: false, error: '인증이 필요해요' });
+  const code = String(req.body?.code || '');
+  if (!/^\d{6,12}$/.test(code)) return res.status(400).json({ ok: false });
+  const ref = db.doc(`territories/${code}`);
+  const t = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const d = snap.data();
+    if (!d || d.ownerUid !== uid || !d.prevOwnerUid || d.prevOwnerUid === uid || d.notifiedAt) return null;
+    const at = d.capturedAt?.toMillis ? d.capturedAt.toMillis() : 0;
+    if (Date.now() - at > 5 * 60 * 1000) return null;
+    tx.update(ref, { notifiedAt: new Date().toISOString() });
+    return d;
+  });
+  if (!t) return res.status(200).json({ ok: true, sent: 0, skipped: 'not-eligible' });
+  const sref = db.doc(`users/${t.prevOwnerUid}/data/settings`);
+  const s = (await sref.get()).data() || {};
+  if (s.territoryPush === false || !s.pushSubscription) return res.status(200).json({ ok: true, sent: 0 });
+  const place = String(t.name || '').split(' ').pop();
+  const payload = {
+    kind: 'territory', tag: `territory-${code}`,
+    title: '⚔️ 영토를 빼앗겼어요',
+    body: `${clip(String(t.owner?.name || '누군가'), 10)}님이 ${place}을(를) 차지했어요. 다시 찾으러 가 볼까요?`,
+    url: '/?screen=battle-arena',
+  };
+  try {
+    await webpush.sendNotification(s.pushSubscription, JSON.stringify(payload), { TTL: 6 * 3600 });
+    return res.status(200).json({ ok: true, sent: 1 });
+  } catch (e) {
+    if (e.statusCode === 404 || e.statusCode === 410) await sref.update({ pushSubscription: FieldValue.delete() }).catch(() => {});
+    return res.status(200).json({ ok: true, sent: 0 });
+  }
+}
+
 export default async function handler(req, res) {
   if (vapidError) return res.status(500).json({ ok: false, error: `VAPID 키 설정 오류: ${vapidError}` });
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
+  if (req.body?.type === 'territory') {
+    try { return await territoryPush(req, res); } catch (e) {
+      console.error('[push] territory push failed:', e?.message);
+      return res.status(500).json({ ok: false });
+    }
+  }
   if (req.body?.type === 'chat') {
     try { return await chatPush(req, res); } catch (e) {
       console.error('[push] chat push failed:', e);

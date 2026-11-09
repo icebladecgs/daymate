@@ -865,6 +865,27 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('연락처 선택 창 결과는 예전 그대로(회사·생일 칸 없음)', same(Object.keys(C.buildImportCandidates([{ name: ['가'], tel: ['010-1'] }], [])[0]).sort(), ['checked', 'dup', 'email', 'key', 'name', 'phone', 'search']));
 }
 
+// ── 🗺️ 영토 계산 (2026-11-09, utils/territory.js — 서버 판정은 tools/rules-test/tests/17) ──
+{
+  const T = await load('/src/utils/territory.js');
+  t('영토: 구역 등급', T.regionTier('강원특별자치도 인제군 기린면') === 'myeon' && T.regionTier('제주특별자치도 제주시 한림읍') === 'eup'
+    && T.regionTier('서울특별시 종로구 사직동') === 'seoul' && T.regionTier('부산광역시 수영구 광안2동') === 'metro'
+    && T.regionTier('경기도 수원시장안구 파장동') === 'city' && T.regionTier('서울특별시 중구 명동') === 'center' && T.regionTier('전남광주통합특별시 북구 중앙동') === 'metro');
+  let inRange = true, same = true;
+  for (const [code, name] of [['5181033000', '강원특별자치도 인제군 기린면'], ['1111053000', '서울특별시 종로구 사직동'], ['1114055000', '서울특별시 중구 명동']]) {
+    const lv = T.keeperLevel(code, name); const [lo, hi] = T.TIERS[T.regionTier(name)].range;
+    if (lv < lo || lv > hi) inRange = false;
+    if (JSON.stringify(T.keeperDef(code, name)) !== JSON.stringify(T.keeperDef(code, name))) same = false;
+  }
+  t('영토: 지킴이 레벨은 등급 범위 안·같은 동은 늘 같음', inRange && same);
+  const k = T.keeperDef('1114055000', '서울특별시 중구 명동');
+  t('영토: 지킴이 이름·능력치는 그 레벨 NPC', k.name.startsWith('명동 ') && k.level >= 19 && k.energyMax > 0 && Object.keys(k.stats).length === 6);
+  t('영토: 하루 명성', T.fameRate(1) === 1 && T.fameRate(5) === 2 && T.fameRate(14) === 3 && T.fameRate(21) === 5);
+  const now = Date.parse('2026-11-10T00:00:00Z');
+  t('영토: 영토 명성 = 하루 명성 × 가진 날', T.territoryFame([{ level: 14, capturedAtMs: now - 2 * 86400000 }, { level: 1, capturedAtMs: now }], now) === 3 * 3 + 1);
+  t('영토: 남한 밖은 판정 안 함', !T.inKorea(39.03, 125.75) && T.inKorea(37.57, 126.97) && !T.inKorea(NaN, 127));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

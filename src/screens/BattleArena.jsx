@@ -4,6 +4,7 @@ import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
 import GearPanel, { WandererCard } from "../components/battle/GearPanel.jsx";
+import TerritoryPanel from "../components/battle/TerritoryPanel.jsx";
 import { gearBonus, npcRewardDone, npcRarityWeights, RARITIES, RARITY_ORDER } from "../utils/gear.js";
 import { toDateStr } from "../utils/date.js";
 
@@ -15,7 +16,7 @@ const rarityRangeLabel = (level) => {
   return lo === hi ? lo : `${lo}~${hi}`;
 };
 
-export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer }) {
+export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer, loggedIn }) {
   const [showAll, setShowAll] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
@@ -113,6 +114,8 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       </div>
 
       {/* 🧭 오늘의 떠돌이 도전자 · 🎒 내 장비 (2026-11-08) */}
+      {/* 🗺️ 내 동네 영토 (2026-11-09) */}
+      <TerritoryPanel loggedIn={loggedIn} gear={gear} setGear={setGear} />
       <WandererCard wanderer={wanderer} done={wanderDone} onStart={() => onStartBattle('wander')} />
       {setGear && <GearPanel gear={gear} setGear={setGear} />}
 

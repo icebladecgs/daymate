@@ -8,6 +8,9 @@
     { "path": "/api/smart-notify",         "schedule": "0 12 * * *" },
     { "path": "/api/notify?type=invest-review", "schedule": "0 0 * * *" }
   ],
+  "functions": {
+    "api/chat.js": { "includeFiles": "api/_data/**" }
+  },
   "routes": [
     { "src": "/api/telegram-webhook", "dest": "/api/telegram-webhook.js" }
   ]

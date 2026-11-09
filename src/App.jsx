@@ -2625,7 +2625,7 @@ export default function App() {
           onSetBattleNickname={setBattleNickname}
           onBack={() => changeScreen("today")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
-          gear={battleGear} setGear={updateGear} wanderer={wanderer}
+          gear={battleGear} setGear={updateGear} wanderer={wanderer} loggedIn={!!authUser}
         />
       );
     }
