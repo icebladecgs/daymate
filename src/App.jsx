@@ -553,7 +553,7 @@ export default function App() {
     // 받은 장비는 돌려줘서 전투 화면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
     let reward = null;
     if (won) {
-      // 레벨별 상대도 이기면 상대마다 하루 한 번 장비 (2026-11-09, 레벨이 높을수록 좋은 등급)
+      // 레벨별 상대도 이기면 상대마다 딱 한 번(처음 이겼을 때) 장비 (2026-11-09, 레벨이 높을수록 좋은 등급)
       const r = npcDef.isWanderer ? wanderReward(battleGearRef.current, toDateStr()) : npcReward(battleGearRef.current, npcDef, toDateStr());
       if (r.gear !== battleGearRef.current) updateGear(r.gear);
       reward = { item: r.item, full: !!r.full };

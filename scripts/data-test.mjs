@@ -717,20 +717,21 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('장비: 떠돌이 보상은 희귀 이상, 전설 3%', G.rollRarity(0, G.WANDER_RARITY) === 'rare' && G.rollRarity(0.96, G.WANDER_RARITY) === 'epic' && G.rollRarity(0.98, G.WANDER_RARITY) === 'legend');
   t('장비: 고급 장비도 이름·효과', ['weapon', 'armor', 'charm'].every((s) => { const it = G.makeItem('uncommon', seq(0.5), s); return it.name && G.itemEffects(it).length === 1; }));
   t('장비: 예전 "보통" 장비(common)는 그대로 읽힘', G.normalizeGear({ items: [{ id: 'old', slot: 'weapon', rarity: 'common', name: '녹슨 단검', atk: 0.08 }] }).items.length === 1);
-  // 레벨별 상대 보상: 상대마다 하루 한 번, 저레벨은 일반·고급만, 전설은 높은 레벨에서도 드묾
+  // 레벨별 상대 보상: 상대마다 딱 한 번(처음 이겼을 때), 저레벨은 일반·고급만, 전설은 높은 레벨에서도 드묾
   const npcLo = { id: 'npc_1', level: 2 }, npcHi = { id: 'npc_25', level: 25 };
   t('상대 보상: 저레벨은 일반·고급만', [0, 0.5, 0.79, 0.8, 0.999].every((x) => ['common', 'uncommon'].includes(G.rollRarity(x, G.npcRarityWeights(2)))));
   t('상대 보상: Lv.16~20은 전설 1%, 21 이상은 3%', G.npcRarityWeights(18).legend === 1 && G.npcRarityWeights(25).legend === 3 && !G.npcRarityWeights(12).legend);
   const nr = G.npcReward(G.normalizeGear(null), npcLo, '2026-11-09', seq(0.5));
-  t('상대 보상: 이기면 1개', !!nr.item && nr.gear.items.length === 1 && G.npcRewardDone(nr.gear, 'npc_1', '2026-11-09'));
-  t('상대 보상: 같은 상대 같은 날은 없음', !G.npcReward(nr.gear, npcLo, '2026-11-09', seq(0.5)).item);
+  t('상대 보상: 처음 이기면 1개', !!nr.item && nr.gear.items.length === 1 && G.npcRewardDone(nr.gear, 'npc_1'));
+  t('상대 보상: 같은 상대 다시 이겨도 없음', !G.npcReward(nr.gear, npcLo, '2026-11-09', seq(0.5)).item);
   const nr2 = G.npcReward(nr.gear, npcHi, '2026-11-09', seq(0.5));
-  t('상대 보상: 다른 상대는 받음', !!nr2.item && nr2.gear.items.length === 2 && G.npcRewardDone(nr2.gear, 'npc_1', '2026-11-09'));
-  t('상대 보상: 다음 날은 다시', !!G.npcReward(nr2.gear, npcLo, '2026-11-10', seq(0.5)).item && !G.npcRewardDone(nr2.gear, 'npc_1', '2026-11-10'));
-  t('상대 보상: 저장 형식 유지', JSON.stringify(G.normalizeGear(nr2.gear).npcDrops) === JSON.stringify({ date: '2026-11-09', ids: ['npc_1', 'npc_25'] }));
+  t('상대 보상: 다른 상대는 받음', !!nr2.item && nr2.gear.items.length === 2 && G.npcRewardDone(nr2.gear, 'npc_1') && G.npcRewardDone(nr2.gear, 'npc_25'));
+  t('상대 보상: 다음 날·한 달 뒤에도 다시 안 줌 (딱 한 번)', !G.npcReward(nr2.gear, npcLo, '2026-11-10', seq(0.5)).item && !G.npcReward(nr2.gear, npcHi, '2026-12-10', seq(0.5)).item);
+  t('상대 보상: 받은 상대는 영구 기록', JSON.stringify(G.normalizeGear(nr2.gear).npcClaimed) === JSON.stringify(['npc_1', 'npc_25']));
+  t('상대 보상: 예전 하루 기록(npcDrops)에 있던 상대도 받은 것으로', G.npcRewardDone({ npcDrops: { date: '2026-11-09', ids: ['npc_3'] } }, 'npc_3') && !G.npcReward({ npcDrops: { date: '2026-11-09', ids: ['npc_3'] } }, { id: 'npc_3', level: 3 }, '2026-11-10', seq(0.5)).item);
   const full = { items: Array.from({ length: 40 }, (_, i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `f${i}` })) };
   const nf = G.npcReward(full, npcLo, '2026-11-09', seq(0.5));
-  t('상대 보상: 가방이 차면 못 받고, 정리하면 그날 다시 받을 수 있음', nf.full === true && !nf.item && !G.npcRewardDone(nf.gear, 'npc_1', '2026-11-09'));
+  t('상대 보상: 가방이 차면 못 받고, 정리하고 다시 이기면 받음', nf.full === true && !nf.item && !G.npcRewardDone(nf.gear, 'npc_1'));
   const w = G.makeItem('epic', seq(0.5), 'weapon');
   t('장비: 영웅 무기 = 공격력 약 +25.6%', w.slot === 'weapon' && Math.abs(w.atk - 0.256) < 0.001, JSON.stringify(w));
   const lg = G.makeItem('legend', seq(0.5), 'armor');

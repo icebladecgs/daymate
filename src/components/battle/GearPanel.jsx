@@ -82,7 +82,7 @@ export default function GearPanel({ gear, setGear }) {
       </button>
       {bagOpen && (
         <div style={{ marginTop: 6 }}>
-          {sorted.length === 0 && <div style={{ fontSize: 14, color: "var(--dm-sub)", padding: "6px 0", lineHeight: 1.5 }}>할일을 끝내거나 습관을 체크하면 가끔 장비가 떨어져요. 도전 상대를 이기면 상대마다 하루 한 번, 떠돌이 도전자를 이기면 희귀 이상을 받아요.</div>}
+          {sorted.length === 0 && <div style={{ fontSize: 14, color: "var(--dm-sub)", padding: "6px 0", lineHeight: 1.5 }}>할일을 끝내거나 습관을 체크하면 가끔 장비가 떨어져요. 도전 상대를 처음 이기면 상대마다 한 번, 떠돌이 도전자를 이기면 희귀 이상을 받아요.</div>}
           {sorted.map((it) => (
             <div key={it.id} style={{ borderTop: "1px solid var(--dm-row)" }}>
               <button onClick={() => setSel(sel === it.id ? null : it.id)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 0", background: "none", border: "none", borderRadius: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>

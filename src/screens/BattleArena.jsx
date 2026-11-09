@@ -139,9 +139,9 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
                 Energy {npc.energyMax.toLocaleString()} · 「{npc.trait?.label}」
                 {vs && <span style={{ color: '#6C8EFF', fontWeight: 700 }}> · 상대전적 {vs.wins || 0}승 {vs.losses || 0}패</span>}
               </div>
-              {/* 레벨별 상대 보상 (2026-11-09) — 상대마다 하루 한 번, 레벨이 높을수록 좋은 등급 */}
-              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3, color: npcRewardDone(gear, npc.id, today) ? 'var(--dm-muted)' : '#FF9F0A' }}>
-                {npcRewardDone(gear, npc.id, today) ? '✓ 오늘 장비 받음' : `🎁 이기면 장비 1개 (${rarityRangeLabel(npc.level)})`}
+              {/* 레벨별 상대 보상 (2026-11-09) — 상대마다 딱 한 번(처음 이겼을 때), 레벨이 높을수록 좋은 등급 */}
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3, color: npcRewardDone(gear, npc.id) ? 'var(--dm-muted)' : '#FF9F0A' }}>
+                {npcRewardDone(gear, npc.id) ? '✓ 장비 받음' : `🎁 처음 이기면 장비 1개 (${rarityRangeLabel(npc.level)})`}
               </div>
             </div>
             <button onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>

@@ -25,8 +25,8 @@ export const DROPS_PER_DAY = 3;
 export const BAG_MAX = 40;
 export const WANDER_RARITY = { rare: 70, epic: 27, legend: 3 }; // 떠돌이 도전자를 이기면 희귀 이상 (전설 10% → 3%, 2026-11-09)
 
-// 레벨별 상대를 이기면 상대마다 하루 한 번 장비 1개 (2026-11-09) — 저레벨은 일반·고급, 높을수록 좋은 등급.
-// 같은 상대를 계속 이겨 전설을 노리지 못하게 하루 한 번, 전설은 최고 레벨대에서도 3%
+// 레벨별 상대를 이기면 상대마다 딱 한 번(처음 이겼을 때) 장비 1개 (2026-11-09) — 저레벨은 일반·고급, 높을수록 좋은 등급.
+// 같은 상대를 계속 이겨 장비를 모으지 못하게 한 번만(사용자 결정), 전설은 최고 레벨대에서도 3%
 export const NPC_RARITY = [
   { max: 5, w: { common: 80, uncommon: 20 } },
   { max: 10, w: { common: 50, uncommon: 38, rare: 12 } },
@@ -96,8 +96,12 @@ export function normalizeGear(g) {
     items, equipped,
     rolled: (Array.isArray(g?.rolled) ? g.rolled : []).slice(-300),
     wander: g?.wander?.date ? { date: String(g.wander.date), won: !!g.wander.won } : null,
-    // 레벨별 상대 보상을 받은 날·상대 (하루 한 번씩) — 날이 바뀌면 비운다
-    npcDrops: g?.npcDrops?.date ? { date: String(g.npcDrops.date), ids: (Array.isArray(g.npcDrops.ids) ? g.npcDrops.ids : []).map(String).slice(0, 50) } : null,
+    // 레벨별 상대 보상은 상대마다 딱 한 번 (2026-11-09 사용자 결정 — 처음엔 하루 한 번이었다).
+    // 받은 상대 id를 영구로 남긴다. 예전 하루 기록(npcDrops)에 있던 상대도 받은 것으로 친다(그 기능은 같은 날 배포돼 그 전 기록은 없음)
+    npcClaimed: [...new Set([
+      ...(Array.isArray(g?.npcClaimed) ? g.npcClaimed : []),
+      ...(Array.isArray(g?.npcDrops?.ids) ? g.npcDrops.ids : []),
+    ].map(String))].slice(0, 100),
     dropsOff: !!g?.dropsOff,
   };
 }
@@ -135,18 +139,14 @@ export function wanderReward(gear, todayStr, rand = Math.random) {
   return { gear: { ...won, items: [...won.items, item] }, item };
 }
 
-// 레벨별 상대를 이겼을 때 — 상대마다 하루 한 번. 결과: { gear, item|null, full }
-export const npcRewardDone = (gear, npcId, todayStr) => {
-  const d = normalizeGear(gear).npcDrops;
-  return !!d && d.date === todayStr && d.ids.includes(String(npcId));
-};
+// 레벨별 상대를 이겼을 때 — 상대마다 딱 한 번(처음 이겼을 때). 결과: { gear, item|null, full }
+export const npcRewardDone = (gear, npcId) => normalizeGear(gear).npcClaimed.includes(String(npcId));
 export function npcReward(gear, npc, todayStr, rand = Math.random) {
   const g = normalizeGear(gear);
-  if (!npc?.id || npcRewardDone(g, npc.id, todayStr)) return { gear: g, item: null };
+  if (!npc?.id || npcRewardDone(g, npc.id)) return { gear: g, item: null };
   // 가방이 차면 받은 것으로 치지 않는다 — 정리하고 다시 이기면 받는다
   if (g.items.length >= BAG_MAX) return { gear: g, item: null, full: true };
-  const prevIds = g.npcDrops?.date === todayStr ? g.npcDrops.ids : [];
-  const marked = { ...g, npcDrops: { date: todayStr, ids: [...prevIds, String(npc.id)] } };
+  const marked = { ...g, npcClaimed: [...g.npcClaimed, String(npc.id)] };
   const item = { ...makeItem(rollRarity(rand(), npcRarityWeights(npc.level)), rand), at: todayStr };
   return { gear: { ...marked, items: [...marked.items, item] }, item };
 }
