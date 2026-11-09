@@ -6,7 +6,7 @@ import { buildUpcomingDays, ddayDateLabel, newDday, pastDdays } from "../utils/d
 import { ddayLabel } from "../utils/exam.js";
 import { upcomingSubEvents, SUBS_TODAY_KEY } from "../utils/subscriptions.js";
 import { upcomingDreamEvents, bucketToDream } from "../utils/dreams.js";
-import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherTodayView } from "../utils/weather.js";
+import { airGrade, DEFAULT_CITY, loadWeather, weatherAdvice, weatherDayLabel, weatherToday, weatherTodayView } from "../utils/weather.js";
 import UndoBar from "./UndoBar.jsx";
 import { useUndo, putBack } from "../utils/useUndo.js";
 
@@ -30,7 +30,8 @@ export function SectionBox({ on, children }) {
   return <div style={boxCard}>{children}</div>;
 }
 
-export function WeatherCard({ city, dateStr, onSetCity }) {
+// tomorrowDs: 저녁(utils/dayPhase.js)에만 넘긴다 — 오늘 줄 아래 "내일" 줄을 보이고, 조언도 내일 날씨로 (2026-11-09)
+export function WeatherCard({ city, dateStr, onSetCity, tomorrowDs }) {
   const name = (city || "").trim() || DEFAULT_CITY;
   const [state, setState] = useState({ status: "loading" });
   const [open, setOpen] = useState(() => store.get(OPEN_KEY, false) === true);
@@ -74,8 +75,11 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
   const wx = state.data;
   const today = weatherTodayView(wx, dateStr);
   if (!today) return null;
-  const air = airGrade(wx.air);
-  const advice = weatherAdvice(today, wx.air);
+  const tomorrow = tomorrowDs ? weatherToday(wx, tomorrowDs) : null;
+  // 저녁엔 내일 준비가 중요 — 조언은 내일 날씨로, 미세먼지는 지금 값이라 뺀다
+  const air = tomorrow ? null : airGrade(wx.air);
+  const tomorrowAdvice = tomorrow ? weatherAdvice(tomorrow) : "";
+  const advice = tomorrow ? (tomorrowAdvice ? `내일은 ${tomorrowAdvice}` : "") : weatherAdvice(today, wx.air);
 
   return (
     <div style={{ ...S.card, padding: "12px 14px", marginTop: 10 }}>
@@ -89,6 +93,16 @@ export function WeatherCard({ city, dateStr, onSetCity }) {
           </span>
           <span style={{ fontSize: 13, color: "var(--dm-muted)", flexShrink: 0 }}>{open ? "접기 ▲" : "7일 ▼"}</span>
         </div>
+        {tomorrow && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <span style={{ width: 22, flexShrink: 0, fontSize: 18, textAlign: "center" }}>{tomorrow.icon}</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--dm-text)", flexShrink: 0 }}>내일</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {tomorrow.desc} · {tomorrow.max}°/{tomorrow.min}°
+              {tomorrow.rain != null && <span style={{ color: tomorrow.rain >= 30 ? RAIN_COLOR : "var(--dm-muted)", fontWeight: tomorrow.rain >= 30 ? 800 : 400 }}> · 비 {tomorrow.rain}%</span>}
+            </span>
+          </div>
+        )}
         {(air || advice) && (
           <div style={{ fontSize: 14, color: "var(--dm-sub)", marginTop: 6, wordBreak: "keep-all" }}>
             {air && <span style={{ color: air.color, fontWeight: 800 }}>미세먼지 {air.label}</span>}

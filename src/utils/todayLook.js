@@ -20,6 +20,7 @@ export const setTodayDoneGroup = (on) => store.set(DONE_KEY, !!on);
 const HIDDEN_KEY = "dm_today_hidden";
 export const TODAY_SECTIONS = [
   { id: "weather", label: "🌤 날씨" },
+  { id: "tomorrow", label: "🌙 내일 미리보기 (저녁)" },
   { id: "people", label: "💌 오늘 챙길 사람" },
   { id: "upcoming", label: "📌 다가오는 날" },
   { id: "habits", label: "💪 오늘의 습관" },

@@ -37,7 +37,7 @@ export const ITEMS = [
   { page: "app", label: "새 디자인", section: "화면 디자인", words: "화면 모양 예전 끝낸 할 일 완료 모으기" },
   { page: "app", label: "오늘 탭 칸 순서", section: "오늘 탭 칸 순서", words: "순서 위치 옮기기" },
   { page: "app", label: "협동 보스전", section: "협동 보스전", words: "보스 레이드 커뮤니티 게임 숨기기" },
-  { page: "app", label: "오늘 탭에 보일 칸", section: "오늘 탭에 보일 칸", words: "숨기기 끄기 날씨 습관 언젠가 주간" },
+  { page: "app", label: "오늘 탭에 보일 칸", section: "오늘 탭에 보일 칸", words: "숨기기 끄기 날씨 습관 언젠가 주간 내일 미리보기 저녁" },
   { page: "app", label: "성장 능력치", section: "성장 능력치", words: "XP 레벨 내 단어 스탯" },
   { page: "app", label: "메모 입력", section: "메모 입력", words: "자동완성 목록 번호 단축키" },
   { page: "app", label: "고급 설정", section: "고급 설정", words: "이벤트" },

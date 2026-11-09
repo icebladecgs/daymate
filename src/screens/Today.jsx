@@ -27,6 +27,7 @@ import { useFlip } from "../utils/useFlip.js";
 import FocusTimerModal from "../components/FocusTimerModal.jsx";
 import DayWrapUpSheet, { DayWrapUpCard, LeaveCheckCard } from "../components/DayWrapUp.jsx";
 import { normalizeWorkHours, isWorkday, planUntilMin, leaveCheckFrom, wrapFromMin, workload } from "../utils/workHours.js";
+import { dayPhase, PHASE_GREETING, tomorrowTasks } from "../utils/dayPhase.js";
 import UndoBar from "../components/UndoBar.jsx";
 import { onThisDay } from "../utils/goalProgress.js";
 import { useUndo, putBack } from "../utils/useUndo.js";
@@ -158,6 +159,7 @@ export default function Today({
   const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초)
   // 앱 아이콘을 길게 눌러 "할일 추가"로 열면(?add=1) 입력칸에 바로 커서 — 사용자가 직접 고른 동작이라 휴대폰에서도 키보드를 띄운다
   const taskInputRef = useRef(null);
+  const tasksTopRef = useRef(null); // 저녁 "내일 일정"을 누르면 할일 칸을 내일로 바꾸고 여기로 올라간다
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('add') !== '1') return;
     const id = setTimeout(() => { taskInputRef.current?.scrollIntoView({ block: 'center' }); taskInputRef.current?.focus(); }, 400);
@@ -576,7 +578,11 @@ export default function Today({
   // ☀️ 아침 "오늘 계획" (2026-11-03) — 정오 전에는 어제 못 한 할일 카드에 오늘 첫 일정 한 줄과 언젠가할일 3개(오늘로)를 같이 보여준다.
   // 시간 있는 할일 목록은 바로 아래 할일 목록에 있으므로 다시 늘어놓지 않고 한 줄로만.
   const morning = nowMin < planUntilMin(wh);
-  const timedToday = tasks.filter(t => t.title?.trim() && t.time && !t.done).sort((a, b) => a.time.localeCompare(b.time));
+  // 하루 시간대 (2026-11-09, 나우 브리프 참고) — 머리글 인사, 저녁엔 내일 날씨·내일 미리보기 (utils/dayPhase.js)
+  const phase = dayPhase(nowMin, wh, dateStr);
+  const tomorrowDs = addDays(dateStr, 1);
+  const showTomorrow = phase === 'evening' && !dashboard && !hiddenSec.tomorrow;
+  const tomorrowList = showTomorrow ? tomorrowTasks(plans, recurringTasks, tomorrowDs) : [];  const timedToday = tasks.filter(t => t.title?.trim() && t.time && !t.done).sort((a, b) => a.time.localeCompare(b.time));
   // 목표에서 나온 언젠가할일을 먼저 (2026-11-06) — 3개 + 더 보기
   const planSomeday = morning ? (someday || []).filter(x => !x.done && x.title?.trim()).sort((a, b) => (b.goalRef ? 1 : 0) - (a.goalRef ? 1 : 0)) : [];
   const morningSomeday = planMore ? planSomeday : planSomeday.slice(0, 3);
@@ -1102,8 +1108,14 @@ export default function Today({
           // 새 화면 머리글: 날짜·시각은 작게, 남은 할 일 수를 크게 + 할 일 수만큼 칸
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: 'var(--dm-sub)', fontWeight: 600 }}>{formatKoreanDate(dateStr)} · {clock}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 8px', lineHeight: 1.3, wordBreak: 'keep-all', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }}>
-              {!filledCount ? '오늘 할 일 없음' : remainCount ? <span style={{ whiteSpace: 'nowrap' }}>{remainCount}개 남았어요</span> : '모두 끝냈어요 🎉'}
+            {/* 아침·저녁·늦은 밤엔 인사를 크게, 남은 할 일은 그 아래 한 줄 (낮에는 예전처럼 "n개 남았어요"만) */}
+            {PHASE_GREETING[phase] && (
+              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 0', lineHeight: 1.3, wordBreak: 'keep-all' }}>{PHASE_GREETING[phase]}</div>
+            )}
+            <div style={PHASE_GREETING[phase]
+              ? { fontSize: 16, fontWeight: 700, color: 'var(--dm-sub)', margin: '2px 0 8px', lineHeight: 1.4, wordBreak: 'keep-all', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }
+              : { fontSize: 24, fontWeight: 900, color: 'var(--dm-text)', margin: '2px 0 8px', lineHeight: 1.3, wordBreak: 'keep-all', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 }}>
+              {!filledCount ? '오늘 할 일 없음' : remainCount ? <span style={{ whiteSpace: 'nowrap' }}>{PHASE_GREETING[phase] ? `할 일 ${remainCount}개 남았어요` : `${remainCount}개 남았어요`}</span> : '모두 끝냈어요 🎉'}
               {filledCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-muted)', whiteSpace: 'nowrap' }}>완료 {doneCount}/{filledCount}</span>}
             </div>
             <DoneSegments done={doneCount} total={filledCount} />
@@ -1129,7 +1141,7 @@ export default function Today({
       </div>
 
       {/* 🌤 날씨 — 평소 한 줄, 누르면 7일 (설정에서 끌 수 있음) */}
-      {!dashboard && !hiddenSec.weather && <WeatherCard city={weatherCity} dateStr={dateStr} onSetCity={onSetWeatherCity} />}
+      {!dashboard && !hiddenSec.weather && <WeatherCard city={weatherCity} dateStr={dateStr} onSetCity={onSetWeatherCity} tomorrowDs={phase === 'evening' ? tomorrowDs : undefined} />}
 
       {/* 📚 수험생 모드: D-day · 오늘 공부 (설정에서 켰을 때만) */}
       {examOn && !dashboard && (
@@ -1152,6 +1164,7 @@ export default function Today({
       {newLook && introCards}
 
       {/* ✅ 오늘의 할일 (이 섹션만 날짜 이동 가능, 나머지는 항상 오늘 기준) */}
+      <div ref={tasksTopRef} style={{ scrollMarginTop: 70 }} />
       <SectionBox on={newLook}>
       {/* 새 디자인: 제목(19px)이 버튼과 겹칠 만큼 좁으면 버튼 묶음이 아랫줄로 (2026-11-07, 360px에서 캘린더 연결 버튼이 있을 때) */}
       <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16, ...foldPad(tasksOpen), ...(newLook ? { flexWrap: 'wrap', rowGap: 8 } : {}) }}>
@@ -1307,6 +1320,57 @@ export default function Today({
       </div>
       )}
       </SectionBox>
+
+      {/* 🌙 내일 일정 — 저녁(퇴근 시각, 쉬는 날 18시)부터. 누르면 위 할일 칸이 내일로 바뀐다 (2026-11-09, 나우 브리프 참고) */}
+      {showTomorrow && (() => {
+        const shown = tomorrowList.slice(0, 4);
+        const rest = tomorrowList.length - shown.length;
+        const goTomorrow = (focusInput) => {
+          setTaskDayOffset(1); setTasksOpen(true);
+          setTimeout(() => {
+            if (focusInput) { taskInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); taskInputRef.current?.focus(); }
+            else tasksTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 50);
+        };
+        return (
+          <SectionBox on={newLook}>
+            <div style={{ ...secTitle, justifyContent: 'space-between', paddingRight: newLook ? 0 : 16 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                {secIcon('moon', '🌙')}
+                <span style={{ whiteSpace: 'nowrap' }}>내일 일정</span>
+                <span style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 400, color: 'var(--dm-muted)', whiteSpace: 'nowrap' }}>{formatShortKoreanDate(tomorrowDs)}</span>
+              </span>
+              {tomorrowList.length > 0 && <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--dm-muted)', flexShrink: 0 }}>{tomorrowList.length}개</span>}
+            </div>
+            <div style={innerCard}>
+              {tomorrowList.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--dm-muted)', wordBreak: 'keep-all' }}>내일 할 일이 아직 없어요</span>
+                  <button onClick={() => goTomorrow(true)}
+                    style={{ flexShrink: 0, minHeight: UI.touch, padding: '0 14px', borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(91,124,250,.35))', background: 'var(--dm-accent-soft, rgba(91,124,250,.10))', color: 'var(--dm-accent, #5B7CFA)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>＋ 내일 할 일</button>
+                </div>
+              ) : (
+                <>
+                  {shown.map((t, i) => (
+                    <button key={t.id} onClick={() => goTomorrow(false)}
+                      style={{ display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', padding: `${UI.rowPadY}px 0`, margin: 0, background: 'none', border: 'none', borderTop: i ? '1px solid var(--dm-row)' : 'none', borderRadius: 0, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <span style={{ width: 48, flexShrink: 0, fontSize: 14, fontWeight: 800, color: t.time ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-muted)', fontVariantNumeric: 'tabular-nums' }}>{t.time || ''}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: t.done ? 'var(--dm-muted)' : 'var(--dm-text)', textDecoration: t.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.recurring || /^r.+_\d{4}-\d{2}-\d{2}$/.test(String(t.id)) ? '🔁 ' : ''}{t.title}
+                      </span>
+                    </button>
+                  ))}
+                  {rest > 0 && (
+                    <button onClick={() => goTomorrow(false)} style={{ display: 'block', width: '100%', padding: '9px 0 2px', margin: 0, background: 'none', border: 'none', borderTop: '1px solid var(--dm-row)', borderRadius: 0, fontSize: 14, fontWeight: 800, color: 'var(--dm-accent, #5B7CFA)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                      {rest}개 더 보기 ›
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </SectionBox>
+        );
+      })()}
 
       {!dashboard && sectionOrder.map(id => <Fragment key={id}>{todaySections[id]}</Fragment>)}
 

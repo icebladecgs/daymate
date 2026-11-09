@@ -895,6 +895,33 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('영토: 남한 밖은 판정 안 함', !T.inKorea(39.03, 125.75) && T.inKorea(37.57, 126.97) && !T.inKorea(NaN, 127));
 }
 
+// ── 🌙 하루 시간대·내일 미리보기 (2026-11-09, utils/dayPhase.js) ──
+{
+  const P = await load('/src/utils/dayPhase.js');
+  const wh = { start: '09:00', end: '18:00' };
+  const mon = '2026-11-09', sat = '2026-11-14';
+  t('시간대: 평일 아침·낮·퇴근 뒤 저녁·새벽',
+    P.dayPhase(8 * 60, wh, mon) === 'morning' && P.dayPhase(14 * 60, wh, mon) === 'day'
+    && P.dayPhase(18 * 60, wh, mon) === 'evening' && P.dayPhase(17 * 60 + 59, wh, mon) === 'day' && P.dayPhase(2 * 60, wh, mon) === 'night');
+  t('시간대: 쉬는 날은 18시부터 저녁, 늦게 퇴근하면 퇴근 시각부터',
+    P.dayPhase(18 * 60, wh, sat) === 'evening' && P.dayPhase(17 * 60, wh, sat) === 'day'
+    && P.dayPhase(19 * 60, { start: '10:00', end: '20:00' }, mon) === 'day' && P.dayPhase(20 * 60, { start: '10:00', end: '20:00' }, mon) === 'evening');
+  t('시간대: 낮에는 인사 없음', !P.PHASE_GREETING.day && P.PHASE_GREETING.evening === '하루가 끝나가요');
+  const ds = '2026-11-10'; // 화요일
+  const plans = { [ds]: { tasks: [
+    { id: 'a', title: '오후 회의', time: '15:00' }, { id: 'b', title: '시간 없는 일' }, { id: 'c', title: '아침 보고', time: '09:30' }, { id: 'e', title: '  ' },
+  ] } };
+  const rules = [{ id: 'x', title: '운동', days: [2] }, { id: 'y', title: '일요일 일', days: [0] }];
+  const L = P.tomorrowTasks(plans, rules, ds);
+  t('내일 미리보기: 시간순 → 시간 없는 것, 빈 줄 뺌, 아직 안 들어간 반복 할일 포함',
+    L.map((x) => x.title).join() === '아침 보고,오후 회의,시간 없는 일,운동', L.map((x) => x.title).join());
+  const applied = { [ds]: { tasks: [{ id: `rx_${ds}`, title: '운동' }], recurringApplied: ['x'] } };
+  t('내일 미리보기: 이미 들어간 반복 할일은 한 번만', P.tomorrowTasks(applied, rules, ds).length === 1);
+  const removed = { [ds]: { tasks: [], recurringApplied: ['x'] } };
+  t('내일 미리보기: 지운 반복 할일은 다시 안 보임', P.tomorrowTasks(removed, rules, ds).length === 0);
+  t('내일 미리보기: 기록 없는 날도 동작', P.tomorrowTasks({}, null, ds).length === 0);
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

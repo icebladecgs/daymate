@@ -33,6 +33,8 @@ const PATHS = {
   // 협동 보스전 (2026-11-08)
   sword: <><path d="M14.5 17.5L3 6V3h3l11.5 11.5" /><path d="M13 19l6-6M16 16l4 4M19 21l2-2" /></>,
   sprout: <><path d="M12 21v-9" /><path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /><path d="M12 14c0-3-2.5-5.5-7-5.5 0 3 2.5 5.5 7 5.5z" /></>,
+  // 저녁 내일 미리보기 (2026-11-09)
+  moon: <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" />,
 };
 
 // 섹션 아이콘 색 (2026-10-31) — 제목 글자는 흰색 그대로, 아이콘만 칸마다 색. 밝은·어두운 화면 둘 다 보이는 색
@@ -40,14 +42,14 @@ const COLORS = {
   today: "#5B7CFA", people: "#EC4899", repeat: "#22C55E", inbox: "#8B5CF6", cal: "#F59E0B", book: "#14B8A6",
   target: "#EF4444", flag: "#F97316", card: "#5B7CFA", sparkle: "#8B5CF6", briefcase: "#F59E0B",
   megaphone: "#F97316", pencil: "#5B7CFA", checkin: "#22C55E", globe: "#14B8A6",
-  search: "#5B7CFA", refresh: "#5B7CFA", sprout: "#22C55E",
+  search: "#5B7CFA", refresh: "#5B7CFA", sprout: "#22C55E", moon: "#8B5CF6",
 };
 // 칸 제목 배지 색 — 흰 아이콘이 잘 보이는 진한 색(아이폰 기본 색 계열)
 const BADGE = {
   today: "#007AFF", people: "#FF2D55", repeat: "#34C759", inbox: "#AF52DE", cal: "#FF9500", book: "#30B0C7",
   target: "#FF3B30", flag: "#FF9500", card: "#5856D6", sparkle: "#AF52DE", briefcase: "#FF9500",
   megaphone: "#FF9500", pencil: "#007AFF", checkin: "#34C759", globe: "#30B0C7",
-  search: "#007AFF", refresh: "#007AFF", sprout: "#34C759", wallet: "#34C759", sword: "#FF3B30", gift: "#FF2D55", pin: "#30B0C7",
+  search: "#007AFF", refresh: "#007AFF", sprout: "#34C759", wallet: "#34C759", sword: "#FF3B30", gift: "#FF2D55", pin: "#30B0C7", moon: "#5856D6",
 };
 
 // 섹션 제목 한 줄 (새 디자인) — UI.title(19px) 굵게 + 색 배지 아이콘. right에 접기·수정 같은 버튼
