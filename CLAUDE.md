@@ -223,7 +223,7 @@ Firestore 구조 변경 시 다음을 함께 확인한다.
 - 데이터 삭제 또는 덮어쓰기 가능성
 - Firebase 콘솔에서 별도로 적용해야 할 내용
 
-규칙은 `firestore.rules`에서 기존 비슷한 컬렉션(예: `notices/comments`)의 패턴을 미러링해 고친다. 게시는 실제 서비스 권한이 바뀌는 작업이라 **배포처럼 사용자 승인 후** `npm run rules:deploy`(테스트 통과해야 게시)로 한다. Firebase 로그인이 안 된 PC에서는 사용자가 한 번 `npm run rules:login`을 실행해야 한다. 로그인할 수 없는 상황이면 예전처럼 전체 교체본을 드려 콘솔에 붙여넣게 한다.
+규칙은 `firestore.rules`에서 기존 비슷한 컬렉션(예: `notices/comments`)의 패턴을 미러링해 고친다. 게시는 실제 서비스 권한이 바뀌는 작업이라 **배포처럼 사용자 승인 후** `npm run rules:deploy`(테스트 통과해야 게시)로 한다. Firebase 로그인이 안 된 PC에서는 사용자가 한 번 `npm run rules:login`을 실행해야 한다. AI 셸은 입력을 받을 수 없어(`--non-interactive` 거부) 직접 못 하므로, `Start-Process powershell -ArgumentList "-NoExit","-Command","npm run rules:login"`으로 화면에 새 창을 띄워 사용자가 Enter·브라우저 승인만 하게 한다(2026-11-09, 윈도우 PC `C:\Dev\Projects\daymate`는 이제 로그인됨). 로그인할 수 없는 상황이면 예전처럼 전체 교체본을 드려 콘솔에 붙여넣게 한다.
 
 보안 규칙 반영이 필요한 상태에서 코드만 배포하고 작업이 완전히 끝났다고 보고하지 않는다.
 
