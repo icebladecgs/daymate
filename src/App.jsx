@@ -545,7 +545,7 @@ export default function App() {
     const r = rollDrop(battleGearRef.current, key, source, toDateStr());
     if (r.gear !== battleGearRef.current) updateGear(r.gear);
     if (r.item) setTimeout(() => setToast(`🎁 장비를 주웠어요! [${RARITIES[r.item.rarity].label}] ${r.item.name}`), 1300);
-    else if (r.full) setTimeout(() => setToast('🎒 가방이 꽉 차서 장비를 못 주웠어요 — 배틀 화면에서 정리해 주세요'), 1300);
+    else if (r.full) setTimeout(() => setToast('🎒 가방이 꽉 차서 장비를 못 주웠어요 — 배틀 화면 가방에서 안 쓰는 장비를 팔아 주세요'), 1300);
   };
   const [battleNickname, setBattleNickname] = useState(() => store.get("dm_battle_nickname", ""));
   const onBattleEnd = (npcDef, won) => {

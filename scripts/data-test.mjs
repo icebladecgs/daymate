@@ -920,6 +920,9 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('상점: 사면 골드가 줄고 가방에 들어감, 같은 칸은 다시 못 삼', !p1.error && p1.gear.gold === 5000 - shop[0].price && p1.gear.items.length === 1 && G.buyShopItem(p1.gear, D, 'u1', 0).error === 'bought');
   t('상점: 골드가 모자라면 못 삼', G.buyShopItem({ gold: 10 }, D, 'u1', 1).error === 'gold');
   t('상점: 다음 날은 다시 살 수 있음', !G.buyShopItem(p1.gear, '2026-11-11', 'u1', 0).error);
+  const sl = G.sellItem({ gold: 10, items: [{ id: 'a', slot: 'weapon', rarity: 'rare', name: 'x', atk: 0.1 }, { id: 'b', slot: 'armor', rarity: 'common', name: 'y', hp: 0.1 }], equipped: { weapon: 'a' } }, 'a');
+  t('팔기: 등급별 골드(희귀 100), 끼운 장비는 빼고 팖', sl.gold === 100 && sl.gear.gold === 110 && sl.gear.items.length === 1 && sl.gear.equipped.weapon === null && G.sellItem(sl.gear, 'zz').gold === 0);
+  t('팔기: 상점에서 사서 바로 팔면 손해', Object.keys(G.SHOP_PRICE).every((k) => G.SELL_PRICE[k] < G.SHOP_PRICE[k]));
   t('골드: 저장 값 정리(음수·글자)', G.normalizeGear({ gold: -5 }).gold === 0 && G.normalizeGear({ gold: '12' }).gold === 12);
 }
 

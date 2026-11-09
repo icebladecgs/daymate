@@ -404,7 +404,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
             </div>
           )}
           {status === 'win' && !reward && (bag || []).length >= BAG_MAX && (
-            <div style={{ marginTop: 10, fontSize: 13, color: '#FF9F0A' }}>🎒 가방이 꽉 차서 장비를 못 받았어요 — 정리하고 다시 이기면 받아요</div>
+            <div style={{ marginTop: 10, fontSize: 13, color: '#FF9F0A' }}>🎒 가방이 꽉 차서 장비를 못 받았어요 — 안 쓰는 장비를 팔고 다시 이기면 받아요</div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={onExit} style={{ ...S.btnGhost, flex: 1, marginTop: 0 }}>나가기</button>

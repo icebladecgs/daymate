@@ -197,6 +197,18 @@ export function addGold(gear, todayStr, kind, amount) {
 }
 export const battleGoldLeft = (gear, todayStr) => { const e = normalizeGear(gear).earned; return BATTLE_GOLD_CAP - (e?.date === todayStr ? e.battle : 0); };
 
+// 팔기 (2026-11-10 사용자 확정 — "버리기" 자리) — 상점 값의 약 1/4이라 사서 바로 팔면 손해. 전설은 상점엔 없지만 팔 수는 있다(화면에서 한 번 더 묻는다).
+// 판 골드는 하루 상한에 넣지 않는다(줍기가 하루 3개라 저절로 제한). 결과 { gear, gold } — 끼운 장비면 빼고 판다
+export const SELL_PRICE = { common: 15, uncommon: 35, rare: 100, epic: 250, legend: 600 };
+export function sellItem(gear, itemId) {
+  const g = normalizeGear(gear);
+  const it = g.items.find((x) => x.id === itemId);
+  if (!it) return { gear: g, gold: 0 };
+  const gold = SELL_PRICE[it.rarity] || 0;
+  const equipped = Object.fromEntries(Object.entries(g.equipped).map(([k, v]) => [k, v === itemId ? null : v]));
+  return { gear: { ...g, gold: g.gold + gold, items: g.items.filter((x) => x.id !== itemId), equipped }, gold };
+}
+
 // 오늘 상점 — 같은 날·같은 계정이면 기기가 달라도 같은 3칸. 칸마다 무기·갑옷·부적이 겹치지 않게
 export function shopItems(dateStr, seed) {
   const r = seededRand(`shop|${dateStr}|${seed}`);

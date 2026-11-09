@@ -7,7 +7,7 @@ import UndoBar from "../UndoBar.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
 import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
-  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem } from "../../utils/gear.js";
+  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem, SELL_PRICE, sellItem } from "../../utils/gear.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
 const rarityChip = (r) => ({ fontSize: 12, fontWeight: 900, color: "#fff", background: RARITIES[r].color, borderRadius: 6, padding: "1px 6px", flexShrink: 0 });
@@ -45,14 +45,19 @@ export default function GearPanel({ gear, setGear }) {
   const newCount = g.items.filter((x) => x.at === today).length;
 
   const equip = (it) => setGear({ ...g, equipped: { ...g.equipped, [it.slot]: isEquipped(it.id) ? null : it.id } });
-  const discard = (it) => {
+  // 팔기 (2026-11-10 — 예전 "버리기" 자리). 끼운 장비면 빼고 판다. 5초 되돌리기(그 사이 골드를 써 버렸으면 되돌리지 않음),
+  // 전설은 아주 드물어 한 번 더 묻는다
+  const sell = (it) => {
+    if (it.rarity === "legend" && !window.confirm(`전설 장비 "${it.name}"을(를) ${SELL_PRICE.legend}골드에 팔까요?`)) return;
     const idx = g.items.findIndex((x) => x.id === it.id);
     const wasOn = isEquipped(it.id);
-    setGear({ ...g, items: g.items.filter((x) => x.id !== it.id), equipped: wasOn ? { ...g.equipped, [it.slot]: null } : g.equipped });
+    const r = sellItem(g, it.id);
+    setGear(r.gear);
     setSel(null);
-    undo.offer(`"${it.name}"을(를) 버렸어요`, () => setGear((cur) => {
+    undo.offer(`🪙 +${r.gold} · "${it.name}" 팔았어요`, () => setGear((cur) => {
       const c = normalizeGear(cur);
-      return { ...c, items: putBack(c.items, it, idx), equipped: wasOn ? { ...c.equipped, [it.slot]: it.id } : c.equipped };
+      if (c.gold < r.gold || c.items.some((x) => x.id === it.id)) return c;
+      return { ...c, gold: c.gold - r.gold, items: putBack(c.items, it, idx), equipped: wasOn ? { ...c.equipped, [it.slot]: it.id } : c.equipped };
     }));
   };
 
@@ -99,7 +104,7 @@ export default function GearPanel({ gear, setGear }) {
               {sel === it.id && (
                 <div style={{ display: "flex", gap: 8, paddingBottom: 10 }}>
                   <button onClick={() => { equip(it); setSel(null); }} style={{ flex: 1, height: 42, border: "none", borderRadius: 10, background: isEquipped(it.id) ? "var(--dm-input)" : ACCENT, color: isEquipped(it.id) ? "var(--dm-text)" : "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{isEquipped(it.id) ? "빼기" : "끼우기"}</button>
-                  <button onClick={() => discard(it)} style={{ height: 42, padding: "0 16px", border: "none", borderRadius: 10, background: "var(--dm-input)", color: "#FF3B30", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>버리기</button>
+                  <button onClick={() => sell(it)} style={{ height: 42, padding: "0 16px", border: "none", borderRadius: 10, background: "var(--dm-input)", color: "#FF9F0A", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>팔기 🪙{SELL_PRICE[it.rarity]}</button>
                 </div>
               )}
             </div>
@@ -133,7 +138,7 @@ export function ShopCard({ gear, setGear, seed }) {
 
   const buy = (i) => {
     const r = buyShopItem(g, today, seed, i);
-    if (r.error) { setMsg(r.error === 'gold' ? '골드가 모자라요' : r.error === 'full' ? '가방이 꽉 찼어요 — 장비를 정리해 주세요' : '이미 샀어요'); return; }
+    if (r.error) { setMsg(r.error === 'gold' ? '골드가 모자라요' : r.error === 'full' ? '가방이 꽉 찼어요 — 안 쓰는 장비를 팔아 주세요' : '이미 샀어요'); return; }
     setMsg('');
     setGear(r.gear);
     const price = items[i].price;
@@ -180,7 +185,7 @@ export function ShopCard({ gear, setGear, seed }) {
       })}
       {msg && <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700, marginTop: 4 }}>{msg}</div>}
       <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
-        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}. 전설 장비는 상점에서 팔지 않아요.
+        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}. 안 쓰는 장비는 가방에서 팔 수 있어요. 전설 장비는 상점에서 팔지 않아요.
       </div>
     </div>
   );
