@@ -25,6 +25,8 @@ export function newContact(name) {
     introducedBy: { personId: null, text: "" },
     memo: "",
     meetings: [], // { id, date, note, createdAt } — 후속 할 일 연결은 contact.linkedTasks 쪽에서 관리
+    // 연락 주기(2026-11-09): contactEvery = 며칠마다(0·없음 = 안 정함), contactEverySince = 정한 날(기록이 없으면 여기부터 셈),
+    // lastContactAt = "오늘 연락했어요"로 남긴 날짜. 마지막 연락일은 이것과 만남 기록 중 늦은 날
     createdAt: now,
     updatedAt: now,
   };
@@ -58,6 +60,10 @@ export function buildImportCandidates(picked, existingContacts) {
     seen.add(key);
     const dup = norm ? existingPhones.has(norm) : existingNames.has(name);
     const item = { key: `${key}_${i}`, name: name.slice(0, 40), phone: phone.slice(0, 20), email: email.slice(0, 60), dup, checked: false };
+    // vCard 파일에서 온 것만 있는 칸 (휴대폰 연락처 선택 창은 이름·전화만 준다)
+    if (p?.org?.[0]) item.company = String(p.org[0]).normalize("NFC").trim().slice(0, 40);
+    if (p?.title?.[0]) item.title = String(p.title[0]).normalize("NFC").trim().slice(0, 20);
+    if (p?.bday?.month && p?.bday?.day) item.birthday = { calendar: "solar", month: p.bday.month, day: p.bday.day, year: p.bday.year || "" };
     item.search = buildSearchIndex(item); // 가져오기 창 검색용으로 한 번만 계산
     out.push(item);
   });
@@ -137,13 +143,89 @@ export function getUpcomingDays(contacts, todayStr = toDateStr(), { excludeWithi
   return getUpcomingContactEvents(contacts, maxDays, todayStr).filter((ev) => ev.dday > excludeWithin);
 }
 
-// 홈 위젯 "오늘 챙길 사람" 조합 — 생일·기념일(window일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일.
+// ── 연락 주기 (2026-11-09) ── 생일이 아니어도 챙길 계기 — 정한 사람만(기본 "안 정함")
+export const CONTACT_EVERY_OPTIONS = [
+  { v: 0, l: "안 정함" }, { v: 14, l: "2주" }, { v: 30, l: "1달" }, { v: 90, l: "3달" }, { v: 180, l: "6달" }, { v: 365, l: "1년" },
+];
+export const contactEveryLabel = (v) => CONTACT_EVERY_OPTIONS.find((o) => o.v === Number(v))?.l || `${v}일`;
+
+export function daysBetween(fromStr, toStr) {
+  return Math.round((parseYmd(toStr) - parseYmd(fromStr)) / 86400000);
+}
+
+// 마지막 연락일 — 만남 기록(오늘까지)과 "오늘 연락했어요" 중 늦은 날. 없으면 null
+export function lastContactDate(c, todayStr = toDateStr()) {
+  let last = null;
+  const take = (d) => { if (d && d <= todayStr && (!last || d > last)) last = d; };
+  (c?.meetings || []).forEach((m) => take(m.date));
+  take(c?.lastContactAt);
+  return last;
+}
+
+// "오늘" · "어제" · "5일 전" · "3주 전" · "2달 전" · "1년 전"
+export function agoLabel(days) {
+  if (days == null) return "";
+  if (days <= 0) return "오늘";
+  if (days === 1) return "어제";
+  if (days < 14) return `${days}일 전`;
+  if (days < 60) return `${Math.floor(days / 7)}주 전`;
+  if (days < 365) return `${Math.floor(days / 30)}달 전`;
+  return `${Math.floor(days / 365)}년 전`;
+}
+
+// 연락할 때인지 — 주기를 안 정했으면 null. 기록이 없으면 주기를 정한 날(없으면 등록한 날)부터 센다
+// (주기를 정하자마자 기록 없는 사람이 한꺼번에 뜨지 않게)
+export function contactDue(c, todayStr = toDateStr()) {
+  const every = Number(c?.contactEvery) || 0;
+  if (!every) return null;
+  const last = lastContactDate(c, todayStr);
+  const base = last || c?.contactEverySince || String(c?.createdAt || "").slice(0, 10) || todayStr;
+  const since = Math.max(0, daysBetween(base, todayStr));
+  return { every, last, since, due: since >= every, dueIn: every - since };
+}
+
+// 목록 순서 — added(추가한 순, 예전 그대로) · recent(최근 연락 순) · old(연락 오래된 순) · name(이름순)
+// recent·old는 연락 기록이 없는 사람을 맨 뒤로 (연락처를 가져온 사람이 많아 앞을 덮지 않게)
+export const CONTACT_SORTS = [
+  { v: "added", l: "추가한 순" }, { v: "recent", l: "최근 연락 순" }, { v: "old", l: "오래된 순" }, { v: "name", l: "이름순" },
+];
+export function sortContacts(list, mode, todayStr = toDateStr()) {
+  const arr = [...(list || [])];
+  if (mode === "name") return arr.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ko"));
+  if (mode !== "recent" && mode !== "old") return arr;
+  const withLast = arr.map((c, i) => ({ c, i, last: lastContactDate(c, todayStr) }));
+  withLast.sort((a, b) => {
+    if (!a.last || !b.last) return a.last ? -1 : b.last ? 1 : a.i - b.i;
+    if (a.last === b.last) return a.i - b.i;
+    return mode === "recent" ? (a.last < b.last ? 1 : -1) : (a.last < b.last ? -1 : 1);
+  });
+  return withLast.map((x) => x.c);
+}
+
+// 태그 이름 바꾸기·지우기 — 바뀐 사람만 돌려준다(그 사람만 저장). to가 이미 있는 태그면 합친다
+export function renameContactTag(contacts, tags, from, to) {
+  const name = String(to || "").trim();
+  if (!name || name === from) return { tags, changed: [] };
+  const nextTags = tags.includes(name) ? tags.filter((t) => t !== from) : tags.map((t) => (t === from ? name : t));
+  const changed = (contacts || []).filter((c) => (c.tags || []).includes(from)).map((c) => ({
+    ...c, tags: [...new Set((c.tags || []).map((t) => (t === from ? name : t)))],
+  }));
+  return { tags: nextTags, changed };
+}
+export function removeContactTag(contacts, tags, tag) {
+  const changed = (contacts || []).filter((c) => (c.tags || []).includes(tag)).map((c) => ({ ...c, tags: c.tags.filter((t) => t !== tag) }));
+  return { tags: tags.filter((t) => t !== tag), changed };
+}
+
+const MAX_DUE_SHOWN = 3; // 오늘 탭에 연락할 사람은 3명까지 — 많이 정하면 칸을 다 덮는다
+
+// 홈 위젯 "오늘 챙길 사람" 조합 — 생일·기념일(window일 이내) + 기한이 지났거나 오늘인 미완료 후속 할 일 + 연락할 때가 된 사람.
 // 완료 여부는 사람 쪽에 복제하지 않고 그 날짜의 실제 task(plans)를 그때그때 조회해서 판단한다.
 export function getContactReminders(contacts, plans, windowDays = 7, todayStr = toDateStr()) {
   const items = [];
   getUpcomingContactEvents(contacts, windowDays, todayStr).forEach((ev) => {
     const when = ev.dday === 0 ? "오늘" : `${ev.dday}일 뒤`;
-    items.push({ key: `${ev.type}_${ev.contactId}`, text: `${when} ${ev.name}님 ${ev.label}` });
+    items.push({ key: `${ev.type}_${ev.contactId}`, icon: "🎂", contactId: ev.contactId, text: `${when} ${ev.name}님 ${ev.label}` });
   });
   (contacts || []).forEach((c) => {
     (c.linkedTasks || []).forEach((lt) => {
@@ -151,9 +233,20 @@ export function getContactReminders(contacts, plans, windowDays = 7, todayStr = 
       const task = (plans?.[lt.date]?.tasks || []).find((t) => t.id === lt.taskId);
       if (!task || task.done) return;
       const when = lt.date === todayStr ? "오늘" : "지난";
-      items.push({ key: `task_${lt.taskId}`, text: `${when} ${c.name}님께 ${task.title || lt.title}` });
+      items.push({ key: `task_${lt.taskId}`, icon: "📌", contactId: c.id, text: `${when} ${c.name}님께 ${task.title || lt.title}` });
     });
   });
+  const due = (contacts || [])
+    .map((c) => ({ c, d: contactDue(c, todayStr) }))
+    .filter((x) => x.d?.due)
+    .sort((a, b) => (b.d.since - b.d.every) - (a.d.since - a.d.every)); // 많이 지난 사람부터
+  due.slice(0, MAX_DUE_SHOWN).forEach(({ c, d }) => {
+    const ago = d.last ? `마지막 연락 ${agoLabel(d.since)}` : "아직 연락 기록 없음";
+    items.push({ key: `due_${c.id}`, icon: "📞", contactId: c.id, text: `${c.name}님께 연락할 때예요 · ${ago}` });
+  });
+  if (due.length > MAX_DUE_SHOWN) {
+    items.push({ key: "due_more", icon: "📞", text: `연락할 사람 ${due.length - MAX_DUE_SHOWN}명 더 — 내 사람들에서 보기` });
+  }
   return items;
 }
 

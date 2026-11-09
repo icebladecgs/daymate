@@ -780,6 +780,72 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('보스전: 레벨 5는 첫 보스로 돌아감', B.raidBoss(5).id === B.raidBoss(1).id && B.raidBoss(5).level === 5);
 }
 
+// ── 내 사람들: 연락 주기·순서·태그·연락처 파일 (2026-11-09) ──
+{
+  const C = await load('/src/data/contacts.js');
+  const V = await load('/src/utils/vcard.js');
+  const T = '2026-11-09';
+  const a = { id: 'a', name: '가', createdAt: '2026-01-01T00:00:00Z', meetings: [{ id: 'm1', date: '2026-10-01' }, { id: 'm2', date: '2026-12-01' }], lastContactAt: '2026-09-01' };
+  t('연락: 마지막 연락 = 오늘까지의 만남·연락 중 늦은 날', C.lastContactDate(a, T) === '2026-10-01');
+  t('연락: "오늘 연락했어요"가 더 늦으면 그 날', C.lastContactDate({ ...a, lastContactAt: '2026-11-08' }, T) === '2026-11-08');
+  t('연락: 기록 없으면 null', C.lastContactDate({ id: 'x' }, T) === null);
+  t('연락: 주기를 안 정했으면 null(챙기지 않음)', C.contactDue(a, T) === null && C.contactDue({ ...a, contactEvery: 0 }, T) === null);
+  const due = C.contactDue({ ...a, contactEvery: 30 }, T);
+  t('연락: 1달 주기, 39일 지났으면 연락할 때', due.due && due.since === 39, JSON.stringify(due));
+  t('연락: 기록 없으면 주기를 정한 날부터 셈', !C.contactDue({ id: 'n', contactEvery: 14, contactEverySince: '2026-11-01', createdAt: '2025-01-01T00:00:00Z' }, T).due
+    && C.contactDue({ id: 'n', contactEvery: 14, contactEverySince: '2026-10-20' }, T).due);
+  const people = [
+    { id: 'p1', name: '다', contactEvery: 14, contactEverySince: '2026-01-01' },
+    { id: 'p2', name: '가', contactEvery: 30, meetings: [{ id: 'x', date: '2026-11-01' }] },
+    { id: 'p3', name: '나', contactEvery: 14, lastContactAt: '2026-10-01' },
+    { id: 'p4', name: '라', contactEvery: 14, lastContactAt: '2026-10-02' },
+    { id: 'p5', name: '마', contactEvery: 14, lastContactAt: '2026-10-03' },
+    { id: 'p6', name: '바', contactEvery: 14, lastContactAt: '2026-10-04' },
+  ];
+  const rem = C.getContactReminders(people, {}, 7, T);
+  const dueRows = rem.filter(r => r.key.startsWith('due_'));
+  t('연락: 오늘 챙길 사람은 많이 지난 사람부터 3명 + "n명 더"', same(dueRows.map(r => r.key), ['due_p1', 'due_p3', 'due_p4', 'due_more']), JSON.stringify(dueRows.map(r => r.key)));
+  t('연락: 기록 없는 사람은 "기록 없음" 안내', dueRows[0].text.includes('기록 없음') && dueRows[1].text.includes('마지막 연락'));
+  t('연락: 줄을 누르면 열 사람 id', dueRows[0].contactId === 'p1' && !dueRows[3].contactId);
+  t('지난 표시: 일·주·달·년', C.agoLabel(0) === '오늘' && C.agoLabel(1) === '어제' && C.agoLabel(10) === '10일 전' && C.agoLabel(21) === '3주 전' && C.agoLabel(90) === '3달 전' && C.agoLabel(800) === '2년 전');
+  const list = [
+    { id: 'n1', name: '하나', meetings: [{ id: 'q', date: '2026-10-01' }] },
+    { id: 'n2', name: '가나' },
+    { id: 'n3', name: '다라', lastContactAt: '2026-11-01' },
+  ];
+  t('순서: 최근 연락 순, 기록 없는 사람은 뒤', same(C.sortContacts(list, 'recent', T).map(c => c.id), ['n3', 'n1', 'n2']));
+  t('순서: 오래된 순, 기록 없는 사람은 뒤', same(C.sortContacts(list, 'old', T).map(c => c.id), ['n1', 'n3', 'n2']));
+  t('순서: 이름순', same(C.sortContacts(list, 'name', T).map(c => c.name), ['가나', '다라', '하나']));
+  t('순서: 추가한 순은 그대로·원본 안 바꿈', same(C.sortContacts(list, 'added', T).map(c => c.id), ['n1', 'n2', 'n3']) && list[0].id === 'n1');
+  const tagged = [{ id: 'x', tags: ['친구', '모임'] }, { id: 'y', tags: ['직장'] }, { id: 'z', tags: ['모임'] }];
+  const rn = C.renameContactTag(tagged, ['친구', '직장', '모임'], '모임', '동호회');
+  t('태그 이름 바꾸기: 그 태그가 붙은 사람만', same(rn.tags, ['친구', '직장', '동호회']) && same(rn.changed.map(c => [c.id, c.tags]), [['x', ['친구', '동호회']], ['z', ['동호회']]]));
+  const mg = C.renameContactTag(tagged, ['친구', '직장', '모임'], '모임', '친구');
+  t('태그 이름 바꾸기: 있는 이름이면 합치고 겹치지 않음', same(mg.tags, ['친구', '직장']) && same(mg.changed[0].tags, ['친구']));
+  const rm = C.removeContactTag(tagged, ['친구', '직장', '모임'], '모임');
+  t('태그 지우기', same(rm.tags, ['친구', '직장']) && rm.changed.length === 2 && rm.changed.every(c => !c.tags.includes('모임')));
+  t('태그: 원본 사람 기록은 그대로', same(tagged[0].tags, ['친구', '모임']));
+
+  // 아이폰 내보내기(3.0, 접힌 줄·그룹 이름) + 안드로이드 내보내기(2.1, QUOTED-PRINTABLE 한글·줄 끝 =)
+  const vcf = [
+    'BEGIN:VCARD', 'VERSION:3.0', 'N:김;철수;;;', 'FN:김철수', 'ORG:데이메이트;개발팀', 'TITLE:팀장',
+    'item1.TEL;type=CELL;type=pref:010-1234-', ' 5678', 'EMAIL;type=INTERNET:kim@example.com', 'BDAY:1990-05-03', 'END:VCARD',
+    'BEGIN:VCARD', 'VERSION:2.1', 'N;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:=EC=9D=B4;=EC=98=81=ED=9D=AC;;;',
+    'FN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:=EC=9D=B4=EC=98=81=ED=9D=AC=', '=20=EB=8B=98', 'TEL;CELL:+82 10-9999-0000', 'BDAY:--1225', 'END:VCARD',
+    'BEGIN:VCARD', 'VERSION:3.0', 'N:Smith;John;;;', 'TEL:555-0100', 'BDAY:1604-02-29', 'END:VCARD',
+    'BEGIN:VCARD', 'VERSION:3.0', 'NOTE:이름·번호 없음', 'END:VCARD',
+  ].join('\r\n');
+  const cards = V.parseVCards(vcf);
+  t('vCard: 이름·번호 없는 카드는 뺌', cards.length === 3, JSON.stringify(cards.map(c => c.name)));
+  t('vCard: 아이폰 — 접힌 줄·그룹 이름·회사·직책·생일', cards[0].name[0] === '김철수' && cards[0].tel[0] === '010-1234-5678' && cards[0].org[0] === '데이메이트'
+    && cards[0].title[0] === '팀장' && cards[0].email[0] === 'kim@example.com' && same(cards[0].bday, { month: 5, day: 3, year: 1990 }), JSON.stringify(cards[0]));
+  t('vCard: 안드로이드 — QUOTED-PRINTABLE 한글과 줄 끝 =', cards[1].name[0] === '이영희 님' && cards[1].tel[0] === '+82 10-9999-0000' && same(cards[1].bday, { month: 12, day: 25, year: null }), JSON.stringify(cards[1]));
+  t('vCard: FN 없으면 N으로(영문은 이름 성), 1604년은 연도 없음', cards[2].name[0] === 'John Smith' && same(cards[2].bday, { month: 2, day: 29, year: null }));
+  const cands = C.buildImportCandidates(cards, [{ id: 'old', name: '이영희', phone: '010-9999-0000' }]);
+  t('vCard → 가져오기 후보: 회사·생일 같이, 같은 번호는 이미 등록됨', cands[0].company === '데이메이트' && cands[0].birthday?.month === 5 && cands[1].dup === true && cands[2].dup === false);
+  t('연락처 선택 창 결과는 예전 그대로(회사·생일 칸 없음)', same(Object.keys(C.buildImportCandidates([{ name: ['가'], tel: ['010-1'] }], [])[0]).sort(), ['checked', 'dup', 'email', 'key', 'name', 'phone', 'search']));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

@@ -588,6 +588,9 @@ export default function App() {
   const [contacts, setContacts] = useState(() => store.get("dm_contacts", []));
   const [contactTags, setContactTags] = useState(() => store.get("dm_contact_tags", DEFAULT_RELATION_TAGS));
   const [contactAlarmCfg, setContactAlarmCfg] = useState(() => store.get("dm_contact_alarm_cfg", { enabled: false, offsets: [0] }));
+  // 오늘 탭 "오늘 챙길 사람" 줄을 누르면 그 사람 상세로 (2026-11-09) — 버튼 onClick은 이벤트를 넘기므로 글자일 때만 id로 본다
+  const [peopleOpenId, setPeopleOpenId] = useState(null);
+  const openPeople = (id) => { setPeopleOpenId(typeof id === 'string' ? id : null); changeScreen('people'); };
 
   const upsertContact = (contact) => {
     const next = { ...contact, updatedAt: new Date().toISOString() };
@@ -2422,7 +2425,7 @@ export default function App() {
           installPrompt={installPrompt} handleInstall={handleInstall}
           showInstallBanner={showInstallBanner} dismissInstallBanner={dismissInstallBanner}
           isIOS={isIOS} isSamsung={isSamsung} isKakao={isKakao} isStandalone={isStandalone} event={event} inviteBonus={inviteBonus}
-          contacts={contacts} onOpenPeople={() => changeScreen('people')}
+          contacts={contacts} onOpenPeople={openPeople}
           onOpenChat={() => changeScreen("chat")}
           isDark={isDark} setIsDark={setIsDark}
           getValidGcalToken={getValidGcalToken}
@@ -2483,7 +2486,7 @@ export default function App() {
           hiddenTags={hiddenTags}
           statFeedback={statFeedback}
           onClearStatFeedback={clearStatFeedback}
-          contacts={contacts} onOpenPeople={() => changeScreen('people')} onBonusXp={addInviteBonus}
+          contacts={contacts} onOpenPeople={openPeople} onBonusXp={addInviteBonus}
           ddays={ddays} setDdays={setDdays}
           subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")}
           wishes={wishes} places={places} bucketList={bucketList} onOpenDreams={(kind) => changeScreen(kind === "place" ? "places" : kind === "bucket" ? "my" : "wishes")}
@@ -2761,6 +2764,7 @@ export default function App() {
       return (
         <People
           contacts={contacts}
+          initialId={peopleOpenId} onInitialOpened={() => setPeopleOpenId(null)}
           onUpsertContact={upsertContact}
           onDeleteContact={removeContact}
           contactTags={contactTags} setContactTags={setContactTags}

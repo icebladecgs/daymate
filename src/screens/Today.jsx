@@ -709,7 +709,8 @@ export default function Today({
         {contactReminders.length > 0 && (
           <div style={newLook ? {} : { ...S.card, margin: 0, padding: '10px 14px' }}>
             {contactReminders.map((it, i) => (
-              <div key={it.key} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none' }}>🎂 {it.text}</div>
+              // 누르면 그 사람 상세 (2026-11-09) — 사람이 정해지지 않은 줄("n명 더")은 목록
+              <div key={it.key} onClick={onOpenPeople ? () => onOpenPeople(it.contactId || null) : undefined} style={{ fontSize: newLook ? 15 : 13, color: 'var(--dm-text)', padding: '6px 0', borderBottom: i < contactReminders.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onOpenPeople ? 'pointer' : 'default' }}>{it.icon || '🎂'} {it.text}</div>
             ))}
           </div>
         )}
