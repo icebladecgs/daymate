@@ -5,7 +5,8 @@ import { getPermission, requestPermission, sendNotification, playNotifSound, tri
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebase.js";
-import { saveSettings, recordInviteUse, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
+import { saveSettings, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
+import { chatFetch } from "../api/chatFetch.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
 import S, { UI } from "../styles.js";
@@ -258,13 +259,29 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
     setDiaryQText((diaryQuestions || []).join("\n"));
   }, [diaryQuestions]);
 
-  const applyInviteCode = (code) => {
+  // 초대 코드 적용 — 서버가 코드가 진짜인지·이미 썼는지 확인하고 코드 주인의 초대 수를 올린다 (2026-11-09).
+  // 확인을 통과했을 때만 +100 XP (예전엔 아무 글자나 넣어도 받았고, 주인의 초대 수는 규칙에 막혀 안 올라갔다)
+  const [codeBusy, setCodeBusy] = useState(false);
+  const applyInviteCode = async (code) => {
     if (code.length < 4) { setCodeStatus('코드가 너무 짧아요'); return false; }
     if (code === myCode) { setCodeStatus('내 코드는 사용할 수 없어요'); return false; }
     if ((usedInviteCodes || []).includes(code)) { setCodeStatus('이미 사용한 코드예요'); return false; }
+    if (!authUser) { setCodeStatus('로그인한 뒤에 사용할 수 있어요'); return false; }
+    setCodeBusy(true); setCodeStatus('확인 중…');
+    try {
+      const r = await chatFetch('/api/chat?action=invite-use', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (r.status === 409) setUsedInviteCodes(prev => (prev || []).includes(code) ? prev : [...(prev || []), code]);
+        setCodeStatus(j.error || '잠시 후 다시 시도해 주세요');
+        return false;
+      }
+    } catch {
+      setCodeStatus('인터넷 연결을 확인하고 다시 시도해 주세요');
+      return false;
+    } finally { setCodeBusy(false); }
     setUsedInviteCodes(prev => [...(prev || []), code]);
     onAddInviteBonus?.(100);
-    recordInviteUse(code).catch(() => {});
     onInviteApplied?.(code, true);
     setCodeStatus(`✅ ${code} 적용 완료 · +100 XP 획득!`);
     setCodeInput('');
@@ -279,8 +296,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
     const pending = store.get('dm_pending_invite');
     if (!pending) return;
     store.remove('dm_pending_invite');
-    const applied = applyInviteCode(pending);
-    if (!applied) onInviteApplied?.(pending, false);
+    applyInviteCode(pending).then((applied) => { if (!applied) onInviteApplied?.(pending, false); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveEvent = () => {
@@ -1266,7 +1282,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             placeholder="XXXXXX"
             maxLength={8}
           />
-          <button onClick={submitInviteCode} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0 }}>사용</button>
+          <button onClick={submitInviteCode} disabled={codeBusy} style={{ ...S.btn, width: 64, marginTop: 0, flexShrink: 0, opacity: codeBusy ? 0.6 : 1 }}>사용</button>
         </div>
         {codeStatus && (
           <div style={{ fontSize: 13, marginTop: 10, fontWeight: 900, color: codeStatus.startsWith('✅') ? '#4ADE80' : '#F87171' }}>{codeStatus}</div>

@@ -146,6 +146,18 @@ export default async function handler(req, res) {
     }
   }
 
+  // ?action=invite-use → 친구 초대 코드 사용 (2026-11-09, src/utils/inviteServer.js — 코드 확인·주인 초대 수 +1)
+  if (req.query.action === 'invite-use') {
+    try {
+      const { applyInviteOnServer } = await import('../src/utils/inviteServer.js');
+      const r = await applyInviteOnServer(getFirestore(), uid, req.body || {});
+      return res.status(r.status).json(r.body);
+    } catch (e) {
+      console.error('[invite-use]', e?.message);
+      return res.status(500).json({ error: '잠시 후 다시 시도해 주세요' });
+    }
+  }
+
   // ?action=territory-here|territory-challenge|territory-mine → 🗺️ 영토 (2026-11-09, src/utils/territoryServer.js)
   // 승패·소유는 서버만 정한다. 위치는 구역을 찾는 데만 쓰고 저장·기록하지 않는다(로그에도 남기지 않음)
   if (String(req.query.action || '').startsWith('territory-')) {

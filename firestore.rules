@@ -216,6 +216,19 @@ service cloud.firestore {
     }
     // 앱 잠금 해제 표시 (문서 id = 그 기기의 잠금 id). 만들기는 앱 관리자만(본인 확인 후),
     // 잠긴 기기의 본인은 확인(없는 문서 확인 포함)·사용 후 지우기만. 수정은 없음.
+    // 🎟 개인 친구 초대 코드 (2026-11-09) — userInviteCodes/{코드} = { uid }. 커뮤니티 코드(inviteCodes)와 따로.
+    // 본인 코드만 새로 만들기, 고치기·지우기 없음(남의 코드를 가로채지 못하게). 코드 사용·초대 수는 서버(api/chat.js invite-use)가 한다
+    match /userInviteCodes/{code} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && code.matches('^[A-Z0-9]{4,12}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+    }
+    // 누가 어떤 코드를 썼는지 — 서버만
+    match /inviteUses/{id} {
+      allow read, write: if false;
+    }
     // 🗺️ 영토 (2026-11-09) — 승패·소유는 서버(api/chat.js territory-*, firebase-admin)만 쓴다.
     // 앱이 쓰게 두면 "이겼다"고 저장해 남의 땅을 가로챌 수 있다. 읽기는 로그인한 누구나(지도·지킴이 보기)
     match /territories/{code} {

@@ -231,17 +231,15 @@ export async function clearRankingEmails(list) {
   return left.length;
 }
 
-// 내 초대 코드를 inviteCodes 컬렉션에 등록 (로그인 시 호출)
+// 내 초대 코드 등록 (로그인 시 호출, 2026-11-09) — 개인 코드는 userInviteCodes/{코드} = { uid }.
+// 예전엔 커뮤니티 코드 저장소(inviteCodes)에 넣었는데 11-01 규칙 변경 뒤로 거절돼 등록이 안 되고 있었다.
+// 결과: 'ok' | 'taken'(다른 사람이 이미 쓰는 코드 — 새 코드를 만들어 다시 등록)
 export async function registerInviteCode(uid, code) {
-  await setDoc(doc(db, 'inviteCodes', code), { uid }, { merge: true });
-}
-
-// 초대 코드 사용 → 코드 주인의 inviteCount 증가
-export async function recordInviteUse(code) {
-  const snap = await getDoc(doc(db, 'inviteCodes', code));
-  if (!snap.exists()) return;
-  const { uid } = snap.data();
-  await setDoc(doc(db, 'rankings', uid), { inviteCount: increment(1) }, { merge: true });
+  const ref = doc(db, 'userInviteCodes', code);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data()?.uid === uid ? 'ok' : 'taken';
+  await setDoc(ref, { uid });
+  return 'ok';
 }
 
 export async function loadRankings() {

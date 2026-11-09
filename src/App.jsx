@@ -1630,7 +1630,19 @@ export default function App() {
         const remoteInviteCode = remote.settings?.inviteCode;
         const canonicalInviteCode = remoteInviteCode || store.get('dm_invite_code');
         if (canonicalInviteCode) {
-          registerInviteCode(firebaseUser.uid, canonicalInviteCode).catch(() => {});
+          // 다른 사람이 이미 쓰는 코드면(드물게 겹침) 새 코드를 만들어 등록한다 (2026-11-09)
+          const uidNow = firebaseUser.uid;
+          const ensureCode = async (code, tries = 0) => {
+            const r = await registerInviteCode(uidNow, code);
+            if (r === 'taken' && tries < 3) {
+              const next = Math.random().toString(36).slice(2, 8).toUpperCase();
+              setMyInviteCode(next); store.set('dm_invite_code', next);
+              saveSettings(uidNow, { inviteCode: next }).catch(() => {});
+              return ensureCode(next, tries + 1);
+            }
+            return r;
+          };
+          ensureCode(canonicalInviteCode).catch(() => {});
           if (!remoteInviteCode) saveSettings(firebaseUser.uid, { inviteCode: canonicalInviteCode }).catch(() => {});
         }
         syncReadyRef.current = true;
