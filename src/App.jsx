@@ -30,7 +30,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleGoldFor } from "./utils/gear.js";
+import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold } from "./utils/gear.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
@@ -555,10 +555,14 @@ export default function App() {
     if (won) {
       // 레벨별 상대도 이기면 상대마다 딱 한 번(처음 이겼을 때) 장비 (2026-11-09, 레벨이 높을수록 좋은 등급)
       const r = npcDef.isWanderer ? wanderReward(battleGearRef.current, toDateStr()) : npcReward(battleGearRef.current, npcDef, toDateStr());
-      // 🪙 이길 때마다 골드 (상대 레벨 1 → 10G … 30G, 하루 상한 — utils/gear.js). 장비 보상과 별개로 매번
-      const paid = addGold(r.gear, toDateStr(), 'battle', battleGoldFor(npcDef.level));
+      // 🪙 이길 때마다 골드 (utils/gear.js battleWinGold) — 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 난수, 하루 상한.
+      // 떠돌이 도전자는 날마다 새 상대라 늘 "처음 이긴 상대"로 친다. 장비 보상과 별개로 매번
+      const first = npcDef.isWanderer || !(battleRecord.defeatedNpcIds || []).includes(npcDef.id);
+      const myLevel = createPlayerFighter(battleTotalScore, statXp).level;
+      const win = battleWinGold(npcDef.level, myLevel, first);
+      const paid = addGold(r.gear, toDateStr(), 'battle', win.amount);
       if (paid.gear !== battleGearRef.current) updateGear(paid.gear);
-      reward = { item: r.item, full: !!r.full, gold: paid.added };
+      reward = { item: r.item, full: !!r.full, gold: paid.added, goldPct: win.pct, goldMult: win.mult, goldFirst: win.first };
     }
     setBattleRecord(prev => {
       const next = { ...prev };

@@ -180,7 +180,7 @@ export function ShopCard({ gear, setGear, seed }) {
       })}
       {msg && <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700, marginTop: 4 }}>{msg}</div>}
       <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
-        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀에서 이길 때 +10~30 (하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}). 전설 장비는 상점에서 팔지 않아요.
+        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}. 전설 장비는 상점에서 팔지 않아요.
       </div>
     </div>
   );

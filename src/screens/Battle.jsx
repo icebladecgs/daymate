@@ -169,13 +169,14 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
 
   useEffect(() => {
     if (!npcDef) return;
-    if (state.status !== 'ongoing') onBattleEnd(npcDef, state.status === 'win');
+    if (state.status !== 'ongoing') setEndInfo(onBattleEnd(npcDef, state.status === 'win') || null);
   }, [state.status]); // eslint-disable-line
   // 승리 보상(떠돌이 도전자·레벨별 상대 모두) — 이 판을 시작할 때 가방에 없던 장비가 생기면 승리 카드에 보여 준다(전투 화면엔 알림 표시가 없다)
   const [startBagIds, setStartBagIds] = useState(() => new Set((bag || []).map(x => x.id)));
   const reward = npcDef && state.status === 'win' ? (bag || []).find(x => !startBagIds.has(x.id)) || null : null;
   // 🪙 이긴 판에 받은 골드 — 시작할 때 골드와 비교 (2026-11-10, 하루 상한을 넘으면 0)
   const [startGold, setStartGold] = useState(gold);
+  const [endInfo, setEndInfo] = useState(null); // onBattleEnd가 돌려준 골드 계산 이유(난수 %·강한 상대 배수)
   const goldGain = npcDef && state.status === 'win' ? Math.max(0, gold - startGold) : 0;
 
   const { player, npc, status, log } = state;
@@ -273,6 +274,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
   const retryBattle = () => {
     setStartBagIds(new Set((bag || []).map(x => x.id)));
     setStartGold(gold);
+    setEndInfo(null);
     setResolving(false);
     setFlash(null);
     setPops({ player: [], npc: [] });
@@ -386,6 +388,12 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
           {status === 'win' && (
             <div style={{ fontSize: 14, fontWeight: 800, color: goldGain ? '#FF9F0A' : 'var(--dm-muted)', marginTop: 6 }}>
               {goldGain ? `🪙 +${goldGain} 골드 · 가진 골드 ${gold}` : `🪙 오늘 배틀 골드는 다 받았어요 (하루 ${BATTLE_GOLD_CAP})`}
+              {goldGain > 0 && endInfo && (
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dm-sub)', marginTop: 2 }}>
+                  {endInfo.goldFirst ? '🏅 처음 이긴 상대' : `🎲 이미 이긴 상대 · ${endInfo.goldPct}% 나왔어요`}
+                  {endInfo.goldMult > 1 ? ` · 💪 강한 상대 ×${endInfo.goldMult}` : endInfo.goldMult < 1 ? ' · 약한 상대라 절반' : ''}
+                </div>
+              )}
             </div>
           )}
           {reward && (

@@ -166,7 +166,22 @@ export function npcReward(gear, npc, todayStr, rand = Math.random) {
 export const GOLD = { task: 5, habit: 3 };
 export const TASK_GOLD_CAP = 60;    // 할일·습관 골드 하루 최대 (할일을 만들고 지우며 모으지 못하게)
 export const BATTLE_GOLD_CAP = 50;  // 배틀 골드 하루 최대 (2026-11-10 사용자 결정 100→50 — 골드는 할일·습관에서 주로)
-export const battleGoldFor = (level) => Math.max(10, Math.min(30, 9 + (Number(level) || 1))); // 상대 레벨 1 → 10G … 21 이상 → 30G
+// 배틀 골드 (2026-11-10 사용자 확정) — 기본 10 + 상대 레벨, 나보다 높은 상대는 레벨 차이 1당 +30%(최대 2배),
+// 나보다 5레벨 이상 낮은 상대는 절반. 강한 상대를 넘으면 크게, 약한 상대만 돌리면 손해.
+export function battleGoldFor(npcLevel, myLevel = npcLevel) {
+  const lv = Math.max(1, Number(npcLevel) || 1), me = Math.max(1, Number(myLevel) || 1);
+  const diff = lv - me;
+  const mult = diff > 0 ? Math.min(2, 1 + 0.3 * diff) : diff <= -5 ? 0.5 : 1;
+  return { base: 10 + lv, mult, amount: Math.round((10 + lv) * mult) };
+}
+// 이긴 판의 골드 — 처음 이기는 상대·떠돌이 도전자는 전액, 이미 이긴 상대는 0~100% 난수(평균 절반, 최소 1G).
+// 결과 { amount, pct(난수일 때만), mult, first }
+export function battleWinGold(npcLevel, myLevel, first, rand = Math.random) {
+  const { amount, mult } = battleGoldFor(npcLevel, myLevel);
+  if (first) return { amount, pct: null, mult, first: true };
+  const pct = Math.round(rand() * 100);
+  return { amount: Math.max(1, Math.round(amount * pct / 100)), pct, mult, first: false };
+}
 export const SHOP_SIZE = 3;
 export const SHOP_RARITY = { common: 45, uncommon: 35, rare: 17, epic: 3 };
 export const SHOP_PRICE = { common: 60, uncommon: 150, rare: 400, epic: 1000 }; // 모의 전투(2026-11-10): 고급 3개만 껴도 바로 위 레벨 승률이 20%대→80~90%대라 줍기(희귀 3개 ≈ 50일)보다 너무 빠르지 않게
