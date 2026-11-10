@@ -38,7 +38,8 @@ function genPhotoPath(prefix) {
 }
 
 export default function LongMemoEditor({ tabScreen = false, hideBack = false, memoExists, initialId = null, initialText = '', subtitle = '', onCreate, onUpdate, onClose, onSearch, uid, pathPrefix, initialPhotos = [], onUpdatePhotos, onPhotoError, onRequireLogin, frequentTags = [], myTags = [], onHideTag, initialStarred = false, onUpdateStarred, initialFiles = [], onUpdateFiles, extraContent }) {
-  const isNewEntry = initialId === null;
+  // 메모 탭 쓰기 칸(tabScreen)은 공유로 저장된 메모를 띄워 시작해도 쓰기 칸으로 동작한다 — 저장은 그 자리에, 새 메모 아이콘 (2026-11-10)
+  const isNewEntry = initialId === null || tabScreen;
   const [text, setText] = useState(initialText);
   const [viewer, setViewer] = useState(null); // 사진 크게 보기 { photos, index }
   const [tagsOpen, setTagsOpen] = useState(() => store.get('dm_section_open_memo_tags', false) === true); // 메모 탭 쓰기 화면의 태그 접기 (기기마다)

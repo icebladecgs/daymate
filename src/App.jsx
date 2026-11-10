@@ -1331,6 +1331,8 @@ export default function App() {
     } catch { return null; }
   });
   const shareRef = useRef(shareInit);
+  // 공유로 저장한 메모를 메모 탭 쓰기 칸에 그대로 띄운다 (2026-11-10 사용자 요청 — 예전엔 빈 새 메모 화면이 열렸다). { id, at }
+  const [memoOpen, setMemoOpen] = useState(null);
   useEffect(() => {
     const share = shareRef.current;
     if (!share || share.done) return;
@@ -1359,8 +1361,10 @@ export default function App() {
       }
       if (!parts.length && !photos.length) { setToast(note || '공유된 내용이 없어요'); return; }
       const time = new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
-      setTodayData(prev => ({ ...prev, memos: [...withMemoList(prev), { id: genMemoId(), text: parts.join('\n'), createdAt: time, ...(photos.length ? { photos } : {}) }] }));
+      const memoId = genMemoId();
+      setTodayData(prev => ({ ...prev, memos: [...withMemoList(prev), { id: memoId, text: parts.join('\n'), createdAt: time, ...(photos.length ? { photos } : {}) }] }));
       setToast(note ? `📥 메모로 저장했어요 (${note})` : '📥 공유한 내용을 오늘 메모로 저장했어요');
+      setMemoOpen({ id: memoId, at: Date.now() });
       navigateRef.current?.('memo');
     };
     if (authUser?.uid || !share.files) { run(authUser?.uid || null); return; }
@@ -2577,6 +2581,7 @@ export default function App() {
           hiddenTags={hiddenTags}
           onHideTag={hideMemoTag}
           onOpenWrong={exam.on ? () => setShowWrongNotes(true) : null} wrongDue={wrongDueCount}
+          openMemo={memoOpen} onOpenedMemo={() => setMemoOpen(null)}
           {...extra}
         />
     );

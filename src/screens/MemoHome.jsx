@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatKoreanDate, addDays } from "../utils/date.js";
 import S, { UI } from "../styles.js";
 import Toast from "../components/Toast.jsx";
@@ -31,8 +31,18 @@ function MemoHomeInner({
   frequentTags, myTags, onHideTag,
   onOpenWrong, wrongDue = 0, // 수험생 모드면 오답 노트 열기
   embedded = false, // PC 대시보드 칸 안: 쓰기를 닫아도 화면을 벗어나지 않고 새 메모로
+  openMemo = null, onOpenedMemo, // 공유로 저장한 메모 { id, at } — 쓰기 칸에 그대로 띄운다 (2026-11-10)
 }) {
   const [composeKey, setComposeKey] = useState(0);
+  // 쓰기 칸에 띄울 오늘 메모 id. 받은 뒤 App 쪽 값은 지운다(다른 탭에 갔다 오면 빈 새 메모로)
+  const [seedId, setSeedId] = useState(openMemo?.id || null);
+  useEffect(() => {
+    if (!openMemo) return;
+    setSeedId(openMemo.id);
+    setComposeKey(k => k + 1);
+    onOpenedMemo?.();
+  }, [openMemo?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  const seedMemo = seedId ? (plans[todayStr]?.memos || []).find(m => m.id === seedId && !m.locked) : null;
   const [dayOffset, setDayOffset] = useState(0);
   const [longMemo, setLongMemo] = useState(null); // 목록에서 특정 메모를 열어 편집할 때만 사용
   const [recording, setRecording] = useState(false);
@@ -169,12 +179,16 @@ function MemoHomeInner({
 
   return (
     <LongMemoEditor
-      key={`compose-new-${composeKey}`}
+      // 공유로 저장한 메모가 목록에 들어오면 그 메모로 다시 연다(키가 바뀜)
+      key={`compose-${composeKey}-${seedMemo ? seedMemo.id : 'new'}`}
       tabScreen
       hideBack={embedded}
       memoExists={(id) => (plans[todayStr]?.memos || []).some(m => m.id === id)}
-      initialId={null}
-      initialText=""
+      initialId={seedMemo ? seedMemo.id : null}
+      initialText={seedMemo ? seedMemo.text || '' : ''}
+      initialPhotos={seedMemo?.photos || []}
+      initialFiles={seedMemo?.files || []}
+      initialStarred={!!seedMemo?.starred}
       onCreate={(text) => onCreateToday(text, getMemoTimeStr())}
       onUpdate={onUpdateToday}
       onUpdatePhotos={onUpdatePhotosToday}
