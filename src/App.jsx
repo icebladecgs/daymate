@@ -53,6 +53,8 @@ import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 import { addRecurringToDay } from "./utils/recurring.js";
 import { pickTaskDetail } from "./utils/taskDetail.js";
+import { effectiveFontScale, fontZoom } from "./utils/fontScale.js";
+import { syncDesktopWindow, watchPixelRatio } from "./utils/desktopWindow.js";
 
 import WeeklySchedule from "./components/WeeklySchedule.jsx";
 const Home = lazy(() => import("./screens/Home.jsx"));
@@ -380,10 +382,12 @@ export default function App() {
   }, [isDark]);
 
   const [fontScale, setFontScale] = useState(() => store.get('dm_font_scale', 'large'));
+  // 화면 크기 단계 100~130% (utils/fontScale.js — 휴대폰은 120까지)
+  const fontScaleOn = effectiveFontScale(fontScale);
   useEffect(() => {
-    document.documentElement.setAttribute('data-font', fontScale);
+    document.documentElement.setAttribute('data-font', fontScaleOn);
     store.set('dm_font_scale', fontScale);
-  }, [fontScale]);
+  }, [fontScale, fontScaleOn]);
 
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
@@ -1317,8 +1321,10 @@ export default function App() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-  // 데스크탑 앱: 메모 관리자일 때만 창을 넓게
-  useEffect(() => { window.daymateDesktop?.setWideMode?.(screen === 'manager' || screen === 'dashboard'); }, [screen]);
+  // 데스크탑 앱: 메모 관리자·대시보드일 때만 창을 넓게. 1.3.5부터는 화면 크기 단계·윈도우 배율에 맞춰 창 크기도 (utils/desktopWindow.js)
+  const [dprTick, setDprTick] = useState(0);
+  useEffect(() => watchPixelRatio(() => setDprTick(t => t + 1)), []);
+  useEffect(() => { syncDesktopWindow(screen === 'manager' || screen === 'dashboard', fontZoom(fontScaleOn)); }, [screen, fontScaleOn, dprTick]);
 
   // 휴대폰 공유 → DayMate ("나와의 채팅"처럼 던져두기). sw.js의 share-target이 ?share-target=1 로 앱을 연다.
   // 글·링크는 주소에서, 사진은 서비스워커 임시 보관함(dm-share)에서 가져와 오늘 메모로 저장한다.

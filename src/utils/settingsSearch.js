@@ -34,6 +34,7 @@ export const ITEMS = [
   { page: "app", label: "백업·복구", section: "백업 & 복구", words: "저장 내보내기 가져오기 드라이브" },
   { page: "app", label: "앱 잠금", words: "비밀번호 지문 얼굴 잠그기 보안" },
   { page: "app", label: "수험생 모드", words: "시험 공부 오답 노트 D-day" },
+  { page: "app", label: "화면 크기", section: "화면 디자인", words: "글씨 크기 글자 크게 작게 확대 배율 줌 100 110 120 130 눈" },
   { page: "app", label: "새 디자인", section: "화면 디자인", words: "화면 모양 예전 끝낸 할 일 완료 모으기" },
   { page: "app", label: "오늘 탭 칸 순서", section: "오늘 탭 칸 순서", words: "순서 위치 옮기기" },
   { page: "app", label: "협동 보스전", section: "협동 보스전", words: "보스 레이드 커뮤니티 게임 숨기기" },

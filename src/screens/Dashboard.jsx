@@ -9,6 +9,10 @@ html:has(.dm-dash) { overflow: hidden; }
 .dm-dash { position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; background: var(--dm-bg); }
 .dm-dash-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(320px, 1fr) minmax(400px, 1.7fr) minmax(300px, 1.15fr); overflow-x: auto; }
 @media (min-width: 1500px) { .dm-dash-grid { zoom: 1.1; } }
+/* 좁은 창(윈도우 배율 130%·화면 크기 120~130%로 앱이 받는 폭이 줄 때)에도 세 칸이 다 들어가게 — 1240 창 100%는 그대로 (2026-11-11) */
+@media (max-width: 1180px) { .dm-dash-grid { grid-template-columns: minmax(265px, 1fr) minmax(340px, 1.7fr) minmax(250px, 1.15fr); } }
+@media (max-width: 1290px) { [data-font="s120"] .dm-dash-grid { grid-template-columns: minmax(265px, 1fr) minmax(340px, 1.7fr) minmax(250px, 1.15fr); } }
+@media (max-width: 1400px) { [data-font="s130"] .dm-dash-grid { grid-template-columns: minmax(265px, 1fr) minmax(340px, 1.7fr) minmax(250px, 1.15fr); } }
 .dm-dash-col { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; border-right: 1px solid var(--dm-border); }
 .dm-dash-col:last-child { border-right: none; }
 .dm-dash-col > *, .dm-dash-today > * { z-index: auto !important; }
@@ -23,7 +27,7 @@ html:has(.dm-dash) { overflow: hidden; }
 /* 1240 창에서 앞 몇 글자만 보이던 것 — 대시보드에서만 두 줄까지 줄바꿈 (2026-11-11) */
 .dm-dash .dm-cal-chip { white-space: normal !important; word-break: keep-all; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 /* 메모 칸 맨 위 아이콘 줄: 좁은 칸(1240 창)에서 "저장"이 잘려서 대시보드에서만 간격을 줄인다 (2026-11-11 사용자 선택) */
-.dm-dash .dm-memo-head { gap: 0 !important; padding-left: 10px !important; padding-right: 10px !important; }
+.dm-dash .dm-memo-head { gap: 0 !important; flex-wrap: wrap; row-gap: 6px !important; padding-left: 10px !important; padding-right: 10px !important; }
 .dm-dash .dm-memo-head > button[aria-label] { width: 32px !important; }
 .dm-dash .dm-cal-more { font-size: 11px !important; }
 `;

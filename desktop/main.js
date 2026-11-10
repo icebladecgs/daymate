@@ -421,30 +421,68 @@ function showAllStickies() {
 //  ③ 작은 화면에서 최대화해 둔 상태였으면 돌아올 때 다시 최대화
 let normalBounds = null;
 let normalWasMax = false;
-ipcMain.on('set-wide-mode', (event, on) => {
-  if (!memoWindow || BrowserWindow.fromWebContents(event.sender) !== memoWindow) return;
-  if (on && !normalBounds) {
+// 배율 반올림으로 몇 px 어긋나면 그만큼 빼서 다시 맞춘다 (최대 3번)
+function setBoundsExact(target) {
+  let ask = { ...target };
+  for (let i = 0; i < 3; i++) {
+    memoWindow.setBounds(ask);
+    const got = memoWindow.getBounds();
+    const dw = got.width - target.width, dh = got.height - target.height;
+    if (!dw && !dh) break;
+    ask = { ...ask, width: ask.width - dw, height: ask.height - dh };
+  }
+}
+// 넓은 화면 크기: 1240×800 × k (k = 윈도우 배율 × 앱 화면 크기 ÷ 110%), 모니터 작업 영역을 넘지 않게
+function enterWide(k = 1) {
+  const firstTime = !normalBounds;
+  if (firstTime) {
     normalWasMax = memoWindow.isMaximized();
     if (normalWasMax) memoWindow.unmaximize();
     normalBounds = memoWindow.getBounds();
-    memoWindow.setSize(1240, 800);
-    memoWindow.center();
-  } else if (!on && normalBounds) {
-    const target = normalBounds;
-    normalBounds = null;
-    if (memoWindow.isMaximized()) memoWindow.unmaximize();
-    if (memoWindow.isFullScreen()) memoWindow.setFullScreen(false);
-    // 배율 반올림으로 몇 px 어긋나면 그만큼 빼서 다시 맞춘다 (최대 3번)
-    let ask = { ...target };
-    for (let i = 0; i < 3; i++) {
-      memoWindow.setBounds(ask);
-      const got = memoWindow.getBounds();
-      const dw = got.width - target.width, dh = got.height - target.height;
-      if (!dw && !dh) break;
-      ask = { ...ask, width: ask.width - dw, height: ask.height - dh };
-    }
-    if (normalWasMax) memoWindow.maximize();
   }
+  const wa = screen.getDisplayMatching(memoWindow.getBounds()).workArea;
+  const w = Math.min(Math.round(1240 * k), wa.width), h = Math.min(Math.round(800 * k), wa.height);
+  const cur = memoWindow.getBounds();
+  if (!firstTime && Math.abs(cur.width - w) < 4 && Math.abs(cur.height - h) < 4) return;
+  memoWindow.setSize(w, h);
+  memoWindow.center();
+}
+function leaveWide() {
+  if (!normalBounds) return;
+  const target = normalBounds;
+  normalBounds = null;
+  if (memoWindow.isMaximized()) memoWindow.unmaximize();
+  if (memoWindow.isFullScreen()) memoWindow.setFullScreen(false);
+  setBoundsExact(target);
+  if (normalWasMax) memoWindow.maximize();
+}
+ipcMain.on('set-wide-mode', (event, on) => {
+  if (!memoWindow || BrowserWindow.fromWebContents(event.sender) !== memoWindow) return;
+  if (on && !normalBounds) enterWide(1);
+  else if (!on) leaveWide();
+});
+
+// ---------- 1.3.5: 창 크기를 윈도우 배율·앱 화면 크기 단계에 맞추기 (2026-11-11 사용자 요청) ----------
+// 윈도우 배율(텍스트 크기)을 130%→100%로 줄이면 창은 그대로인데 앱 화면만 작아져 양옆이 비었다.
+// 배율 = 창 안쪽 폭(DIP) ÷ 웹의 innerWidth(CSS px). 보통 화면은 웹이 배율·단계가 바뀔 때만 fitNormal을 보낸다
+// (직접 늘린 창 크기를 화면 이동 때마다 되돌리지 않게). 최대화·전체 화면이면 건드리지 않는다.
+ipcMain.on('fit-window', (event, o) => {
+  if (!memoWindow || BrowserWindow.fromWebContents(event.sender) !== memoWindow) return;
+  const content = memoWindow.getContentBounds();
+  const pageScale = o.innerWidth > 0 ? content.width / o.innerWidth : 1;
+  const k = Math.max(0.6, Math.min(2.5, pageScale * (o.rel || 1)));
+  if (o.wide) { enterWide(k); return; }
+  leaveWide();
+  if (!o.fitNormal || memoWindow.isMaximized() || memoWindow.isFullScreen()) return;
+  const scale = pageScale; // 배율은 창 크기와 상관없다(넓은 창에서 잰 값도 같다)
+  const b = memoWindow.getBounds();
+  const c = memoWindow.getContentBounds();
+  const frameW = b.width - c.width;
+  const wa = screen.getDisplayMatching(b).workArea;
+  const want = Math.min(Math.max(Math.round(o.cssWidth * scale) + frameW, 360), wa.width);
+  if (Math.abs(want - b.width) < 4) return;
+  const x = Math.max(wa.x, Math.min(Math.round(b.x + (b.width - want) / 2), wa.x + wa.width - want));
+  setBoundsExact({ x, y: b.y, width: want, height: b.height });
 });
 
 function registerShortcuts() {

@@ -39,6 +39,12 @@ contextBridge.exposeInMainWorld('daymateDesktop', {
   getShortcuts: () => ipcRenderer.invoke('get-shortcuts'),
   // 메모 관리자일 때 메인 창을 넓게
   setWideMode: (on) => ipcRenderer.send('set-wide-mode', !!on),
+  // 1.3.5~: 창 크기를 윈도우 배율·앱 화면 크기 단계에 맞춘다 (웹 utils/desktopWindow.js)
+  // { wide, fitNormal, rel(앱 단계 ÷ 110%), cssWidth(보통 화면에 필요한 폭, CSS px), innerWidth }
+  fitWindow: (o) => ipcRenderer.send('fit-window', {
+    wide: !!o?.wide, fitNormal: !!o?.fitNormal,
+    rel: Number(o?.rel) || 1, cssWidth: Number(o?.cssWidth) || 0, innerWidth: Number(o?.innerWidth) || 0,
+  }),
   // 메모 설정 창(웹)의 "단축키 바꾸기" → 트레이 메뉴의 단축키 설정 창과 같은 창 (1.3.0~)
   openShortcutSettings: () => ipcRenderer.send('open-shortcut-settings'),
   // 1.3.1~: 앱 버전(새 버전 알림), 링크를 기본 브라우저로, 포스트잇 투명도(0.5~1, 바뀐 값을 돌려줌), 띄운 포스트잇 목록

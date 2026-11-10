@@ -19,6 +19,7 @@ import AppLockSettings from "../components/AppLockSettings.jsx";
 import ChatNotifySettings from "../components/ChatNotifySettings.jsx";
 import { memoAutoListOn, setMemoAutoList } from "../utils/editorAssist.js";
 import { raidHiddenOn, RAID_HIDDEN_KEY } from "../utils/bossRaid.js";
+import { effectiveFontScale, fontZoom, fontSteps, nextFontScale, isTouchScreen } from "../utils/fontScale.js";
 import { todayNewLookOn, newDesignOn, setTodayNewLook, todayDoneGroupOn, setTodayDoneGroup, TODAY_SECTIONS, todayHiddenSections, setTodayHiddenSection, TODAY_ORDER_SECTIONS, todaySectionOrder, moveTodaySection } from "../utils/todayLook.js";
 import { ExamSettingsCard } from "../components/Exam.jsx";
 import RecurringManager from "../components/RecurringManager.jsx";
@@ -1370,6 +1371,27 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
 
       <div style={S.sectionTitle}>✨ 화면 디자인</div>
       <div style={S.card}>
+        {/* 화면 크기 단계 (2026-11-11) — 글씨·버튼·간격이 같이 커진다. 기기마다 따로 */}
+        <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid var(--dm-row)' }}>
+          <div style={{ fontWeight: 900, fontSize: 13 }}>화면 크기</div>
+          <div style={{ fontSize: NL() ? 13 : 11, color: 'var(--dm-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            글씨·버튼이 같이 커져요 · 이 기기에만 적용{isTouchScreen() ? ' · 휴대폰은 120%까지' : window.daymateDesktop ? ' · 창 크기도 같이 맞춰져요' : ''}
+          </div>
+          <div role="radiogroup" aria-label="화면 크기" style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            {fontSteps().map(st => {
+              const on = effectiveFontScale(fontScale) === st.id;
+              return (
+                <button key={st.id} role="radio" aria-checked={on} onClick={() => setFontScale?.(st.id)}
+                  style={{ flex: 1, height: 40, padding: 0, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 800,
+                    border: `1.5px solid ${on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-border)'}`,
+                    background: on ? 'var(--dm-accent-soft, rgba(91,124,250,.15))' : 'var(--dm-input)',
+                    color: on ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-sub)' }}>
+                  {st.pct}%{st.id === 'large' ? ' 기본' : ''}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 13 }}>새 디자인</div>
@@ -1610,15 +1632,18 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             flexShrink: 0 }}>
           {isDark ? "☀️" : "🌙"}
         </button>
-        <button className={NL() ? 'dm-hit' : undefined} onClick={() => setFontScale?.(v => v === 'large' ? 'normal' : 'large')}
-          style={{ width: 38, height: 38, borderRadius: 999,
-            border: `1.5px solid ${fontScale === 'large' ? 'var(--dm-accent-soft, rgba(108,142,255,.5))' : 'var(--dm-border)'}`,
-            background: fontScale === 'large' ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
+        {/* 화면 크기: 누를 때마다 다음 단계 100→110→120→130% (휴대폰은 120까지, utils/fontScale.js) */}
+        {(() => { const big = effectiveFontScale(fontScale) !== 'normal'; const pct = Math.round(fontZoom(effectiveFontScale(fontScale)) * 100); return (
+        <button className={NL() ? 'dm-hit' : undefined} onClick={() => setFontScale?.(v => nextFontScale(v))}
+          aria-label={`화면 크기 ${pct}% — 누르면 다음 단계`} title={`화면 크기 ${pct}%`}
+          style={{ width: 38, height: 38, borderRadius: 999, padding: 0,
+            border: `1.5px solid ${big ? 'var(--dm-accent-soft, rgba(108,142,255,.5))' : 'var(--dm-border)'}`,
+            background: big ? 'var(--dm-accent-soft, rgba(108,142,255,.15))' : 'var(--dm-input)',
             fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center",
             justifyContent: "center", flexShrink: 0, fontWeight: 900,
-            color: fontScale === 'large' ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)' }}>
+            color: big ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)' }}>
           A+
-        </button>
+        </button>); })()}
       </div>
 
       {/* 설정 검색 (2026-11-05) — 찾는 동안에는 아래 메뉴를 가린다 */}
