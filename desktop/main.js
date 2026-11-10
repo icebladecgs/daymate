@@ -29,7 +29,8 @@ const DAYMATE_URL = process.env.DAYMATE_URL || 'https://daymate-beta.vercel.app'
 // 단축키 설정 파일
 const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
 // 5가지 기능(새 메모·간편 메모·메모 관리자·달력 보기·메모 검색). 메모 검색은 VS Code의 Ctrl+Shift+F와 겹치지 않게 Ctrl+Alt+F
-const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F', toggleStickies: 'Ctrl+Alt+H', recentMemo: 'Ctrl+Alt+R' };
+// PC 대시보드 열기(dashboard)는 1.3.4에 추가 (2026-11-10 사용자 요청) — 예전 설정 파일엔 칸이 없어 기본값이 들어간다
+const DEFAULT_SHORTCUTS = { memo: 'Ctrl+Shift+M', calendar: 'Ctrl+Shift+C', search: 'Ctrl+Shift+S', quickMemo: 'Ctrl+Shift+N', memoSearch: 'Ctrl+Alt+F', toggleStickies: 'Ctrl+Alt+H', recentMemo: 'Ctrl+Alt+R', dashboard: 'Ctrl+Alt+D' };
 // 포스트잇 창 안에서만 쓰는 키(전역 등록 안 함) — 같은 설정 파일·설정 창에서 바꾸거나 지움
 const STICKY_KEY_DEFAULTS = { stickyFold: 'Esc', stickyNew: 'Ctrl+N', stickyClose: 'Ctrl+W', stickyPin: 'Ctrl+T', stickyCopy: 'Ctrl+Alt+C' };
 const STICKY_KEY_ACTIONS = { stickyFold: 'fold', stickyNew: 'new', stickyClose: 'close', stickyPin: 'pin', stickyCopy: 'copy' };
@@ -456,6 +457,7 @@ function registerShortcuts() {
   if (shortcuts.memoSearch) globalShortcut.register(shortcuts.memoSearch, () => showMemoSearch());
   if (shortcuts.toggleStickies) globalShortcut.register(shortcuts.toggleStickies, () => toggleAllStickies());
   if (shortcuts.recentMemo) globalShortcut.register(shortcuts.recentMemo, () => openRecentMemo());
+  if (shortcuts.dashboard) globalShortcut.register(shortcuts.dashboard, () => showDashboard());
 }
 
 function toggleAlwaysOnTop() {
@@ -475,6 +477,7 @@ function updateTray() {
     { label: menuLabel('메모 관리자', shortcuts.search), click: () => showSearch() },
     { label: menuLabel('달력 보기', shortcuts.calendar), click: () => showCalendar() },
     { label: menuLabel('메모 검색', shortcuts.memoSearch), click: () => showMemoSearch() },
+    { label: menuLabel('PC 대시보드', shortcuts.dashboard), click: () => showDashboard() },
     { type: 'separator' },
     { label: menuLabel('포스트잇 모두 보이기/감추기', shortcuts.toggleStickies), click: () => toggleAllStickies() },
     { label: menuLabel('최근 편집한 메모 열기', shortcuts.recentMemo), click: () => openRecentMemo() },
@@ -555,6 +558,7 @@ function createTray() {
 ipcMain.handle('get-shortcuts', () => shortcuts);
 ipcMain.handle('set-shortcuts', (_, all) => {
   const { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo } = all;
+  const dashboard = all.dashboard ?? shortcuts.dashboard ?? ''; // 옛 설정 창이 칸을 안 보내도 지금 값 유지
   globalShortcut.unregisterAll();
   // 비운 칸('')은 단축키 없음 — 등록하지 않고 성공으로 친다
   const reg = (key, fn) => !key || globalShortcut.register(key, fn);
@@ -566,10 +570,11 @@ ipcMain.handle('set-shortcuts', (_, all) => {
     reg(memoSearch, () => showMemoSearch()),
     reg(toggleStickies, () => toggleAllStickies()),
     reg(recentMemo, () => openRecentMemo()),
+    reg(dashboard, () => showDashboard()),
   ].every(Boolean);
   if (ok) {
     const stickyKeys = Object.fromEntries(Object.keys(STICKY_KEY_DEFAULTS).map(k => [k, all[k] ?? shortcuts[k] ?? '']));
-    shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, ...stickyKeys };
+    shortcuts = { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo, dashboard, ...stickyKeys };
     for (const w of stickyWindows.keys()) if (!w.isDestroyed()) w.webContents.send('sticky-keys-changed');
     // 메인 창의 메모 설정도 바로 새 키를 보이게 (1.3.3~)
     if (memoWindow && !memoWindow.isDestroyed()) memoWindow.webContents.send('sticky-keys-changed');
@@ -615,6 +620,8 @@ function showMemo() { navigateTo('memo'); }
 function showCalendar() { navigateTo('history'); }
 // 메모 관리자(메모잇 메모관리자 방식의 넓은 화면). 창 크기는 웹이 set-wide-mode로 요청
 function showSearch() { navigateTo('manager'); }
+// PC 대시보드(오늘 할일·달력·메모 한 화면, 1.3.4~). 창 넓히기는 웹이 set-wide-mode로 요청
+function showDashboard() { navigateTo('dashboard'); }
 // 메모 검색(휴대폰식 통합 검색) — 오늘 화면으로 간 뒤 검색창 열기.
 // 오늘 화면이 뜨기 전에 신호가 도착해도 놓치지 않도록 대기 표시를 남긴다(Today.jsx)
 function showMemoSearch() {
@@ -622,7 +629,7 @@ function showMemoSearch() {
 }
 
 // 자동 테스트(Playwright _electron)에서만 이동 함수를 부를 수 있게 — 설치된 앱에는 노출 안 됨
-if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, toggleAllStickies, openRecentMemo, createSticky, rescueOffscreenStickies, checkRemote, stickyWindows, arrangeStickies, toggleAutoStart, getAutoStart: () => autoStart };
+if (process.env.DAYMATE_USER_DATA) globalThis.__daymateTest = { showMemo, showCalendar, showSearch, showMemoSearch, showDashboard, getShortcuts: () => shortcuts, toggleAllStickies, openRecentMemo, createSticky, rescueOffscreenStickies, checkRemote, stickyWindows, arrangeStickies, toggleAutoStart, getAutoStart: () => autoStart };
 
 function toggleMemo() {
   if (!memoWindow) return;
