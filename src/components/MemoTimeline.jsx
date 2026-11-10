@@ -114,6 +114,68 @@ function MemoItem({ item, onSave, onDelete, onOpenLongEditor, onToggleStar }) {
   );
 }
 
+// ── 보기 전용 목록 (2026-11-10, 새 디자인 메모 탭) ──
+// 줄에는 시간·제목만(☆·⌄·✕가 폭을 다 먹어 제목이 열 글자도 안 보였다). 줄을 누르면 전체 글이 펼쳐지고 그 아래
+// 같은 모양 버튼(열기·복사·즐겨찾기·잠그기·삭제 — 삭제만 빨간 글자). 펼친 글을 다시 누르면 접힌다. 입력칸 없음(쓰기는 위 칸에서)
+const viewBtn = (danger) => ({
+  minHeight: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)',
+  color: danger ? '#EF4444' : 'var(--dm-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+});
+function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onToggleStar }) {
+  const [copied, setCopied] = useState(false);
+  const icons = `${item.starred ? '⭐ ' : ''}${item.photos?.length ? '📷 ' : ''}${item.files?.length ? '📎 ' : ''}`;
+  const rowStyle = { display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', minHeight: 44, padding: '11px 2px', background: 'none', border: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' };
+  const time = <span style={{ fontSize: 13, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, width: 42, flexShrink: 0 }}>{item.createdAt || ''}</span>;
+  if (item.locked) {
+    return (
+      <button onClick={() => requestMemoLock(item.id, 'open')} style={rowStyle}>
+        {time}<span style={{ flex: 1, minWidth: 0, fontSize: 16, color: 'var(--dm-muted)' }}>{item.starred ? '⭐ ' : ''}🔒 잠긴 메모 <span style={{ fontSize: 13 }}>(눌러서 열기)</span></span>
+      </button>
+    );
+  }
+  const body = item.text.trim() ? item.text : (item.photos?.length ? '(사진)' : '');
+  return (
+    <div>
+      {/* 펼친 글에는 링크가 있어 button 대신 div — 링크를 누르면 접히지 않게 */}
+      <div role="button" tabIndex={0} aria-expanded={open} style={rowStyle}
+        onClick={(e) => { if (!e.target.closest?.('a')) onToggle(); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
+        {time}
+        {open ? (
+          <span style={{ flex: 1, minWidth: 0, fontSize: 16, lineHeight: 1.6, color: 'var(--dm-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+            {icons}<Linkify text={body} />
+          </span>
+        ) : (
+          <span style={{ flex: 1, minWidth: 0, fontSize: 16, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{icons}{body.replace(/\n/g, ' ')}</span>
+        )}
+      </div>
+      {open && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 0 12px 52px' }}>
+          {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={{ ...viewBtn(), color: 'var(--dm-accent, #5B7CFA)', fontWeight: 800 }}>열기</button>}
+          <button onClick={() => { navigator.clipboard?.writeText(item.text); setCopied(true); setTimeout(() => setCopied(false), 1500); }} style={viewBtn()}>{copied ? '복사됨 ✓' : '복사'}</button>
+          {onToggleStar && <button onClick={() => onToggleStar(item.id, !item.starred)} style={viewBtn()}>{item.starred ? '★ 즐겨찾기 빼기' : '☆ 즐겨찾기'}</button>}
+          {item.id !== 'legacy' && <button onClick={() => requestMemoLock(item.id, 'lock')} style={viewBtn()}>잠그기</button>}
+          <button onClick={() => onDelete(item.id)} style={viewBtn(true)}>삭제</button>
+        </div>
+      )}
+    </div>
+  );
+}
+function MemoViewList({ memos, onDelete, onOpenLongEditor, onToggleStar }) {
+  const [openId, setOpenId] = useState(null);
+  if (!memos.length) return <div style={{ fontSize: 15, color: 'var(--dm-muted)', padding: '6px 2px 4px' }}>이 날은 메모가 없어요</div>;
+  return (
+    <div>
+      {memos.map((m, i) => (
+        <div key={m.id} style={{ borderTop: i ? '1px solid var(--dm-row)' : 'none' }}>
+          <MemoViewItem item={m} open={openId === m.id} onToggle={() => setOpenId(openId === m.id ? null : m.id)}
+            onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function genMemoId() {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
 }
@@ -134,7 +196,12 @@ export function withMemoList(day) {
   return [{ id: genMemoId(), text: day.memo.trim(), createdAt: '' }];
 }
 
-export default function MemoTimeline({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar }) {
+export default function MemoTimeline(props) {
+  if (props.viewOnly) return <MemoViewList memos={props.memos || []} onDelete={props.onDelete} onOpenLongEditor={props.onOpenLongEditor} onToggleStar={props.onToggleStar} />;
+  return <MemoTimelineEdit {...props} />;
+}
+
+function MemoTimelineEdit({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
   const listRef = useRef(null);

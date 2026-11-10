@@ -7,6 +7,9 @@ import MemoTimeline, { genMemoId, getMemoTimeStr } from "../components/MemoTimel
 import { newDesignOn } from "../utils/todayLook.js";
 import { SectionBox } from "../components/TodayExtras.jsx";
 
+// 새 디자인 메모 목록 제목의 짧은 날짜 "11/8 (일)" — 버튼 3개와 한 줄에 들어가게 (2026-11-10)
+const shortDayLabel = (ds) => { const [y, m, d] = ds.split('-').map(Number); return `${m}/${d} (${'일월화수목금토'[new Date(y, m - 1, d).getDay()]})`; };
+
 // "메모" 탭 화면 — 새 메모 작성(긴 메모 에디터) + 스크롤하면 나오는 날짜별 짧은 메모 목록
 // 메모 화면은 검색·메모 열기·새 메모 쓰기로 모습이 바뀌므로, 알림(toast)은 바깥에서 한 번 그린다.
 // (예전엔 이 화면에 알림 표시가 없어서 공유 저장 알림 등이 오늘 화면으로 돌아가야 떴다, 2026-09-25)
@@ -134,13 +137,18 @@ function MemoHomeInner({
       )}
       <SectionBox on={newDesignOn()}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: newDesignOn() ? UI.titleGap : 10 }}>
-        <span style={{ fontSize: newDesignOn() ? UI.title : 13, fontWeight: 900, color: 'var(--dm-text)' }}>{dayLabel} 메모</span>
+        <span style={{ fontSize: newDesignOn() ? UI.title : 13, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{newDesignOn() && Math.abs(dayOffset) > 1 ? shortDayLabel(targetDs) : dayLabel} 메모</span>
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* 다른 날로 갔을 때 한 번에 돌아오기 (2026-11-10) */}
+          {newDesignOn() && dayOffset !== 0 && (
+            <button onClick={() => setDayOffset(0)} style={{ height: UI.touch, padding: '0 12px', borderRadius: 8, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-accent, #5B7CFA)', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>오늘로</button>
+          )}
           <button onClick={() => setDayOffset(o => o - 1)} aria-label="전날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>‹</button>
           <button onClick={() => setDayOffset(o => o + 1)} aria-label="다음날 메모" style={{ width: 30, height: 30, borderRadius: 8, ...(newDesignOn() ? { width: UI.touch, height: UI.touch, padding: 0 } : {}), border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 16, fontWeight: 900, cursor: 'pointer' }}>›</button>
         </div>
       </div>
       <MemoTimeline
+        viewOnly={newDesignOn()} // 새 디자인: 보기 전용(입력칸 없음, 줄을 누르면 전체 글) — 2026-11-10 사용자 결정
         memos={targetData.memos || []}
         onAdd={addMemoAt}
         onUpdate={updateMemoAt}

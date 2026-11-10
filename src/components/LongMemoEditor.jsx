@@ -18,6 +18,18 @@ import { boxCard, UI } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { useBackClose } from "../utils/useBackClose.js";
 
+// 새 디자인 머리글 아이콘 — 컬러 그림(🔒 주황·🔍 보라) 대신 다른 탭처럼 회색 선 아이콘 (2026-11-10 메모 탭 개선)
+const HEAD_PATHS = {
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></>,
+  gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
+};
+const HeadIcon = ({ name, fill }) => (
+  <svg viewBox="0 0 24 24" width={22} height={22} fill={fill || "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{HEAD_PATHS[name]}</svg>
+);
+const headBtn = { background: 'none', border: 'none', color: 'var(--dm-sub)', cursor: 'pointer', width: 40, height: 40, padding: 0, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+
 function genPhotoPath(prefix) {
   return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
 }
@@ -232,6 +244,39 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
 
   const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
 
+  // 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다
+  const requestLock = () => {
+    const id = idRef.current;
+    if (!id || id === 'legacy') { onPhotoError?.('내용을 먼저 쓰고 저장한 뒤 잠가 주세요'); return; }
+    handleClose();
+    setTimeout(() => requestMemoLock(id, 'lock'), 50);
+  };
+
+  // 🎤 말로 쓰기 (2026-11-10 — 메모 탭 아래 짧은 입력칸을 빼면서 음성 입력을 쓰기 칸으로 옮김). 알아들은 말은 글 끝에 붙인다
+  const [listening, setListening] = useState(false);
+  const recRef = useRef(null);
+  useEffect(() => () => recRef.current?.stop(), []);
+  const toggleVoice = () => {
+    if (listening) { recRef.current?.stop(); setListening(false); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { onPhotoError?.('이 브라우저는 음성 인식을 지원하지 않아요'); return; }
+    const r = new SR();
+    r.lang = 'ko-KR';
+    r.interimResults = false;
+    r.continuous = true;
+    r.onresult = (e) => {
+      let said = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) said += e.results[i][0].transcript;
+      said = said.trim();
+      if (said) setText(prev => (prev && !/\s$/.test(prev) ? `${prev} ` : prev) + said);
+    };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    recRef.current = r;
+    r.start();
+    setListening(true);
+  };
+
   const tagsAndPhotosBlock = (
     <div style={{ padding: boxed ? 0 : '0 20px 12px' }}>
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
@@ -256,8 +301,42 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       <DriveFileList files={files} onChange={commitFiles} />
       {drive.input}
 
+      {/* 새 디자인 (2026-11-10): 사진·드라이브·언젠가로·말하기를 한 줄에 같은 모양으로 — 점선은 비활성처럼 보였다 */}
+      {newLook && (() => {
+        const tile = (active, color) => ({ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 0, minHeight: 58, padding: '6px 2px', borderRadius: 12,
+          background: active ? `${color}1F` : 'var(--dm-input)', border: `1.5px solid ${active ? color : 'var(--dm-border)'}`, color: active ? color : 'var(--dm-sub)', fontSize: 13, fontWeight: 800,
+          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+        const ico = { fontSize: 20, lineHeight: 1 };
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${onUpdateFiles ? 4 : 3}, minmax(0,1fr))`, gap: 8, marginBottom: 14 }}>
+            <button onClick={handleAddPhoto} disabled={uploading} style={tile(false)}>
+              <span style={ico}>{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷'}</span>사진
+            </button>
+            {onUpdateFiles && (
+              <button onClick={drive.pick} disabled={drive.busy} style={tile(drive.busy, '#5B7CFA')}>
+                <span style={ico}>📁</span>{drive.busy ? drive.label : '드라이브'}
+              </button>
+            )}
+            <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
+              onClick={() => {
+                const el = textareaRef.current;
+                const title = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+                if (!title) { onPhotoError?.('언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요'); return; }
+                sendMemoToSomeday(title, ensureId());
+                setSentTask(title);
+                setTimeout(() => setSentTask(''), 2000);
+              }}
+              style={tile(!!sentTask, '#22C55E')}>
+              <span style={ico}>📋</span>{sentTask ? '보냄 ✓' : '언젠가로'}
+            </button>
+            <button onClick={toggleVoice} aria-pressed={listening} style={tile(listening, '#EF4444')}>
+              <span style={ico}>{listening ? '⏹' : '🎤'}</span>{listening ? '듣는 중' : '말하기'}
+            </button>
+          </div>
+        );
+      })()}
       {/* 사진 추가 옆에 구글 드라이브 첨부 버튼 */}
-      <div style={newLook ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8, marginBottom: 14 } : { display: 'flex', gap: 8, marginBottom: 14 }}>
+      {!newLook && <div style={newLook ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8, marginBottom: 14 } : { display: 'flex', gap: 8, marginBottom: 14 }}>
         <button
           onClick={handleAddPhoto}
           disabled={uploading}
@@ -296,11 +375,11 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
-      </div>
+      </div>}
 
       {boxed && (
         <button className="dm-hit" onClick={() => setTagsOpen(v => { store.set('dm_section_open_memo_tags', !v); return !v; })} aria-expanded={tagsOpen}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '6px 0', marginBottom: tagsOpen ? 8 : 0, background: 'none', border: 'none', borderRadius: 0, fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, padding: '6px 0', marginBottom: tagsOpen ? 8 : 0, background: 'none', border: 'none', borderRadius: 0, fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', cursor: 'pointer' }}>
           <span>🏷 태그</span><span style={{ fontSize: 14, color: 'var(--dm-muted)' }}>{tagsOpen ? '▲' : '▼'}</span>
         </button>
       )}
@@ -417,21 +496,24 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
   return (
     <div className="dm-memo-panel" style={S.fullScreenPanel(90)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
-        {!hideBack && <button className={newLook ? 'dm-hit' : undefined} aria-label="뒤로" onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
+        {/* 새 디자인 메모 탭(탭 화면)에서는 ← 없음 — 탭인데 누르면 이전 화면으로 가서 헷갈렸다 (2026-11-10) */}
+        {!hideBack && !(newLook && tabScreen) && <button className={newLook ? 'dm-hit' : undefined} aria-label="뒤로" onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: newLook ? 17 : 15, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{extraContent ? '새 메모' : '긴 메모'}</div>
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
-        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
+        {newLook ? (<>
+          <button onClick={toggleStar} aria-label="즐겨찾기" style={{ ...headBtn, color: starred ? '#FBBF24' : headBtn.color }}><HeadIcon name="star" fill={starred ? '#FBBF24' : undefined} /></button>
+          <button onClick={requestLock} aria-label="잠그기" title="메모 잠그기 (암호화)" style={headBtn}><HeadIcon name="lock" /></button>
+          <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={headBtn}><HeadIcon name="gear" /></button>
+          {onSearch && <button onClick={onSearch} aria-label="검색" style={headBtn}><HeadIcon name="search" /></button>}
+        </>) : (<>
+        <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
         {/* 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다 */}
-        <button onClick={() => {
-          const id = idRef.current;
-          if (!id || id === 'legacy') { onPhotoError?.('내용을 먼저 쓰고 저장한 뒤 잠가 주세요'); return; }
-          handleClose();
-          setTimeout(() => requestMemoLock(id, 'lock'), 50);
-        }} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>🔒</button>
-        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>⚙️</button>
-        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: newLook ? '4px 3px' : '4px 6px', ...(newLook ? { width: 33, height: UI.touch, padding: 0 } : {}), lineHeight: 1 }}>🔍</button>}
+        <button onClick={requestLock} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔒</button>
+        <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>⚙️</button>
+        {onSearch && <button onClick={onSearch} aria-label="검색" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔍</button>}
+        </>)}
         <button
           onClick={handleSaveClick}
           // 새 디자인: 1초 뒤 자동 저장되므로 채운 버튼 대신 테두리만 (2026-11-07 — 저장을 꼭 눌러야 하는 것처럼 보였다)
