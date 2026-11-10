@@ -9,7 +9,8 @@ import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import IndentBar from "./IndentBar.jsx";
 import { requestMemoLock } from "../utils/memoLock.js";
-import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday } from "../utils/memoToTask.js";
+import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
+import { toDateStr as todayYmd } from "../utils/date.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
@@ -262,7 +263,12 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     const el = textareaRef.current;
     const title = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
     if (!title) { onPhotoError?.(`${to === 'today' ? '오늘' : '언젠가'}로 보낼 줄에 커서를 두거나 글자를 골라 주세요`); return; }
-    if (to === 'today') { sendMemoToToday(title, ensureId()); setSentToday(title); setTimeout(() => setSentToday(''), 2000); }
+    if (to === 'today') {
+      // 줄에 시간·날짜가 있으면 그대로 들어가고, 버튼에 "15:00 ✓"·"11/12 ✓"로 잠깐 보인다
+      const sent = sendMemoToToday(title, ensureId());
+      setSentToday(sentLabel(sent, todayYmd()));
+      setTimeout(() => setSentToday(''), 2500);
+    }
     else { sendMemoToSomeday(title, ensureId()); setSentTask(title); setTimeout(() => setSentTask(''), 2000); }
   };
 
@@ -347,7 +353,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
             {/* 📌 오늘로 (2026-11-10) · 📋 언젠가로 — 커서가 있는 줄(또는 고른 글자)을 할일로 */}
             <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 보내기"
               onClick={() => sendLine('today')} style={tile(!!sentToday, '#5B7CFA')}>
-              <span style={ico}>📌</span>{sentToday ? '보냄 ✓' : '오늘로'}
+              <span style={ico}>📌</span>{sentToday || '오늘로'}
             </button>
             <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
               onClick={() => sendLine('someday')} style={tile(!!sentTask, '#22C55E')}>
@@ -402,7 +408,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
         <button onMouseDown={e => e.preventDefault()} onClick={() => sendLine('today')} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 보내기"
           style={{ flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: sentToday ? 'rgba(91,124,250,.12)' : 'var(--dm-input)', border: `1.5px dashed ${sentToday ? 'rgba(91,124,250,.5)' : 'var(--dm-border)'}`, color: sentToday ? '#5B7CFA' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-        >{sentToday ? '보냄 ✓' : '📌 오늘로'}</button>
+        >{sentToday || '📌 오늘로'}</button>
         <button onClick={tidy.open} style={{ flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed rgba(139,92,246,.5)', color: '#8B5CF6', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>✨ AI 정리</button>
       </div>}
 

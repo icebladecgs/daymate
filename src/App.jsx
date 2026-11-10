@@ -1445,11 +1445,12 @@ export default function App() {
   const setDayDataRef = useRef(null);
   useEffect(() => {
     const onAdd = (e) => {
-      const { title, memoId } = e.detail || {};
+      const { title, memoId, date, time } = e.detail || {};
       if (!title || !setDayDataRef.current) return;
-      const ds = toDateStr();
+      // 줄에 "내일 3시" 같은 말이 있으면 그 날짜·시간으로 (utils/memoToTask.js memoLineToTask — 오늘 탭 입력칸과 같은 해석)
+      const ds = date || toDateStr();
       const id = genSubId("t");
-      setDayDataRef.current(ds, prev => ({ ...prev, tasks: [...(prev.tasks || []), { id, title, done: false, checkedAt: null, priority: false, ...(memoId ? { memoRef: { id: memoId } } : {}) }] }));
+      setDayDataRef.current(ds, prev => ({ ...prev, tasks: [...(prev.tasks || []), { id, title, done: false, checkedAt: null, priority: false, ...(time ? { time } : {}), ...(memoId ? { memoRef: { id: memoId } } : {}) }] }));
       if (!memoId) return;
       setTimeout(() => {
         const mds = Object.keys(plansRef.current || {}).find(d => (plansRef.current[d]?.memos || []).some(m => m.id === memoId));

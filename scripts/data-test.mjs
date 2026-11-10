@@ -841,6 +841,19 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('칭호: 세트 3개 모으면 세트 수집가', G.titleList({ items: setItems }, {}).find((x) => x.id === 'set').ok);
 }
 
+// ── 📌 메모 줄 → 오늘로 (2026-11-10, utils/memoToTask.js) ──
+{
+  const T = await load('/src/utils/memoToTask.js');
+  const now = new Date(2026, 10, 10, 9, 0); // 11/10 화요일
+  const a = T.memoLineToTask('3시 김대리 미팅', now);
+  t('오늘로: "3시" → 15:00 오늘', a.title === '김대리 미팅' && a.time === '15:00' && (!a.date || a.date === '2026-11-10'), JSON.stringify(a));
+  const b = T.memoLineToTask('내일 오전 10시 보고서 제출', now);
+  t('오늘로: "내일 오전 10시" → 그 날짜·시간', b.date === '2026-11-11' && b.time === '10:00' && b.title === '보고서 제출', JSON.stringify(b));
+  t('오늘로: 시간 없는 줄은 그대로 오늘', JSON.stringify(T.memoLineToTask('장보러 가기', now)) === JSON.stringify({ title: '장보러 가기', date: null, time: null }));
+  t('오늘로: 반복 표현은 반복으로 안 만들고 글 그대로', T.memoLineToTask('매주 월요일 주간회의', now).title === '매주 월요일 주간회의' && !T.memoLineToTask('매주 월요일 주간회의', now).time);
+  t('오늘로: 버튼 글', T.sentLabel({ date: null, time: null }, '2026-11-10') === '보냄 ✓' && T.sentLabel({ date: '2026-11-10', time: '15:00' }, '2026-11-10') === '15:00 ✓' && T.sentLabel({ date: '2026-11-11', time: '10:00' }, '2026-11-10') === '11/11 10:00 ✓');
+}
+
 // ── ✨ 메모 AI 정리 (2026-11-10, utils/memoTidy.js) ──
 {
   const M = await load('/src/utils/memoTidy.js');

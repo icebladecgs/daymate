@@ -1,5 +1,6 @@
 // 메모 → 언젠가할일 보내기 (2026-10-05). 메모 원본은 그대로 두고, 할일에 출처(memoRef)를 붙인다.
-// 할일이 생기는 길은 "언젠가 → 오늘"이므로 오늘 할일로 바로 보내지는 않는다.
+// 2026-11-10부터 "오늘로"도 있다(사용자 요청) — 아래 sendMemoToToday.
+import { parseSchedule } from "./nlSchedule.js";
 
 const TAG_RE = /#[\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*/g;
 const LIST_MARK = /^\s*(?:[-*•·]|\d+[.)]|\[[ xX]?\]|☐|☑|✓|✔)\s*/;
@@ -28,8 +29,22 @@ export function sendMemoToSomeday(title, memoId) {
   return true;
 }
 // 📌 오늘로 (2026-11-10 사용자 요청) — 같은 줄을 오늘 할일로 바로. 받는 쪽은 App.jsx (dm:add-today)
-export function sendMemoToToday(title, memoId) {
-  if (!title) return false;
-  window.dispatchEvent(new CustomEvent('dm:add-today', { detail: { title, memoId: memoId || null } }));
-  return true;
+// 줄에 "3시"·"내일 오후 2시" 같은 말이 있으면 오늘 탭 입력칸과 같은 규칙(utils/nlSchedule.js)으로 시간·날짜를 넣는다.
+// "매주 ○요일" 같은 반복 표현은 반복 할일로 만들지 않고 글 그대로 오늘 할일로 (반복 등록은 오늘 탭에서)
+export function memoLineToTask(title, now = new Date()) {
+  const p = parseSchedule(title, now);
+  if (!p || p.recurring) return { title, date: null, time: null };
+  return { title: p.title || title, date: p.date || null, time: p.time || null };
+}
+export function sendMemoToToday(title, memoId, now = new Date()) {
+  if (!title) return null;
+  const t = memoLineToTask(title, now);
+  window.dispatchEvent(new CustomEvent('dm:add-today', { detail: { ...t, memoId: memoId || null } }));
+  return t;
+}
+// 버튼에 잠깐 보일 글 — 오늘이면 "보냄 ✓", 시간 있으면 "15:00 ✓", 다른 날이면 "11/12 ✓"
+export function sentLabel(t, todayStr) {
+  if (!t) return '';
+  const day = t.date && t.date !== todayStr ? `${Number(t.date.slice(5, 7))}/${Number(t.date.slice(8, 10))}` : '';
+  return `${[day, t.time].filter(Boolean).join(' ') || '보냄'} ✓`;
 }

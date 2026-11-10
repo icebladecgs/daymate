@@ -9,7 +9,7 @@ import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
 import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts } from "../utils/memoManager.js";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
-import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday } from "../utils/memoToTask.js";
+import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import { toDateStr, formatKoreanDate } from "../utils/date.js";
@@ -468,7 +468,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
   const [title, setTitle] = useState(task?.title || "");
   const [viewer, setViewer] = useState(null);
   const [sentTask, setSentTask] = useState(false);
-  const [sentToday, setSentToday] = useState(false);
+  const [sentToday, setSentToday] = useState("");
   const textRef = useRef(null);
   const z = (oldV, newV) => (nl ? newV : oldV);
 
@@ -604,10 +604,10 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
             const el = textRef.current;
             const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
             if (!t) { onError?.("오늘로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
-            sendMemoToToday(t, item.id);
-            setSentToday(true);
-            setTimeout(() => setSentToday(false), 2000);
-          }} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로" style={sentToday ? { ...small, color: "#5B7CFA", borderColor: "rgba(91,124,250,.5)" } : small}>{sentToday ? "보냄 ✓" : "📌 오늘로"}</button>
+            const sent = sendMemoToToday(t, item.id); // 줄에 시간·날짜가 있으면 그대로 (utils/memoToTask.js)
+            setSentToday(sentLabel(sent, toDateStr()));
+            setTimeout(() => setSentToday(""), 2500);
+          }} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 — 시간·날짜가 쓰여 있으면 그대로" style={sentToday ? { ...small, color: "#5B7CFA", borderColor: "rgba(91,124,250,.5)" } : small}>{sentToday || "📌 오늘로"}</button>
         )}
         {item.kind === "task" && (
           <button className={smallHit} onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
