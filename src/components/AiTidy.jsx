@@ -85,11 +85,13 @@ function AiTidySheet({ orig, zIndex, onClose, onApply }) {
   const chip = (on) => ({ minHeight: 40, padding: "0 12px", borderRadius: 999, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? "rgba(91,124,250,.12)" : C.input, color: on ? C.accent : C.text, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" });
   const tabBtn = (on) => ({ flex: 1, minHeight: 40, padding: 0, border: "none", borderBottom: `2.5px solid ${on ? C.accent : "transparent"}`, background: "none", color: on ? C.text : C.muted, fontSize: 15, fontWeight: on ? 900 : 700, cursor: "pointer", fontFamily: "inherit" });
   const bigBtn = (primary, disabled) => ({ flex: 1, minHeight: 46, padding: "0 8px", borderRadius: 12, border: primary ? "none" : `1.5px solid ${C.border}`, background: disabled ? C.input : primary ? C.accent : C.input, color: disabled ? C.muted : primary ? "#fff" : C.text, fontSize: 15, fontWeight: 900, cursor: disabled ? "default" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap" });
-  const box = { flex: 1, minHeight: 0, width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, background: C.input, color: C.text, fontSize: 15, lineHeight: 1.7, fontFamily: "inherit", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" };
+  // 낮은 창(포스트잇·작은 창)에서 글 칸이 눌려 안 보이던 문제 (2026-11-10 사용자 제보) — 글 칸은 최소 높이를 두고 창 전체가 스크롤, 안내 문구는 숨김
+  const short = typeof window !== "undefined" && window.innerHeight < 560;
+  const box = { flex: "1 0 auto", minHeight: short ? 170 : 240, width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, background: C.input, color: C.text, fontSize: 15, lineHeight: 1.7, fontFamily: "inherit", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" };
 
   return createPortal(
     <div role="dialog" aria-label="AI 정리" style={{ position: "fixed", inset: 0, zIndex, background: "rgba(0,0,0,.45)", display: "flex", justifyContent: "center", alignItems: "stretch" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 640, background: C.bg, color: C.text, display: "flex", flexDirection: "column", padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", boxSizing: "border-box", gap: 10 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 640, background: C.bg, color: C.text, display: "flex", flexDirection: "column", padding: short ? "8px 12px" : "12px 16px calc(12px + env(safe-area-inset-bottom))", boxSizing: "border-box", gap: short ? 8 : 10, overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ flex: 1, fontSize: 19, fontWeight: 900 }}>✨ AI 정리</span>
           <button onClick={onClose} aria-label="닫기" style={{ width: 40, height: 40, padding: 0, border: "none", background: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}>✕</button>
@@ -141,8 +143,8 @@ function AiTidySheet({ orig, zIndex, onClose, onApply }) {
             <textarea value={ai ?? ""} onChange={(e) => setResults((r) => ({ ...r, [mode]: e.target.value }))} aria-label="AI 정리본 (고칠 수 있어요)" style={{ ...box, resize: "none", outline: "none" }} />
           )}
 
-          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.5 }}>AI가 내용을 바꾸거나 빠뜨릴 수 있어요. "바뀐 곳"에서 확인하고, "AI 정리" 칸에서 직접 고칠 수 있어요.</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: short ? "none" : "block", fontSize: 13, color: C.sub, lineHeight: 1.5 }}>AI가 내용을 바꾸거나 빠뜨릴 수 있어요. "바뀐 곳"에서 확인하고, "AI 정리" 칸에서 직접 고칠 수 있어요.</div>
+          <div style={{ display: "flex", gap: 8, position: "sticky", bottom: 0, background: C.bg, paddingTop: 4 }}>
             <button onClick={onClose} style={{ ...bigBtn(false), flex: "0 0 auto", padding: "0 16px" }}>취소</button>
             <button disabled={ai == null} onClick={() => onApply(appendTidy(orig, ai, mode), "✨ 아래에 덧붙였어요")} style={bigBtn(false, ai == null)}>아래에 덧붙이기</button>
             <button disabled={ai == null} onClick={() => onApply(ai, "✨ AI 정리로 바꿨어요")} style={bigBtn(true, ai == null)}>AI 것으로 바꾸기</button>
