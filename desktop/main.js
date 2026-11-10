@@ -414,16 +414,35 @@ function showAllStickies() {
 }
 
 // ---------- 메모 관리자일 때 메인 창 넓게 ----------
+// 1.3.4 (2026-11-10 사용자 제보 — 큰 화면에서 작은 화면으로 와도 창이 안 줄어듦):
+//  ① 넓은 화면에서 창을 최대화하면 윈도우가 크기 바꾸기를 무시해 계속 컸다 → 되돌릴 때 최대화를 먼저 푼다
+//  ② 화면 배율 때문에 오갈 때마다 창이 몇 px씩 커졌다 → 되돌린 뒤 크기를 재서 어긋난 만큼 빼고 다시 맞춘다
+//  ③ 작은 화면에서 최대화해 둔 상태였으면 돌아올 때 다시 최대화
 let normalBounds = null;
+let normalWasMax = false;
 ipcMain.on('set-wide-mode', (event, on) => {
   if (!memoWindow || BrowserWindow.fromWebContents(event.sender) !== memoWindow) return;
   if (on && !normalBounds) {
+    normalWasMax = memoWindow.isMaximized();
+    if (normalWasMax) memoWindow.unmaximize();
     normalBounds = memoWindow.getBounds();
     memoWindow.setSize(1240, 800);
     memoWindow.center();
   } else if (!on && normalBounds) {
-    memoWindow.setBounds(normalBounds);
+    const target = normalBounds;
     normalBounds = null;
+    if (memoWindow.isMaximized()) memoWindow.unmaximize();
+    if (memoWindow.isFullScreen()) memoWindow.setFullScreen(false);
+    // 배율 반올림으로 몇 px 어긋나면 그만큼 빼서 다시 맞춘다 (최대 3번)
+    let ask = { ...target };
+    for (let i = 0; i < 3; i++) {
+      memoWindow.setBounds(ask);
+      const got = memoWindow.getBounds();
+      const dw = got.width - target.width, dh = got.height - target.height;
+      if (!dw && !dh) break;
+      ask = { ...ask, width: ask.width - dw, height: ask.height - dh };
+    }
+    if (normalWasMax) memoWindow.maximize();
   }
 });
 
