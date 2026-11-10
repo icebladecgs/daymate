@@ -239,7 +239,7 @@ export default function TerritoryMap({ onClose }) {
               <button onClick={() => setSel(null)} aria-label="닫기" style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 18, cursor: "pointer", padding: 0, width: 28, height: 28, flexShrink: 0 }}>✕</button>
             </div>
             <div style={{ marginTop: 10, fontSize: 15, fontWeight: 800 }}>
-              {selOwn ? (selOwn.m ? <span style={{ color: MINE }}>👑 내 영토</span> : <span><span style={{ color: ownerColor(selOwn.k) }}>■</span> 🛡️ {selOwn.o}님의 영토</span>)
+              {selOwn ? (selOwn.m ? <span style={{ color: MINE }}>👑 내 영토</span> : <span><span style={{ color: ownerColor(selOwn.k) }}>■</span> 🛡️ {selOwn.o}님의 영토{owned?.titles?.[selOwn.k] ? <span style={{ color: "#FF9F0A", marginLeft: 4 }}>「{owned.titles[selOwn.k]}」</span> : null}</span>)
                 : <span>{keeperDef(sel, selName).emoji} 지킴이 Lv.{selLevel} {keeperDef(sel, selName).name}</span>}
             </div>
             {selOwn && (
@@ -261,7 +261,9 @@ export default function TerritoryMap({ onClose }) {
             <div key={r.k} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--dm-row)" }}>
               <div style={{ width: 30, textAlign: "center", fontSize: i < 3 ? 22 : 15, fontWeight: 900, color: "var(--dm-muted)" }}>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</div>
               <span style={{ width: 12, height: 12, borderRadius: 3, background: r.mine ? MINE : ownerColor(r.k), flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 800, color: r.mine ? MINE : "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}{r.mine ? " (나)" : ""}</div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 800, color: r.mine ? MINE : "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}{r.mine ? " (나)" : ""}
+                {/* 🏅 칭호 (2026-11-10) */}
+                {r.title ? <div style={{ fontSize: 13, fontWeight: 800, color: "#FF9F0A", overflow: "hidden", textOverflow: "ellipsis" }}>「{r.title}」</div> : null}</div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 900 }}>{r.count}곳</div>
                 <div style={{ fontSize: 13, color: "var(--dm-muted)" }}>명성 {r.fame.toLocaleString()}</div>

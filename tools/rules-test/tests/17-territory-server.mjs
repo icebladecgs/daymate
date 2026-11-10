@@ -53,6 +53,14 @@ r = await S.territoryHere(db, 'weak', SAJIK, NOW);
 t('다른 사람이 보면 주인 이름', r.body.defender.isOwner && r.body.defender.name === '강한1' && !r.body.defender.mine);
 r = await S.territoryHere(db, 'strong1', SAJIK, NOW);
 t('주인이 보면 내 땅', r.body.defender.mine === true);
+// 🏅 칭호 (2026-11-10) — 순위표의 칭호 번호를 이름으로, 모르는 번호는 안 보임
+await db.doc('rankings/strong1').set({ titleId: 'epic' }, { merge: true });
+r = await S.territoryHere(db, 'weak', SAJIK, NOW);
+t('칭호: 주인의 칭호 이름이 보임', r.body.defender.title === '영웅의 길', JSON.stringify(r.body.defender.title));
+await db.doc('rankings/strong1').set({ titleId: '<script>' }, { merge: true });
+r = await S.territoryHere(db, 'weak', SAJIK, NOW);
+t('칭호: 모르는 번호는 안 보임', r.body.defender.title === '');
+await db.doc('rankings/strong1').set({ titleId: 'legend' }, { merge: true });
 
 r = await S.territoryChallenge(db, 'weak', SAJIK, NOW);
 t('약한 사람은 지고 땅은 그대로', r.status === 200 && !r.body.won && r.body.triesLeft === 2);
@@ -87,6 +95,7 @@ const allJson = JSON.stringify(all.body);
 t('지도: 주인 있는 땅 목록·내 땅 표시', all.status === 200 && all.body.list.length >= 2 && all.body.list.every((x) => x.c && x.o && x.k && typeof x.m === 'boolean') && all.body.list.some((x) => x.m), allJson.slice(0, 200));
 t('지도: 계정 id(uid)는 응답에 없음', !allJson.includes('strong1') && !allJson.includes('strong2') && !allJson.includes('ownerUid'));
 const owners = new Set(all.body.list.map((x) => x.k));
+t('칭호: 지도·순위에 칭호 (색 키로)', (ownerNow !== 'strong1' || all.body.ranking.some((r) => r.mine && r.title === '전설을 만난 자')) && all.body.ranking.filter((r) => r.title).length <= 1 && Object.values(all.body.titles || {}).every((x) => typeof x === 'string' && x));
 t('순위: 땅 수 순, 사람마다 한 줄', all.body.ranking.length === owners.size && (all.body.ranking.length < 2 || all.body.ranking[0].count >= all.body.ranking[1].count) && all.body.ranking.filter((r) => r.mine).length === 1);
 
 // 사람이 차지한 땅의 강함은 차지할 때 그대로 (나중에 성장해도)

@@ -30,7 +30,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, weekOf, weekQuests, questProgress } from "./utils/gear.js";
+import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
@@ -532,6 +532,8 @@ export default function App() {
   const [usedInviteCodes, setUsedInviteCodes] = useState(() => store.get('dm_used_invite_codes', []));
   const DEFAULT_BATTLE_RECORD = { wins: 0, losses: 0, streak: 0, bestStreak: 0, fame: 0, defeatedNpcIds: [], vsRecord: {} };
   const [battleRecord, setBattleRecord] = useState(() => store.get("dm_battle_record", DEFAULT_BATTLE_RECORD));
+  const battleRecordRef = useRef(battleRecord);
+  battleRecordRef.current = battleRecord;
   const [battleNpcId, setBattleNpcId] = useState(null);
   // 🎒 배틀 장비·🧭 떠돌이 도전자 (2026-11-08, utils/gear.js) — 계정 설정 battleGear
   const [battleGear, setBattleGear] = useState(() => normalizeGear(store.get("dm_battle_gear", null)));
@@ -969,6 +971,7 @@ export default function App() {
         level: lvInfo.level,
         daysCount: Object.keys(scores).length,
         monthlyScores,
+        titleId: currentTitleId(battleGearRef.current, battleRecordRef.current), // 🏅 칭호 번호 (2026-11-10)
         updatedAt: new Date().toISOString(),
       }).catch(() => {});
     }, 10000);
@@ -1830,6 +1833,11 @@ export default function App() {
       updateRanking(authUser.uid, { nickname: battleNickname || "" }).catch(() => {}); // 순위표는 닉네임만 (2026-11-09)
     }
   }, [battleNickname, authUser]);
+  // 🏅 칭호를 다른 사람에게 (2026-11-10) — 순위표에 칭호 번호만(이름은 보는 쪽이 utils/gear.js titleLabel로). 조건을 못 채웠으면 빈 글자
+  const rankTitleId = currentTitleId(battleGear, battleRecord);
+  useEffect(() => {
+    if (authUser && syncReadyRef.current) updateRanking(authUser.uid, { titleId: rankTitleId }).catch(() => {});
+  }, [rankTitleId, authUser]); // eslint-disable-line
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});

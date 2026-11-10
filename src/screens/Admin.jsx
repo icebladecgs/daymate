@@ -1,3 +1,4 @@
+import { titleLabel } from "../utils/gear.js";
 import { useState, useEffect, useMemo } from "react";
 import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings, clearRankingEmails } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
@@ -304,6 +305,7 @@ export default function Admin({ authUser, onBack }) {
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dm-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {/* 순위표 기록엔 닉네임만 (2026-11-09) — 이메일은 관리자만 읽는 사용자 목록(users)에서 이어 붙여 관리자 화면에만 보인다 */}
                           {r.nickname || <span style={{ color: 'var(--dm-muted)', fontWeight: 400 }}>닉네임 없음</span>}
+                          {titleLabel(r.titleId) && <span style={{ color: '#FF9F0A', marginLeft: 4 }}>「{titleLabel(r.titleId)}」</span>}
                         </div>
                         {emailByUid.get(r.uid) && (
                           <div style={{ fontSize: 12, color: 'var(--dm-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emailByUid.get(r.uid)}</div>

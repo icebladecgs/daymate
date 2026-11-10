@@ -318,6 +318,13 @@ export function titleList(gear, record) {
   const ctx = { gear: g, dex: dexInfo(g), record };
   return TITLES.map((t) => ({ id: t.id, label: t.label, how: t.how, ok: !!t.ok(ctx) }));
 }
+// 칭호 번호 → 이름 (순위표·영토 지도처럼 남에게 보일 때 — 저장은 번호만 해서 엉뚱한 글자가 보이지 않게)
+export const titleLabel = (id) => TITLES.find((t) => t.id === id)?.label || '';
+// 지금 달 수 있는 칭호 번호 (조건을 못 채웠으면 빈 글자) — 순위표(rankings.titleId)에 이 값을 쓴다
+export function currentTitleId(gear, record) {
+  const g = normalizeGear(gear);
+  return g.title && titleList(g, record).some((t) => t.id === g.title && t.ok) ? g.title : '';
+}
 // 고른 칭호 (조건을 못 채운 칭호는 보이지 않는다)
 export function currentTitle(gear, record) {
   const g = normalizeGear(gear);

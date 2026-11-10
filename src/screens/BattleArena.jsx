@@ -1,12 +1,12 @@
 import { useState } from "react";
-import S, { UI } from "../styles.js";
-import { newDesignOn } from "../utils/todayLook.js";
+import S from "../styles.js";
 import { GROWTH_STATS, calcStatScore } from "../data/growthStats.js";
 import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
 import GearPanel, { WandererCard, ShopCard } from "../components/battle/GearPanel.jsx";
 import TerritoryPanel from "../components/battle/TerritoryPanel.jsx";
 import { QuestCard, DexCard } from "../components/battle/QuestDex.jsx";
+import { useBattleFold, FoldHeader } from "../components/battle/BattleFold.jsx";
 import { currentTitle } from "../utils/gear.js";
 import { gearBonus, npcRewardDone, npcRarityWeights, RARITIES, RARITY_ORDER } from "../utils/gear.js";
 import { toDateStr } from "../utils/date.js";
@@ -32,6 +32,9 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
   // 내 레벨보다 너무 높은 상대는 기본적으로 접어두고, 원하면 "더 보기"로 펼쳐서 도전 가능
   const visibleNpcs = showAll ? NPCS : NPCS.filter(n => n.level <= levelInfo.level + 2);
   const hiddenCount = NPCS.length - visibleNpcs.length;
+  const [npcOpen, toggleNpc] = useBattleFold("npcs");
+  const defeatedCount = (record.defeatedNpcIds || []).length;
+  const nextNpc = NPCS.find(n => !(record.defeatedNpcIds || []).includes(n.id)) || null;
 
   return (
     // dm-min13: 새 디자인에서 13px보다 작은 글씨를 13px로 (index.css, 2026-11-09)
@@ -128,11 +131,12 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       {setGear && <ShopCard gear={gear} setGear={setGear} seed={shopSeed} />}
       {setGear && <DexCard gear={gear} setGear={setGear} record={record} />}
 
-      {/* NPC 목록 */}
-      <div style={newDesignOn() ? { ...S.sectionTitle, fontSize: UI.title } : S.sectionTitle}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={S.sectionEmoji}>🥋</span>도전 상대</span>
+      {/* NPC 목록 — 평소 접힘 (2026-11-10 사용자 요청), 접혀 있어도 다음 상대 한 줄 */}
+      <div style={S.card}>
+        <FoldHeader title="🥋 도전 상대" open={npcOpen} onToggle={toggleNpc}
+          summary={nextNpc ? `다음 Lv.${nextNpc.level} ${nextNpc.name}` : `격파 ${defeatedCount}`} />
       </div>
-      {visibleNpcs.map(npc => {
+      {npcOpen && visibleNpcs.map(npc => {
         const defeated = (record.defeatedNpcIds || []).includes(npc.id);
         const vs = record.vsRecord?.[npc.id];
         return (
@@ -159,7 +163,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
           </div>
         );
       })}
-      {hiddenCount > 0 && (
+      {npcOpen && hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
           style={{ ...S.btnGhost, width: '100%', marginTop: 4 }}

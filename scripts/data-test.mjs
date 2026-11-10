@@ -836,6 +836,8 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const tl = G.titleList({ items: [w] }, { wins: 120, bestStreak: 3 });
   t('칭호: 조건 확인 (영웅 장비·100승)', tl.find((x) => x.id === 'epic').ok && tl.find((x) => x.id === 'wins100').ok && !tl.find((x) => x.id === 'legend').ok && !tl.find((x) => x.id === 'streak10').ok);
   t('칭호: 고른 칭호 보이기, 조건 못 채운 칭호는 안 보임', G.currentTitle({ items: [w], title: 'epic' }, {}) === '영웅의 길' && G.currentTitle({ items: [w], title: 'legend' }, {}) === '');
+  t('칭호: 순위표엔 번호만, 모르는 번호는 이름 없음', G.titleLabel('epic') === '영웅의 길' && G.titleLabel('<b>가짜</b>') === '' && G.titleLabel(undefined) === '');
+  t('칭호: 순위표에 쓸 번호 — 조건 못 채우면 빈 글자', G.currentTitleId({ items: [w], title: 'epic' }, {}) === 'epic' && G.currentTitleId({ items: [w], title: 'legend' }, {}) === '' && G.currentTitleId(null, {}) === '');
   t('칭호: 세트 3개 모으면 세트 수집가', G.titleList({ items: setItems }, {}).find((x) => x.id === 'set').ok);
 }
 

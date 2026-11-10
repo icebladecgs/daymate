@@ -4,6 +4,7 @@ import S, { UI } from "../../styles.js";
 import { newDesignOn } from "../../utils/todayLook.js";
 const NL = () => newDesignOn(); // 새 디자인 글자 단계 (2026-11-09) — 칸 제목 19px
 import UndoBar from "../UndoBar.jsx";
+import { useBattleFold, FoldHeader } from "./BattleFold.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
 import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
@@ -43,6 +44,8 @@ export default function GearPanel({ gear, setGear }) {
   const [enhMsg, setEnhMsg] = useState(null); // { id, ok, text } — 강화 결과 한 줄
   const undo = useUndo();
   const sets = equippedSets(g);
+  const [open, toggle] = useBattleFold("gear");
+  const equippedCount = Object.values(g.equipped).filter(Boolean).length;
   const bonus = gearBonus(g);
   const total = itemEffects(bonus);
   const isEquipped = (id) => Object.values(g.equipped).includes(id);
@@ -77,7 +80,11 @@ export default function GearPanel({ gear, setGear }) {
     <div style={S.card}>
       <UndoBar bar={undo.bar} onUndo={undo.run} />
       {/* 제목 한 줄, 효과 요약은 그 아래 한 줄 (2026-11-10 — 19px로 키운 뒤 효과 글자에 밀려 "내 장비"가 두 줄로 깨졌다) */}
-      <div style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)", whiteSpace: "nowrap" }}>🎒 내 장비</div>
+      {/* 접기 (2026-11-10) — 접혀 있어도 끼운 수·가방·오늘 주운 것 */}
+      <FoldHeader title="🎒 내 장비" open={open} onToggle={toggle}
+        summary={`${newCount ? `오늘 +${newCount} · ` : ""}장착 ${equippedCount}/3 · 가방 ${g.items.length}`}
+        summaryColor={newCount ? "#FF3B30" : "var(--dm-sub)"} />
+      {open && <>
       <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>{total.length ? total.join(" · ") : "아직 끼운 장비가 없어요"}</div>
       {/* ⛓️ 세트 효과 (2개·3개) — 끼운 세트 조각이 있을 때만 */}
       {sets.map(({ set, count }) => (
@@ -154,6 +161,7 @@ export default function GearPanel({ gear, setGear }) {
           <span style={{ position: "absolute", top: 3, left: g.dropsOff ? 3 : 21, width: 22, height: 22, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
         </span>
       </button>
+      </>}
     </div>
   );
 }
@@ -168,6 +176,7 @@ export function ShopCard({ gear, setGear, seed }) {
   const bought = shopBought(g, today);
   const earned = g.earned?.date === today ? g.earned : { task: 0, battle: 0 };
   const [msg, setMsg] = useState('');
+  const [open, toggle] = useBattleFold("shop");
 
   const buy = (i) => {
     const r = buyShopItem(g, today, seed, i);
@@ -187,10 +196,9 @@ export function ShopCard({ gear, setGear, seed }) {
   return (
     <div style={S.card}>
       <UndoBar bar={undo.bar} onUndo={undo.run} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)", whiteSpace: "nowrap" }}>🏪 오늘의 상점</span>
-        <span style={{ marginLeft: "auto", fontSize: 17, fontWeight: 900, color: "#FF9F0A", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>🪙 {g.gold.toLocaleString()}</span>
-      </div>
+      {/* 접기 (2026-11-10) — 접혀 있어도 가진 골드 */}
+      <FoldHeader title="🏪 오늘의 상점" open={open} onToggle={toggle} summary={`🪙 ${g.gold.toLocaleString()}`} summaryColor="#FF9F0A" />
+      {open && <>
       <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>
         오늘 받은 골드 · 할일·습관 {earned.task}/{TASK_GOLD_CAP} · 배틀 {earned.battle}/{BATTLE_GOLD_CAP} · 물건은 내일 바뀌어요
       </div>
@@ -220,6 +228,7 @@ export function ShopCard({ gear, setGear, seed }) {
       <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
         골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}. 안 쓰는 장비는 가방에서 팔 수 있어요. 전설 장비는 상점에서 팔지 않아요.
       </div>
+      </>}
     </div>
   );
 }

@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createPlayerFighter } from "../data/battle/engine.js";
-import { normalizeGear, gearBonus, makeItem, rollRarity, npcRarityWeights } from "./gear.js";
+import { normalizeGear, gearBonus, makeItem, rollRarity, npcRarityWeights, titleLabel } from "./gear.js";
 import { TIERS, TRIES_PER_DAY, regionTier, keeperLevel, keeperDef, ownerDef, snapshotOf, runAutoBattle, decodeRegions, locateRegion, territoryFame } from "./territory.js";
 
 let REGIONS = null;
@@ -45,6 +45,16 @@ const regionInfo = (code, name) => {
   return { code, name, tier, tierLabel: TIERS[tier].label, level: keeperLevel(code, name) };
 };
 
+// 🏅 주인들의 지금 칭호 (2026-11-10) — rankings/{uid}.titleId(앱이 칭호 번호만 저장)를 칭호 이름으로. 모르는 번호는 빈 글자
+async function titlesOf(db, uids) {
+  const list = [...new Set(uids.filter(Boolean))];
+  const out = new Map();
+  if (!list.length) return out;
+  const snaps = await Promise.all(list.map((u) => db.doc(`rankings/${u}`).get().catch(() => null)));
+  snaps.forEach((s, i) => { const label = s?.exists ? titleLabel(s.data().titleId) : ""; if (label) out.set(list[i], label); });
+  return out;
+}
+
 // 지금 있는 구역과 지킴이 (도전 전 보기)
 export async function territoryHere(db, uid, body = {}, now = Date.now()) {
   const r = locate(body);
@@ -57,7 +67,9 @@ export async function territoryHere(db, uid, body = {}, now = Date.now()) {
   const { def } = defenderOf(r.code, r.name, doc);
   const t = tries.exists ? tries.data() : null;
   const used = t?.date === kstDate(now) ? t.n || 0 : 0;
-  return { status: 200, body: { region: regionInfo(r.code, r.name), defender: publicDefender(def, doc, uid), triesLeft: Math.max(0, TRIES_PER_DAY - used) } };
+  const defender = publicDefender(def, doc, uid);
+  if (doc?.ownerUid) defender.title = (await titlesOf(db, [doc.ownerUid])).get(doc.ownerUid) || "";
+  return { status: 200, body: { region: regionInfo(r.code, r.name), defender, triesLeft: Math.max(0, TRIES_PER_DAY - used) } };
 }
 
 // 도전 — 그 구역에 지금 있어야 한다. 서버가 끝까지 자동으로 싸우고, 이기면 내 땅
@@ -135,11 +147,15 @@ export async function allTerritories(db, uid, now = Date.now()) {
     o.count++; o.items.push({ level: t.level, capturedAtMs: at });
     byOwner.set(t.ownerUid, o);
   }
+  // 🏅 칭호 — 주인마다 한 번 읽어 색 키(k)로 묶어 보낸다(땅마다 반복하지 않게, 계정 id는 그대로 안 보냄)
+  const tmap = await titlesOf(db, [...byOwner.keys()]);
+  const titles = {};
+  for (const [ou, o] of byOwner) if (tmap.get(ou)) titles[o.k] = tmap.get(ou);
   const ranking = [...byOwner.values()]
-    .map((o) => ({ name: o.name, k: o.k, mine: o.mine, count: o.count, fame: territoryFame(o.items, now) }))
+    .map((o) => ({ name: o.name, k: o.k, mine: o.mine, count: o.count, fame: territoryFame(o.items, now), title: titles[o.k] || "" }))
     .sort((a, b) => b.count - a.count || b.fame - a.fame)
     .slice(0, 50);
-  return { status: 200, body: { list, ranking } };
+  return { status: 200, body: { list, ranking, titles } };
 }
 
 // 내 영토 목록

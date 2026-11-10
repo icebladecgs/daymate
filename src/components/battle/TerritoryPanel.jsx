@@ -102,6 +102,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 900, color: d.mine ? "#30D158" : "var(--dm-text)" }}>
                     {d.mine ? "👑 내 영토" : d.isOwner ? `🛡️ ${d.name}님의 영토` : `Lv.${d.level} ${d.name}`}
+                {d.isOwner && !d.mine && d.title ? <span style={{ color: "#FF9F0A", marginLeft: 4 }}>「{d.title}」</span> : null}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--dm-sub)" }}>
                     {d.isOwner && !d.mine ? `Lv.${d.level} · ` : ""}Energy {Number(d.energyMax || 0).toLocaleString()}{d.trait ? ` · 「${d.trait}」` : ""}
