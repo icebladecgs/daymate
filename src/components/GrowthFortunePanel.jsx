@@ -210,7 +210,7 @@ export default function GrowthFortunePanel({
           {(!nl || myRank) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             {myRank ? (
-              <button onClick={onOpenStats} style={{ background: "var(--dm-accent-soft, rgba(75,111,255,.15))", border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+              <button className="dm-hit-y" onClick={onOpenStats} style={{ background: "var(--dm-accent-soft, rgba(75,111,255,.15))", border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
                 <span style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>🏆 전체 {myRank.rank}위</span>
                 <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
               </button>

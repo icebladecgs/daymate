@@ -842,7 +842,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
 
                   {bcDefault?.photoUrl && (
                     <>
-                      <button onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
+                      <button className="dm-hit-y" onClick={bcPickPhoto} disabled={bcUploading} style={{ fontSize: newLook ? UI.sub : 11, fontWeight: 900, color: 'var(--dm-accent, #6C8EFF)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '10px 0 0', width: '100%', textAlign: 'center' }}>
                         {bcUploading ? '업로드 중...' : '＋ 명함 추가'}
                       </button>
                       <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>

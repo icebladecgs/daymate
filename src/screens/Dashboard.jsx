@@ -20,6 +20,8 @@ html:has(.dm-dash) { overflow: hidden; }
 .dm-dash .dm-cal-cell { min-height: 112px !important; padding: 5px 3px 6px !important; }
 .dm-dash .dm-cal-day { font-size: 15px !important; }
 .dm-dash .dm-cal-chip { font-size: 12px !important; line-height: 1.35 !important; padding: 1px 4px !important; margin-bottom: 2px !important; }
+/* 1240 창에서 앞 몇 글자만 보이던 것 — 대시보드에서만 두 줄까지 줄바꿈 (2026-11-11) */
+.dm-dash .dm-cal-chip { white-space: normal !important; word-break: keep-all; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .dm-dash .dm-cal-more { font-size: 11px !important; }
 `;
 

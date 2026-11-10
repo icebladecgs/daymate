@@ -76,7 +76,7 @@ export default function WeeklySchedule({ plans, habits, onOpenDate, showAll, roo
               </div>
             ) : (
             <div style={{ width: 30, textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: fs(9), color: isToday ? (roomy ? UI.accent : '#AFC0FF') : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
+              <div style={{ fontSize: fs(9), color: isToday ? (roomy || showAll ? UI.accent : '#AFC0FF') /* 대시보드(showAll)는 밝은 화면에서 흐려서 강조색 (2026-11-11), 달력 탭은 예전 그대로 */ : 'var(--dm-muted)', fontWeight: 900 }}>{DOW_KR[i]}</div>
               <div style={{ fontSize: 13, color: 'var(--dm-text)', fontWeight: 900, lineHeight: 1.2 }}>{dateObj.getDate()}</div>
             </div>
             )}

@@ -973,7 +973,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
           {/* 내 커뮤니티 */}
           {communityIds.length > 0 && (
             <div style={{ padding: '4px 16px 12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: NL() ? UI.headingGap : 8 }}>
                 <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)' } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)' }}>{NL() && <SectionIcon name="people" size={20} badge />}내 커뮤니티</div>
                 {communityIds.length > 1 && (
                   <button
@@ -1060,7 +1060,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
 
           {/* 공개 커뮤니티 */}
           <div style={{ padding: '4px 16px 12px' }}>
-            <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 10 } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>{NL() && <SectionIcon name="globe" size={20} badge />}공개 커뮤니티</div>
+            <div style={NL() ? { display: 'flex', alignItems: 'center', gap: 8, fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', marginBottom: UI.headingGap } : { fontSize: NL() ? UI.sub : 12, fontWeight: 900, color: 'var(--dm-muted)', marginBottom: 8 }}>{NL() && <SectionIcon name="globe" size={20} badge />}공개 커뮤니티</div>
             {publicLoading ? (
               <div style={{ textAlign: 'center', color: 'var(--dm-muted)', fontSize: 13, padding: 20 }}>불러오는 중...</div>
             ) : publicList.length === 0 ? (

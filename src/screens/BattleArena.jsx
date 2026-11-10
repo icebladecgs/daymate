@@ -40,7 +40,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
     // dm-min13: 새 디자인에서 13px보다 작은 글씨를 13px로 (index.css, 2026-11-09)
     <div className="dm-min13" style={S.content}>
       <div style={S.topbar}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
+        <button className="dm-hit" aria-label="뒤로" onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>
         <div style={{ flex: 1, paddingLeft: 8 }}>
           <div className="dm-page-title" style={S.title}>⚔️ 배틀</div>
           <div style={S.sub}>내 캐릭터로 NPC와 겨뤄보세요</div>
@@ -78,6 +78,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
             </div>
           ) : (
             <button
+              className="dm-hit-y"
               onClick={() => { setNicknameDraft(battleNickname || ''); setEditingNickname(true); }}
               style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}
             >
@@ -157,7 +158,7 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
                 {npcRewardDone(gear, npc.id) ? '✓ 장비 받음' : `🎁 처음 이기면 장비 1개 (${rarityRangeLabel(npc.level)})`}
               </div>
             </div>
-            <button onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>
+            <button className="dm-hit-y" onClick={() => onStartBattle(npc.id)} style={{ background: 'rgba(75,111,255,.15)', border: '1px solid rgba(108,142,255,.4)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 900, color: '#6C8EFF', cursor: 'pointer', flexShrink: 0 }}>
             도전
             </button>
           </div>

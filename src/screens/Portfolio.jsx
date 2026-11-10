@@ -720,7 +720,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                     {summary.fxOk && (
                       <div style={{ display: "flex", gap: 2 }}>
                         {["USD", "KRW"].map(cur => (
-                          <button key={cur} onClick={() => setDisplayCurrencyPersist(cur)}
+                          <button key={cur} className="dm-hit-y" onClick={() => setDisplayCurrencyPersist(cur)}
                             style={{
                               fontSize: NL() ? 13 : 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6, cursor: "pointer",
                               border: `1px solid ${displayCurrency === cur ? "var(--dm-accent, #6C8EFF)" : "var(--dm-border)"}`,
