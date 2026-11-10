@@ -27,3 +27,9 @@ export function sendMemoToSomeday(title, memoId) {
   window.dispatchEvent(new CustomEvent('dm:add-someday', { detail: { title, memoId: memoId || null } }));
   return true;
 }
+// 📌 오늘로 (2026-11-10 사용자 요청) — 같은 줄을 오늘 할일로 바로. 받는 쪽은 App.jsx (dm:add-today)
+export function sendMemoToToday(title, memoId) {
+  if (!title) return false;
+  window.dispatchEvent(new CustomEvent('dm:add-today', { detail: { title, memoId: memoId || null } }));
+  return true;
+}

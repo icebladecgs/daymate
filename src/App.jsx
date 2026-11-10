@@ -1441,6 +1441,24 @@ export default function App() {
     window.addEventListener('dm:add-someday', onAdd);
     return () => window.removeEventListener('dm:add-someday', onAdd);
   }, []);
+  // 메모 → 오늘 할일 (2026-11-10 사용자 요청 — "언젠가로" 옆 "오늘로"). 할일 저장 경로(setDayData)를 그대로 써서 능력치·캘린더 동기화도 같다
+  const setDayDataRef = useRef(null);
+  useEffect(() => {
+    const onAdd = (e) => {
+      const { title, memoId } = e.detail || {};
+      if (!title || !setDayDataRef.current) return;
+      const ds = toDateStr();
+      const id = genSubId("t");
+      setDayDataRef.current(ds, prev => ({ ...prev, tasks: [...(prev.tasks || []), { id, title, done: false, checkedAt: null, priority: false, ...(memoId ? { memoRef: { id: memoId } } : {}) }] }));
+      if (!memoId) return;
+      setTimeout(() => {
+        const mds = Object.keys(plansRef.current || {}).find(d => (plansRef.current[d]?.memos || []).some(m => m.id === memoId));
+        if (mds) setDayDataRef.current?.(ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(t => (t.id === id ? { ...t, memoRef: { ds: mds, id: memoId } } : t)) }));
+      }, 500);
+    };
+    window.addEventListener('dm:add-today', onAdd);
+    return () => window.removeEventListener('dm:add-today', onAdd);
+  }, []);
   const refreshDaysRef = useRef(refreshFromServer);
   useEffect(() => { refreshDaysRef.current = refreshFromServer; });
 
@@ -1953,6 +1971,7 @@ export default function App() {
     });
   };
 
+  setDayDataRef.current = (...a) => setDayData(...a); // 메모 → 오늘로 (위 dm:add-today)
   const setDayData = (dateStr, updater) => {
     // 렌더 시점 plans가 아니라 plansRef(호출마다 즉시 갱신)를 기준으로 계산 —
     // 같은 틱에 같은 날짜로 연속 호출돼도(예: 연락처 삭제 시 연결된 할일 여러 개) 앞선 변경이 덮어써지지 않게 한다.

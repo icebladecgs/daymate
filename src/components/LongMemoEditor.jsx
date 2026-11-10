@@ -9,7 +9,7 @@ import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import IndentBar from "./IndentBar.jsx";
 import { requestMemoLock } from "../utils/memoLock.js";
-import { pickTaskTitle, sendMemoToSomeday } from "../utils/memoToTask.js";
+import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
 import MemoSettings from "./MemoSettings.jsx";
@@ -25,6 +25,7 @@ const HEAD_PATHS = {
   lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></>,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
+  newmemo: <><path d="M12 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-6" /><path d="M17 3v6M14 6h6" /></>,
 };
 const HeadIcon = ({ name, fill }) => (
   <svg viewBox="0 0 24 24" width={22} height={22} fill={fill || "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{HEAD_PATHS[name]}</svg>
@@ -239,11 +240,31 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     idRef.current = null;
     savedTextRef.current = '';
     setSavedAt(null);
-    onPhotoError?.('저장됨 ✅ 이어서 새 메모를 써보세요');
+    onPhotoError?.('저장했어요 · 새 메모를 써 보세요');
     if (canAutoFocus()) requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
-  const handleSaveClick = () => { if (isNewEntry) handleSaveAndContinue(); else handleClose(); };
+  // 저장은 그 자리에 그대로 둔다 (2026-11-10 사용자 요청 — 예전엔 저장을 누르면 쓰던 메모가 사라지고 빈 화면이 됐다).
+  // 새 메모는 머리글 "새 메모" 버튼(handleSaveAndContinue)으로
+  const handleSaveClick = () => {
+    if (!isNewEntry) { handleClose(); return; }
+    if (!text.trim() && !idRef.current) { onPhotoError?.('저장할 내용이 없어요'); return; }
+    flush(text);
+    onPhotoError?.('저장됨 ✅');
+  };
+  const startNewMemo = () => {
+    if (!text.trim() && !idRef.current && !photos.length && !files.length) { if (canAutoFocus()) textareaRef.current?.focus(); return; }
+    handleSaveAndContinue();
+  };
+  // 📌 오늘로 / 📋 언젠가로 — 커서가 있는 줄(고른 글자가 있으면 그 부분)을 할일로. 메모 원본은 그대로
+  const [sentToday, setSentToday] = useState('');
+  const sendLine = (to) => {
+    const el = textareaRef.current;
+    const title = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+    if (!title) { onPhotoError?.(`${to === 'today' ? '오늘' : '언젠가'}로 보낼 줄에 커서를 두거나 글자를 골라 주세요`); return; }
+    if (to === 'today') { sendMemoToToday(title, ensureId()); setSentToday(title); setTimeout(() => setSentToday(''), 2000); }
+    else { sendMemoToSomeday(title, ensureId()); setSentTask(title); setTimeout(() => setSentTask(''), 2000); }
+  };
 
   // 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다
   const requestLock = () => {
@@ -314,7 +335,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
         return (<>
           {/* ✨ AI 정리 — 한 줄 전체 (2026-11-10) */}
           <button onClick={tidy.open} style={{ width: '100%', minHeight: 46, marginBottom: 8, borderRadius: 12, border: '1.5px solid rgba(139,92,246,.45)', background: 'rgba(139,92,246,.10)', color: '#8B5CF6', fontSize: 15, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>✨ AI로 정리하기</button>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${onUpdateFiles ? 4 : 3}, minmax(0,1fr))`, gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${onUpdateFiles ? 5 : 4}, minmax(0,1fr))`, gap: 6, marginBottom: 14 }}>
             <button onClick={handleAddPhoto} disabled={uploading} style={tile(false)}>
               <span style={ico}>{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷'}</span>사진
             </button>
@@ -323,16 +344,13 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
                 <span style={ico}>📁</span>{drive.busy ? drive.label : '드라이브'}
               </button>
             )}
+            {/* 📌 오늘로 (2026-11-10) · 📋 언젠가로 — 커서가 있는 줄(또는 고른 글자)을 할일로 */}
+            <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 보내기"
+              onClick={() => sendLine('today')} style={tile(!!sentToday, '#5B7CFA')}>
+              <span style={ico}>📌</span>{sentToday ? '보냄 ✓' : '오늘로'}
+            </button>
             <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
-              onClick={() => {
-                const el = textareaRef.current;
-                const title = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
-                if (!title) { onPhotoError?.('언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요'); return; }
-                sendMemoToSomeday(title, ensureId());
-                setSentTask(title);
-                setTimeout(() => setSentTask(''), 2000);
-              }}
-              style={tile(!!sentTask, '#22C55E')}>
+              onClick={() => sendLine('someday')} style={tile(!!sentTask, '#22C55E')}>
               <span style={ico}>📋</span>{sentTask ? '보냄 ✓' : '언젠가로'}
             </button>
             <button onClick={toggleVoice} aria-pressed={listening} style={tile(listening, '#EF4444')}>
@@ -382,6 +400,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
+        <button onMouseDown={e => e.preventDefault()} onClick={() => sendLine('today')} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 보내기"
+          style={{ flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: sentToday ? 'rgba(91,124,250,.12)' : 'var(--dm-input)', border: `1.5px dashed ${sentToday ? 'rgba(91,124,250,.5)' : 'var(--dm-border)'}`, color: sentToday ? '#5B7CFA' : 'var(--dm-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+        >{sentToday ? '보냄 ✓' : '📌 오늘로'}</button>
         <button onClick={tidy.open} style={{ flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed rgba(139,92,246,.5)', color: '#8B5CF6', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>✨ AI 정리</button>
       </div>}
 
@@ -511,11 +532,14 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
           {subtitle && <div style={{ fontSize: 12, color: "var(--dm-sub)", marginTop: 2 }}>{subtitle}</div>}
         </div>
         {newLook ? (<>
+          {/* 새 메모 (2026-11-10) — 쓰던 메모를 저장하고 빈 칸으로. 저장 버튼은 그 자리에 그대로 둔다 */}
+          {isNewEntry && <button onClick={startNewMemo} aria-label="새 메모" title="새 메모 쓰기 (지금 메모는 저장돼요)" style={{ ...headBtn, color: 'var(--dm-accent, #5B7CFA)' }}><HeadIcon name="newmemo" /></button>}
           <button onClick={toggleStar} aria-label="즐겨찾기" style={{ ...headBtn, color: starred ? '#FBBF24' : headBtn.color }}><HeadIcon name="star" fill={starred ? '#FBBF24' : undefined} /></button>
           <button onClick={requestLock} aria-label="잠그기" title="메모 잠그기 (암호화)" style={headBtn}><HeadIcon name="lock" /></button>
           <button onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={headBtn}><HeadIcon name="gear" /></button>
           {onSearch && <button onClick={onSearch} aria-label="검색" style={headBtn}><HeadIcon name="search" /></button>}
         </>) : (<>
+        {isNewEntry && <button onClick={startNewMemo} aria-label="새 메모" title="새 메모 쓰기 (지금 메모는 저장돼요)" style={{ background: 'none', border: 'none', color: '#A78BFA', fontSize: 13, fontWeight: 900, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, whiteSpace: 'nowrap' }}>＋새 메모</button>}
         <button onClick={toggleStar} aria-label="즐겨찾기" style={{ background: 'none', border: 'none', color: starred ? '#FBBF24' : 'var(--dm-muted)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>{starred ? '★' : '☆'}</button>
         {/* 메모 잠금(암호화) — 저장하고 닫은 뒤 잠금 창을 띄운다 */}
         <button onClick={requestLock} aria-label="잠그기" title="메모 잠그기 (암호화)" style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 17, cursor: 'pointer', padding: '4px 6px', lineHeight: 1 }}>🔒</button>
