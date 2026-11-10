@@ -371,6 +371,8 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
   // 금액은 이 함수로만 — 👁 숨기기면 가린다 (수익률 %는 그대로)
   const money = (n, cur) => hidden ? MASK : fmtPrice(n, cur);
   const qtyText = (q) => hidden ? "•••" : roundQty(q);
+  // 수량 단위: 코인은 "개", 주식은 "주" (2026-11-11 — 비트코인도 "0.5주"로 나왔다)
+  const qtyUnit = (x) => { const p = x?.parts?.[0] || x || {}; return p.src === "coingecko" || p.coinId || p.src === "upbit" || p.src === "bithumb" || p.broker === "업비트" || p.broker === "빗썸" ? "개" : "주"; };
   const today = toDateStr();
 
   // 자산군 비중
@@ -821,7 +823,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                       <span style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)" }}>{h.sym}{!multi && h.broker ? ` · ${h.broker}` : ""}</span>
                     </div>
                     <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginTop: 2 }}>
-                      {qtyText(h.qty)}주 · 매수가 {fmtUnit(asKrw ? h.avgPrice * usdKrwRate : h.avgPrice, avgCur)}
+                      {qtyText(h.qty)}{qtyUnit(h)} · 매수가 {fmtUnit(asKrw ? h.avgPrice * usdKrwRate : h.avgPrice, avgCur)}
                       {!h.noData && h.price != null && (
                         h.priceFrom && h.priceFrom !== 'mixed' && !multi
                           ? <> · 현재 {fmtUnit(h.exPrice, "KRW")} <span style={{ color: "var(--dm-sub)" }}>({EXCHANGE_NAME[h.priceFrom]})</span></>
@@ -878,7 +880,7 @@ export default function Portfolio({ telegramCfg, setTelegramCfg, authUser, onBac
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: "var(--dm-text)" }}>
                             <b>{p.broker || "직접 입력"}</b>
-                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {qtyText(p.qty)}주 · 매수가 {(() => { const pk = !!p.priceFrom && !!usdKrwRate && (p.currency || "USD") === "USD"; return fmtUnit(pk ? p.avgPrice * usdKrwRate : p.avgPrice, pk ? "KRW" : p.currency); })()}</span>
+                            <span style={{ color: "var(--dm-muted)", fontSize: 13 }}> · {qtyText(p.qty)}{qtyUnit(p)} · 매수가 {(() => { const pk = !!p.priceFrom && !!usdKrwRate && (p.currency || "USD") === "USD"; return fmtUnit(pk ? p.avgPrice * usdKrwRate : p.avgPrice, pk ? "KRW" : p.currency); })()}</span>
                           </div>
                           <button className={NL() ? 'dm-hit-y' : undefined} aria-label={`${p.broker || "직접 입력"} 수정`}
                             onClick={() => (showForm && editingId === p.id) ? resetForm() : handleEdit(p)}

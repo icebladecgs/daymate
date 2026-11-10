@@ -22,6 +22,9 @@ html:has(.dm-dash) { overflow: hidden; }
 .dm-dash .dm-cal-chip { font-size: 12px !important; line-height: 1.35 !important; padding: 1px 4px !important; margin-bottom: 2px !important; }
 /* 1240 창에서 앞 몇 글자만 보이던 것 — 대시보드에서만 두 줄까지 줄바꿈 (2026-11-11) */
 .dm-dash .dm-cal-chip { white-space: normal !important; word-break: keep-all; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* 메모 칸 맨 위 아이콘 줄: 좁은 칸(1240 창)에서 "저장"이 잘려서 대시보드에서만 간격을 줄인다 (2026-11-11 사용자 선택) */
+.dm-dash .dm-memo-head { gap: 0 !important; padding-left: 10px !important; padding-right: 10px !important; }
+.dm-dash .dm-memo-head > button[aria-label] { width: 32px !important; }
 .dm-dash .dm-cal-more { font-size: 11px !important; }
 `;
 

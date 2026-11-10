@@ -531,7 +531,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
 
   return (
     <div className="dm-memo-panel" style={S.fullScreenPanel(90)}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
+      <div className="dm-memo-head" style={{ display: 'flex', alignItems: 'center', gap: newLook ? 4 : 8, padding: newLook ? '12px 12px' : '12px 16px', borderBottom: '1px solid var(--dm-border)', flexShrink: 0 }}>
         {/* 새 디자인 메모 탭(탭 화면)에서는 ← 없음 — 탭인데 누르면 이전 화면으로 가서 헷갈렸다 (2026-11-10) */}
         {!hideBack && !(newLook && tabScreen) && <button className={newLook ? 'dm-hit' : undefined} aria-label="뒤로" onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>←</button>}
         <div style={{ flex: 1 }}>
