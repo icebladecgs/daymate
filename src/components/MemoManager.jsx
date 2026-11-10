@@ -27,6 +27,7 @@ import IndentBar from "./IndentBar.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
 import UndoBar from "./UndoBar.jsx";
 import { useUndo } from "../utils/useUndo.js";
+import { useAiTidy } from "./AiTidy.jsx";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "var(--dm-accent, #6C8EFF)" },
@@ -486,6 +487,8 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
     return () => clearTimeout(h);
   }, [text, title]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { const l = latest.current; l.save(l.text, l.title); }, []);
+  // ✨ AI 정리 (2026-11-10, components/AiTidy.jsx) — 메모 관리자(900) 위에 뜨게
+  const tidy = useAiTidy({ getText: () => text, setText, notify: onError, zIndex: 1500 });
 
   if (item?.locked) {
     return (
@@ -576,6 +579,8 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
         <button className={smallHit} onClick={onToggleBig} title={big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기"} style={big ? { ...small, color: ACCENT(nl), borderColor: "var(--dm-accent-soft, rgba(108,142,255,.5))" } : small}>{big ? "⤡ 목록 보기" : "⤢ 크게"}</button>
         <button className={smallHit} onClick={onToggleView} title={viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)"} style={viewMode ? { ...small, color: ACCENT(nl), borderColor: "var(--dm-accent-soft, rgba(108,142,255,.5))" } : small}>{viewMode ? "✏️ 편집" : "👁 보기"}</button>
         <span style={{ flex: 1 }} />
+        {!viewMode && <button className={smallHit} onClick={tidy.open} title="AI가 메모를 정리 — 내 글과 비교하고 고른 뒤 바꾸기" style={{ ...small, color: "#8B5CF6", borderColor: "rgba(139,92,246,.45)" }}>✨ AI 정리</button>}
+        {tidy.ui}
         <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
         {canAutoFocus() && <button className={smallHit} onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
         {item.kind === "memo" && (

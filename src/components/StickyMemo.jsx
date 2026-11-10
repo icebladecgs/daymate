@@ -9,6 +9,7 @@ import { handleEditorKey } from "../utils/editorAssist.js";
 import { urlAt, openLink, findAll } from "../utils/links.js";
 import { printMemo } from "../utils/printMemo.js";
 import LinkOverlay from "./LinkOverlay.jsx";
+import { useAiTidy } from "./AiTidy.jsx";
 import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
@@ -269,6 +270,8 @@ export default function StickyMemo() {
     return () => { offKey(); offChanged?.(); };
   }, []);
   const withKey = (label, k) => (keys[k] ? `${label} (${keys[k]})` : label);
+  // ✨ AI 정리 (2026-11-10, components/AiTidy.jsx) — 바꾸면 글이 바뀌고 0.5초 뒤 저장
+  const tidy = useAiTidy({ getText: () => text, setText: (v) => { typedAt.current = Date.now(); setText(v); }, notify: flash, zIndex: 50 });
 
   const c = STICKY_COLORS[memo?.color] || STICKY_COLORS.yellow;
   const iconBtn = { width: 24, height: 24, padding: 0, border: "none", background: "transparent", cursor: "pointer", fontSize: 13, lineHeight: 1, borderRadius: 4, WebkitAppRegion: "no-drag", color: "#333", flexShrink: 0 };
@@ -319,6 +322,7 @@ export default function StickyMemo() {
             {[
               ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
               [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
+              ["✨", "AI 정리", tidy.open],
               ["📋", withKey("전체 복사", "copy"), copyAll],
               ["🖨", "출력", print],
               ["🔍", "찾기 (Ctrl+F)", openFind],
@@ -337,6 +341,7 @@ export default function StickyMemo() {
           </div>
         </>
       )}
+      {tidy.ui}
       {showColors && !folded && (
         <div style={{ display: "flex", gap: 6, padding: "6px 8px", background: c.bar, borderTop: `1px solid ${c.line}`, flexShrink: 0, flexWrap: "wrap" }}>
           {Object.entries(STICKY_COLORS).map(([key, col]) => (

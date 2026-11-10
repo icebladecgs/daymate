@@ -17,6 +17,7 @@ import { newDesignOn } from "../utils/todayLook.js";
 import { boxCard, UI } from "../styles.js";
 import { store } from "../utils/storage.js";
 import { useBackClose } from "../utils/useBackClose.js";
+import { useAiTidy } from "./AiTidy.jsx";
 
 // 새 디자인 머리글 아이콘 — 컬러 그림(🔒 주황·🔍 보라) 대신 다른 탭처럼 회색 선 아이콘 (2026-11-10 메모 탭 개선)
 const HEAD_PATHS = {
@@ -252,6 +253,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     setTimeout(() => requestMemoLock(id, 'lock'), 50);
   };
 
+  // ✨ AI 정리 (2026-11-10, components/AiTidy.jsx) — 바꾸면 쓰기 칸 글이 바뀌고 자동 저장이 그대로 올린다
+  const tidy = useAiTidy({ getText: () => text, setText, notify: onPhotoError });
+
   // 🎤 말로 쓰기 (2026-11-10 — 메모 탭 아래 짧은 입력칸을 빼면서 음성 입력을 쓰기 칸으로 옮김). 알아들은 말은 글 끝에 붙인다
   const [listening, setListening] = useState(false);
   const recRef = useRef(null);
@@ -307,7 +311,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
           background: active ? `${color}1F` : 'var(--dm-input)', border: `1.5px solid ${active ? color : 'var(--dm-border)'}`, color: active ? color : 'var(--dm-sub)', fontSize: 13, fontWeight: 800,
           cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
         const ico = { fontSize: 20, lineHeight: 1 };
-        return (
+        return (<>
+          {/* ✨ AI 정리 — 한 줄 전체 (2026-11-10) */}
+          <button onClick={tidy.open} style={{ width: '100%', minHeight: 46, marginBottom: 8, borderRadius: 12, border: '1.5px solid rgba(139,92,246,.45)', background: 'rgba(139,92,246,.10)', color: '#8B5CF6', fontSize: 15, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>✨ AI로 정리하기</button>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${onUpdateFiles ? 4 : 3}, minmax(0,1fr))`, gap: 8, marginBottom: 14 }}>
             <button onClick={handleAddPhoto} disabled={uploading} style={tile(false)}>
               <span style={ico}>{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷'}</span>사진
@@ -333,8 +339,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
               <span style={ico}>{listening ? '⏹' : '🎤'}</span>{listening ? '듣는 중' : '말하기'}
             </button>
           </div>
-        );
+        </>);
       })()}
+      {tidy.ui}
       {/* 사진 추가 옆에 구글 드라이브 첨부 버튼 */}
       {!newLook && <div style={newLook ? { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8, marginBottom: 14 } : { display: 'flex', gap: 8, marginBottom: 14 }}>
         <button
@@ -375,6 +382,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
             cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
           }}
         >{sentTask ? '보냄 ✓' : '📋 언젠가로'}</button>
+        <button onClick={tidy.open} style={{ flex: '0 0 auto', padding: '12px 12px', borderRadius: 12, background: 'var(--dm-input)', border: '1.5px dashed rgba(139,92,246,.5)', color: '#8B5CF6', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>✨ AI 정리</button>
       </div>}
 
       {boxed && (

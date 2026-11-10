@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { normalizeScanItem } from '../src/utils/holdingsScan.js';
 import { joinCommunityOnServer } from '../src/utils/communityJoin.js';
+import { TIDY_MODES, TIDY_MAX_CHARS, TIDY_MODEL, tidySystemPrompt, tidyUserContent, cleanTidyOutput } from '../src/utils/memoTidy.js';
 
 if (!getApps().length) {
   initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
@@ -402,6 +403,32 @@ ${habitLines}
       return res.status(200).json(await callHaikuJSON(prompt, 1500));
     } catch (e) {
       return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ?action=memo-tidy → ✨ 메모 AI 정리 (2026-11-10, 계산·지시문은 src/utils/memoTidy.js)
+  // 사용자가 버튼을 누를 때만 온다. 메모 내용은 저장·기록하지 않는다(오류 로그에도 남기지 않음). 횟수 제한은 유료화 때 추가.
+  if (req.query.action === 'memo-tidy') {
+    const { text, mode = 'tidy' } = req.body || {};
+    if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: '정리할 글이 없어요' });
+    if (text.length > TIDY_MAX_CHARS) return res.status(413).json({ error: `메모가 너무 길어요 (${TIDY_MAX_CHARS.toLocaleString()}자까지)` });
+    const safeMode = TIDY_MODES.some(m => m.id === mode) ? mode : 'tidy';
+    try {
+      const response = await anthropic.messages.create({
+        model: TIDY_MODEL,
+        max_tokens: 16000,
+        output_config: { effort: 'low' }, // 정리·맞춤법은 깊게 생각할 일이 아니라 빠르고 싸게
+        system: tidySystemPrompt(safeMode),
+        messages: [{ role: 'user', content: tidyUserContent(text) }],
+      });
+      if (response.stop_reason === 'refusal') return res.status(422).json({ error: 'AI가 이 메모는 정리하지 않았어요' });
+      if (response.stop_reason === 'max_tokens') return res.status(413).json({ error: '메모가 너무 길어서 끝까지 정리하지 못했어요' });
+      const out = cleanTidyOutput(response.content.filter(b => b.type === 'text').map(b => b.text).join(''));
+      if (!out) return res.status(502).json({ error: 'AI 답이 비어 있어요. 다시 해 주세요' });
+      return res.status(200).json({ text: out, mode: safeMode });
+    } catch (e) {
+      console.error('[chat] memo-tidy failed:', e?.status || '', e?.message); // 메모 내용은 남기지 않는다
+      return res.status(e?.status === 429 ? 429 : 500).json({ error: e?.status === 429 ? 'AI가 잠시 바빠요. 조금 뒤에 다시 해 주세요' : 'AI 정리를 하지 못했어요' });
     }
   }
 
