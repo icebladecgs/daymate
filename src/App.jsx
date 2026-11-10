@@ -30,7 +30,8 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold } from "./utils/gear.js";
+import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, weekOf, weekQuests, questProgress } from "./utils/gear.js";
+import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
 import StatAskBar from "./components/StatAskBar.jsx";
@@ -561,7 +562,7 @@ export default function App() {
       const myLevel = createPlayerFighter(battleTotalScore, statXp).level;
       const win = battleWinGold(npcDef.level, myLevel, first);
       const paid = addGold(r.gear, toDateStr(), 'battle', win.amount);
-      if (paid.gear !== battleGearRef.current) updateGear(paid.gear);
+      updateGear(addWeekWin(paid.gear, toDateStr())); // 📜 주간 퀘스트 "배틀 n번 이기기"
       reward = { item: r.item, full: !!r.full, gold: paid.added, goldPct: win.pct, goldMult: win.mult, goldFirst: win.first };
     }
     setBattleRecord(prev => {
@@ -2191,6 +2192,12 @@ export default function App() {
       if (allHabitsDone) setToast(`🌟 습관 전부 완료! +${5 + 15} XP`);
       else setToast(`✅ 습관 체크 · +5 XP`);
       maybeDropGear(`h:${todayStr}:${habitId}`, 'habit');
+      // ⛓️ 습관을 7일 이어 하면 세트 조각 (utils/gear.js setPieceReward, 하루 최대 1개)
+      const streakNow = habitStreak(plans, habitId, todayStr, true);
+      const sp = setPieceReward(battleGearRef.current, streakNow, todayStr);
+      if (sp.gear !== battleGearRef.current) updateGear(sp.gear);
+      if (sp.item) setTimeout(() => setToast(`⛓️ 습관 ${streakNow}일 연속! 세트 조각 [${setById(sp.item.set).name}] ${sp.item.name}`), 2800);
+      else if (sp.full) setTimeout(() => setToast('🎒 가방이 꽉 차서 세트 조각을 못 받았어요 — 가방을 정리하고 체크를 풀었다 다시 해 주세요'), 2800);
       const habit = habits.find(h => h.id === habitId);
       const statId = habit ? (habit.statTag || classifyTodoStat(habit.name)) : null; // 직접 고른 능력치 우선
       if (statId && statId !== 'NONE') {
@@ -2647,6 +2654,7 @@ export default function App() {
           onBack={() => changeScreen("today")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
           gear={battleGear} setGear={updateGear} wanderer={wanderer} loggedIn={!!authUser} shopSeed={authUser?.uid || "local"}
+          quest={(() => { const week = weekOf(toDateStr()); return { week, quests: weekQuests(week, authUser?.uid || "local", habits.length > 0), progress: questProgress(plans, week, toDateStr(), battleGear) }; })()}
         />
       );
     }

@@ -775,6 +775,68 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const cooled = { ...strong, cooldowns: { ...strong.cooldowns, STR: 2, INT: 2 } };
   t('자동: 공격 필살기 쿨다운이면 크리 버프', E.pickAutoAction(cooled, foe).stat === 'ACHIEVE');
   t('자동: 필살기 없으면 기본공격', E.pickAutoAction(E.createPlayerFighter(150, {}), foe).type === 'basic');
+
+  // ── ⛓️ 세트 · 🔨 강화 · 📜 주간 퀘스트 · 📖 도감 · 🏅 칭호 (2026-11-10) ──
+  t('세트: 7의 배수가 아니면 없음', !G.setPieceReward(null, 6, '2026-11-10', seq(0.5)).item && !G.setPieceReward(null, 0, '2026-11-10', seq(0.5)).item);
+  const s1 = G.setPieceReward(null, 7, '2026-11-10', seq(0.5));
+  t('세트: 7일이면 세트 조각 1개(희귀 수치)', !!s1.item?.set && s1.item.rarity === 'rare' && G.setById(s1.item.set).pieces[s1.item.slot] === s1.item.name);
+  t('세트: 같은 날 두 번째는 없음(습관 여러 개여도)', !G.setPieceReward(s1.gear, 14, '2026-11-10', seq(0.5)).item);
+  const s2 = G.setPieceReward(s1.gear, 14, '2026-11-17', seq(0.5));
+  t('세트: 다음 조각은 모으던 세트의 빠진 칸', s2.item.set === s1.item.set && s2.item.slot !== s1.item.slot);
+  t('세트: 세트 조각은 하루 줍기 3개에 안 셈', !!G.rollDrop({ items: [1, 2].map((i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `d${i}`, at: '2026-11-17' })).concat(s2.gear.items.map((x) => ({ ...x, at: '2026-11-17' }))) }, 't:q', 'task', '2026-11-17', seq(0)).item);
+  t('세트: 가방이 차면 받은 것으로 치지 않음', G.setPieceReward(full, 7, '2026-11-10', seq(0.5)).full === true && !G.normalizeGear(G.setPieceReward(full, 7, '2026-11-10', seq(0.5)).gear).rolled.includes('set:2026-11-10'));
+  const st = G.SETS[0];
+  const setItems = ['weapon', 'armor', 'charm'].map((sl) => ({ ...G.makeItem('rare', seq(0.5), sl), id: `s_${sl}`, set: st.id, name: st.pieces[sl] }));
+  const eq = (n) => ({ items: setItems, equipped: Object.fromEntries(setItems.slice(0, n).map((x) => [x.slot, x.id])) });
+  const plain = (n) => { const b0 = { atk: 0, hp: 0, crit: 0, dodge: 0, def: 0 }; for (const x of setItems.slice(0, n)) for (const k in b0) b0[k] += x[k] || 0; return b0; };
+  t('세트: 1개는 세트 효과 없음', Math.abs(G.gearBonus(eq(1)).atk - plain(1).atk) < 1e-6);
+  t('세트: 2개 효과', Math.abs(G.gearBonus(eq(2)).atk - (plain(2).atk + st.bonus2.atk)) < 1e-6);
+  t('세트: 3개 효과(2개 효과 대신)', Math.abs(G.gearBonus(eq(3)).atk - (plain(3).atk + st.bonus3.atk)) < 1e-6 && Math.abs(G.gearBonus(eq(3)).def - (plain(3).def + st.bonus3.def)) < 1e-6);
+  // 강화
+  const ew = { ...G.makeItem('rare', seq(0.5), 'weapon'), id: 'ew' };
+  let eg = { items: [ew], equipped: { weapon: 'ew' }, gold: 1000 };
+  const e1 = G.enhanceItem(eg, 'ew', seq(0.99));
+  t('강화: +1은 항상 성공, 골드 차감', e1.ok && e1.item.plus === 1 && G.normalizeGear(e1.gear).gold === 1000 - G.ENHANCE_COST.rare);
+  t('강화: 효과 +10%', Math.abs(G.gearBonus(e1.gear).atk - ew.atk * 1.1) < 1e-3 && G.itemDisplayName(e1.item).startsWith('+1 '));
+  const e2 = G.enhanceItem(e1.gear, 'ew', seq(0.99));
+  t('강화: 실패하면 골드만 쓰고 장비 그대로', !e2.ok && e2.item.plus === 1 && G.normalizeGear(e2.gear).items.length === 1 && G.normalizeGear(e2.gear).gold === 1000 - 60 - 120);
+  t('강화: 골드가 모자라면 안 됨', G.enhanceItem({ items: [ew], gold: 10 }, 'ew', seq(0)).error === 'gold');
+  t('강화: +5에서 멈춤', G.enhanceItem({ items: [{ ...ew, plus: 5 }], gold: 99999 }, 'ew', seq(0)).error === 'max' && G.normalizeGear({ items: [{ ...ew, plus: 5 }] }).stats.maxPlus === 5);
+  t('강화: 판 값에 쓴 골드 30% 더', G.sellPriceOf(e2.item) === G.SELL_PRICE.rare + Math.floor(180 * 0.3) && G.sellItem(e2.gear, 'ew').gold === G.sellPriceOf(e2.item));
+  t('강화: 예전 장비(plus 없음)는 효과 그대로', JSON.stringify(G.gearBonus(gear)) === JSON.stringify(b));
+  // 주간 퀘스트
+  t('퀘스트: 주는 월요일(일요일은 그 전 월요일)', G.weekOf('2026-11-10') === '2026-11-09' && G.weekOf('2026-11-15') === '2026-11-09' && G.weekOf('2026-11-16') === '2026-11-16' && G.weekOf('2027-01-01') === '2026-12-28');
+  const qs = G.weekQuests('2026-11-09', 'u1'), qs2 = G.weekQuests('2026-11-09', 'u1');
+  t('퀘스트: 같은 주·계정은 같은 3개, 서로 다른 종류', JSON.stringify(qs) === JSON.stringify(qs2) && new Set(qs.map((q) => q.id)).size === 3);
+  t('퀘스트: 습관이 없으면 습관 퀘스트 없음', Array.from({ length: 20 }, (_, i) => G.weekQuests(`2026-W${i}`, 'u', false)).every((l) => l.every((q) => q.id !== 'habits')));
+  const plans = {
+    '2026-11-08': { tasks: [{ title: 'a', done: true }] }, // 지난주 — 안 셈
+    '2026-11-09': { tasks: [{ title: 'a', done: true, focusMin: 25 }, { title: 'b', done: true }, { title: '', done: true }], habitChecks: { h1: true, h2: false }, journal: { body: '좋은 날' } },
+    '2026-11-10': { tasks: [{ title: 'c', done: false, focusMin: 10 }], habitChecks: { h1: true, h2: true }, wins: ['운동'] },
+    '2026-11-11': { tasks: [{ title: 'd', done: true }] }, // 내일 — 안 셈
+  };
+  const pr = G.questProgress(plans, '2026-11-09', '2026-11-10', G.addWeekWin(G.addWeekWin(null, '2026-11-10'), '2026-11-10'));
+  t('퀘스트: 이번 주 월~오늘만 센다', pr.tasks === 2 && pr.taskDays === 1 && pr.habits === 3 && pr.focus === 35 && pr.journal === 2 && pr.wins === 2, JSON.stringify(pr));
+  t('퀘스트: 배틀 승리는 주가 바뀌면 0', G.questProgress({}, '2026-11-16', '2026-11-16', G.addWeekWin(null, '2026-11-10')).wins === 0);
+  const fakeQ = [{ id: 'tasks', target: 2 }, { id: 'habits', target: 3 }, { id: 'wins', target: 9 }];
+  const c1 = G.claimQuest({ gold: 0 }, '2026-11-09', 0, pr, fakeQ);
+  t('퀘스트: 끝낸 것은 골드', c1.gold === G.QUEST_GOLD && G.normalizeGear(c1.gear).gold === G.QUEST_GOLD);
+  t('퀘스트: 두 번 못 받음 · 덜 한 것은 못 받음', G.claimQuest(c1.gear, '2026-11-09', 0, pr, fakeQ).error === 'claimed' && G.claimQuest(c1.gear, '2026-11-09', 2, pr, fakeQ).error === 'notyet');
+  t('퀘스트: 3개 전에 상자 못 엶', G.claimQuestBox(c1.gear, '2026-11-09', '2026-11-10', seq(0.5)).error === 'notyet');
+  let c3 = G.claimQuest(c1.gear, '2026-11-09', 1, pr, fakeQ).gear;
+  c3 = G.claimQuest(c3, '2026-11-09', 2, { ...pr, wins: 9 }, fakeQ).gear;
+  const box = G.claimQuestBox(c3, '2026-11-09', '2026-11-10', seq(0.5));
+  t('퀘스트: 3개 다 받으면 상자 1개, 다 끝낸 주 +1', !!box.item && box.item.rarity !== 'common' && G.normalizeGear(c3).stats.questWeeks === 1 && G.claimQuestBox(box.gear, '2026-11-09', '2026-11-10', seq(0.5)).error === 'claimed');
+  t('퀘스트: 다음 주는 새로', G.questClaimed(box.gear, '2026-11-16').length === 0 && !G.questBoxClaimed(box.gear, '2026-11-16'));
+  // 도감·칭호
+  const dx0 = G.dexInfo(null);
+  t('도감: 전체 = 등급별 이름 + 세트 조각', dx0.got === 0 && dx0.total === 42 + 9 && new Set(G.DEX.map((d) => d.name)).size === G.DEX.length);
+  const sold = G.sellItem({ items: [w] }, w.id).gear;
+  t('도감: 팔아도 남는다', G.dexInfo(sold).got === 1 && G.normalizeGear(sold).items.length === 0);
+  const tl = G.titleList({ items: [w] }, { wins: 120, bestStreak: 3 });
+  t('칭호: 조건 확인 (영웅 장비·100승)', tl.find((x) => x.id === 'epic').ok && tl.find((x) => x.id === 'wins100').ok && !tl.find((x) => x.id === 'legend').ok && !tl.find((x) => x.id === 'streak10').ok);
+  t('칭호: 고른 칭호 보이기, 조건 못 채운 칭호는 안 보임', G.currentTitle({ items: [w], title: 'epic' }, {}) === '영웅의 길' && G.currentTitle({ items: [w], title: 'legend' }, {}) === '');
+  t('칭호: 세트 3개 모으면 세트 수집가', G.titleList({ items: setItems }, {}).find((x) => x.id === 'set').ok);
 }
 
 // ── 협동 보스전 계산 (2026-11-08, utils/bossRaid.js) ──

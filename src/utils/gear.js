@@ -81,7 +81,8 @@ export function makeItem(rarity, rand = Math.random, slot = null) {
 }
 
 const pct = (v) => `${Math.round(v * 1000) / 10}%`;
-export function itemEffects(it) {
+export function itemEffects(raw) {
+  const it = itemStats(raw);
   return [
     it.atk && `공격력 +${pct(it.atk)}`, it.hp && `에너지 +${pct(it.hp)}`,
     it.crit && `크리티컬 +${pct(it.crit)}p`, it.dodge && `회피 +${pct(it.dodge)}p`, it.def && `받는 피해 -${pct(it.def)}`,
@@ -108,18 +109,219 @@ export function normalizeGear(g) {
     gold: Math.max(0, Math.floor(Number(g?.gold) || 0)),
     earned: g?.earned?.date ? { date: String(g.earned.date), task: Math.max(0, Number(g.earned.task) || 0), battle: Math.max(0, Number(g.earned.battle) || 0) } : null,
     shop: g?.shop?.date ? { date: String(g.shop.date), bought: (Array.isArray(g.shop.bought) ? g.shop.bought : []).map(Number).filter((i) => i >= 0 && i < SHOP_SIZE) } : null,
+    // 📜 주간 퀘스트 (2026-11-10) — quests: 이번 주 받은 칸, weekWins: 이번 주 배틀 승리 수
+    quests: g?.quests?.week ? { week: String(g.quests.week), claimed: (Array.isArray(g.quests.claimed) ? g.quests.claimed : []).map(Number).filter((i) => i >= 0 && i < QUEST_COUNT), box: !!g.quests.box } : null,
+    weekWins: g?.weekWins?.week ? { week: String(g.weekWins.week), n: Math.max(0, Math.floor(Number(g.weekWins.n) || 0)) } : null,
+    // 📖 도감 — 한 번이라도 가져 본 장비 이름(지금 가방에 있는 것 포함, 팔아도 남는다)
+    seen: [...new Set([...(Array.isArray(g?.seen) ? g.seen : []), ...items.map((x) => x.name)].map(String))].slice(0, 200),
+    // 🏅 칭호 기록 — maxPlus: 가장 높게 강화한 단계, questWeeks: 퀘스트 3개를 다 끝낸 주 수
+    stats: { maxPlus: Math.max(0, Math.min(ENHANCE_MAX, Number(g?.stats?.maxPlus) || 0), ...items.map((x) => Number(x.plus) || 0)), questWeeks: Math.max(0, Math.floor(Number(g?.stats?.questWeeks) || 0)) },
+    title: typeof g?.title === 'string' ? g.title : '',
   };
 }
 
-// 끼운 장비 효과 합계 (엔진에 넘김)
+// 강화한 만큼 커진 장비 효과 (원래 수치는 그대로 두고 보여 줄 때·계산할 때만 곱한다)
+const STAT_KEYS = ['atk', 'hp', 'crit', 'dodge', 'def'];
+export function itemStats(it) {
+  const f = 1 + ENHANCE_STEP * Math.max(0, Math.min(ENHANCE_MAX, Number(it?.plus) || 0));
+  const out = {};
+  for (const k of STAT_KEYS) if (it?.[k]) out[k] = round3(Number(it[k]) * f);
+  return out;
+}
+export const itemDisplayName = (it) => `${it?.plus ? `+${it.plus} ` : ''}${it?.name || ''}`;
+
+// 끼운 장비 효과 합계 (엔진에 넘김) — 강화·세트 효과 포함
 export function gearBonus(gear) {
   const g = normalizeGear(gear);
   const b = { atk: 0, hp: 0, crit: 0, dodge: 0, def: 0 };
   for (const id of Object.values(g.equipped)) {
     const it = g.items.find((x) => x.id === id);
-    if (it) for (const k of Object.keys(b)) b[k] += Number(it[k]) || 0;
+    if (it) { const s = itemStats(it); for (const k of Object.keys(b)) b[k] += s[k] || 0; }
   }
+  for (const { set, count } of equippedSets(g)) {
+    const add = count >= 3 ? set.bonus3 : count >= 2 ? set.bonus2 : null;
+    if (add) for (const k of Object.keys(add)) b[k] += add[k];
+  }
+  for (const k of Object.keys(b)) b[k] = round3(b[k]);
   return b;
+}
+
+// ── ⛓️ 세트 장비 (2026-11-10) — 습관을 7일 이어 할 때마다 세트 조각 1개 (하루 최대 1개).
+// 같은 세트를 2개·3개 끼우면 효과가 더 붙는다. 조각 자체는 희귀 등급 수치. 이름은 직접 지은 것
+export const SET_STREAK = 7;
+export const SETS = [
+  { id: 'iron', name: '강철 의지', emoji: '⛓️', pieces: { weapon: '강철 의지의 검', armor: '강철 의지의 흉갑', charm: '강철 의지의 인장' },
+    bonus2: { atk: 0.04 }, bonus3: { atk: 0.08, def: 0.03 } },
+  { id: 'dawn', name: '새벽 현자', emoji: '🌅', pieces: { weapon: '새벽 현자의 지팡이', armor: '새벽 현자의 로브', charm: '새벽 현자의 수정' },
+    bonus2: { crit: 0.03 }, bonus3: { crit: 0.06, hp: 0.05 } },
+  { id: 'wind', name: '바람 나그네', emoji: '🍃', pieces: { weapon: '바람 나그네의 단도', armor: '바람 나그네의 외투', charm: '바람 나그네의 방울' },
+    bonus2: { dodge: 0.03 }, bonus3: { dodge: 0.05, hp: 0.06 } },
+];
+export const setById = (id) => SETS.find((s) => s.id === id) || null;
+export const setBonusText = (b) => itemEffects(b).join(' · ');
+export function equippedSets(gear) {
+  const g = normalizeGear(gear);
+  const counts = {};
+  for (const id of Object.values(g.equipped)) {
+    const it = g.items.find((x) => x.id === id);
+    if (it?.set && setById(it.set)) counts[it.set] = (counts[it.set] || 0) + 1;
+  }
+  return Object.entries(counts).map(([id, count]) => ({ set: setById(id), count }));
+}
+function makeSetItem(setId, slot, rand) {
+  const base = makeItem('rare', rand, slot);
+  return { ...base, name: setById(setId).pieces[slot], set: setId };
+}
+// 습관 연속 일수가 7의 배수가 된 날 — 가진 조각이 있는 세트의 빠진 조각부터(완성하기 쉽게). 다 모았으면 아무 조각.
+// 같은 날은 한 번만(rolled 'set:날짜'). 결과 { gear, item|null, full }
+export function setPieceReward(gear, streak, todayStr, rand = Math.random) {
+  const g = normalizeGear(gear);
+  if (!streak || streak % SET_STREAK !== 0) return { gear: g, item: null };
+  const key = `set:${todayStr}`;
+  if (g.rolled.includes(key)) return { gear: g, item: null };
+  if (g.items.length >= BAG_MAX) return { gear: g, item: null, full: true }; // 받은 것으로 치지 않는다
+  const owned = new Set(g.items.filter((x) => x.set).map((x) => `${x.set}|${x.slot}`));
+  const missing = SETS.flatMap((s) => GEAR_SLOTS.map((sl) => ({ set: s.id, slot: sl.id }))).filter((p) => !owned.has(`${p.set}|${p.slot}`));
+  const started = missing.filter((p) => GEAR_SLOTS.some((sl) => owned.has(`${p.set}|${sl.id}`)));
+  const pool = started.length ? started : missing.length ? missing : SETS.flatMap((s) => GEAR_SLOTS.map((sl) => ({ set: s.id, slot: sl.id })));
+  const p = pick(pool, rand());
+  const item = { ...makeSetItem(p.set, p.slot, rand), at: todayStr };
+  return { gear: { ...g, rolled: [...g.rolled, key].slice(-300), items: [...g.items, item] }, item };
+}
+
+// ── 🔨 강화 (2026-11-10) — 골드를 내고 +1씩, 최대 +5. 실패하면 골드만 쓰고 장비는 그대로(깨지지 않는다).
+// 한 단계마다 원래 효과의 +10%(+5 = 1.5배). 되돌리기는 없다(되돌리면 실패를 다시 굴릴 수 있어서)
+export const ENHANCE_MAX = 5;
+export const ENHANCE_STEP = 0.1;
+export const ENHANCE_RATE = [1, 0.85, 0.7, 0.55, 0.4];             // +1·+2·+3·+4·+5가 될 확률
+export const ENHANCE_COST = { common: 10, uncommon: 25, rare: 60, epic: 150, legend: 300 }; // × (지금 단계 + 1)
+export const ENHANCE_REFUND = 0.3; // 강화한 장비를 팔면 쓴 골드의 30%를 더 돌려준다
+export function enhanceCost(it) {
+  const p = Number(it?.plus) || 0;
+  if (!it || p >= ENHANCE_MAX) return null;
+  return { gold: (ENHANCE_COST[it.rarity] || 10) * (p + 1), rate: ENHANCE_RATE[p], next: p + 1 };
+}
+// 결과 { gear, ok, error: 'max'|'gold'|'none', item }
+export function enhanceItem(gear, itemId, rand = Math.random) {
+  const g = normalizeGear(gear);
+  const it = g.items.find((x) => x.id === itemId);
+  if (!it) return { gear: g, error: 'none' };
+  const c = enhanceCost(it);
+  if (!c) return { gear: g, error: 'max' };
+  if (g.gold < c.gold) return { gear: g, error: 'gold' };
+  const ok = rand() < c.rate;
+  const next = { ...it, spent: (Number(it.spent) || 0) + c.gold, ...(ok ? { plus: c.next } : {}) };
+  const items = g.items.map((x) => (x.id === itemId ? next : x));
+  return { gear: { ...g, gold: g.gold - c.gold, items, stats: { ...g.stats, maxPlus: Math.max(g.stats.maxPlus, Number(next.plus) || 0) } }, ok, item: next, cost: c.gold };
+}
+export const sellPriceOf = (it) => (SELL_PRICE[it?.rarity] || 0) + Math.floor((Number(it?.spent) || 0) * ENHANCE_REFUND);
+
+// ── 📜 주간 퀘스트 (2026-11-10) — 월요일마다 3개(날짜+계정으로 정해짐). 실제 생활 기록(할일·습관·집중·일기)으로 센다.
+// 하나 끝낼 때마다 골드, 3개 다 받으면 장비 상자 1개. 퀘스트 골드는 하루 상한과 따로(주 단위로 이미 정해진 양)
+export const QUEST_COUNT = 3;
+export const QUEST_GOLD = 80;
+export const QUEST_BOX_RARITY = { uncommon: 40, rare: 45, epic: 13, legend: 2 };
+const QUEST_POOL = [
+  { id: 'tasks', emoji: '✅', targets: [10, 15, 20], label: (n) => `할일 ${n}개 끝내기` },
+  { id: 'taskDays', emoji: '📅', targets: [4, 5], label: (n) => `할일을 끝낸 날 ${n}일` },
+  { id: 'habits', emoji: '💪', targets: [7, 12, 18], label: (n) => `습관 ${n}번 체크`, needHabits: true },
+  { id: 'focus', emoji: '⏱️', targets: [60, 120], label: (n) => `집중 타이머 ${n}분` },
+  { id: 'journal', emoji: '📖', targets: [3, 4], label: (n) => `일기 쓴 날 ${n}일` },
+  { id: 'wins', emoji: '⚔️', targets: [3, 5], label: (n) => `배틀 ${n}번 이기기` },
+];
+// 이번 주 월요일 날짜 (YYYY-MM-DD, 일요일은 그 전 월요일)
+export function weekOf(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - ((dt.getUTCDay() + 6) % 7));
+  return dt.toISOString().slice(0, 10);
+}
+const weekDays = (week) => Array.from({ length: 7 }, (_, i) => { const [y, m, d] = week.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10); });
+export function weekQuests(week, seed, hasHabits = true) {
+  const r = seededRand(`quest|${week}|${seed}`);
+  const pool = QUEST_POOL.filter((q) => hasHabits || !q.needHabits).map((q) => [q, r()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+  return pool.slice(0, QUEST_COUNT).map((q) => { const target = pick(q.targets, r()); return { id: q.id, emoji: q.emoji, target, label: q.label(target) }; });
+}
+// plans: 날짜 기록 { [YYYY-MM-DD]: day } — 이번 주 월~오늘만 센다
+export function questProgress(plans, week, todayStr, gear) {
+  const days = weekDays(week).filter((ds) => ds <= todayStr);
+  const c = { tasks: 0, taskDays: 0, habits: 0, focus: 0, journal: 0, wins: 0 };
+  for (const ds of days) {
+    const day = plans?.[ds];
+    if (!day) continue;
+    const done = (day.tasks || []).filter((t) => t?.title?.trim() && t.done).length;
+    c.tasks += done;
+    if (done) c.taskDays += 1;
+    c.habits += Object.values(day.habitChecks || {}).filter(Boolean).length;
+    c.focus += (day.tasks || []).reduce((s, t) => s + (Number(t?.focusMin) || 0), 0);
+    if (String(day.journal?.body || '').trim() || (day.wins || []).some((w) => String(w || '').trim())) c.journal += 1;
+  }
+  const g = normalizeGear(gear);
+  c.wins = g.weekWins?.week === week ? g.weekWins.n : 0;
+  return c;
+}
+export function addWeekWin(gear, todayStr) {
+  const g = normalizeGear(gear);
+  const week = weekOf(todayStr);
+  return { ...g, weekWins: { week, n: (g.weekWins?.week === week ? g.weekWins.n : 0) + 1 } };
+}
+export const questClaimed = (gear, week) => { const q = normalizeGear(gear).quests; return q?.week === week ? q.claimed : []; };
+export const questBoxClaimed = (gear, week) => { const q = normalizeGear(gear).quests; return q?.week === week && q.box; };
+// 결과 { gear, gold } 또는 { gear, error: 'notyet'|'claimed' }
+export function claimQuest(gear, week, index, progress, quests) {
+  const g = normalizeGear(gear);
+  const q = quests[index];
+  if (!q || (progress[q.id] || 0) < q.target) return { gear: g, error: 'notyet' };
+  const claimed = questClaimed(g, week);
+  if (claimed.includes(index)) return { gear: g, error: 'claimed' };
+  const nextClaimed = [...claimed, index];
+  const allDone = nextClaimed.length >= QUEST_COUNT;
+  return { gear: { ...g, gold: g.gold + QUEST_GOLD, quests: { week, claimed: nextClaimed, box: questBoxClaimed(g, week) },
+    stats: allDone ? { ...g.stats, questWeeks: g.stats.questWeeks + 1 } : g.stats }, gold: QUEST_GOLD };
+}
+// 3개 다 받은 주에 한 번 — 결과 { gear, item } 또는 { gear, error: 'notyet'|'claimed'|'full' }
+export function claimQuestBox(gear, week, todayStr, rand = Math.random) {
+  const g = normalizeGear(gear);
+  if (questClaimed(g, week).length < QUEST_COUNT) return { gear: g, error: 'notyet' };
+  if (questBoxClaimed(g, week)) return { gear: g, error: 'claimed' };
+  if (g.items.length >= BAG_MAX) return { gear: g, error: 'full' };
+  const item = { ...makeItem(rollRarity(rand(), QUEST_BOX_RARITY), rand), at: todayStr };
+  return { gear: { ...g, items: [...g.items, item], quests: { ...g.quests, box: true } }, item };
+}
+
+// ── 📖 도감 · 🏅 칭호 (2026-11-10) ──
+// 도감 = 장비 이름 전부(등급별 + 세트 조각). 한 번 가져 본 이름은 팔아도 채워진 채로 남는다
+export const DEX = [
+  ...RARITY_UP.flatMap((r) => GEAR_SLOTS.flatMap((s) => NAMES[s.id][r].map((name) => ({ name, rarity: r, slot: s.id })))),
+  ...SETS.flatMap((st) => GEAR_SLOTS.map((s) => ({ name: st.pieces[s.id], rarity: 'rare', slot: s.id, set: st.id }))),
+];
+export function dexInfo(gear) {
+  const seen = new Set(normalizeGear(gear).seen);
+  const list = DEX.map((d) => ({ ...d, got: seen.has(d.name) }));
+  return { list, got: list.filter((d) => d.got).length, total: list.length };
+}
+const hasSeenRarity = (ctx, r) => ctx.dex.list.some((d) => d.got && d.rarity === r && !d.set);
+export const TITLES = [
+  { id: 'rare', label: '반짝이는 눈', how: '희귀 장비 처음 얻기', ok: (c) => hasSeenRarity(c, 'rare') },
+  { id: 'epic', label: '영웅의 길', how: '영웅 장비 처음 얻기', ok: (c) => hasSeenRarity(c, 'epic') },
+  { id: 'legend', label: '전설을 만난 자', how: '전설 장비 처음 얻기', ok: (c) => hasSeenRarity(c, 'legend') },
+  { id: 'set', label: '세트 수집가', how: '한 세트 3개를 모두 모으기', ok: (c) => SETS.some((st) => GEAR_SLOTS.every((s) => c.gear.items.some((x) => x.set === st.id && x.slot === s.id))) },
+  { id: 'smith', label: '대장장이', how: '장비를 +5까지 강화하기', ok: (c) => c.gear.stats.maxPlus >= ENHANCE_MAX },
+  { id: 'quest', label: '꾸준한 모험가', how: '주간 퀘스트 3개를 다 끝낸 주 4번', ok: (c) => c.gear.stats.questWeeks >= 4 },
+  { id: 'dexHalf', label: '수집가', how: '도감 절반 채우기', ok: (c) => c.dex.got * 2 >= c.dex.total },
+  { id: 'dexFull', label: '박물관장', how: '도감 모두 채우기', ok: (c) => c.dex.got >= c.dex.total },
+  { id: 'wins100', label: '백전노장', how: '배틀 100승', ok: (c) => (Number(c.record?.wins) || 0) >= 100 },
+  { id: 'streak10', label: '파죽지세', how: '10연승', ok: (c) => (Number(c.record?.bestStreak) || 0) >= 10 },
+];
+export function titleList(gear, record) {
+  const g = normalizeGear(gear);
+  const ctx = { gear: g, dex: dexInfo(g), record };
+  return TITLES.map((t) => ({ id: t.id, label: t.label, how: t.how, ok: !!t.ok(ctx) }));
+}
+// 고른 칭호 (조건을 못 채운 칭호는 보이지 않는다)
+export function currentTitle(gear, record) {
+  const g = normalizeGear(gear);
+  return g.title ? titleList(g, record).find((t) => t.id === g.title && t.ok)?.label || '' : '';
 }
 
 // 할일·습관을 끝냈을 때 — 같은 키는 한 번만 굴린다(체크를 풀었다 다시 해도). 결과: { gear, item|null, full }
@@ -131,7 +333,7 @@ export function rollDrop(gear, key, source, todayStr, rand = Math.random) {
   const next = { ...paid.gear, rolled: [...g.rolled, key].slice(-300) };
   const gold = paid.added;
   if (g.dropsOff) return { gear: next, item: null, gold };
-  const todayCount = g.items.filter((x) => x.at === todayStr).length;
+  const todayCount = g.items.filter((x) => x.at === todayStr && !x.set).length; // 세트 조각은 따로(습관 7일 보상)
   if (todayCount >= DROPS_PER_DAY || rand() >= (DROP_CHANCE[source] || 0)) return { gear: next, item: null, gold };
   if (g.items.length >= BAG_MAX) return { gear: next, item: null, full: true, gold };
   const item = { ...makeItem(rollRarity(rand()), rand), at: todayStr };
@@ -204,7 +406,7 @@ export function sellItem(gear, itemId) {
   const g = normalizeGear(gear);
   const it = g.items.find((x) => x.id === itemId);
   if (!it) return { gear: g, gold: 0 };
-  const gold = SELL_PRICE[it.rarity] || 0;
+  const gold = sellPriceOf(it); // 강화했으면 쓴 골드의 30% 더
   const equipped = Object.fromEntries(Object.entries(g.equipped).map(([k, v]) => [k, v === itemId ? null : v]));
   return { gear: { ...g, gold: g.gold + gold, items: g.items.filter((x) => x.id !== itemId), equipped }, gold };
 }

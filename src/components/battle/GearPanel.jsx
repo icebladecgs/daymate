@@ -7,10 +7,13 @@ import UndoBar from "../UndoBar.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
 import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
-  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem, SELL_PRICE, sellItem } from "../../utils/gear.js";
+  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem, sellItem,
+  itemDisplayName, sellPriceOf, enhanceCost, enhanceItem, ENHANCE_MAX, ENHANCE_STEP, setById, equippedSets, setBonusText, SET_STREAK } from "../../utils/gear.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
 const rarityChip = (r) => ({ fontSize: 12, fontWeight: 900, color: "#fff", background: RARITIES[r].color, borderRadius: 6, padding: "1px 6px", flexShrink: 0 });
+// 세트 조각 표시 (등급 칩 옆)
+const SetChip = ({ it }) => { const st = it?.set && setById(it.set); return st ? <span style={{ fontSize: 12, fontWeight: 900, color: "#FF9F0A", border: "1px solid #FF9F0A", borderRadius: 6, padding: "0 5px", flexShrink: 0, whiteSpace: "nowrap" }}>{st.emoji} 세트</span> : null; };
 
 export function WandererCard({ wanderer, done, onStart }) {
   if (!wanderer) return null;
@@ -37,7 +40,9 @@ export default function GearPanel({ gear, setGear }) {
   const today = toDateStr();
   const [bagOpen, setBagOpen] = useState(false);
   const [sel, setSel] = useState(null);
+  const [enhMsg, setEnhMsg] = useState(null); // { id, ok, text } — 강화 결과 한 줄
   const undo = useUndo();
+  const sets = equippedSets(g);
   const bonus = gearBonus(g);
   const total = itemEffects(bonus);
   const isEquipped = (id) => Object.values(g.equipped).includes(id);
@@ -48,17 +53,24 @@ export default function GearPanel({ gear, setGear }) {
   // 팔기 (2026-11-10 — 예전 "버리기" 자리). 끼운 장비면 빼고 판다. 5초 되돌리기(그 사이 골드를 써 버렸으면 되돌리지 않음),
   // 전설은 아주 드물어 한 번 더 묻는다
   const sell = (it) => {
-    if (it.rarity === "legend" && !window.confirm(`전설 장비 "${it.name}"을(를) ${SELL_PRICE.legend}골드에 팔까요?`)) return;
+    if ((it.rarity === "legend" || it.plus >= 3) && !window.confirm(`${RARITIES[it.rarity].label} 장비 "${itemDisplayName(it)}"을(를) ${sellPriceOf(it)}골드에 팔까요?`)) return;
     const idx = g.items.findIndex((x) => x.id === it.id);
     const wasOn = isEquipped(it.id);
     const r = sellItem(g, it.id);
     setGear(r.gear);
     setSel(null);
-    undo.offer(`🪙 +${r.gold} · "${it.name}" 팔았어요`, () => setGear((cur) => {
+    undo.offer(`🪙 +${r.gold} · "${itemDisplayName(it)}" 팔았어요`, () => setGear((cur) => {
       const c = normalizeGear(cur);
       if (c.gold < r.gold || c.items.some((x) => x.id === it.id)) return c;
       return { ...c, gold: c.gold - r.gold, items: putBack(c.items, it, idx), equipped: wasOn ? { ...c.equipped, [it.slot]: it.id } : c.equipped };
     }));
+  };
+  // 🔨 강화 — 확률이라 되돌리기 없음(되돌리면 실패를 다시 굴릴 수 있다). 실패해도 장비는 그대로
+  const enhance = (it) => {
+    const r = enhanceItem(g, it.id);
+    if (r.error) { setEnhMsg({ id: it.id, ok: false, text: r.error === "gold" ? "골드가 모자라요" : "더 강화할 수 없어요" }); return; }
+    setGear(r.gear);
+    setEnhMsg({ id: it.id, ok: r.ok, text: r.ok ? `🔨 성공! ${itemDisplayName(r.item)}` : `💨 실패… 골드 ${r.cost}만 썼어요 (장비는 그대로)` });
   };
 
   return (
@@ -67,6 +79,14 @@ export default function GearPanel({ gear, setGear }) {
       {/* 제목 한 줄, 효과 요약은 그 아래 한 줄 (2026-11-10 — 19px로 키운 뒤 효과 글자에 밀려 "내 장비"가 두 줄로 깨졌다) */}
       <div style={{ fontSize: NL() ? UI.title : 17, fontWeight: 900, color: "var(--dm-text)", whiteSpace: "nowrap" }}>🎒 내 장비</div>
       <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>{total.length ? total.join(" · ") : "아직 끼운 장비가 없어요"}</div>
+      {/* ⛓️ 세트 효과 (2개·3개) — 끼운 세트 조각이 있을 때만 */}
+      {sets.map(({ set, count }) => (
+        <div key={set.id} style={{ fontSize: 13, lineHeight: 1.5, wordBreak: "keep-all", margin: "0 0 6px", color: "#FF9F0A", fontWeight: 700 }}>
+          {set.emoji} {set.name} 세트 {count}/3
+          <span style={{ display: "block", fontWeight: 600, color: count >= 2 ? "var(--dm-text)" : "var(--dm-muted)" }}>{count >= 2 ? "✓" : "·"} 2개: {setBonusText(set.bonus2)}</span>
+          <span style={{ display: "block", fontWeight: 600, color: count >= 3 ? "var(--dm-text)" : "var(--dm-muted)" }}>{count >= 3 ? "✓" : "·"} 3개: {setBonusText(set.bonus3)}</span>
+        </div>
+      ))}
       {GEAR_SLOTS.map((s) => {
         const it = g.items.find((x) => x.id === g.equipped[s.id]);
         return (
@@ -75,7 +95,7 @@ export default function GearPanel({ gear, setGear }) {
             <span style={{ fontSize: 13, color: "var(--dm-muted)", width: 32, flexShrink: 0 }}>{s.label}</span>
             {it ? (
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={rarityChip(it.rarity)}>{RARITIES[it.rarity].label}</span><span style={{ fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</span></span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={rarityChip(it.rarity)}>{RARITIES[it.rarity].label}</span><SetChip it={it} /><span style={{ fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{itemDisplayName(it)}</span></span>
                 <span style={{ display: "block", fontSize: 13, color: "var(--dm-sub)", marginTop: 2 }}>{itemEffects(it).join(" · ")}</span>
               </span>
             ) : <span style={{ flex: 1, fontSize: 14, color: "var(--dm-muted)" }}>비어 있음</span>}
@@ -90,23 +110,36 @@ export default function GearPanel({ gear, setGear }) {
       {bagOpen && (
         <div style={{ marginTop: 6 }}>
           {sorted.length === 0 && <div style={{ fontSize: 14, color: "var(--dm-sub)", padding: "6px 0", lineHeight: 1.5 }}>할일을 끝내거나 습관을 체크하면 가끔 장비가 떨어져요. 도전 상대를 처음 이기면 상대마다 한 번, 떠돌이 도전자를 이기면 희귀 이상을 받아요.</div>}
+          <div style={{ fontSize: 13, color: "var(--dm-muted)", padding: "0 0 8px", lineHeight: 1.5, wordBreak: "keep-all" }}>⛓️ 습관을 {SET_STREAK}일 이어 할 때마다 세트 조각 1개 · 🔨 장비를 눌러 골드로 강화(+{ENHANCE_MAX}까지, 한 단계 +{Math.round(ENHANCE_STEP * 100)}%, 실패해도 안 깨져요)</div>
           {sorted.map((it) => (
             <div key={it.id} style={{ borderTop: "1px solid var(--dm-row)" }}>
               <button onClick={() => setSel(sel === it.id ? null : it.id)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 0", background: "none", border: "none", borderRadius: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
                 <span style={{ fontSize: 17 }}>{GEAR_SLOTS.find((s) => s.id === it.slot)?.emoji}</span>
                 <span style={rarityChip(it.rarity)}>{RARITIES[it.rarity].label}</span>
+                <SetChip it={it} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}{it.at === today ? <span style={{ color: "#FF3B30", fontSize: 12, marginLeft: 6 }}>NEW</span> : null}</span>
+                  <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--dm-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{itemDisplayName(it)}{it.at === today ? <span style={{ color: "#FF3B30", fontSize: 12, marginLeft: 6 }}>NEW</span> : null}</span>
                   <span style={{ display: "block", fontSize: 13, color: "var(--dm-sub)" }}>{itemEffects(it).join(" · ")}</span>
                 </span>
                 {isEquipped(it.id) && <span style={{ fontSize: 13, fontWeight: 800, color: "#30D158", flexShrink: 0 }}>장착 중</span>}
               </button>
-              {sel === it.id && (
-                <div style={{ display: "flex", gap: 8, paddingBottom: 10 }}>
-                  <button onClick={() => { equip(it); setSel(null); }} style={{ flex: 1, height: 42, border: "none", borderRadius: 10, background: isEquipped(it.id) ? "var(--dm-input)" : ACCENT, color: isEquipped(it.id) ? "var(--dm-text)" : "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{isEquipped(it.id) ? "빼기" : "끼우기"}</button>
-                  <button onClick={() => sell(it)} style={{ height: 42, padding: "0 16px", border: "none", borderRadius: 10, background: "var(--dm-input)", color: "#FF9F0A", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>팔기 🪙{SELL_PRICE[it.rarity]}</button>
-                </div>
-              )}
+              {sel === it.id && (() => {
+                const ec = enhanceCost(it);
+                const canEnh = ec && g.gold >= ec.gold;
+                return (
+                  <div style={{ paddingBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => { equip(it); setSel(null); }} style={{ flex: 1, height: 42, padding: 0, border: "none", borderRadius: 10, background: isEquipped(it.id) ? "var(--dm-input)" : ACCENT, color: isEquipped(it.id) ? "var(--dm-text)" : "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{isEquipped(it.id) ? "빼기" : "끼우기"}</button>
+                      <button onClick={() => sell(it)} style={{ height: 42, padding: "0 14px", border: "none", borderRadius: 10, background: "var(--dm-input)", color: "#FF9F0A", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>팔기 🪙{sellPriceOf(it)}</button>
+                    </div>
+                    {/* 🔨 강화 (2026-11-10) */}
+                    <button disabled={!canEnh} onClick={() => enhance(it)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", height: 42, padding: 0, marginTop: 8, border: "none", borderRadius: 10, background: canEnh ? "#8B5CF6" : "var(--dm-input)", color: canEnh ? "#fff" : "var(--dm-muted)", fontSize: 15, fontWeight: 800, cursor: canEnh ? "pointer" : "default", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                      {ec ? <>🔨 +{ec.next} 강화 · 🪙{ec.gold} · 성공 {Math.round(ec.rate * 100)}%</> : <>🔨 최고 단계 (+{ENHANCE_MAX})</>}
+                    </button>
+                    {enhMsg?.id === it.id && <div style={{ fontSize: 14, fontWeight: 800, marginTop: 6, color: enhMsg.ok ? "#30D158" : "#FF9F0A" }}>{enhMsg.text}</div>}
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

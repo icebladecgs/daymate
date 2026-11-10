@@ -6,6 +6,8 @@ import { calcLevel } from "../data/stats.js";
 import { NPCS, getNpcAvatar } from "../data/battle/npcs.js";
 import GearPanel, { WandererCard, ShopCard } from "../components/battle/GearPanel.jsx";
 import TerritoryPanel from "../components/battle/TerritoryPanel.jsx";
+import { QuestCard, DexCard } from "../components/battle/QuestDex.jsx";
+import { currentTitle } from "../utils/gear.js";
 import { gearBonus, npcRewardDone, npcRarityWeights, RARITIES, RARITY_ORDER } from "../utils/gear.js";
 import { toDateStr } from "../utils/date.js";
 
@@ -17,7 +19,7 @@ const rarityRangeLabel = (level) => {
   return lo === hi ? lo : `${lo}~${hi}`;
 };
 
-export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer, loggedIn, shopSeed = "local" }) {
+export default function BattleArena({ totalScore, statXp, battleRecord, battleNickname, onSetBattleNickname, onBack, onStartBattle, gear, setGear, wanderer, loggedIn, shopSeed = "local", quest = null }) {
   const [showAll, setShowAll] = useState(false);
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
@@ -79,6 +81,8 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
               <span style={{ fontSize: 12, color: battleNickname ? 'var(--dm-text)' : 'var(--dm-muted)', fontWeight: battleNickname ? 900 : 400 }}>
                 {battleNickname ? `🏷️ ${battleNickname}` : '🏷️ 닉네임을 정해주세요'}
               </span>
+              {/* 🏅 고른 칭호 (2026-11-10, 도감·칭호 칸에서 고름) */}
+              {currentTitle(gear, record) && <span style={{ fontSize: 12, fontWeight: 900, color: '#FF9F0A' }}>「{currentTitle(gear, record)}」</span>}
               <span style={{ fontSize: 10, color: '#6C8EFF', textDecoration: 'underline' }}>수정</span>
             </button>
           )}
@@ -119,8 +123,10 @@ export default function BattleArena({ totalScore, statXp, battleRecord, battleNi
       {/* 🗺️ 내 동네 영토 (2026-11-09) */}
       <TerritoryPanel loggedIn={loggedIn} gear={gear} setGear={setGear} nickname={battleNickname} />
       <WandererCard wanderer={wanderer} done={wanderDone} onStart={() => onStartBattle('wander')} />
+      {setGear && <QuestCard quest={quest} gear={gear} setGear={setGear} />}
       {setGear && <GearPanel gear={gear} setGear={setGear} />}
       {setGear && <ShopCard gear={gear} setGear={setGear} seed={shopSeed} />}
+      {setGear && <DexCard gear={gear} setGear={setGear} record={record} />}
 
       {/* NPC 목록 */}
       <div style={newDesignOn() ? { ...S.sectionTitle, fontSize: UI.title } : S.sectionTitle}>
