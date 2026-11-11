@@ -8,6 +8,7 @@
     "tag:deploy": "node scripts/tag-deploy.mjs",
     "release:prepare": "node scripts/release.mjs prepare",
     "release:deploy": "node scripts/release.mjs deploy",
+    "desktop:release": "node scripts/desktop-release.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:data": "node scripts/data-test.mjs",
     "test:rules": "node tools/rules-test/rules.mjs test",
