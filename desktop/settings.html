@@ -49,9 +49,6 @@
 <label>달력 보기</label>
 <div class="row"><input id="calendar" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="calendar" title="단축키 지우기">지우기</button></div>
 
-<label>메모 검색</label>
-<div class="row"><input id="memoSearch" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="memoSearch" title="단축키 지우기">지우기</button></div>
-
 <label>PC 대시보드 (오늘 할일·달력·메모 한 화면)</label>
 <div class="row"><input id="dashboard" type="text" placeholder="클릭 후 키 조합을 누르세요" readonly /><button type="button" class="clear" data-for="dashboard" title="단축키 지우기">지우기</button></div>
 
@@ -88,20 +85,20 @@
 <script>
   const { ipcRenderer } = require('electron');
 
-  const GLOBAL_IDS = ['memo', 'calendar', 'search', 'quickMemo', 'memoSearch', 'dashboard', 'toggleStickies', 'recentMemo'];
+  // '메모 검색'(memoSearch)은 1.3.6에서 뺐다 — 메모 관리자와 같은 화면을 열었다 (2026-11-11 사용자 결정)
+  const GLOBAL_IDS = ['memo', 'calendar', 'search', 'quickMemo', 'dashboard', 'toggleStickies', 'recentMemo'];
   const STICKY_IDS = ['stickyFold', 'stickyNew', 'stickyClose', 'stickyPin', 'stickyCopy'];
   // 메모 칸 편집 도우미(editorAssist.js)가 쓰는 키 — 포스트잇 키로 쓰면 그 기능이 막힌다
   const EDITOR_KEYS = { 'Ctrl+D': '줄 복제', 'Ctrl+;': '날짜 넣기', 'Ctrl+Shift+;': '시각 넣기', 'Ctrl+Shift+:': '시각 넣기', 'Ctrl+/': '계산', 'F12': '계산', 'Ctrl+C': '복사', 'Ctrl+V': '붙여넣기', 'Ctrl+X': '잘라내기', 'Ctrl+Z': '되돌리기', 'Ctrl+A': '전체 선택', 'Ctrl+F': '찾기' };
 
   ipcRenderer.invoke('get-shortcuts').then((all) => {
-    const { memo, calendar, search, quickMemo, memoSearch, toggleStickies, recentMemo } = all;
+    const { memo, calendar, search, quickMemo, toggleStickies, recentMemo } = all;
     STICKY_IDS.forEach(id => { document.getElementById(id).value = all[id] ?? ''; });
     document.getElementById('memo').value = memo;
     document.getElementById('calendar').value = calendar;
     // 지운 단축키('')는 그대로 비워 두고, 설정한 적 없는 항목만 기본값
     document.getElementById('search').value = search ?? 'Ctrl+Shift+S';
     document.getElementById('quickMemo').value = quickMemo ?? 'Ctrl+Shift+N';
-    document.getElementById('memoSearch').value = memoSearch ?? 'Ctrl+Alt+F';
     document.getElementById('toggleStickies').value = toggleStickies ?? 'Ctrl+Alt+H';
     document.getElementById('recentMemo').value = recentMemo ?? 'Ctrl+Alt+R';
     document.getElementById('dashboard').value = all.dashboard ?? 'Ctrl+Alt+D'; // 1.3.4~
@@ -155,16 +152,15 @@
     const calendar = document.getElementById('calendar').value.trim();
     const search = document.getElementById('search').value.trim();
     const quickMemo = document.getElementById('quickMemo').value.trim();
-    const memoSearch = document.getElementById('memoSearch').value.trim();
     const toggleStickies = document.getElementById('toggleStickies').value.trim();
     const recentMemo = document.getElementById('recentMemo').value.trim();
     const dashboard = document.getElementById('dashboard').value.trim();
     const sticky = Object.fromEntries(STICKY_IDS.map(id => [id, document.getElementById(id).value.trim()]));
-    const used = [memo, calendar, search, quickMemo, memoSearch, dashboard, toggleStickies, recentMemo, ...Object.values(sticky)].filter(Boolean);
+    const used = [memo, calendar, search, quickMemo, dashboard, toggleStickies, recentMemo, ...Object.values(sticky)].filter(Boolean);
     if (new Set(used).size < used.length) { alert('같은 단축키를 두 곳에 쓸 수 없어요.'); return; }
     const clash = Object.values(sticky).find(k => EDITOR_KEYS[k]);
     if (clash) { alert(`${clash}는 메모 칸의 '${EDITOR_KEYS[clash]}' 키라서 포스트잇 단축키로 쓸 수 없어요.`); return; }
-    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, memoSearch, dashboard, toggleStickies, recentMemo, ...sticky }).then(ok => {
+    ipcRenderer.invoke('set-shortcuts', { memo, calendar, search, quickMemo, dashboard, toggleStickies, recentMemo, ...sticky }).then(ok => {
       if (ok) {
         document.getElementById('msg').style.display = 'block';
         setTimeout(() => window.close(), 800);

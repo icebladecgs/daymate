@@ -97,8 +97,8 @@ export default function MemoSettings({ onClose, inline = false }) {
           ].map(([head, names, prefix]) => (
             <div key={head}>
               {title(head)}
-              {/* PC 대시보드 단축키는 데스크탑 1.3.4부터 — 옛 앱에선 줄을 숨김 */}
-              {names.filter(([id]) => id !== "dashboard" || keys[id] !== undefined).map(([id, name]) => (
+              {/* PC 대시보드 단축키는 데스크탑 1.3.4부터 — 옛 앱에선 줄을 숨김. 메모 검색은 1.3.6에서 빠짐 — 옛 앱에서만 보임 */}
+              {names.filter(([id]) => (id !== "dashboard" && id !== "memoSearch") || keys[id] !== undefined).map(([id, name]) => (
                 <div key={id} style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "4px 0", borderTop: `1px solid ${line}`, fontSize: 12 }}>
                   <span style={{ flexShrink: 0, width: inline ? 100 : 120 }}>{keys[id] ? <span style={keyCap}>{keys[id]}</span> : <span style={{ color: sub }}>없음</span>}</span>
                   <span style={{ color: inline ? "#333" : "var(--dm-sub)" }}>{prefix}{name}</span>
