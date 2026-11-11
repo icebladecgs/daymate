@@ -35,12 +35,13 @@ html:has(.dm-dash) { overflow: hidden; }
 const loading = <div style={{ padding: 24, textAlign: "center", color: "var(--dm-muted)", fontSize: 14 }}>불러오는 중...</div>;
 const barBtn = { padding: "8px 14px", borderRadius: 10, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", marginTop: 0 };
 
-export default function Dashboard({ today, calendar, week, memo, onClose, onOpenManager }) {
+export default function Dashboard({ today, calendar, week, memo, onClose, onOpenManager, scaleControl }) {
   return (
     <div className="dm-dash">
       <style>{CSS}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderBottom: "1px solid var(--dm-border)", background: "var(--dm-nav)", flexShrink: 0 }}>
         <div style={{ flex: 1, minWidth: 0, fontSize: 18, fontWeight: 900, color: "var(--dm-text)", fontFamily: S.sectionTitle.fontFamily }}>대시보드</div>
+        {scaleControl /* 가− 가+ 화면 크기 (2026-11-11) */}
         <button onClick={onOpenManager} style={barBtn}>🗂 메모 관리자</button>
         <button onClick={onClose} style={barBtn}>✕ 닫기</button>
       </div>

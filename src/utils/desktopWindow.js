@@ -6,20 +6,24 @@
 const PHONE_WIDTH = 430; // styles.js S.phone maxWidth
 const BASE_ZOOM = 1.1;   // 대시보드 1240×800은 기본 110%로 맞춘 크기
 
-let last = null; // 마지막으로 보낸 { wide, zoom, dpr }
+let lastSent = '';     // 같은 요청을 다시 보내지 않게
+let lastNormal = null; // 보통 화면 폭을 마지막으로 맞춘 { zoom, dpr } — 넓은 화면은 크기를 따로 쓰므로(대시보드 가−·가+) 따로 기억
 
 export function syncDesktopWindow(wide, zoom) {
   const d = window.daymateDesktop;
   if (!d) return;
   if (!d.fitWindow) { d.setWideMode?.(wide); return; }
   const dpr = window.devicePixelRatio || 1;
-  const changedScale = !last || last.zoom !== zoom || last.dpr !== dpr;
-  if (last && last.wide === wide && !changedScale) return; // 화면만 바뀐 것 — 직접 맞춘 창 크기를 건드리지 않는다
-  last = { wide, zoom, dpr };
+  // 보통 화면 폭은 처음·배율·단계가 바뀌었을 때만 맞춘다 — 화면만 오가면 직접 맞춘 창 크기를 건드리지 않는다
+  const fitNormal = !wide && (!lastNormal || lastNormal.zoom !== zoom || lastNormal.dpr !== dpr);
+  const key = `${wide ? 'w' : 'n'}|${zoom}|${dpr}`;
+  if (key === lastSent && !fitNormal) return;
+  lastSent = key;
+  if (!wide) lastNormal = { zoom, dpr };
   const sb = Math.max(0, window.innerWidth - document.documentElement.clientWidth); // 세로 스크롤 막대
   d.fitWindow({
     wide,
-    fitNormal: changedScale, // 보통 화면 폭은 배율·단계가 바뀌었을 때만
+    fitNormal,
     rel: zoom / BASE_ZOOM,
     cssWidth: Math.ceil(PHONE_WIDTH * zoom + sb),
     innerWidth: window.innerWidth,

@@ -55,7 +55,7 @@ const updateMemoIn = (day, id, patch) => {
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
 // 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
-export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onRequireLogin }) {
+export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onRequireLogin, scaleControl = null, zoom = 1 }) {
   const [toast, setToast] = useState("");
   // 새 디자인(2026-11-01): 글씨 12~13px → 14~16px, 버튼·줄 높이 크게. 배치는 그대로
   const [nl] = useState(newDesignOn);
@@ -406,7 +406,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   );
 
   return createPortal(
-    <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit", ...(zoom !== 1 ? { zoom } : {}) }}>
       {/* 상단: 닫기 · 새 메모 · 검색 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: border, flexShrink: 0, flexWrap: wide ? "nowrap" : "wrap" }}>
         <button className={hit} onClick={onClose} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 15), fontWeight: z(400, 700), cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
@@ -423,6 +423,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
           <button className={hit} onClick={() => move(-1)} aria-label="이전" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▲</button>
           <button className={hit} onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: z(14, 16), flexShrink: 0 }}>⚙️</button>
           <span style={{ fontSize: z(12, 14), ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), whiteSpace: "nowrap" }}>{list.length}개</span>
+          {scaleControl /* 가− 가+ 화면 크기 (PC만, 2026-11-11) */}
           {filter === "trash" && list.length > 0 && (
             <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
           )}

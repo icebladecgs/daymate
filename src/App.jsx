@@ -53,7 +53,8 @@ import { compressImage } from "./utils/image.js";
 import { APP_COMMIT, APP_VERSION } from "./version.js";
 import { addRecurringToDay } from "./utils/recurring.js";
 import { pickTaskDetail } from "./utils/taskDetail.js";
-import { effectiveFontScale, fontZoom } from "./utils/fontScale.js";
+import { effectiveFontScale, fontZoom, FONT_STEPS, isTouchScreen } from "./utils/fontScale.js";
+import ScaleButtons, { ScaleFlash } from "./components/ScaleButtons.jsx";
 import { syncDesktopWindow, watchPixelRatio } from "./utils/desktopWindow.js";
 
 import WeeklySchedule from "./components/WeeklySchedule.jsx";
@@ -384,10 +385,10 @@ export default function App() {
   const [fontScale, setFontScale] = useState(() => store.get('dm_font_scale', 'large'));
   // 화면 크기 단계 100~130% (utils/fontScale.js — 휴대폰은 120까지)
   const fontScaleOn = effectiveFontScale(fontScale);
-  useEffect(() => {
-    document.documentElement.setAttribute('data-font', fontScaleOn);
-    store.set('dm_font_scale', fontScale);
-  }, [fontScale, fontScaleOn]);
+  // 넓은 화면(대시보드·메모 관리자) 크기는 따로 (2026-11-11 사용자 확정, PC만) — 정한 적 없으면 보통 화면 크기를 따른다
+  const [wideScale, setWideScale] = useState(() => store.get('dm_wide_scale', null));
+  useEffect(() => { if (wideScale) store.set('dm_wide_scale', wideScale); }, [wideScale]);
+  const wideScaleOn = wideScale && FONT_STEPS.some(s => s.id === wideScale) ? wideScale : fontScaleOn;
 
   const currentGoalMonthKey = getCurrentGoalMonthKey();
   const [user, setUser] = useState(() => store.get("dm_user", { name: "사용자" }));
@@ -1324,7 +1325,13 @@ export default function App() {
   // 데스크탑 앱: 메모 관리자·대시보드일 때만 창을 넓게. 1.3.5부터는 화면 크기 단계·윈도우 배율에 맞춰 창 크기도 (utils/desktopWindow.js)
   const [dprTick, setDprTick] = useState(0);
   useEffect(() => watchPixelRatio(() => setDprTick(t => t + 1)), []);
-  useEffect(() => { syncDesktopWindow(screen === 'manager' || screen === 'dashboard', fontZoom(fontScaleOn)); }, [screen, fontScaleOn, dprTick]);
+  const wideScreen = (screen === 'manager' || screen === 'dashboard') && !isTouchScreen();
+  const scaleOn = wideScreen ? wideScaleOn : fontScaleOn; // 지금 화면에 걸리는 크기
+  useEffect(() => {
+    document.documentElement.setAttribute('data-font', scaleOn);
+    store.set('dm_font_scale', fontScale);
+  }, [scaleOn, fontScale]);
+  useEffect(() => { syncDesktopWindow(screen === 'manager' || screen === 'dashboard', fontZoom(scaleOn)); }, [screen, scaleOn, dprTick]);
 
   // 휴대폰 공유 → DayMate ("나와의 채팅"처럼 던져두기). sw.js의 share-target이 ?share-target=1 로 앱을 연다.
   // 글·링크는 주소에서, 사진은 서비스워커 임시 보관함(dm-share)에서 가져와 오늘 메모로 저장한다.
@@ -2665,6 +2672,7 @@ export default function App() {
           calendar={renderHistory()}
           week={<WeeklySchedule roomy={newDesignOn()} plans={plans} habits={habits} onOpenDate={(ds) => window.dispatchEvent(new CustomEvent('dm:calendar-preview', { detail: ds }))} showAll />}
           memo={renderMemo({ toast: null, embedded: true })}
+          scaleControl={<ScaleButtons value={wideScaleOn} onChange={setWideScale} />}
           onClose={() => {
             // 새로고침·주소로 바로 열었으면 돌아갈 화면이 없다 — 뒤로 가면 "앱을 종료하시겠습니까?"가 뜨므로 오늘 탭으로 바꾼다
             const st = history.state;
@@ -2858,6 +2866,9 @@ export default function App() {
           onClose={() => history.back()}
           onOpenDate={(ds) => openDetail(ds)}
           onRequireLogin={() => googleSignIn().catch(() => {})}
+          // 넓은 화면 크기 (PC만) — 메모 관리자는 body에 그려져 .dm-phone 확대가 안 걸리므로 직접 건다. 기본 110%일 때 예전 모습 그대로
+          scaleControl={isTouchScreen() ? null : <ScaleButtons value={wideScaleOn} onChange={setWideScale} />}
+          zoom={isTouchScreen() ? 1 : fontZoom(wideScaleOn) / 1.1}
         />
       );
     }
@@ -2942,6 +2953,7 @@ export default function App() {
         )}
         {isOffline && !statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <OfflineBar />}
         {!isOffline && !statAsk && !(unsynced && unsynced.n !== unsyncedHidden) && <DesktopUpdateBar />}
+        <ScaleFlash />{/* 화면 크기를 바꿀 때 가운데 "120%" 잠깐 */}
         <AlarmSnoozeBar
           items={alarmBar.filter(x => (plans[x.ds]?.tasks || []).some(t => String(t.id) === String(x.id) && !t.done))}
           workHours={normalizeWorkHours(workHours)}

@@ -22,6 +22,9 @@ export function effectiveFontScale(id, touch = isTouchScreen()) {
 
 export const fontZoom = (id) => (FONT_STEPS.find((s) => s.id === id)?.pct || 110) / 100;
 
+// 바꾼 크기를 화면 가운데에 잠깐 보여 준다 (components/ScaleButtons.jsx의 ScaleFlash가 받음)
+export const flashScale = (id) => window.dispatchEvent(new CustomEvent('dm:scale-flash', { detail: Math.round(fontZoom(id) * 100) }));
+
 // 설정 첫 화면 A+ 버튼: 누를 때마다 다음 단계, 끝이면 처음으로
 export function nextFontScale(id, touch = isTouchScreen()) {
   const steps = fontSteps(touch);
