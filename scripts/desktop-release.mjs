@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const desktop = path.join(root, 'desktop');
-const sh = (cmd, opts = {}) => execSync(cmd, { cwd: root, encoding: 'utf8', ...opts }).trim();
+const sh = (cmd, opts = {}) => (execSync(cmd, { cwd: root, encoding: 'utf8', ...opts }) || '').trim();
 const stop = (msg) => { console.error(`\n❌ ${msg}`); process.exit(1); };
 const step = (msg) => console.log(`\n▶ ${msg}`);
 
