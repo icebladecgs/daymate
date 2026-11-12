@@ -17,6 +17,7 @@ import { store } from "../utils/storage.js";
 import { getContactReminders } from "../data/contacts.js";
 import { parseSchedule, parseMany, describeSchedule, friendlySchedule } from "../utils/nlSchedule.js";
 import { recurringLabel, recurringIdOf } from "../utils/recurring.js";
+import { categoryProps } from "../utils/taskCategory.js";
 import NowTaskCard from "../components/NowTaskCard.jsx";
 import { findNowTask, useNowMinutes, leftText } from "../utils/nowTask.js";
 import WeekStrip from "../components/WeekStrip.jsx";
@@ -71,7 +72,7 @@ function ReorderToggle({ on, onClick }) {
 }
 
 export default function Today({
-  dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate,
+  dateStr, data, setData, toast, setToast, plans, onOpenDate, hasGoal, onUpdateDayData, recurringTasks, setRecurringTasks, onMoveTaskDate, catCtx,
   onOpenVoiceDiary,
   habits, onToggleHabit, setHabits,
   someday, setSomeday,
@@ -1045,6 +1046,7 @@ export default function Today({
         <TaskDetailSheet
           key={detailTask.id}
           task={detailTask}
+          category={categoryProps(catCtx, detailTask, targetDs)}
           uid={uid}
           onSave={(patch) => saveTaskDetail(targetDs, detailTask.id, patch)}
           onClose={() => setDetailTaskId(null)}
@@ -1078,6 +1080,7 @@ export default function Today({
         <TaskDetailSheet
           key={`sd_${detailSomeday.id}`}
           task={detailSomeday}
+          category={categoryProps(catCtx, detailSomeday, null)}
           order={{
             canUp: canMoveInList(somedayList, detailSomeday.id, -1),
             canDown: canMoveInList(somedayList, detailSomeday.id, 1),

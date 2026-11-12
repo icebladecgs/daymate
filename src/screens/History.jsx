@@ -19,8 +19,9 @@ import { fetchDividends } from "../api/dividends.js";
 import { useBackClose } from "../utils/useBackClose.js";
 import { canMoveInList, moveInList } from "../utils/taskOrder.js";
 import { normalizeSubs, billsInMonth, billsOnDate, fmtMoney, fmtKrw } from "../utils/subscriptions.js";
+import { allCats, catOf, categoryProps, CUSTOM_COLORS, MAX_CUSTOM_CATS, newCustomCat, normalizeTaskCats } from "../utils/taskCategory.js";
 
-export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal, pfHoldings = [], subscriptions = [], onOpenSubs }) {
+export default function History({ plans, onOpenDate, habits, getValidGcalToken, onGcalConnect, onSyncGcal, goals = { year: [], month: [] }, onSaveGoals, initialGoalsOpen = false, onToggleTaskForDate, onUpdateDayData, onImportGcalEvents, uid, setSomeday, onMoveTaskDate, marketCal = [], setMarketCal, pfHoldings = [], subscriptions = [], onOpenSubs, catCtx }) {
   const [year, setYear] = useState(new Date().getFullYear());
   // 📈 증시 일정의 "내 배당" (2026-11-07) — 실계좌 종목의 지난 1년 배당을 1년 뒤로 옮긴 예상 배당락일
   const [divEvents, setDivEvents] = useState([]);
@@ -56,6 +57,9 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
   const [gcalImporting, setGcalImporting] = useState(false);
 
   const undo = useUndo(); // ↩ 지우기·언젠가로 옮기기 되돌리기 (5초, 2026-11-03)
+  // 달력 보기 [종합][업무][재무][직접 만든 것][＋] (2026-11-13 사용자 확정) — 항상 종합으로 연다(기억하지 않음)
+  const [calView, setCalView] = useState('all');
+  const [catForm, setCatForm] = useState(null); // { id?, name, color } — ＋ 새 보기 / 직접 만든 보기 고치기
   const shortTitle = (t) => (t.length > 14 ? `${t.slice(0, 14)}…` : t);
   const showToast = (msg) => {
     setGcalToast(msg);
@@ -467,6 +471,42 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
     }
   };
 
+  // ── 달력 보기 분류 (utils/taskCategory.js) ──
+  const cats = allCats(catCtx?.taskCats);
+  const viewCat = calView !== 'all' && cats.some(c => c.id === calView) ? calView : null;
+  const catIdOf = (t, ds) => catOf(t, ds, catCtx?.taskCats, catCtx?.workHours);
+  const inView = (t, ds) => !viewCat || catIdOf(t, ds) === viewCat;
+  const catColorOf = (id) => cats.find(c => c.id === id)?.color || null;
+  const finView = viewCat === 'fin';
+  // 재무 일정 (구독 결제·증시 일정·내 배당) — 재무 보기에서만 날짜 칸·목록에, 종합에는 건수만 안내 (2026-11-13 사용자 결정)
+  const ymNow = `${year}-${pad2(month0 + 1)}`;
+  const monthBills = normalizeSubs(subscriptions).length ? billsInMonth(subscriptions, year, month0 + 1) : [];
+  const monthMarket = setMarketCal ? marketEventsOf(year, month0, marketCal) : [];
+  const monthDivs = divOn ? divEvents.filter(e => e.d.startsWith(ymNow)) : [];
+  const finItemsOn = (ds) => [
+    ...monthBills.filter(b => b.ds === ds).map(b => ({ title: `💳${b.sub.name}`, color: 'rgba(22,163,74,0.8)' })),
+    ...monthMarket.filter(e => e.ds === ds).map(e => ({ title: e.title, color: e.market === 'kr' ? 'rgba(239,68,68,0.72)' : 'rgba(91,124,250,0.8)' })),
+    ...monthDivs.filter(e => e.d === ds).map(e => ({ title: `💰${e.label}`, color: 'rgba(21,128,61,0.85)' })),
+  ];
+  const setTaskCats = (fn) => catCtx?.setTaskCats?.(prev => fn(normalizeTaskCats(prev)));
+  const saveCatForm = () => {
+    const name = (catForm?.name || '').trim().slice(0, 8);
+    if (!name) return;
+    if (cats.some(c => c.name === name && c.id !== catForm.id)) { showToast('같은 이름이 있어요'); return; }
+    if (catForm.id) setTaskCats(v => ({ ...v, custom: v.custom.map(c => (c.id === catForm.id ? { ...c, name, color: catForm.color } : c)) }));
+    else { const c = newCustomCat(name, catForm.color); setTaskCats(v => ({ ...v, custom: [...v.custom, c] })); setCalView(c.id); }
+    setCatForm(null);
+  };
+  const removeCat = (id) => {
+    const cur = normalizeTaskCats(catCtx?.taskCats);
+    const idx = cur.custom.findIndex(c => c.id === id);
+    const gone = cur.custom[idx];
+    if (!gone) return;
+    setTaskCats(v => ({ ...v, custom: v.custom.filter(c => c.id !== id) }));
+    setCalView('all'); setCatForm(null);
+    undo.offer(`"${gone.name}" 보기를 지웠어요 (할일은 그대로)`, () => setTaskCats(v => ({ ...v, custom: [...v.custom.slice(0, idx), gone, ...v.custom.slice(idx)] })));
+  };
+
   return (
     <div className="dm-keep-look" style={{ ...S.content, overflowX: "hidden" }}>{/* 달력 탭은 예전 모습 유지 — index.css 새 디자인 굵기 조정에서 뺀다 */}
       <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={detailTask ? 1300 : undefined} />
@@ -485,6 +525,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             onMove: (dir) => onUpdateDayData?.(preview, prev => ({ ...prev, tasks: moveInList(prev.tasks, detailTask.id, dir) })),
           }}
           dateStr={preview}
+          category={categoryProps(catCtx, detailTask, preview)}
           onMoveDate={onMoveTaskDate && ((t, to) => { const ok = onMoveTaskDate(t, preview, to); if (ok) showToast(`📅 ${formatShortKoreanDate(to)} 할일로 옮겼어요`); return ok; })}
         />
       )}
@@ -580,6 +621,50 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       )}
 
       {viewMode === 'monthly' && <>
+      {/* 달력 보기 칩 (2026-11-13) — 종합은 다 보이고, 업무·재무·직접 만든 보기는 그 분류만. 그 보기에서 넣은 할일은 그 분류로 */}
+      {catCtx && (
+        <div style={{ padding: '6px 10px 8px' }}>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
+            {[{ id: 'all', name: '종합', color: 'var(--dm-accent, #5B7CFA)' }, ...cats].map(c => {
+              const on = (viewCat || 'all') === c.id;
+              const custom = c.id.startsWith('c_');
+              return (
+                <button key={c.id} aria-pressed={on}
+                  onClick={() => { if (on && custom) setCatForm({ id: c.id, name: c.name, color: c.color }); else { setCalView(c.id); setCatForm(null); } }}
+                  style={{ flexShrink: 0, height: 34, padding: '0 14px', borderRadius: 17, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap',
+                    border: `1.5px solid ${on ? c.color : 'var(--dm-border)'}`, background: on ? c.color : 'var(--dm-input)', color: on ? '#fff' : 'var(--dm-sub)' }}>
+                  {c.name}{on && custom ? ' ✎' : ''}
+                </button>
+              );
+            })}
+            {normalizeTaskCats(catCtx.taskCats).custom.length < MAX_CUSTOM_CATS && (
+              <button aria-label="보기 추가" onClick={() => setCatForm(f => (f && !f.id ? null : { name: '', color: CUSTOM_COLORS[normalizeTaskCats(catCtx.taskCats).custom.length % CUSTOM_COLORS.length] }))}
+                style={{ flexShrink: 0, width: 40, height: 34, padding: 0, borderRadius: 17, cursor: 'pointer', fontSize: 18, fontWeight: 800, border: '1.5px dashed var(--dm-border)', background: 'transparent', color: 'var(--dm-sub)' }}>＋</button>
+            )}
+          </div>
+          {catForm && (
+            <div style={{ marginTop: 8, padding: '12px', borderRadius: 12, background: 'var(--dm-card)', border: '1px solid var(--dm-border)' }}>
+              <div style={{ fontSize: 13, color: 'var(--dm-sub)', fontWeight: 700, marginBottom: 8 }}>{catForm.id ? '보기 고치기' : '새 보기 만들기 (예: 공부·가족·건강)'}</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={catForm.name} maxLength={8} placeholder="이름" aria-label="보기 이름" autoFocus={!catForm.id}
+                  onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && saveCatForm()}
+                  style={{ ...S.input, marginBottom: 0, flex: 1, minWidth: 0, fontSize: 15, padding: '8px 12px' }} />
+                <button onClick={saveCatForm} disabled={!catForm.name.trim()}
+                  style={{ height: 38, padding: '0 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 800, background: catForm.color, color: '#fff', opacity: catForm.name.trim() ? 1 : 0.5, flexShrink: 0 }}>{catForm.id ? '저장' : '만들기'}</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+                {CUSTOM_COLORS.map(col => (
+                  <button key={col} aria-label="색 고르기" aria-pressed={catForm.color === col} onClick={() => setCatForm(f => ({ ...f, color: col }))}
+                    style={{ width: 30, height: 30, padding: 0, borderRadius: 999, cursor: 'pointer', background: col, border: catForm.color === col ? '3px solid var(--dm-text)' : '3px solid transparent' }} />
+                ))}
+                <span style={{ flex: 1 }} />
+                {catForm.id && <button onClick={() => removeCat(catForm.id)} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '6px 4px' }}>지우기</button>}
+                <button onClick={() => setCatForm(null)} style={{ background: 'none', border: 'none', color: 'var(--dm-muted)', fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '6px 4px' }}>취소</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {/* 범례 — 기본 숨김, 토글 */}
       <div style={{ padding: '0 16px 8px' }}>
         <button onClick={() => setLegendOpen(v => !v)}
@@ -645,12 +730,13 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
             const importedGcalIds = new Set((plans[ds]?.tasks || []).map(t => t.gcalEventId).filter(Boolean));
             const dayGcalEvents = (gcalEvents[ds] || []).filter(e => !e.extendedProperties?.private?.daymateId && !importedGcalIds.has(e.id));
             // 셀에 표시할 이벤트 목록: GCal 일정 우선, 이후 데이메이트 할일
-            const gcalItems = dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'var(--dm-accent-soft, rgba(75,111,255,0.75))' }));
-            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim()).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)' }));
+            // 업무·재무 등 보기에서는 그 분류 할일만(구글 캘린더 일정은 분류가 없어 종합에만). 종합에서는 분류된 할일 왼쪽에 그 색 줄
+            const gcalItems = viewCat ? [] : dayGcalEvents.map(e => ({ title: e.summary || '(제목없음)', color: 'var(--dm-accent-soft, rgba(75,111,255,0.75))' }));
+            const taskItems = (plans[ds]?.tasks || []).filter(t => t.title?.trim() && inView(t, ds)).map(t => ({ title: t.title, color: t.done ? 'rgba(74,222,128,0.3)' : t.priority ? 'rgba(252,211,77,0.75)' : 'rgba(75,158,255,0.55)', mark: viewCat ? null : catColorOf(catIdOf(t, ds)) }));
             // 공휴일(utils/holidays.js) — 날짜 숫자를 빨갛게(일요일도), 이름은 칸 맨 위 일정 줄로
             const holiday = holidayName(ds);
             const redDay = !!holiday || (firstDay + i) % 7 === 0;
-            const allItems = [...(holiday ? [{ title: holiday, color: 'rgba(239,68,68,0.78)' }] : []), ...gcalItems, ...taskItems];
+            const allItems = [...(holiday ? [{ title: holiday, color: 'rgba(239,68,68,0.78)' }] : []), ...(finView ? finItemsOn(ds) : []), ...gcalItems, ...taskItems];
             const visibleItems = allItems.slice(0, 3);
             const moreCount = allItems.length - visibleItems.length;
             return (
@@ -691,6 +777,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     background: item.color,
                     color: '#fff',
                     marginBottom: 1.5,
+                    ...(item.mark ? { boxShadow: `inset 2px 0 0 ${item.mark}` } : {}),
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                     textOverflow: 'ellipsis',
@@ -723,7 +810,19 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       </div>
 
       {/* 📈 이번 달 증시 일정 (2026-11-01) — 날짜 칸에는 넣지 않고 달력 아래 목록으로만(사용자 결정). 고른 시장만, 기본은 모두 꺼짐 */}
-      {setMarketCal && (() => {
+      {/* 종합 보기: 재무 일정은 건수만 안내하고 누르면 재무 보기로 (금액은 안 보임, 2026-11-13 사용자 결정) */}
+      {catCtx && !viewCat && (() => {
+        const parts = [monthBills.length && `구독 결제 ${monthBills.length}건`, monthMarket.length && `증시 일정 ${monthMarket.length}건`, monthDivs.length && `배당 ${monthDivs.length}건`].filter(Boolean);
+        if (!parts.length) return null;
+        return (
+          <button onClick={() => { setCalView('fin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, width: 'calc(100% - 20px)', margin: '0 10px 14px', padding: '11px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', background: 'var(--dm-card)', border: '1px solid var(--dm-border)', color: 'var(--dm-sub)', fontSize: 14, fontWeight: 700 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>💰 이번 달 {parts.join(' · ')}은 <b style={{ color: '#16A34A' }}>재무</b>에서 볼 수 있어요</span>
+            <span aria-hidden style={{ color: 'var(--dm-muted)' }}>›</span>
+          </button>
+        );
+      })()}
+      {setMarketCal && (!catCtx || finView) && (() => {
         const ym = `${year}-${pad2(month0 + 1)}`;
         const hideAmt = isPfHidden();
         const fmtDiv = (e) => hideAmt ? MASK : e.currency === "KRW" ? `${Math.round(e.amount).toLocaleString("ko-KR")}원` : `$${e.amount.toFixed(2)}`;
@@ -787,7 +886,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
       })()}
 
       {/* 💳 이번 달 구독 결제 (2026-11-08) — 증시 일정처럼 날짜 칸에는 넣지 않고 달력 아래 목록 + 날짜 미리보기에 한 줄. 구독이 있을 때만 */}
-      {onOpenSubs && normalizeSubs(subscriptions).length > 0 && (() => {
+      {onOpenSubs && (!catCtx || finView) && normalizeSubs(subscriptions).length > 0 && (() => {
         const bills = billsInMonth(subscriptions, year, month0 + 1);
         const WD = ["일", "월", "화", "수", "목", "금", "토"];
         const krw = bills.filter(b => b.sub.cur === "KRW").reduce((a, b) => a + b.sub.amount, 0);
@@ -854,7 +953,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
 
       {preview && (() => {
         const d = plans[preview];
-        const tasks = (d?.tasks || []).filter(t => t.title.trim());
+        const tasks = (d?.tasks || []).filter(t => t.title.trim() && inView(t, preview));
         const done = tasks.filter(t => t.done).length;
         const sortedTasks = [...tasks].sort((a, b) => {
           if (a.time && b.time) return a.time.localeCompare(b.time);
@@ -883,7 +982,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
           if (!title) return;
           onUpdateDayData?.(preview, prev => ({
             ...(prev || {}),
-            tasks: [...((prev?.tasks) || []), { id: `t${Date.now()}`, title, done: false, checkedAt: null, priority: false }],
+            tasks: [...((prev?.tasks) || []), { id: `t${Date.now()}`, title, done: false, checkedAt: null, priority: false, ...(viewCat ? { cat: viewCat } : {}) }],
           }));
           setQuickTaskInput('');
         };
@@ -918,7 +1017,11 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                   </div>
                   {(() => { const l = solarToLunar(preview); return l ? <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 2 }}>음력 {l.leap ? '윤' : ''}{l.month}월 {l.day}일</div> : null; })()}
                   {/* 💳 그날 구독 결제 (2026-11-08) */}
-                  {billsOnDate(subscriptions, preview).map(b => (
+                  {viewCat && <div style={{ fontSize: 13, fontWeight: 800, color: catColorOf(viewCat), marginTop: 3 }}>● {cats.find(c => c.id === viewCat)?.name}만 보는 중</div>}
+                  {finView && [...monthMarket.filter(e => e.ds === preview).map(e => `📈 ${e.title}${e.time ? ` · ${e.time}` : ''}`), ...monthDivs.filter(e => e.d === preview).map(e => `💰 ${e.label} 배당락 (예상)`)].map((line, i) => (
+                    <div key={i} style={{ marginTop: 3, fontSize: 14, fontWeight: 700, color: 'var(--dm-sub)' }}>{line}</div>
+                  ))}
+                  {(!catCtx || finView) && billsOnDate(subscriptions, preview).map(b => (
                     <button key={b.sub.id} onClick={() => { setPreview(null); onOpenSubs?.(); }} style={{ display: 'block', padding: 0, marginTop: 3, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: 'var(--dm-sub)' }}>
                       💳 {b.sub.name} 결제 · {fmtMoney(b.sub.amount, b.sub.cur)}{b.sub.pay ? ` · ${b.sub.pay}` : ''}
                     </button>
@@ -965,6 +1068,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                       <div onClick={() => setDetailTaskId(t.id)} style={{ fontSize: 14, color: t.done ? "var(--dm-muted)" : "var(--dm-text)",
                         textDecoration: t.done ? "line-through" : "none", flex: 1, minWidth: 0, lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 4, opacity: t.done ? 0.6 : 1, cursor: 'pointer' }}>
                         {String(t.id || '').startsWith('gcal_') && <span style={{ fontSize: 12, opacity: 0.7, flexShrink: 0 }}>📅</span>}
+                        {!viewCat && catColorOf(catIdOf(t, preview)) && <span aria-hidden style={{ width: 7, height: 7, borderRadius: 999, flexShrink: 0, background: catColorOf(catIdOf(t, preview)) }} />}
                         <span style={{ minWidth: 0 }}>{t.title}</span>
                         {t.time && <span style={{ fontSize: 11, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 700, flexShrink: 0, background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', padding: '1px 6px', borderRadius: 6 }}>{t.time}{t.endTime && t.endTime > t.time ? `–${t.endTime}` : ''}</span>}
                         <TaskDetailBadge task={t} />
@@ -1053,7 +1157,7 @@ export default function History({ plans, onOpenDate, habits, getValidGcalToken, 
                     value={quickTaskInput}
                     onChange={e => setQuickTaskInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addQuickTask()}
-                    placeholder={tasks.length === 0 ? "할일을 추가해보세요..." : "+ 할일 추가..."}
+                    placeholder={viewCat ? `+ ${cats.find(c => c.id === viewCat)?.name} 할일 추가...` : tasks.length === 0 ? "할일을 추가해보세요..." : "+ 할일 추가..."}
                     maxLength={60}
                     style={{ ...S.input, flex: 1, marginBottom: 0, fontSize: 13, padding: '8px 12px' }}
                   />

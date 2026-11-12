@@ -6,6 +6,7 @@ import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
 import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
 import { normalizeDdays } from "./utils/ddays.js";
+import { normalizeTaskCats, rememberCat } from "./utils/taskCategory.js";
 import { normalizeSubs } from "./utils/subscriptions.js";
 import { normalizeDreams } from "./utils/dreams.js";
 import Dreams from "./screens/Dreams.jsx";
@@ -435,6 +436,8 @@ export default function App() {
   // 수험생 모드 (D-day·과목·켜기) — 계정 설정 exam에 동기화
   const [exam, setExam] = useState(() => normalizeExam(store.get("dm_exam", null)));
   const [ddays, setDdays] = useState(() => normalizeDdays(store.get("dm_ddays", [])));
+  // 달력 보기 분류 (2026-11-13) — 직접 만든 보기 + 내가 고친 제목 기록 (utils/taskCategory.js)
+  const [taskCats, setTaskCats] = useState(() => normalizeTaskCats(store.get("dm_task_cats", null)));
   // 💳 구독 (2026-11-08) — 계정 설정 subscriptions, D-day와 같은 방식으로 동기화
   const [subscriptions, setSubscriptions] = useState(() => normalizeSubs(store.get("dm_subs", [])));
   // 🛒 갖고 싶은 것 · 📍 가고 싶은 곳 (2026-11-08, utils/dreams.js) — 계정 설정 wishes / places
@@ -1258,6 +1261,7 @@ export default function App() {
     }
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
     if (Array.isArray(s?.ddays) && !same(normalizeDdays(s.ddays), ddays)) setDdays(normalizeDdays(s.ddays));
+    if (s?.taskCats && !same(normalizeTaskCats(s.taskCats), taskCats)) setTaskCats(normalizeTaskCats(s.taskCats));
     if (Array.isArray(s?.subscriptions) && !same(normalizeSubs(s.subscriptions), subscriptions)) setSubscriptions(normalizeSubs(s.subscriptions));
     if (Array.isArray(s?.wishes) && !same(normalizeDreams(s.wishes), wishes)) setWishes(normalizeDreams(s.wishes));
     if (Array.isArray(s?.places) && !same(normalizeDreams(s.places), places)) setPlaces(normalizeDreams(s.places));
@@ -1563,6 +1567,11 @@ export default function App() {
             }
             if (s.workHours) { setWorkHours(s.workHours); store.set("dm_work_hours", s.workHours); }
             else if (store.get("dm_work_hours", null)) saveSettings(firebaseUser.uid, { workHours: store.get("dm_work_hours", null) }).catch(() => {});
+            if (s.taskCats) { const v = normalizeTaskCats(s.taskCats); setTaskCats(v); store.set("dm_task_cats", v); }
+            else {
+              const localCats = normalizeTaskCats(store.get("dm_task_cats", null));
+              if (localCats.custom.length || Object.keys(localCats.words).length) saveSettings(firebaseUser.uid, { taskCats: localCats }).catch(() => {});
+            }
             if (Array.isArray(s.ddays)) { const d = normalizeDdays(s.ddays); setDdays(d); store.set("dm_ddays", d); }
             else {
               // 로그인 전에 이 기기에서 넣은 D-day는 한 번 올린다 (서버에 없을 때)
@@ -1799,6 +1808,16 @@ export default function App() {
     prefsLocalChangeRef.current = Date.now();
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { workHours }).catch(() => {});
   }, [workHours, authUser]);
+  useEffect(() => {
+    store.set("dm_task_cats", taskCats);
+    prefsLocalChangeRef.current = Date.now();
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { taskCats }).catch(() => {});
+  }, [taskCats, authUser]);
+  // 달력 보기 분류를 화면들에 한 묶음으로 넘긴다
+  const catCtx = useMemo(() => ({
+    taskCats, setTaskCats, workHours,
+    remember: (title, id) => setTaskCats(prev => rememberCat(prev, title, id)),
+  }), [taskCats, workHours]);
   useEffect(() => {
     store.set("dm_ddays", ddays);
     prefsLocalChangeRef.current = Date.now();
@@ -2547,7 +2566,7 @@ export default function App() {
     const renderToday = (extra) => {
       const d = plans[todayStr] || newDay(todayStr);
       return (
-        <Today {...extra} workHours={workHours} hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
+        <Today {...extra} catCtx={catCtx} workHours={workHours} hasGoal={lifeGoals.length > 0 || (goals?.year || []).some(g => (g?.title || g || "").trim?.())} onMoveTaskDate={moveTaskToDate} dateStr={todayStr} data={d} setData={setTodayData} recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks}
           uid={authUser?.uid}
           toast={toast} setToast={setToast} plans={plans} onOpenDate={openDetail} onUpdateDayData={setDayData}
           onOpenInvest={() => changeScreen("invest")}
@@ -2668,7 +2687,7 @@ export default function App() {
         />
       );
     }
-    const renderHistory = () => <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} pfHoldings={telegramCfg?.holdings} subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")} />;
+    const renderHistory = () => <History onMoveTaskDate={moveTaskToDate} plans={plans} onOpenDate={openDetail} habits={habits} getValidGcalToken={getValidGcalToken} onGcalConnect={connectGcal} onSyncGcal={syncGcalByDate} goals={goals} onSaveGoals={onSaveGoals} initialGoalsOpen={historyInitialGoalsOpen} onToggleTaskForDate={toggleTaskForDate} onUpdateDayData={setDayData} onImportGcalEvents={importGcalEventsForDate} uid={authUser?.uid} setSomeday={setSomeday} marketCal={marketCal} setMarketCal={setMarketCal} pfHoldings={telegramCfg?.holdings} subscriptions={subscriptions} onOpenSubs={() => changeScreen("subs")} catCtx={catCtx} />;
     if (screen === "history") return renderHistory();
     if (screen === "dashboard") {
       return (
@@ -2757,7 +2776,7 @@ export default function App() {
     }
     if (screen === "settings") {
       return (
-        <Settings
+        <Settings catCtx={catCtx}
           statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser} goals={goals} setGoals={setGoals}
           notifEnabled={notifEnabled} setNotifEnabled={setNotifEnabled}
@@ -2798,7 +2817,7 @@ export default function App() {
     if (screen === "admin") {
       return canOpenAdmin
         ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
-        : <Settings
+        : <Settings catCtx={catCtx}
           statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser}
           goals={goals} setGoals={setGoals}

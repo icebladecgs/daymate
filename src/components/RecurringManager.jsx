@@ -14,7 +14,7 @@ const toggle = (on) => ({
   border: on ? '1.5px solid var(--dm-accent, #5B7CFA)' : '1.5px solid rgba(128,128,128,0.45)',
 });
 
-export default function RecurringManager({ recurringTasks = [], setRecurringTasks }) {
+export default function RecurringManager({ recurringTasks = [], setRecurringTasks, cats = [] }) {
   const list = recurringTasks || [];
   const undo = useUndo();
   const update = (id, patch) => setRecurringTasks(prev => (prev || []).map(x => x.id === id ? { ...x, ...patch } : x));
@@ -85,6 +85,21 @@ export default function RecurringManager({ recurringTasks = [], setRecurringTask
               <button onClick={() => update(t.id, { days: nth ? 'daily' : `nth:1:${new Date().getDay()}` })}
                 style={{ ...toggle(false), color: 'var(--dm-sub)', fontWeight: 600 }}>{nth ? '요일로 바꾸기' : '매월 n번째로'}</button>
             </div>
+            {/* 달력 보기 분류 (2026-11-13) — 정해 두면 매번 생기는 할일이 그 분류로 */}
+            {cats.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                <span style={{ fontSize: 13, color: 'var(--dm-muted)', fontWeight: 700, marginRight: 2 }}>분류</span>
+                {[{ id: null, name: '없음', color: 'var(--dm-muted)' }, ...cats].map(c => {
+                  const on = (t.cat || null) === c.id;
+                  return (
+                    <button key={c.id || 'none'} onClick={() => update(t.id, { cat: c.id || undefined })} aria-pressed={on}
+                      style={{ height: 34, padding: '0 11px', borderRadius: 17, cursor: 'pointer', fontSize: 13, fontWeight: 700, background: 'transparent',
+                        border: `1.5px solid ${on ? (c.id ? c.color : 'var(--dm-accent, #5B7CFA)') : 'rgba(128,128,128,0.45)'}`,
+                        color: on ? (c.id ? c.color : 'var(--dm-accent, #5B7CFA)') : 'var(--dm-sub)' }}>{c.name}</button>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ fontSize: 13, color: !nth && !week.length ? '#F87171' : 'var(--dm-muted)', marginTop: 6, paddingLeft: 4 }}>
               {!nth && !week.length ? '요일을 하나 이상 골라 주세요' : recurringLabel(t.days, t.noHoliday)}
             </div>

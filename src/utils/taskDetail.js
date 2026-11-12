@@ -11,4 +11,5 @@ export const pickTaskDetail = (x = {}) => ({
   ...(x.statTag ? { statTag: x.statTag } : {}),
   ...(x.goalRef ? { goalRef: x.goalRef } : {}), // 🎯 어느 목표에서 파생됐는지
   ...(x.memoRef ? { memoRef: x.memoRef } : {}), // 📝 어느 메모에서 보냈는지 {ds, id} (2026-10-05)
+  ...(x.cat ? { cat: x.cat } : {}), // 달력 보기 분류 — 직접 고른 것만 (utils/taskCategory.js, 2026-11-13)
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
 import { eveningTime, greetingTime } from "../utils/notifySchedule.js";
+import { allCats } from "../utils/taskCategory.js";
 import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
@@ -173,7 +174,7 @@ function RaidToggleRow() {
   );
 }
 
-export default function Settings({ workHours, setWorkHours, user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
+export default function Settings({ catCtx, workHours, setWorkHours, user, setUser, goals, setGoals, notifEnabled, setNotifEnabled,
   telegramCfg, setTelegramCfg, alarmTimes, setAlarmTimes, toast, setToast,
   authUser, syncStatus, onGoogleSignIn, onGoogleSignOut,
   recurringTasks, setRecurringTasks,
@@ -658,7 +659,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <SubHeader title="반복 할일" onBack={() => setSubPage(null)} />
-      <RecurringManager recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks} />
+      <RecurringManager recurringTasks={recurringTasks} setRecurringTasks={setRecurringTasks} cats={catCtx ? allCats(catCtx.taskCats) : []} />
       <div style={{ height: 12 }} />
     </div>
   );

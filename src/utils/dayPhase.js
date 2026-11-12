@@ -31,7 +31,7 @@ export function tomorrowTasks(plans, recurringRules, ds) {
   const ids = new Set(tasks.map((t) => String(t.id)));
   const rec = (recurringRules || [])
     .filter((r) => r?.title?.trim() && !applied.has(r.id) && !ids.has(`r${r.id}_${ds}`) && ruleMatches(r, ds))
-    .map((r) => ({ id: `r${r.id}_${ds}`, title: r.title, done: false, recurring: true }));
+    .map((r) => ({ id: `r${r.id}_${ds}`, title: r.title, done: false, recurring: true, ...(r.cat ? { cat: r.cat } : {}) }));
   return [...tasks, ...rec]
     .map((t, i) => ({ t, i }))
     .sort((a, b) => (timeMin(a.t) - timeMin(b.t) || 0) || a.i - b.i)

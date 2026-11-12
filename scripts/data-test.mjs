@@ -1115,6 +1115,29 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('알림: 잘못된 시간 글자는 기본값', ids({ alarmTimes: { pushMorning: 'abc' } }, '2026-11-13', 7 * 60).includes('pushMorning'));
 }
 
+// ── 달력 보기 분류 (2026-11-13): 직접 고른 것 → 반복 → 기억 → #표시 → 단어 → 근무 시간 ──
+{
+  const { catOf, autoCat, rememberCat, normalizeTaskCats, titleKey, allCats } = await load('/src/utils/taskCategory.js');
+  const { pickTaskDetail: pick } = await load('/src/utils/taskDetail.js');
+  const wh = { start: '09:00', end: '18:00' };
+  const cats = { custom: [{ id: 'c_s', name: '공부', color: '#8B5CF6' }], words: {} };
+  const thu = '2026-11-12', sat = '2026-11-14';
+  t('분류: 직접 고른 것이 먼저', catOf({ title: '회의', cat: 'fin' }, thu, cats, wh) === 'fin' && catOf({ title: '회의', cat: 'none' }, thu, cats, wh) === null);
+  t('분류: 지운 직접 만든 분류는 없음으로', catOf({ title: 'x', cat: 'c_gone' }, thu, cats, wh) === null && catOf({ title: 'x', cat: 'c_s' }, thu, cats, wh) === 'c_s');
+  t('분류: 단어 (재무가 업무보다 먼저)', autoCat({ title: '카드값 납부' }, thu, cats, wh) === 'fin' && autoCat({ title: '주간 회의' }, sat, cats, wh) === 'work' && autoCat({ title: '카드 결제 보고' }, thu, cats, wh) === 'fin');
+  t('분류: 평일 근무 시간 안이면 업무', autoCat({ title: '치과', time: '10:00' }, thu, cats, wh) === 'work' && autoCat({ title: '치과', time: '19:00' }, thu, cats, wh) === null && autoCat({ title: '치과', time: '10:00' }, sat, cats, wh) === null);
+  t('분류: 공휴일은 근무 시간 규칙 안 씀', autoCat({ title: '치과', time: '10:00' }, '2026-12-25', cats, wh) === null);
+  t('분류: #공부 표시', autoCat({ title: '영어 단어 #공부' }, thu, cats, wh) === 'c_s');
+  const learned = rememberCat(cats, '영어 단어', 'c_s');
+  t('분류: 고친 제목은 기억 (띄어쓰기 무시)', autoCat({ title: '영어단어' }, thu, learned, wh) === 'c_s' && titleKey(' 9:30 영어 단어') === '영어단어');
+  const unlearned = rememberCat(learned, '주간 회의', null);
+  t('분류: "없음"으로 고치면 자동 분류도 끔', autoCat({ title: '주간 회의' }, thu, unlearned, wh) === null);
+  t('분류: 이상한 저장값 정리 (직접 만든 것 3개까지)', normalizeTaskCats({ custom: [{ id: 'c_1', name: 'a' }, { id: 'x', name: 'b' }, { id: 'c_2', name: '' }, { id: 'c_3', name: 'c' }, { id: 'c_4', name: 'd' }, { id: 'c_5', name: 'e' }], words: [] }).custom.map(c => c.id).join() === 'c_1,c_3,c_4' && allCats(null).length === 2);
+  t('분류: 언젠가로 옮겨도 분류 유지', pick({ cat: 'work', title: 'x' }).cat === 'work' && pick({ title: 'x' }).cat === undefined);
+  const { addRecurringToDay } = await load('/src/utils/recurring.js');
+  t('분류: 반복 할일은 규칙의 분류로 생김', addRecurringToDay({ tasks: [] }, [{ id: 'q1', title: '주간보고', days: 'daily', cat: 'work' }], thu)?.tasks[0].cat === 'work');
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

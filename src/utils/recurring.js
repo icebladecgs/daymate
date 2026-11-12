@@ -85,7 +85,7 @@ export function addRecurringToDay(day, rules, ds) {
   for (const r of due) {
     const id = `r${r.id}_${ds}`;
     if (ids.has(id)) continue;
-    const t = { id, title: r.title, done: false, checkedAt: null, priority: false };
+    const t = { id, title: r.title, done: false, checkedAt: null, priority: false, ...(r.cat ? { cat: r.cat } : {}) }; // 반복 할일의 분류를 따라감 (2026-11-13)
     const empty = tasks.findIndex(x => !x.title?.trim());
     if (empty >= 0) tasks[empty] = t; else tasks.push(t);
   }

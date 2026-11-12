@@ -24,7 +24,8 @@ const newStep = (text) => ({ id: `s${Date.now()}${Math.random().toString(36).sli
 // - onComplete를 넘긴 화면에서는 작은 단계를 다 끝냈을 때 "할일도 완료" 버튼 (자동 완료는 안 함 — 목록 체크와 같은 경로로 저장)
 // - recurring: 반복으로 생긴 할일이면 { label, onStop, onManage } — 반복 칸을 보여준다 (2026-11-03)
 // - onMoveDate를 넘긴 화면에서만 날짜 버튼 표시. dateStr은 지금 날짜(언젠가할일은 없음) — 바꾸면 그 날짜로 옮기고 창을 닫음
-export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete, recurring, order }) {
+// category: { options: [{id,name,color}], auto: 자동 판단 id|null, remember(title, id) } — 달력 보기 분류 (2026-11-13, utils/taskCategory.js)
+export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, onDelete, dateStr, onMoveDate, onFocus, onComplete, recurring, order, category }) {
   const [title, setTitle] = useState(task.title || '');
   const [note, setNote] = useState(task.note || '');
   const [photos, setPhotos] = useState(task.photos || []);
@@ -159,6 +160,28 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
               <button onClick={() => { if (recurring.onStop() !== false) handleClose(); }} style={{ ...chip(false), fontSize: 13, color: '#F87171', fontWeight: 700 }}>반복 그만하기</button>
             </div>
           )}
+          {category && (() => {
+            // 직접 고른 것(task.cat) 우선, 없으면 자동 판단을 "자동"으로 보여 준다. 고르면 그 제목을 기억(다음부터 같은 분류)
+            const picked = task.cat && task.cat !== 'none' && category.options.some(o => o.id === task.cat) ? task.cat : task.cat === 'none' ? null : undefined;
+            const current = picked === undefined ? category.auto : picked;
+            const pick = (id) => { onSave({ cat: id || 'none' }); category.remember?.(title, id || null); };
+            return (
+              <div style={{ marginBottom: 14 }}>
+                <div style={sectionLabel}>분류{picked === undefined && category.auto ? ' · 자동' : ''}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[{ id: null, name: '없음', color: 'var(--dm-muted)' }, ...category.options].map(o => {
+                    const on = (current || null) === o.id;
+                    return (
+                      <button key={o.id || 'none'} onClick={() => pick(o.id)} aria-pressed={on}
+                        style={{ ...chip(on), fontSize: 13, minHeight: 34, display: 'inline-flex', alignItems: 'center', gap: 5, ...(on && o.id ? { borderColor: o.color, color: o.color } : {}) }}>
+                        {o.id && <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: o.color }} />}{o.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ fontSize: 11, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 4 }}>제목</div>
           <input
             value={title}
