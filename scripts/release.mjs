@@ -69,18 +69,19 @@ function preflight() {
   const missing = ['node_modules', 'desktop', '.git', 'dist'].filter(x => !ignore.includes(x));
   if (missing.length) die(`.vercelignore에 ${missing.join(', ')}가 없어요 (100MB 제한으로 배포 실패)`);
   const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons || [];
-  const bad = crons.filter(c => !/^\d+ \d+ \S+ \S+ \S+$/.test(c.schedule));
-  if (bad.length) die(`하루 1회를 넘을 수 있는 cron이 있어요 (Hobby 요금제는 배포가 조용히 실패): ${bad.map(c => `${c.path} ${c.schedule}`).join(', ')}`);
-  // Vercel Hobby는 서버 함수(api/*.js) 12개까지 — 넘으면 배포가 실패한다
+  // Vercel Pro (2026-11-12~): cron은 1분 단위·프로젝트당 100개, 서버 함수 개수 제한 없음.
+  // Hobby로 돌아가면 하루 1회 cron·함수 12개 검사를 다시 넣는다(git 기록 참고).
+  const bad = crons.filter(c => String(c.schedule || '').trim().split(/\s+/).length !== 5);
+  if (bad.length) die(`cron 일정 형식이 이상해요: ${bad.map(c => `${c.path} ${c.schedule}`).join(', ')}`);
+  if (crons.length > 100) die(`cron이 ${crons.length}개예요 (프로젝트당 최대 100개)`);
   const fnCount = readdirSync('api').filter(f => /\.(js|mjs|ts)$/.test(f)).length;
-  if (fnCount > 12) die(`api 폴더 서버 함수가 ${fnCount}개예요 (Hobby 요금제 최대 12개) — 새 파일 대신 기존 파일에 기능을 합치세요`);
   if (!vercelToken()) {
     // 토큰이 없으면 이 PC의 Vercel CLI 로그인으로 배포한다(윈도우 PC는 이 방식 — 2026-10-06)
     const who = spawnSync('vercel', ['whoami'], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', shell: isWin });
     if (who.status !== 0) die('.env.local에 VERCEL_TOKEN이 없고 Vercel CLI 로그인도 안 돼 있어요 — vercel login 먼저');
     console.log(`  Vercel CLI 로그인으로 배포 (${(who.stdout || '').trim().split(/\r?\n/).pop()})`);
   }
-  console.log(`  브랜치·커밋·.vercelignore·cron ${crons.length}개·서버 함수 ${fnCount}/12개 모두 정상`);
+  console.log(`  브랜치·커밋·.vercelignore·cron ${crons.length}개·서버 함수 ${fnCount}개 모두 정상`);
 }
 
 // .env.local 전체를 불러오지 않고 토큰 한 줄만 읽는다 (VERCEL_PROJECT_ID만 있으면 배포가 실패하기 때문)
