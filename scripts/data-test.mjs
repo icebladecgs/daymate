@@ -166,6 +166,19 @@ t('반복: 할일 id에서 규칙 id', recurringIdOf('rr100_2026-11-04') === 'r1
   t('반복 넣기: 다른 기기에서 넣은 것은 겹치지 않음', b.tasks.filter(x => x.id === 'rr1_2026-11-04').length === 1 && b.tasks[0].done === true);
   t('반복 넣기: 맞는 날이 아니면 그대로', addRecurringToDay({ tasks: [] }, [rules[0]], '2026-11-05') === null);
 }
+// ── 반복: 요일 여러 개 + 공휴일 제외 (2026-11-12) ──
+{
+  const { weekdaysOf, daysFromWeekdays, matchesRecurring, ruleMatches, recurringLabel } = await load('/src/utils/recurring.js');
+  t('요일: 옛 값 그대로 읽힘', weekdaysOf('daily').length === 7 && weekdaysOf('3').join() === '3' && weekdaysOf('nth:2:2') === null);
+  t('요일: 저장 값 (다 켜면 daily, 하나면 숫자)', daysFromWeekdays([0,1,2,3,4,5,6]) === 'daily' && daysFromWeekdays([2]) === '2' && daysFromWeekdays([5,1,3]) === 'w:1,3,5');
+  t('요일: 월수금은 화요일에 안 생김', matchesRecurring('w:1,3,5', '2026-11-04') && !matchesRecurring('w:1,3,5', '2026-11-03'));
+  t('요일: 하나도 안 켜면 안 생김', !matchesRecurring('w:', '2026-11-04') && weekdaysOf('w:').length === 0);
+  t('요일 이름', recurringLabel('w:1,2,3,4,5') === '평일' && recurringLabel('w:0,6') === '주말' && recurringLabel('w:0,1,3') === '매주 월·수·일' && recurringLabel('daily', true) === '매일 · 공휴일 제외');
+  const rule = { id: 'h1', title: '출근 체크', days: 'w:1,2,3,4,5', noHoliday: true };
+  t('공휴일 제외: 크리스마스(금)에는 안 생김', !ruleMatches(rule, '2026-12-25') && ruleMatches({ ...rule, noHoliday: false }, '2026-12-25'));
+  t('공휴일 제외: 평일은 생김', ruleMatches(rule, '2026-12-24'));
+  t('공휴일 제외: 할일 넣기에도 적용', addRecurringToDay({ tasks: [] }, [rule], '2026-12-25') === null && addRecurringToDay({ tasks: [] }, [rule], '2026-12-24')?.tasks.length === 1);
+}
 t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && recurringIdOf('gcal_x') === null);
 
 // ── 한 번에 여러 개 (2026-11-03) ──

@@ -1063,7 +1063,7 @@ export default function Today({
             const rule = (recurringTasks || []).find(r => r.id === recurringIdOf(detailTask.id));
             if (!rule || !setRecurringTasks) return null;
             return {
-              label: recurringLabel(rule.days),
+              label: recurringLabel(rule.days, rule.noHoliday),
               onStop: () => {
                 const idx = (recurringTasks || []).findIndex(r => r.id === rule.id);
                 setRecurringTasks(prev => (prev || []).filter(r => r.id !== rule.id));

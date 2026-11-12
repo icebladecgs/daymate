@@ -1,7 +1,7 @@
 // 하루 시간대 (2026-11-09, 삼성 나우 브리프 참고) — 오늘 탭 머리글 인사, 저녁 "내일 미리보기"·내일 날씨의 기준.
 // 계산은 이 파일 한 곳. 출퇴근 시간(utils/workHours.js)을 따른다.
 import { normalizeWorkHours, planUntilMin, toMin, isWorkday } from "./workHours.js";
-import { matchesRecurring } from "./recurring.js";
+import { ruleMatches } from "./recurring.js";
 
 // 저녁 시작 — 일하는 날은 퇴근 시각(17시보다 이르면 17시), 쉬는 날은 18시
 export function eveningFromMin(wh, ds) {
@@ -30,7 +30,7 @@ export function tomorrowTasks(plans, recurringRules, ds) {
   const applied = new Set(day.recurringApplied || []);
   const ids = new Set(tasks.map((t) => String(t.id)));
   const rec = (recurringRules || [])
-    .filter((r) => r?.title?.trim() && !applied.has(r.id) && !ids.has(`r${r.id}_${ds}`) && matchesRecurring(r.days, ds))
+    .filter((r) => r?.title?.trim() && !applied.has(r.id) && !ids.has(`r${r.id}_${ds}`) && ruleMatches(r, ds))
     .map((r) => ({ id: `r${r.id}_${ds}`, title: r.title, done: false, recurring: true }));
   return [...tasks, ...rec]
     .map((t, i) => ({ t, i }))
