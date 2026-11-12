@@ -1078,6 +1078,26 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('업그레이드 점검: 공휴일 음력 표(2032)는 2032-11-01부터 갱신할 때', at('2032-10-31').lunar === 'soon' && at('2032-11-01').lunar === 'now');
 }
 
+// ── 📰 오늘의 브리핑 (2026-11-12): RSS 읽기·AI 답 정리 ──
+{
+  const { parseRss, recentItems, normalizeBriefing, kstDateStr, formatIndicator, formatChange, briefingUserContent } = await load('/src/utils/briefing.js');
+  const xml = `<rss><channel><item><title><![CDATA[한전 3분기 영업익 &quot;71%&quot; 급감]]></title><link>https://x</link>
+    <pubDate>Thu, 12 Nov 2026 21:40:26 +0900</pubDate><description><![CDATA[(서울=연합뉴스) 홍길동 기자 = <b>한국전력</b>의 영업이익이 줄었다.]]></description></item>
+    <item><title>한전 3분기 영업익 "71%" 급감</title><pubDate>Thu, 12 Nov 2026 20:00:00 +0900</pubDate></item>
+    <item><title>오래된 기사</title><pubDate>Mon, 09 Nov 2026 08:00:00 +0900</pubDate></item></channel></rss>`;
+  const items = parseRss(xml);
+  t('브리핑: RSS 제목·요약 읽기 (태그·기자 머리말 뗌)', items.length === 3 && items[0].title === '한전 3분기 영업익 "71%" 급감' && items[0].desc === '한국전력 의 영업이익이 줄었다.', JSON.stringify(items[0]));
+  const recent = recentItems(items, Date.parse('2026-11-13T06:00:00+09:00'));
+  t('브리핑: 같은 제목은 하나, 오래된 기사 뺌', recent.length === 1, JSON.stringify(recent.map(x => x.title)));
+  t('브리핑: 한국 날짜 (UTC 21시 = 다음 날 6시)', kstDateStr(new Date('2026-11-12T21:00:00Z')) === '2026-11-13');
+  const ok = normalizeBriefing({ headline: '한 줄', marketNote: '', news: [{ cat: '없는분야', title: '제목', body: '내용', sources: ['연합뉴스', '모르는곳', '연합뉴스'] }, { cat: '경제', title: '', body: 'x', sources: [] }] }, { allowedSources: ['연합뉴스'] });
+  t('브리핑: AI 답 정리 (모르는 분야·언론사·빈 제목 거름)', ok?.news.length === 1 && ok.news[0].cat === '경제' && ok.news[0].sources.join() === '연합뉴스', JSON.stringify(ok));
+  t('브리핑: 소식이 없으면 저장 안 함', normalizeBriefing({ headline: 'x', news: [] }) === null && normalizeBriefing(null) === null);
+  t('브리핑: 지표 모양', formatIndicator({ value: 1333.98, digits: 1, unit: '원' }) === '1,334.0원' && formatIndicator({ value: 87.18, digits: 2, unit: '$' }) === '$87.18' && formatChange(-0.607) === '▼0.61%' && formatChange(1.6) === '▲1.60%');
+  const content = briefingUserContent({ dateLabel: '11월 13일', items: [{ source: '연합뉴스', cat: 'econ', title: '제목', desc: '앞부분' }], markets: [{ label: '코스피', value: 5342.73, chgPct: -0.6, digits: 2 }], events: [] });
+  t('브리핑: AI에게 주는 글에 지표·기사', content.includes('코스피: 5,342.73 (-0.60%)') && content.includes('연합뉴스|경제|제목 — 앞부분'));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

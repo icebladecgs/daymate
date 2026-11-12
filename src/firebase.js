@@ -718,6 +718,12 @@ export async function toggleCommentLike(communityId, noticeId, commentId, uid) {
   return !isLiked;
 }
 
+// ---------- 📰 오늘의 브리핑 (2026-11-12) — 서버가 매일 아침 briefings/{날짜}에 만든다. 앱은 읽기만 ----------
+export async function loadBriefing(dateStr) {
+  const snap = await getDoc(doc(db, 'briefings', dateStr));
+  return snap.exists() ? snap.data() : null;
+}
+
 // ---------- 자유게시판 (전체 공개, 커뮤니티 소속 무관) ----------
 
 export async function updateFreeboardNickname(uid, nickname) {

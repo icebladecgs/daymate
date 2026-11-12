@@ -6,10 +6,12 @@
     { "path": "/api/notify?type=todo",     "schedule": "5 22 * * *" },
     { "path": "/api/push-cron",            "schedule": "0 12 * * *" },
     { "path": "/api/smart-notify",         "schedule": "0 12 * * *" },
-    { "path": "/api/notify?type=invest-review", "schedule": "0 0 * * *" }
+    { "path": "/api/notify?type=invest-review", "schedule": "0 0 * * *" },
+    { "path": "/api/briefing",             "schedule": "0 21 * * *" }
   ],
   "functions": {
-    "api/chat.js": { "includeFiles": "api/_data/**" }
+    "api/chat.js": { "includeFiles": "api/_data/**" },
+    "api/briefing.js": { "maxDuration": 120 }
   },
   "routes": [
     { "src": "/api/telegram-webhook", "dest": "/api/telegram-webhook.js" }

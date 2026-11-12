@@ -12,6 +12,11 @@ import Challenge from "./Challenge.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 import Linkify from "../utils/linkify.jsx";
 import FreeBoard from "./FreeBoard.jsx";
+import Briefing from "./Briefing.jsx";
+
+// 소셜 탭 (2026-11-12 사용자 결정): 자유게시판 자리에 📰 오늘의 브리핑 — 악플 걱정 없는 읽기 전용 칸.
+// 자유게시판 화면·글·규칙은 지우지 않고 탭에서만 뺐다(다시 열려면 아래 목록에 넣으면 된다).
+const SOCIAL_TABS = [{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'briefing', label: '📰 브리핑' }];
 import CommunityChat from "../components/CommunityChat.jsx";
 import { getChatRead } from "../utils/chatRead.js";
 import S, { UI } from "../styles.js";
@@ -174,8 +179,8 @@ function MiniCalendar({ eventDates, selectedDate, onSelectDate }) {
   );
 }
 
-export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onNewsChanged, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn, raidBase, statXp, raidClaims, onRaidClaim }) {
-  const [mainTab, setMainTab] = useState(initialMainTab || "community"); // community | challenge | freeboard
+export default function Community({ user, authUser, myTotalScore, habits, onToggleHabit, communityIds, activeCommunityId, setActiveCommunityId, reorderCommunityId, addCommunityId, removeCommunityId, getValidGcalToken, onGcalConnect, setToast, todayCompletion, onNewsChanged, initialMainTab = null, initialChallengeId = null, openChatId = null, onOpenChatHandled, onGoogleSignIn, raidBase, statXp, raidClaims, onRaidClaim, weatherCity }) {
+  const [mainTab, setMainTab] = useState(initialMainTab === 'freeboard' ? 'briefing' : (initialMainTab || "community")); // community | challenge | briefing (freeboard는 탭에서 뺌)
   const communityId = activeCommunityId;
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
@@ -872,7 +877,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
             {[
               ['👥', '커뮤니티', '모임을 만들어 일정·출석·공지·단체 채팅을 함께'],
               ['🔥', '챌린지', '같은 습관을 여럿이 매일 인증하고 응원'],
-              ['📝', '자유게시판', 'DayMate 쓰는 사람들과 이야기 나누기'],
+              ['📰', '오늘의 브리핑', '매일 아침 주요 뉴스·환율·증시를 AI가 정리'],
             ].map(([icon, title, sub], i) => (
               <div key={title} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i ? '1px solid var(--dm-row)' : 'none' }}>
                 <span aria-hidden style={{ fontSize: 22, width: 28, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
@@ -949,7 +954,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
         </div>
       )}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
+        {SOCIAL_TABS.map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
@@ -960,6 +965,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       </div>
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
       {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
+      {mainTab === 'briefing' && <Briefing authUser={authUser} weatherCity={weatherCity} />}
       {mainTab === 'community' && (
         <div style={{ paddingBottom: 80 }}>
           {/* 상단 */}
@@ -1104,7 +1110,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
   if (communityIds.length === 0 || mode === 'create' || mode === 'join' || mode === 'add') return (
     <div style={S.content}>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
+        {SOCIAL_TABS.map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
@@ -1115,6 +1121,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       </div>
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} initialSelectedId={initialChallengeId} />}
       {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
+      {mainTab === 'briefing' && <Briefing authUser={authUser} weatherCity={weatherCity} />}
       {mainTab === 'community' && <>
       <div style={S.topbar}>
         <div style={{ flex: 1 }}><div className="dm-page-title" style={S.title}>커뮤니티</div><div style={NL() ? { ...S.sub, fontSize: UI.sub } : S.sub}>함께하는 일정 공유</div></div>
@@ -1317,7 +1324,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       )}
       {/* 메인 탭: 커뮤니티 / 챌린지 */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--dm-border)' }}>
-        {[{ key: 'community', label: '👥 커뮤니티' }, { key: 'challenge', label: '🏁 챌린지' }, { key: 'freeboard', label: '💬 자유게시판' }].map(t => (
+        {SOCIAL_TABS.map(t => (
           <button key={t.key} onClick={() => setMainTab(t.key)} style={{
             flex: 1, padding: '12px 0', fontSize: 13, fontWeight: 800, cursor: 'pointer', border: 'none', background: 'transparent',
             color: mainTab === t.key ? 'var(--dm-accent, #6C8EFF)' : 'var(--dm-muted)',
@@ -1330,6 +1337,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       {mainTab === 'challenge' && <Challenge authUser={authUser} myTotalScore={myTotalScore} habits={habits} onToggleHabit={onToggleHabit} />}
       {mainTab === 'challenge' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
       {mainTab === 'freeboard' && <FreeBoard authUser={authUser} user={user} setToast={setToast} />}
+      {mainTab === 'briefing' && <Briefing authUser={authUser} weatherCity={weatherCity} />}
       {mainTab === 'freeboard' && null /* 아래 커뮤니티 콘텐츠 숨김 */}
       {mainTab === 'community' && <>
 

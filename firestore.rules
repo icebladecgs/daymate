@@ -185,7 +185,13 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && (isCommunityAdmin(resource.data.communityId) || isAppAdmin());
     }
+    // 📰 오늘의 브리핑 (2026-11-12) — 서버(api/briefing.js)가 매일 아침 만든다. 로그인한 사람은 읽기만, 쓰기는 서버만.
+    match /briefings/{date} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     // 자유게시판 (전체 공개, 커뮤니티 소속 무관) — 작성은 본인 명의로만.
+    // 2026-11-12부터 소셜 탭에서 숨김(오늘의 브리핑으로 바꿈, 사용자 결정). 글·규칙은 그대로 둔다.
     // 수정·삭제는 글쓴이 또는 앱 관리자. 다른 사람은 댓글 수·좋아요만 변경 가능.
     match /publicBoard/{postId} {
       allow read: if request.auth != null;

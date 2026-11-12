@@ -2660,6 +2660,7 @@ export default function App() {
           initialChallengeId={communityInitialChallengeId}
           openChatId={pendingChatId} onOpenChatHandled={() => setPendingChatId(null)}
           onGoogleSignIn={googleSignIn}
+          weatherCity={telegramCfg?.weatherCity}
         />
       );
     }
