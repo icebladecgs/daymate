@@ -2482,6 +2482,8 @@ export default function App() {
               statXp={statXp} myRank={myRank} onOpenStats={() => changeScreen("stats")} onOpenBattle={() => changeScreen("battle-arena")}
               battleNickname={battleNickname} onSetBattleNickname={setBattleNickname} user={user} setToast={setToast}
               onOpenSettings={() => changeScreen("settings")} birthDate={birthDate} birthTime={birthTime}
+              onAddMemo={(text, time) => { const id = genMemoId(); setTodayData(prev => ({ ...prev, memos: [...(prev.memos || []), { id, text, createdAt: time }] })); return id; }}
+              onRemoveMemo={(id) => setTodayData(prev => ({ ...prev, memos: (prev.memos || []).filter(m => m.id !== id) }))}
             />
           }
           onMoveTaskDate={moveTaskToDate}

@@ -8,13 +8,21 @@ import { calcDayScore, calcLevel, calcStreak, LEVEL_ICONS, LEVEL_TITLES } from "
 import { newDesignOn } from "../utils/todayLook.js";
 import { SectionHeading, SectionIcon } from "./TodayLook.jsx";
 import { useBackClose } from "../utils/useBackClose.js";
+import UndoBar from "./UndoBar.jsx";
+import { useUndo } from "../utils/useUndo.js";
+
+const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
+// "11월 12일 (목)"
+const dayLabelOf = (ds) => { const [y, m, d] = ds.split("-").map(Number); return `${m}월 ${d}일 (${DOW_KO[new Date(y, m - 1, d).getDay()]})`; };
+// 이번 로또 추첨일(토요일) "11/14 토" — 토요일에 뽑으면 그날 추첨
+const drawDayLabel = (ds) => { const [y, m, d] = ds.split("-").map(Number); const t = new Date(y, m - 1, d); t.setDate(t.getDate() + ((6 - t.getDay() + 7) % 7)); return `${t.getMonth() + 1}/${t.getDate()} 토`; };
 
 // My 탭 위쪽 "나의 성장·운세" — 레벨·XP, 성장 능력치 6개, 배틀, 오늘의 운세·로또(+운세 팝업), XP 도움말.
 // 예전엔 오늘 탭 맨 위에 있었는데, 오늘 탭은 할일·습관·일기 중심으로 하기로 해서 옮김(2026-09-27).
 export default function GrowthFortunePanel({
   dateStr, data, habits, plans, scores, inviteBonus, statXp, myRank, onOpenStats, onOpenBattle,
   battleNickname, onSetBattleNickname, user, setToast, onOpenSettings,
-  birthDate: birthDateProp, birthTime: birthTimeProp,
+  birthDate: birthDateProp, birthTime: birthTimeProp, onAddMemo, onRemoveMemo,
 }) {
   // My탭과 동일한 계산(기존 XP/레벨/티어) — 오늘 화면에서도 함께 보여주기 위함, 기존 로직/저장방식은 그대로
   const todayScore = useMemo(() => calcDayScore(data, habits), [data, habits]);
@@ -43,6 +51,19 @@ export default function GrowthFortunePanel({
   const lottoKey = `dm_lotto_${dateStr}`;
   const [lottoNums, setLottoNums] = useState(() => store.get(lottoKey, null));
   const [lottoAnim, setLottoAnim] = useState(false);
+  // 📋 로또 번호를 오늘 메모로 (2026-11-12 사용자 승인) — 토요일 추첨 뒤 맞춰 볼 수 있게. 같은 날 두 번 넣지 않게 메모 id를 기억
+  const lottoMemoKey = `dm_lotto_memo_${dateStr}`;
+  const [lottoMemoId, setLottoMemoId] = useState(() => store.get(lottoMemoKey, null));
+  const undo = useUndo();
+  const saveLottoMemo = () => {
+    if (!lottoNums || !onAddMemo || lottoMemoId) return;
+    const time = new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const id = onAddMemo(`🎱 로또 번호 (${drawDayLabel(dateStr)} 추첨)
+${lottoNums.join(' · ')}`, time);
+    store.set(lottoMemoKey, id);
+    setLottoMemoId(id);
+    undo.offer('오늘 메모에 로또 번호를 넣었어요', () => { onRemoveMemo?.(id); store.remove(lottoMemoKey); setLottoMemoId(null); });
+  };
   const drawLotto = () => {
     if (lottoNums) return;
     setLottoAnim(true);
@@ -293,6 +314,7 @@ export default function GrowthFortunePanel({
         );
       })()}
 
+      <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={1100} />
       {/* ── 운세 팝업 모달 ──────────────────────────────────── */}
       {fortuneModalOpen && (() => {
         const isFsTab = fortuneTab === 'saju' || fortuneTab === 'tojeong';
@@ -304,7 +326,7 @@ export default function GrowthFortunePanel({
             {/* 헤더 — sticky */}
             <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--dm-card)", borderRadius: isFsTab ? 0 : "24px 24px 0 0", padding: "18px 16px 12px", borderBottom: "1px solid var(--dm-border)", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: birthDate ? 12 : 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 900 }}>🔮 오늘의 운세</div>
+                <div style={{ fontSize: 15, fontWeight: 900 }}>🔮 오늘의 운세 <span style={{ fontSize: 13, fontWeight: 700, color: "var(--dm-muted)", marginLeft: 4 }}>{dayLabelOf(dateStr)}</span></div>
                 <button onClick={() => setFortuneModalOpen(false)}
                   style={{ background: "none", border: "none", color: "var(--dm-muted)", fontSize: 20, cursor: "pointer", padding: "0 4px" }}>✕</button>
               </div>
@@ -529,7 +551,15 @@ export default function GrowthFortunePanel({
                         );
                       })}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--dm-muted)", marginTop: 8 }}>내일 새 번호를 뽑을 수 있어요</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+                      <span style={{ fontSize: 12, color: "var(--dm-muted)" }}>{drawDayLabel(dateStr)} 추첨용 · 내일 새 번호를 뽑을 수 있어요</span>
+                      {onAddMemo && (
+                        <button onClick={saveLottoMemo} disabled={!!lottoMemoId}
+                          style={{ flexShrink: 0, height: 36, padding: "0 12px", borderRadius: 10, border: "1.5px solid var(--dm-accent, #5B7CFA)", background: lottoMemoId ? "transparent" : "var(--dm-accent-soft, rgba(91,124,250,.12))", color: "var(--dm-accent, #5B7CFA)", fontSize: 13, fontWeight: 800, cursor: lottoMemoId ? "default" : "pointer", opacity: lottoMemoId ? 0.7 : 1 }}>
+                          {lottoMemoId ? "✓ 메모에 있음" : "📋 메모로"}
+                        </button>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <button onClick={drawLotto} disabled={lottoAnim}
