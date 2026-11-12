@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { onAuth, googleSignIn, googleSignOut, saveSettings, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes, countCommunitySince } from "./firebase.js";
+import { onAuth, googleSignIn, googleSignOut, saveSettings, saveBattleGearMerged, saveGoals, saveDay as fsaveDay, loadAllFromFirestore, loadDaysChangedSince, loadSettingsAndGoals, uploadLocalToFirestore, googleSignInWithCalendarScope, googleSignInWithDriveScope, updateUserMeta, updateRanking, registerInviteCode, loadRankings, loadTodayCommunityEvents, loadMyChallenges, loadMyCommunityIds, isPrimaryAdmin, loadContacts, saveContact, deleteContactDoc, deletePhoto, uploadPhoto, loadWrongNotes, countCommunitySince } from "./firebase.js";
 import { newDesignOn } from "./utils/todayLook.js";
 import { countCommunityNews } from "./utils/communityNews.js";
 import { genSubId, DEFAULT_RELATION_TAGS } from "./data/contacts.js";
@@ -31,7 +31,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { normalizeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
+import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
 import { saveRaidHit } from "./firebase.js";
@@ -549,8 +549,19 @@ export default function App() {
   const [battleGear, setBattleGear] = useState(() => normalizeGear(store.get("dm_battle_gear", null)));
   const battleGearRef = useRef(battleGear);
   useEffect(() => { battleGearRef.current = battleGear; }, [battleGear]);
-  const updateGear = (next) => {
-    const v = typeof next === "function" ? next(battleGearRef.current) : next; // 되돌리기는 최신 값 기준으로
+  // 이 기기 이름 (골드를 기기마다 따로 쌓아 합친다 — utils/gear.js mergeGear, 2026-11-13). 기기 설정이라 계정을 바꿔도 그대로
+  const gearDeviceRef = useRef(null);
+  if (!gearDeviceRef.current) {
+    let id = store.get("dm_device_id", "");
+    if (!id) { id = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`; store.set("dm_device_id", id); }
+    gearDeviceRef.current = id;
+  }
+  // remote: 서버·다른 기기 값과 합친 결과를 넣을 때(내가 번·쓴 골드로 다시 세지 않음)
+  const updateGear = (next, { remote = false } = {}) => {
+    const prev = battleGearRef.current;
+    let v = typeof next === "function" ? next(prev) : next; // 되돌리기는 최신 값 기준으로
+    if (!remote) v = applyLocalGear(prev, v, gearDeviceRef.current);
+    else if (JSON.stringify(v) === JSON.stringify(prev)) return;
     battleGearRef.current = v; setBattleGear(v);
   };
   // 할일·습관을 끝냈을 때 가끔 장비가 떨어진다 (같은 할일·습관·날짜는 한 번만 굴림 — 체크를 풀었다 다시 해도 같음)
@@ -1262,6 +1273,7 @@ export default function App() {
     if (Array.isArray(s?.lifeGoalActions) && !same(s.lifeGoalActions, lifeGoalActions)) setLifeGoalActions(s.lifeGoalActions);
     if (Array.isArray(s?.ddays) && !same(normalizeDdays(s.ddays), ddays)) setDdays(normalizeDdays(s.ddays));
     if (s?.taskCats && !same(normalizeTaskCats(s.taskCats), taskCats)) setTaskCats(normalizeTaskCats(s.taskCats));
+    if (s?.battleGear) updateGear(prev => mergeGear(prev, s.battleGear), { remote: true }); // 앱으로 돌아올 때 다른 기기 골드·장비 합치기 (2026-11-13)
     if (Array.isArray(s?.subscriptions) && !same(normalizeSubs(s.subscriptions), subscriptions)) setSubscriptions(normalizeSubs(s.subscriptions));
     if (Array.isArray(s?.wishes) && !same(normalizeDreams(s.wishes), wishes)) setWishes(normalizeDreams(s.wishes));
     if (Array.isArray(s?.places) && !same(normalizeDreams(s.places), places)) setPlaces(normalizeDreams(s.places));
@@ -1599,7 +1611,7 @@ export default function App() {
             if (s.someday) { setSomeday(s.someday); store.set("dm_someday", s.someday); }
             if (s.bucketList) { setBucketList(s.bucketList); store.set("dm_bucket_list", s.bucketList); }
             if (s.battleRecord) { setBattleRecord({ ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); store.set("dm_battle_record", { ...DEFAULT_BATTLE_RECORD, ...s.battleRecord }); }
-            if (s.battleGear) { const g = normalizeGear(s.battleGear); updateGear(g); store.set("dm_battle_gear", g); }
+            if (s.battleGear) updateGear(prev => mergeGear(prev, s.battleGear), { remote: true }); // 덮지 않고 합친다 (2026-11-13)
             else if (normalizeGear(store.get("dm_battle_gear", null)).items.length) saveSettings(firebaseUser.uid, { battleGear: normalizeGear(store.get("dm_battle_gear", null)) }).catch(() => {});
             if (s.battleNickname) { setBattleNickname(s.battleNickname); store.set("dm_battle_nickname", s.battleNickname); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
@@ -1880,8 +1892,12 @@ export default function App() {
   }, [battleRecord, authUser]);
   useEffect(() => {
     store.set("dm_battle_gear", battleGear);
-    // saveSettings는 merge 저장 — 목록(items·rolled)은 배열이라 통째로 바뀌고, 끼운 칸(equipped)은 세 칸을 늘 다 보내서(빈 칸 null) 지운 칸이 남지 않는다
-    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { battleGear }).catch(() => {});
+    // 덮어쓰지 않고 서버 값과 합쳐 저장한다(다른 기기에서 번 골드가 사라지지 않게, 2026-11-13). 합친 결과가 다르면 화면에도 반영
+    if (authUser && syncReadyRef.current) {
+      saveBattleGearMerged(authUser.uid, battleGear, mergeGear)
+        .then(merged => { if (JSON.stringify(merged) !== JSON.stringify(battleGear)) updateGear(prev => mergeGear(prev, merged), { remote: true }); })
+        .catch(() => {});
+    }
   }, [battleGear, authUser]);
   useEffect(() => {
     store.set("dm_battle_nickname", battleNickname);

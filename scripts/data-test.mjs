@@ -1138,6 +1138,35 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('분류: 반복 할일은 규칙의 분류로 생김', addRecurringToDay({ tasks: [] }, [{ id: 'q1', title: '주간보고', days: 'daily', cat: 'work' }], thu)?.tasks[0].cat === 'work');
 }
 
+// ── 🔄 골드·장비 기기 간 합치기 (2026-11-13 "기기마다 골드가 다르다") ──
+{
+  const { applyLocalGear, mergeGear, normalizeGear: ng } = await load('/src/utils/gear.js');
+  const item = (id, extra = {}) => ({ id, slot: 'weapon', rarity: 'common', name: `검${id}`, atk: 0.05, at: `2026-11-1${id.length}`, ...extra });
+  // 예전 방식(둘 다 v 없음): 기기 A 120, 기기 B 90 → 큰 쪽
+  const legacy = mergeGear({ gold: 120, items: [item('a')] }, { gold: 90, items: [item('b')] });
+  t('골드 합치기: 예전 기록끼리는 큰 골드, 장비는 합침', legacy.gold === 120 && legacy.items.length === 2, JSON.stringify({ g: legacy.gold, n: legacy.items.length }));
+  // 같은 출발점(100)에서 A는 +30 벌고, B는 -60 쓰고 +5 벌었다 → 100 + 30 - 60 + 5 = 75
+  const start = mergeGear({ gold: 100 }, { gold: 100 });
+  let A = applyLocalGear(start, { ...start, gold: start.gold + 30 }, 'devA', 1000);
+  let B = applyLocalGear(start, { ...start, gold: start.gold - 60 }, 'devB', 1001);
+  B = applyLocalGear(B, { ...B, gold: B.gold + 5 }, 'devB', 1002);
+  const AB = mergeGear(A, B), BA = mergeGear(B, A);
+  t('골드 합치기: 두 기기에서 번 것·쓴 것이 모두 반영', AB.gold === 75 && BA.gold === 75, JSON.stringify({ AB: AB.gold, BA: BA.gold }));
+  t('골드 합치기: 여러 번 합쳐도 그대로 (두 번 더하지 않음)', mergeGear(mergeGear(AB, A), B).gold === 75 && mergeGear(AB, AB).gold === 75);
+  // 장비: A가 판 장비는 B에 있어도 되살아나지 않음, B가 강화한 것은 강화된 쪽
+  const base2 = mergeGear({ v: 2, base: 0, gl: {}, items: [item('x'), item('y')] }, null);
+  const A2 = applyLocalGear(base2, { ...base2, items: base2.items.filter(i => i.id !== 'x') }, 'devA', 2000);
+  const B2 = applyLocalGear(base2, { ...base2, items: base2.items.map(i => (i.id === 'y' ? { ...i, plus: 2, spent: 35 } : i)) }, 'devB', 2001);
+  const M2 = mergeGear(A2, B2);
+  t('장비 합치기: 판 장비는 되살아나지 않음', !M2.items.some(i => i.id === 'x') && M2.gone.includes('x'));
+  t('장비 합치기: 강화한 쪽이 남음', M2.items.find(i => i.id === 'y')?.plus === 2);
+  // 오늘 받은 양(상한 확인)은 같은 날이면 큰 쪽, 퀘스트 받은 칸은 합침
+  const q = mergeGear({ v: 2, earned: { date: '2026-11-13', task: 20, battle: 10 }, quests: { week: '2026-11-09', claimed: [0] } },
+                     { v: 2, earned: { date: '2026-11-13', task: 35, battle: 0 }, quests: { week: '2026-11-09', claimed: [2] } });
+  t('합치기: 오늘 받은 골드는 큰 쪽, 퀘스트는 합침', q.earned.task === 35 && q.earned.battle === 10 && q.quests.claimed.sort().join() === '0,2');
+  t('합치기: 새 방식 저장 모양 유지', ng(AB).v === 2 && ng(AB).gl.devA.p === 30 && ng(AB).gl.devB.m === 60);
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

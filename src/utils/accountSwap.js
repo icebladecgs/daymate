@@ -18,7 +18,7 @@ const DEVICE_KEYS = new Set([
   "dm_chat_sound", "dm_community_sound", "dm_chunk_reload_at", "dm_desktop_update_snooze", "dm_install_dismissed",
   "dm_seen_app_commit", "dm_shortcut_tip_dismissed", "dm_home_mode", "dm_home_prefs", "dm_home_section_order",
   "dm_open_settings_subpage", "dm_pf_display_currency", "dm_pf_hide", "dm_people_sort", "dm_territory_ok", "dm_map_base",
-  "dm_notif_sound", "dm_notif_sound_style", "dm_notif_tts", "dm_notif_vibration",
+  "dm_notif_sound", "dm_notif_sound_style", "dm_notif_tts", "dm_notif_vibration", "dm_device_id",
 ]);
 const DEVICE_PREFIXES = ["dm_section_open_", "dm_fx_usd_krw_"];
 export const isAccountKey = (k) => k.startsWith("dm_") && k !== OWNER_KEY && !DEVICE_KEYS.has(k) && !DEVICE_PREFIXES.some(p => k.startsWith(p));

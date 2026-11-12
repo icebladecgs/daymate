@@ -116,6 +116,17 @@ export async function saveSettings(uid, data) {
   await setDoc(doc(db, "users", uid, "data", "settings"), data, { merge: true });
 }
 
+// 🎒 배틀 장비·골드는 덮어쓰지 않고 서버 값과 합쳐 저장한다 (2026-11-13, utils/gear.js mergeGear) — 합친 값을 돌려준다
+export async function saveBattleGearMerged(uid, local, merge) {
+  const ref = doc(db, "users", uid, "data", "settings");
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const merged = merge(snap.data()?.battleGear || null, local);
+    tx.set(ref, { battleGear: merged }, { merge: true });
+    return merged;
+  });
+}
+
 export async function saveGoals(uid, data) {
   await setDoc(doc(db, "users", uid, "data", "goals"), data);
 }

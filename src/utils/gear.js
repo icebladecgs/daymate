@@ -117,7 +117,88 @@ export function normalizeGear(g) {
     // 🏅 칭호 기록 — maxPlus: 가장 높게 강화한 단계, questWeeks: 퀘스트 3개를 다 끝낸 주 수
     stats: { maxPlus: Math.max(0, Math.min(ENHANCE_MAX, Number(g?.stats?.maxPlus) || 0), ...items.map((x) => Number(x.plus) || 0)), questWeeks: Math.max(0, Math.floor(Number(g?.stats?.questWeeks) || 0)) },
     title: typeof g?.title === 'string' ? g.title : '',
+    // 🔄 기기 간 합치기 (2026-11-13, 아래 mergeGear) — gl: 기기마다 번·쓴 골드(늘기만 함), base: 이 방식 전 골드,
+    // gone: 판·지운 장비 id(다른 기기에서 되살아나지 않게), at: 마지막으로 바꾼 시각
+    v: 2,
+    base: Math.max(0, Math.floor(Number(g?.v === 2 ? g?.base : g?.gold) || 0)),
+    gl: g?.v === 2 && g?.gl && typeof g.gl === 'object' ? Object.fromEntries(Object.entries(g.gl).map(([k, x]) => [k, { p: Math.max(0, Number(x?.p) || 0), m: Math.max(0, Number(x?.m) || 0) }])) : {},
+    gone: (Array.isArray(g?.gone) ? g.gone : []).map(String).slice(-400),
+    at: Number(g?.at) || 0,
   };
+}
+
+// ── 🔄 기기 간 합치기 (2026-11-13 사용자 제보 "기기마다 골드가 다르게 보인다") ──
+// 예전엔 battleGear를 통째로 저장해서 나중에 저장한 기기가 앞의 것을 덮었고, 다른 기기 값은 로그인 때만 받았다.
+// 이제 골드는 기기마다 "번 것·쓴 것"을 따로 쌓고(늘기만 함 — 합칠 때 큰 쪽) 합쳐서 계산한다. 장비는 합치고, 판·지운 것은 gone으로 뺀다.
+const goldFromLedger = (base, gl) => Math.max(0, Math.floor(base + Object.values(gl).reduce((a, x) => a + x.p - x.m, 0)));
+
+// 이 기기에서 바꾼 뒤 부른다 — 골드가 늘거나 줄어든 만큼 이 기기 칸에 쌓고, 빠진 장비는 gone에
+export function applyLocalGear(prev, next, device, now = Date.now()) {
+  const a = normalizeGear(prev), b = normalizeGear(next);
+  const delta = b.gold - a.gold;
+  const gl = { ...b.gl };
+  if (delta) {
+    const cur = gl[device] || { p: 0, m: 0 };
+    gl[device] = { p: cur.p + Math.max(0, delta), m: cur.m + Math.max(0, -delta) };
+  }
+  const keep = new Set(b.items.map((x) => x.id));
+  const removed = a.items.filter((x) => !keep.has(x.id)).map((x) => x.id);
+  const gone = [...new Set([...b.gone, ...removed])].slice(-400);
+  return { ...b, gl, gone, gold: goldFromLedger(b.base, gl), at: now };
+}
+
+// 두 기록 합치기 (서버 값·다른 기기 값). 어느 쪽을 먼저 넣어도 결과가 같다(시각이 같으면 앞쪽)
+export function mergeGear(x, y) {
+  if (!x && !y) return normalizeGear(null);
+  // 한쪽만 있어도 같은 계산을 거쳐 골드를 장부에서 다시 맞춘다
+  if (!y) y = x;
+  if (!x) x = y;
+  const A = normalizeGear(x), B = normalizeGear(y);
+  const late = B.at > A.at ? B : A;
+  // 골드: 둘 다 새 방식이면 기기별 큰 값, 한쪽이 예전 방식(v 없음)이면 새 방식 쪽을 믿는다, 둘 다 예전이면 큰 골드
+  let base, gl;
+  const newA = x?.v === 2, newB = y?.v === 2;
+  if (newA && newB) {
+    base = Math.max(A.base, B.base);
+    gl = { ...A.gl };
+    for (const [k, v] of Object.entries(B.gl)) gl[k] = { p: Math.max(gl[k]?.p || 0, v.p), m: Math.max(gl[k]?.m || 0, v.m) };
+  } else if (newA || newB) {
+    ({ base, gl } = newA ? A : B);
+  } else {
+    base = Math.max(A.gold, B.gold); gl = {};
+  }
+  const gone = [...new Set([...A.gone, ...B.gone])].slice(-400);
+  const goneSet = new Set(gone);
+  const byId = new Map();
+  for (const it of [...A.items, ...B.items]) {
+    if (goneSet.has(it.id)) continue;
+    const had = byId.get(it.id);
+    // 같은 장비가 양쪽에 있으면 더 강화한 쪽(강화에 쓴 골드가 늘기만 함)
+    if (!had || (Number(it.spent) || 0) > (Number(had.spent) || 0) || (Number(it.plus) || 0) > (Number(had.plus) || 0)) byId.set(it.id, it);
+  }
+  const items = [...byId.values()].sort((p, q) => String(p.at || '').localeCompare(String(q.at || ''))).slice(0, BAG_MAX);
+  const sameDay = (p, q, key) => p && q && p[key] === q[key];
+  const laterOf = (p, q, key) => (!p ? q : !q ? p : String(q[key]) > String(p[key]) ? q : p);
+  const earned = sameDay(A.earned, B.earned, 'date')
+    ? { date: A.earned.date, task: Math.max(A.earned.task, B.earned.task), battle: Math.max(A.earned.battle, B.earned.battle) }
+    : laterOf(A.earned, B.earned, 'date');
+  const shop = sameDay(A.shop, B.shop, 'date') ? { date: A.shop.date, bought: [...new Set([...A.shop.bought, ...B.shop.bought])] } : laterOf(A.shop, B.shop, 'date');
+  const quests = sameDay(A.quests, B.quests, 'week')
+    ? { week: A.quests.week, claimed: [...new Set([...A.quests.claimed, ...B.quests.claimed])], box: A.quests.box || B.quests.box }
+    : laterOf(A.quests, B.quests, 'week');
+  const weekWins = sameDay(A.weekWins, B.weekWins, 'week') ? { week: A.weekWins.week, n: Math.max(A.weekWins.n, B.weekWins.n) } : laterOf(A.weekWins, B.weekWins, 'week');
+  const wander = sameDay(A.wander, B.wander, 'date') ? { date: A.wander.date, won: A.wander.won || B.wander.won } : laterOf(A.wander, B.wander, 'date');
+  return normalizeGear({
+    ...late,
+    v: 2, base, gl, gone, items, equipped: late.equipped,
+    gold: goldFromLedger(base, gl),
+    rolled: [...new Set([...A.rolled, ...B.rolled])].slice(-300),
+    npcClaimed: [...new Set([...A.npcClaimed, ...B.npcClaimed])],
+    seen: [...new Set([...A.seen, ...B.seen])],
+    stats: { maxPlus: Math.max(A.stats.maxPlus, B.stats.maxPlus), questWeeks: Math.max(A.stats.questWeeks, B.stats.questWeeks) },
+    earned, shop, quests, weekWins, wander,
+    at: Math.max(A.at, B.at),
+  });
 }
 
 // 강화한 만큼 커진 장비 효과 (원래 수치는 그대로 두고 보여 줄 때·계산할 때만 곱한다)
