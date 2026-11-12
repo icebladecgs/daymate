@@ -183,11 +183,14 @@ export async function loadContacts(uid) {
 // Google Calendar OAuth (Calendar scope)
 export function googleSignInWithCalendarScope() {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), 30000);
+    // 5분 — 구글 창에서 이메일·비밀번호(2단계 인증)를 직접 넣으면 30초가 넘어 연동이 조용히 실패했다 (2026-11-12).
+    // 창을 닫으면 error_callback으로 바로 끝난다.
+    const timer = setTimeout(() => reject(new Error('timeout')), 5 * 60 * 1000);
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: '9221676076-5ceja00ivoodlv4sqf045sv5poqousi8.apps.googleusercontent.com',
       scope: 'https://www.googleapis.com/auth/calendar',
       prompt: '',
+      error_callback: (err) => { clearTimeout(timer); reject(new Error(err?.type || 'popup_error')); },
       callback: (response) => {
         clearTimeout(timer);
         if (response.error) { reject(new Error(response.error)); return; }
@@ -201,11 +204,14 @@ export function googleSignInWithCalendarScope() {
 // Google Drive OAuth (drive.file scope — only files created by this app)
 export function googleSignInWithDriveScope() {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), 30000);
+    // 5분 — 구글 창에서 이메일·비밀번호(2단계 인증)를 직접 넣으면 30초가 넘어 연동이 조용히 실패했다 (2026-11-12).
+    // 창을 닫으면 error_callback으로 바로 끝난다.
+    const timer = setTimeout(() => reject(new Error('timeout')), 5 * 60 * 1000);
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: '9221676076-5ceja00ivoodlv4sqf045sv5poqousi8.apps.googleusercontent.com',
       scope: 'https://www.googleapis.com/auth/drive.file',
       prompt: '',
+      error_callback: (err) => { clearTimeout(timer); reject(new Error(err?.type || 'popup_error')); },
       callback: (response) => {
         clearTimeout(timer);
         if (response.error) { reject(new Error(response.error)); return; }
