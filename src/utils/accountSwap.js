@@ -80,3 +80,12 @@ export async function prepareAccount(uid) {
   try { sessionStorage.setItem("dm_account_swapped", restore ? "back" : "new"); } catch { /* 안내만 못 띄움 */ }
   return "swapped";
 }
+
+// 🗑 계정 삭제 뒤 이 기기에 남은 그 계정 기록을 지운다 (2026-11-12). 기기 설정(앱 잠금·글씨 크기 등)은 남긴다.
+// 지우는 동안·새로 열 때까지 앱이 다시 쓰지 않게 막는다.
+export async function wipeLocalAccount(uid) {
+  freezeStore(true);
+  Object.keys(localStorage).filter(isAccountKey).forEach(k => localStorage.removeItem(k));
+  localStorage.removeItem(OWNER_KEY);
+  if (uid) await archiveDelete(uid).catch(() => {});
+}

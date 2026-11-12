@@ -6,7 +6,8 @@ import { getPermission, requestPermission, sendNotification, playNotifSound, tri
 import { parseLines, clampList } from "../utils/text.js";
 import { ASSET_META, fetchMarketDataFromServer, buildBriefingText, searchFinnhub, searchKoreanStock, searchCoinGecko } from "../api/telegram.js";
 import { saveTgConnectCode, onTgConnected, disconnectTelegram } from "../firebase.js";
-import { saveSettings, getPendingSuggestionsCount, submitSuggestion } from "../firebase.js";
+import { saveSettings, getPendingSuggestionsCount, submitSuggestion, deleteMyAccount } from "../firebase.js";
+import { wipeLocalAccount } from "../utils/accountSwap.js";
 import { chatFetch } from "../api/chatFetch.js";
 import { getYearGoalTitles, setYearGoals as setNormalizedYearGoals } from "../utils/goals.js";
 import { MAX_DIARY_QUESTIONS } from "../utils/diary.js";
@@ -356,6 +357,10 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
   // 잠금화면 아침 알림 — 2026-11-12 Vercel Pro 전환으로 고를 수 있게(예전엔 cron이 하루 1번이라 07:00 고정). 보내는 곳은 api/notify-dispatch.js
   const [pushMorningTime, setPushMorningTime] = useState(alarmTimes.pushMorning || '07:00');
+  // 🗑 계정 삭제 (2026-11-12)
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const toggleAsset = (sym) => {
     setSelectedAssets(prev =>
@@ -1120,6 +1125,60 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
     </div>
   );
 
+  // ── 서브페이지: 계정 삭제(회원 탈퇴) (2026-11-12) — 지우는 일은 서버(api/account.js → utils/accountDelete.js) ──
+  if (subPage === 'deleteAccount') {
+    const li = { margin: '0 0 6px', lineHeight: 1.7 };
+    const runDelete = async () => {
+      if (deleteText.trim() !== '삭제' || deleting) return;
+      setDeleting(true); setDeleteError('');
+      try {
+        const uid = await deleteMyAccount();
+        await wipeLocalAccount(uid);
+        try { sessionStorage.setItem('dm_account_deleted', '1'); } catch { /* 안내만 못 띄움 */ }
+        window.location.replace(window.location.pathname);
+      } catch (e) {
+        setDeleteError(e?.message || '삭제하지 못했어요');
+        setDeleting(false);
+      }
+    };
+    return (
+      <div style={S.content}>
+        {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+        <SubHeader title="계정 삭제" onBack={() => setSubPage('integrations')} />
+        <div style={{ ...S.card, borderColor: 'rgba(239,68,68,.45)' }}>
+          <div style={{ fontSize: 17, fontWeight: 900, color: '#EF4444', marginBottom: 10 }}>계정을 삭제하면 되돌릴 수 없어요</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', marginBottom: 6 }}>🗑 지워지는 것</div>
+          <ul style={{ margin: '0 0 14px', paddingLeft: 20, fontSize: 14, color: 'var(--dm-sub)' }}>
+            <li style={li}>할일·메모·일기·습관·목표·일정·설정 등 <b>내 기록 전부</b></li>
+            <li style={li}>메모·명함·오답 노트 등에 올린 <b>사진</b>, 내 사람들(연락처)</li>
+            <li style={li}>보유자산·구독·순위표·초대 코드·텔레그램 연결·문의 기록</li>
+            <li style={li}>DayMate 로그인 계정과 <b>이 기기에 남은 기록</b></li>
+          </ul>
+          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', marginBottom: 6 }}>👥 남는 것</div>
+          <ul style={{ margin: '0 0 14px', paddingLeft: 20, fontSize: 14, color: 'var(--dm-sub)' }}>
+            <li style={li}>커뮤니티·챌린지·게시판에 쓴 <b>글·댓글·채팅·인증(사진 포함)</b>은 지워지지 않고 이름만 <b>"탈퇴회원"</b>으로 바뀌어요. 지우고 싶은 글은 <b>탈퇴 전에 직접</b> 지워 주세요.</li>
+            <li style={li}>내가 만든 커뮤니티·챌린지는 가장 오래된 멤버에게 넘어가요(혼자면 함께 지워져요). 영토는 주인 없는 땅이 돼요.</li>
+            <li style={li}>구글 드라이브·구글 캘린더에 들어간 파일과 일정은 <b>내 구글 계정</b>에 그대로 있어요.</li>
+          </ul>
+          <button onClick={() => (driveConnected ? setSubPage('integrations') : handleDriveConnect())}
+            style={{ ...S.btnGhost, marginTop: 0, fontSize: 14 }}>☁️ 먼저 구글 드라이브에 백업하기</button>
+        </div>
+        <div style={S.card}>
+          <div style={{ fontSize: 14, color: 'var(--dm-text)', lineHeight: 1.7, marginBottom: 10 }}>
+            계속하려면 아래 칸에 <b>삭제</b>라고 쓰세요. 누르면 본인 확인을 위해 <b>구글 로그인을 한 번 더</b> 해요.
+          </div>
+          <input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="삭제" aria-label="삭제 확인 입력"
+            style={{ ...S.input, marginBottom: 10 }} disabled={deleting} />
+          {deleteError && <div role="alert" style={{ fontSize: 14, color: '#EF4444', marginBottom: 10, lineHeight: 1.6 }}>{deleteError}</div>}
+          <button onClick={runDelete} disabled={deleteText.trim() !== '삭제' || deleting}
+            style={{ ...S.btn, marginTop: 0, background: '#EF4444', color: '#fff', opacity: deleteText.trim() === '삭제' && !deleting ? 1 : 0.45 }}>
+            {deleting ? '지우는 중… 창을 닫지 마세요' : '계정 영구 삭제'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── 서브페이지: Google 연동 ──────────────────────────────────────
   if (subPage === 'integrations') return (
     <div style={S.content}>
@@ -1145,6 +1204,10 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
             <button style={S.btnGhost} onClick={() => {
               if (window.confirm('로그아웃하시겠습니까?\n로그아웃해도 기기의 데이터는 유지돼요.')) onGoogleSignOut().catch(() => {});
             }}>로그아웃</button>
+            <button onClick={() => { setDeleteText(''); setDeleteError(''); setSubPage('deleteAccount'); }}
+              style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: '#EF4444', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '10px 8px', textDecoration: 'underline' }}>
+              계정 삭제(회원 탈퇴)
+            </button>
           </div>
         ) : (
           <div>

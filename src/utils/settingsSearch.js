@@ -26,6 +26,7 @@ export const ITEMS = [
   { page: "notifications", label: "음성 알람", section: "음성 알람", words: "TTS 읽어주기" },
   { page: "telegram", label: "텔레그램 연결·브리핑", words: "봇 아침 자산 날씨 도시" },
   { page: "integrations", label: "구글 로그인·계정 동기화", section: "계정 동기화", words: "로그아웃 계정 로그인 구글" },
+  { page: "integrations", label: "계정 삭제(회원 탈퇴)", section: "계정 동기화", words: "탈퇴 회원 탈퇴 계정 지우기 삭제 개인정보" },
   { page: "integrations", label: "구글 캘린더", section: "구글 캘린더", words: "일정 연동 달력" },
   { page: "integrations", label: "구글 드라이브", section: "구글 드라이브", words: "파일 첨부 메모 저장 연동" },
   { page: "friends", label: "친구 초대", section: "친구 초대", words: "초대 코드" },

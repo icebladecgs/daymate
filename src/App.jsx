@@ -159,6 +159,8 @@ export default function App() {
   // 계정을 바꿔 끼우고 새로 연 직후 한 번 알림 (utils/accountSwap.js)
   const [toast, setToast] = useState(() => {
     try {
+      // 계정 삭제 뒤 새로 연 직후 (Settings 계정 삭제, 2026-11-12)
+      if (sessionStorage.getItem("dm_account_deleted")) { sessionStorage.removeItem("dm_account_deleted"); return "계정을 삭제했어요. 그동안 함께해 주셔서 고마워요"; }
       const swapped = sessionStorage.getItem("dm_account_swapped");
       if (!swapped) return "";
       sessionStorage.removeItem("dm_account_swapped");

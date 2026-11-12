@@ -4,6 +4,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  reauthenticateWithPopup,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -65,6 +66,33 @@ export function googleSignIn() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   return signInWithPopup(auth, provider);
+}
+
+// 🗑 계정 삭제 (2026-11-12) — 본인 확인으로 구글 로그인을 한 번 더 하고(5분 안이어야 서버가 받음),
+// 서버(api/account.js)가 지운다. 다른 구글 계정을 고르면 Firebase가 거절한다(auth/user-mismatch).
+export async function deleteMyAccount() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('로그인해 주세요');
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    await reauthenticateWithPopup(user, provider);
+  } catch (e) {
+    if (e?.code === 'auth/user-mismatch') throw new Error('지금 로그인한 계정과 같은 구글 계정을 골라 주세요');
+    if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') throw new Error('본인 확인을 취소했어요');
+    throw new Error('본인 확인을 하지 못했어요');
+  }
+  const token = await user.getIdToken(true);
+  const r = await fetch('/api/account?action=delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ confirm: '삭제' }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || '삭제하지 못했어요');
+  const uid = user.uid;
+  await signOut(auth).catch(() => {});
+  return uid;
 }
 
 
