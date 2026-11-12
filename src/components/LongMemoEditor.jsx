@@ -333,38 +333,56 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       <DriveFileList files={files} onChange={commitFiles} />
       {drive.input}
 
-      {/* 새 디자인 (2026-11-10): 사진·드라이브·언젠가로·말하기를 한 줄에 같은 모양으로 — 점선은 비활성처럼 보였다 */}
+      {/* 새 디자인 (2026-11-13 사용자 요청 "상자 걷어내고 세련되게") — 테두리·바탕 상자와 색 이모지 대신 색 없는 선 아이콘 + 아래 설명.
+          AI 정리도 같은 줄 첫 칸(아이콘만 강조색). 누르는 동안·켜진 상태만 아이콘 뒤에 옅은 동그라미 (2026-11-10 상자형에서 바꿈) */}
       {newLook && (() => {
-        const tile = (active, color) => ({ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 0, minHeight: 58, padding: '6px 2px', borderRadius: 12,
-          background: active ? `${color}1F` : 'var(--dm-input)', border: `1.5px solid ${active ? color : 'var(--dm-border)'}`, color: active ? color : 'var(--dm-sub)', fontSize: 13, fontWeight: 800,
-          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
-        const ico = { fontSize: 20, lineHeight: 1 };
-        return (<>
-          {/* ✨ AI 정리 — 한 줄 전체 (2026-11-10) */}
-          <button onClick={tidy.open} style={{ width: '100%', minHeight: 46, marginBottom: 8, borderRadius: 12, border: '1.5px solid rgba(139,92,246,.45)', background: 'rgba(139,92,246,.10)', color: '#8B5CF6', fontSize: 15, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>✨ AI로 정리하기</button>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${onUpdateFiles ? 5 : 4}, minmax(0,1fr))`, gap: 6, marginBottom: 14 }}>
-            <button onClick={handleAddPhoto} disabled={uploading} style={tile(false)}>
-              <span style={ico}>{uploading ? <span className="dm-spin" style={{ display: 'inline-block' }}>⏳</span> : '📷'}</span>사진
+        const accent = 'var(--dm-accent, #5B7CFA)';
+        const item = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0, padding: '2px 0', background: 'none', border: 'none',
+          cursor: 'pointer', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' };
+        const dot = (on, color) => ({ width: 44, height: 44, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: on ? `color-mix(in srgb, ${color} 16%, transparent)` : 'transparent', color: on ? color : 'var(--dm-text)', transition: 'background .15s' });
+        const label = (on, color) => ({ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: on ? color : 'var(--dm-sub)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
+        const Ico = ({ d, children }) => (
+          <svg viewBox="0 0 24 24" width={23} height={23} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d ? <path d={d} /> : children}</svg>
+        );
+        const cols = onUpdateFiles ? 6 : 5;
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 2, margin: '2px 0 14px' }}>
+            <button onClick={tidy.open} style={item} aria-label="AI로 정리하기">
+              <span style={dot(true, accent)}><Ico><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" /><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z" /></Ico></span>
+              <span style={label(true, accent)}>AI 정리</span>
+            </button>
+            <button onClick={handleAddPhoto} disabled={uploading} style={item}>
+              <span style={dot(uploading, accent)} className={uploading ? 'dm-spin' : undefined}><Ico><rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 8" /></Ico></span>
+              <span style={label(uploading, accent)}>사진</span>
             </button>
             {onUpdateFiles && (
-              <button onClick={drive.pick} disabled={drive.busy} style={tile(drive.busy, '#5B7CFA')}>
-                <span style={ico}>📁</span>{drive.busy ? drive.label : '드라이브'}
+              <button onClick={drive.pick} disabled={drive.busy} style={item}>
+                <span style={dot(drive.busy, accent)}><Ico d="M7 18h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.4 9.1 4.5 4.5 0 0 0 7 18z" /></span>
+                <span style={label(drive.busy, accent)}>{drive.busy ? drive.label : '드라이브'}</span>
               </button>
             )}
-            {/* 📌 오늘로 (2026-11-10) · 📋 언젠가로 — 커서가 있는 줄(또는 고른 글자)을 할일로 */}
+            {/* 오늘로 · 언젠가로 — 커서가 있는 줄(또는 고른 글자)을 할일로 (2026-11-10) */}
             <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 보내기"
-              onClick={() => sendLine('today')} style={tile(!!sentToday, '#5B7CFA')}>
-              <span style={ico}>📌</span>{sentToday || '오늘로'}
+              onClick={() => sendLine('today')} style={item}>
+              <span style={dot(!!sentToday, accent)}><Ico><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /><path d="M9 15l2 2 4-4" /></Ico></span>
+              <span style={label(!!sentToday, accent)}>{sentToday || '오늘로'}</span>
             </button>
             <button onMouseDown={e => e.preventDefault()} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로 보내기"
-              onClick={() => sendLine('someday')} style={tile(!!sentTask, '#22C55E')}>
-              <span style={ico}>📋</span>{sentTask ? '보냄 ✓' : '언젠가로'}
+              onClick={() => sendLine('someday')} style={item}>
+              <span style={dot(!!sentTask, '#22C55E')}><Ico><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></Ico></span>
+              <span style={label(!!sentTask, '#22C55E')}>{sentTask ? '보냄 ✓' : '언젠가로'}</span>
             </button>
-            <button onClick={toggleVoice} aria-pressed={listening} style={tile(listening, '#EF4444')}>
-              <span style={ico}>{listening ? '⏹' : '🎤'}</span>{listening ? '듣는 중' : '말하기'}
+            <button onClick={toggleVoice} aria-pressed={listening} style={item}>
+              <span style={dot(listening, '#EF4444')}>
+                {listening
+                  ? <Ico><rect x="7" y="7" width="10" height="10" rx="2" /></Ico>
+                  : <Ico><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></Ico>}
+              </span>
+              <span style={label(listening, '#EF4444')}>{listening ? '듣는 중' : '말하기'}</span>
             </button>
           </div>
-        </>);
+        );
       })()}
       {tidy.ui}
       {/* 사진 추가 옆에 구글 드라이브 첨부 버튼 */}
