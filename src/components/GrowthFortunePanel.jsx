@@ -127,8 +127,9 @@ export default function GrowthFortunePanel({
       });
       if (!res.ok) throw new Error(`tojeong ${res.status}`);
       const td = await res.json();
-      store.set('dm_tojeong_result', td);
-      setTojeongData(td);
+      const saved = { ...td, year }; // 해가 바뀌면 다시 보게 (2026-11-12)
+      store.set('dm_tojeong_result', saved);
+      setTojeongData(saved);
     } catch { setFortuneError(true); }
     setFortuneLoading(false);
   };
@@ -328,7 +329,8 @@ export default function GrowthFortunePanel({
               )}
             </div>
             {/* 컨텐츠 스크롤 영역 */}
-            <div style={{ padding: "16px 16px 24px", overflowY: "auto" }}>
+            {/* 전체 화면 탭(평생 사주·토정비결)은 아래 메뉴 막대에 맨 아래가 가려져서 그만큼 더 띄운다 (2026-11-12 사용자 제보) */}
+            <div style={{ padding: isFsTab ? "16px 16px calc(120px + env(safe-area-inset-bottom, 0px))" : "16px 16px 24px", overflowY: "auto" }}>
             {!birthDate ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <div style={{ fontSize: 13, color: "var(--dm-muted)", marginBottom: 12 }}>생년월일을 입력하면 오늘의 운세를 볼 수 있어요</div>
@@ -463,7 +465,7 @@ export default function GrowthFortunePanel({
                 </div>
               )
             ) : (
-              tojeongData ? (
+              tojeongData && (tojeongData.year ?? new Date().getFullYear()) === new Date().getFullYear() ? (
                 <div style={S.card}>
                   <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "12px 14px", marginBottom: 12, textAlign: "center" }}>
                     <div style={{ fontSize: 11, color: "var(--dm-muted)", fontWeight: 700, marginBottom: 2 }}>{new Date().getFullYear()}년 토정비결</div>
@@ -471,6 +473,35 @@ export default function GrowthFortunePanel({
                     <div style={{ fontSize: 13, color: "var(--dm-text)", marginTop: 6 }}>{tojeongData.summary}</div>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.8, marginBottom: 12 }}>{tojeongData.overall}</div>
+                  {/* 1~12월 운세 (2026-11-12 사용자 요청 — 서버는 예전부터 받아 오는데 화면에 안 보였다). 이번 달은 강조 */}
+                  {Array.isArray(tojeongData.monthly) && tojeongData.monthly.length > 0 && (
+                    <div style={{ marginTop: 4, marginBottom: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "var(--dm-text)", marginBottom: 8 }}>📅 달마다 운세</div>
+                      {tojeongData.monthly.map((m) => {
+                        const now = Number(m.month) === new Date().getMonth() + 1;
+                        return (
+                          <div key={m.month} style={{ display: "flex", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 4, background: now ? "rgba(252,211,77,.12)" : "transparent", border: now ? "1px solid rgba(252,211,77,.45)" : "1px solid transparent" }}>
+                            <span style={{ flexShrink: 0, width: 36, fontSize: 13, fontWeight: 900, color: now ? "#F59E0B" : "var(--dm-muted)" }}>{m.month}월</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--dm-text)", lineHeight: 1.7 }}>{m.fortune}{now ? <b style={{ color: "#F59E0B" }}> · 이번 달</b> : null}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {tojeongData.caution && (
+                    <div style={{ fontSize: 13, color: "var(--dm-text)", lineHeight: 1.8, marginBottom: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 4 }}>⚠️ 주의할 점</div>
+                      {tojeongData.caution}
+                    </div>
+                  )}
+                  {!Array.isArray(tojeongData.monthly) && (
+                    <button onClick={loadTojeong} disabled={fortuneLoading} style={{ ...S.btn, marginTop: 0, marginBottom: 10 }}>🔄 달마다 운세까지 다시 보기</button>
+                  )}
+                  {tojeongData.advice && (
+                    <div style={{ background: "var(--dm-input)", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 800, color: "var(--dm-text)", lineHeight: 1.7 }}>
+                      💡 {tojeongData.advice}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ textAlign: "center", padding: "20px 16px" }}>
