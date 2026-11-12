@@ -3,7 +3,7 @@
 export const SETTINGS_PAGE_NAMES = {
   profile: "프로필 & 목표",
   recurring: "반복 할일",
-  voiceDiaryQuestions: "음성 일기 질문",
+  voiceDiaryQuestions: "AI 일기 질문",
   notifications: "알림 설정",
   telegram: "텔레그램 자동화",
   integrations: "Google 연동",
@@ -17,7 +17,7 @@ export const ITEMS = [
   { page: "profile", label: "연간 목표", section: "연간 목표", words: "올해 목표" },
   { page: "app", label: "출퇴근 시간", section: "출퇴근 시간", words: "출근 퇴근 근무 시간 퇴근 전 체크 오늘 양 나중에" },
   { page: "recurring", label: "반복 할일", words: "매일 요일 매주 매월 그만하기" },
-  { page: "voiceDiaryQuestions", label: "음성 일기 질문", words: "녹음 말 일기" },
+  { page: "voiceDiaryQuestions", label: "AI 일기 질문", words: "음성 일기 녹음 말 AI와 일기 쓰기" },
   { page: "notifications", label: "할일·메모 알람", section: "할일·메모 알람", words: "알람 시간 정각 5분 전 10분 전" },
   { page: "notifications", label: "알림 켜기·끄기", section: "알림 ON/OFF", words: "푸시 권한 잠금화면" },
   { page: "notifications", label: "커뮤니티 채팅 알림", section: "커뮤니티 채팅 알림", words: "소셜 메시지 푸시" },

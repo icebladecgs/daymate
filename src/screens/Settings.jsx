@@ -661,12 +661,12 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
   if (subPage === 'voiceDiaryQuestions') return (
     <div style={S.content}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-      <SubHeader title="음성 일기 질문" onBack={() => setSubPage(null)} />
+      <SubHeader title="AI 일기 질문" onBack={() => setSubPage(null)} />
 
       <div style={S.sectionTitle}>질문 편집 (최대 {MAX_DIARY_QUESTIONS}개)</div>
       <div style={S.card}>
         <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-sub)", fontWeight: 900, marginBottom: 8 }}>
-          🎙️ 음성 일기 작성 시 순서대로 물어볼 질문이에요
+          ✨ AI와 일기 쓰기(음성일기 포함)에서 순서대로 물어볼 질문이에요
         </div>
         <textarea
           rows={8}
@@ -1610,7 +1610,7 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
     { category: '핵심 설정', items: [
       { icon: '👤', title: '프로필 & 목표', sub: '이름 · 생년월일 · 연간 목표', action: () => setSubPage('profile') },
       { icon: '🔁', title: '반복 할일', sub: (recurringTasks || []).length ? `${(recurringTasks || []).filter(t => t.title?.trim()).length}개 · 고치기·그만하기` : '매일·요일마다 자동으로 생기는 할일', action: () => setSubPage('recurring') },
-      { icon: '🎙️', title: '음성 일기 질문', sub: `질문 편집 · 최대 ${MAX_DIARY_QUESTIONS}개`, action: () => setSubPage('voiceDiaryQuestions') },
+      { icon: '✨', title: 'AI 일기 질문', sub: `질문 편집 · 최대 ${MAX_DIARY_QUESTIONS}개`, action: () => setSubPage('voiceDiaryQuestions') },
       ...(onOpenLifeCoach ? [{ icon: '🌱', title: '인생 플랜 만들기', sub: 'AI가 질문으로 목표·습관·할 일을 설계', action: () => onOpenLifeCoach() }] : []),
       ...(onOpenStats ? [{ icon: '📊', title: '통계', sub: '달성률 · 습관 · 점수 분석', action: () => onOpenStats() }] : []),
       { icon: '🔔', title: '알림 설정', sub: '권한 · 소리 · 진동 · 시간', action: () => setSubPage('notifications') },

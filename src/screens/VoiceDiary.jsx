@@ -116,10 +116,10 @@ export default function VoiceDiary({ user, questions, toast, setToast, onBack, o
     return wrap(
       <>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>🎙️</div>
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>음성으로 일기 쓰기</div>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>✨</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>AI와 일기 쓰기</div>
           <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.8 }}>
-            질문에 음성으로 답하면<br />
+            질문에 말(🎤)이나 글로 답하면<br />
             Claude가 오늘의 일기로 정리해드려요.
           </div>
         </div>

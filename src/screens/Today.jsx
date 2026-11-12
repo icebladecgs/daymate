@@ -969,7 +969,7 @@ export default function Today({
               color: '#818cf8', fontSize: 13, fontWeight: 800, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
-          >🎙️ 음성으로 일기 쓰기</button>
+          >✨ AI와 일기 쓰기 (음성일기 포함)</button>
         )}
 
         <textarea
