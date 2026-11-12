@@ -1098,6 +1098,23 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('브리핑: AI에게 주는 글에 지표·기사', content.includes('코스피: 5,342.73 (-0.60%)') && content.includes('연합뉴스|경제|제목 — 앞부분'));
 }
 
+// ── 서버 알림 시간표 (2026-11-12 Pro 전환): 정한 시간에, 하루 한 번 ──
+{
+  const { dueJobs, kstNow, eveningTime, greetingTime } = await load('/src/utils/notifySchedule.js');
+  const ids = (s, ds, min, sent) => dueJobs(s, { ds, min }, sent).map(j => j.id).join();
+  const s = { alarmTimes: { pushMorning: '06:30' }, telegram: { briefingTime: '07:40', todoTime: '08:00' }, workHours: { start: '09:00', end: '18:00' } };
+  t('알림: 한국 시각 (UTC 21:35 = 다음 날 06:35)', JSON.stringify(kstNow(new Date('2026-11-12T21:35:00Z'))) === JSON.stringify({ ds: '2026-11-13', min: 6 * 60 + 35 }));
+  t('알림: 잠금화면 아침 알림은 고른 시간에 (06:30)', ids(s, '2026-11-13', 6 * 60 + 30) === 'pushMorning');
+  t('알림: 15분 안이면 아직 보냄, 지나면 안 보냄', ids(s, '2026-11-13', 6 * 60 + 44) === 'pushMorning' && ids(s, '2026-11-13', 6 * 60 + 45) === '');
+  t('알림: 오늘 이미 보냈으면 안 보냄', ids(s, '2026-11-13', 6 * 60 + 35, { pushMorning: '2026-11-13' }) === '' && ids(s, '2026-11-13', 6 * 60 + 35, { pushMorning: '2026-11-12' }) === 'pushMorning');
+  t('알림: 텔레그램 브리핑·할일은 설정한 시간에 (예전엔 7:00·7:05 고정)', ids(s, '2026-11-13', 7 * 60 + 40) === 'tgBriefing' && ids(s, '2026-11-13', 8 * 60) === 'tgTodo');
+  t('알림: 아침 인사는 출근 30분 전', greetingTime(s) === '08:30' && greetingTime({ workHours: { start: '10:00', end: '19:00' } }) === '09:30' && ids(s, '2026-11-13', 8 * 60 + 30) === 'tgMorning');
+  t('알림: 저녁은 하루 마무리 시간 (21시, 늦은 퇴근은 +1시간, 일요일 18시)', eveningTime(s, '2026-11-13') === '21:00' && eveningTime({ workHours: { start: '10:00', end: '21:00' } }, '2026-11-13') === '22:00' && eveningTime(s, '2026-11-15') === '18:00');
+  t('알림: 저녁엔 푸시·텔레그램 둘 다', ids(s, '2026-11-13', 21 * 60 + 5) === 'pushEvening,smartEvening');
+  t('알림: 설정이 없으면 예전 기본 시각', ids({}, '2026-11-13', 7 * 60) === 'pushMorning,tgBriefing' && ids({}, '2026-11-13', 7 * 60 + 5) === 'pushMorning,tgBriefing,tgTodo' && ids({}, '2026-11-13', 8 * 60 + 30) === 'tgMorning');
+  t('알림: 잘못된 시간 글자는 기본값', ids({ alarmTimes: { pushMorning: 'abc' } }, '2026-11-13', 7 * 60).includes('pushMorning'));
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

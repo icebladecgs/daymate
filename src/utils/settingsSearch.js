@@ -22,7 +22,7 @@ export const ITEMS = [
   { page: "notifications", label: "알림 켜기·끄기", section: "알림 ON/OFF", words: "푸시 권한 잠금화면" },
   { page: "notifications", label: "커뮤니티 채팅 알림", section: "커뮤니티 채팅 알림", words: "소셜 메시지 푸시" },
   { page: "notifications", label: "소리·진동", section: "소리 / 진동", words: "벨소리 무음 알림음" },
-  { page: "notifications", label: "알림 시간", section: "알림 시간 설정", words: "아침 브리핑" },
+  { page: "notifications", label: "알림 시간", section: "알림 시간 설정", words: "아침 브리핑 잠금화면 아침 알림 기상 점심 저녁 밤 체크인" },
   { page: "notifications", label: "음성 알람", section: "음성 알람", words: "TTS 읽어주기" },
   { page: "telegram", label: "텔레그램 연결·브리핑", words: "봇 아침 자산 날씨 도시" },
   { page: "integrations", label: "구글 로그인·계정 동기화", section: "계정 동기화", words: "로그아웃 계정 로그인 구글" },

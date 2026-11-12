@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toDateStr } from "../utils/date.js";
+import { eveningTime, greetingTime } from "../utils/notifySchedule.js";
 import { store } from "../utils/storage.js";
 import { getPermission, requestPermission, sendNotification, playNotifSound, triggerVibration, speakTTS, SOUND_STYLES, TTS_DEFAULT_MESSAGES } from "../utils/notification.js";
 import { parseLines, clampList } from "../utils/text.js";
@@ -353,7 +354,8 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
   const [noonTime, setNoonTime] = useState(alarmTimes.noon || '12:00');
   const [eveningTime, setEveningTime] = useState(alarmTimes.evening || '18:00');
   const [nightTime, setNightTime] = useState(alarmTimes.night || '23:00');
-  const [pushMorningTime] = useState('07:00'); // 서버 크론이 하루 1번 07:00 KST에만 도니 고정값
+  // 잠금화면 아침 알림 — 2026-11-12 Vercel Pro 전환으로 고를 수 있게(예전엔 cron이 하루 1번이라 07:00 고정). 보내는 곳은 api/notify-dispatch.js
+  const [pushMorningTime, setPushMorningTime] = useState(alarmTimes.pushMorning || '07:00');
 
   const toggleAsset = (sym) => {
     setSelectedAssets(prev =>
@@ -877,8 +879,12 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
           </div>
         ))}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-          <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>📱 잠금화면 할일 알림</div>
-          <div style={{ fontSize: NL() ? 14 : 12, color: "var(--dm-muted)" }}>매일 아침 7시 고정</div>
+          <div style={{ flex: 1, fontSize: 13, color: "var(--dm-text)", fontWeight: 800 }}>📱 잠금화면 아침 알림</div>
+          <input type="time" step="300" aria-label="잠금화면 아침 알림 시간" value={pushMorningTime} onChange={(e) => e.target.value && setPushMorningTime(e.target.value)}
+            style={{ ...S.input, width: NL() ? 150 : 110, flexShrink: 0, padding: "8px 10px", marginBottom: 0 }} />
+        </div>
+        <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", lineHeight: 1.6, margin: "-2px 0 12px" }}>
+          🌙 저녁 할일 알림은 하루 마무리 시간(오늘 {eveningTime({ workHours }, toDateStr())})에 맞춰 가요 — 출퇴근 시간을 바꾸면 따라 바뀌어요.
         </div>
         <button style={S.btn} onClick={saveAlarmTimes}>알림 시간 저장</button>
       </div>
@@ -1001,6 +1007,9 @@ export default function Settings({ workHours, setWorkHours, user, setUser, goals
               <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", marginBottom: 4 }}>할일 알림</div>
               <input style={S.input} type="time" value={todoTime} onChange={(e) => setTodoTime(e.target.value)} />
             </div>
+          </div>
+          <div style={{ fontSize: NL() ? 13 : 11, color: "var(--dm-muted)", lineHeight: 1.6, marginTop: 6 }}>
+            고른 시간에 보내요. 아침 인사는 출근 30분 전({greetingTime({ workHours })}), 저녁 알림은 하루 마무리 시간에 가요.
           </div>
 
           <div style={{ height: 14 }} />
