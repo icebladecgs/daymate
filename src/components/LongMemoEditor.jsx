@@ -434,7 +434,16 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       {boxed && (
         <button className="dm-hit" onClick={() => setTagsOpen(v => { store.set('dm_section_open_memo_tags', !v); return !v; })} aria-expanded={tagsOpen}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, padding: '6px 0', marginBottom: tagsOpen ? 8 : 0, background: 'none', border: 'none', borderRadius: 0, fontSize: 15, fontWeight: 800, color: 'var(--dm-text)', cursor: 'pointer' }}>
-          <span>🏷 태그</span><span style={{ fontSize: 14, color: 'var(--dm-muted)' }}>{tagsOpen ? '▲' : '▼'}</span>
+          {/* 선 아이콘 (2026-11-13 — 위 버튼 줄과 같은 모양, 이모지 대신) */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--dm-sub)' }}>
+              <path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12l9 9-9 9z" /><circle cx="7.5" cy="7.5" r="1.4" />
+            </svg>
+            태그
+          </span>
+          <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="var(--dm-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: tagsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
         </button>
       )}
       {(!boxed || tagsOpen) && (<>
