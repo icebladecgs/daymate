@@ -1044,6 +1044,27 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('내일 미리보기: 기록 없는 날도 동작', P.tomorrowTasks({}, null, ds).length === 0);
 }
 
+// ── 📋 업그레이드 할 일 (관리자 화면, utils/roadmap.js) ──
+{
+  const R = await load('/src/utils/roadmap.js');
+  const items = [
+    { id: 'a', text: '끝낸 일', status: 'done', doneAt: '2026-11-10T00:00:00Z', createdAt: '2026-11-01T00:00:00Z' },
+    { id: 'b', text: '보통 일', status: 'todo', pri: 'normal', createdAt: '2026-11-02T00:00:00Z' },
+    { id: 'c', text: '급한 일', status: 'todo', pri: 'high', createdAt: '2026-11-05T00:00:00Z', note: '조건 1\n\n조건 2' },
+    { id: 'd', text: '하는 일', status: 'doing', pri: 'low', createdAt: '2026-11-06T00:00:00Z' },
+  ];
+  t('업그레이드: 하는 중 → 급한 것 → 보통 → 끝냄 순서', R.sortRoadmap(items).map(i => i.id).join() === 'd,c,b,a', R.sortRoadmap(items).map(i => i.id).join());
+  const txt = R.roadmapToText(items);
+  t('업그레이드: 복사 글에 끝낸 일은 빠지고 메모 줄은 들여 씀',
+    !txt.includes('끝낸 일') && txt.includes('- [ ] 급한 일 (급함)\n    - 조건 1\n    - 조건 2') && txt.includes('- [ ] 하는 일 (하는 중, 언젠가)'), txt);
+  t('업그레이드: 남은 일이 없으면 빈 글', R.roadmapToText([items[0]]) === '');
+  const at = (ds) => Object.fromEntries(R.roadmapChecks(ds).map(c => [c.id, c.state]));
+  t('업그레이드 점검: 2026-11-12 증시 표(2027-12)는 여유', at('2026-11-12').market === 'ok', JSON.stringify(at('2026-11-12')));
+  t('업그레이드 점검: 2027-09-01은 곧, 2027-11-01부터 갱신할 때, 2028-01-01은 표 끝남',
+    at('2027-09-01').market === 'soon' && at('2027-11-01').market === 'now' && at('2028-01-01').market === 'late');
+  t('업그레이드 점검: 공휴일 음력 표(2032)는 2032-11-01부터 갱신할 때', at('2032-10-31').lunar === 'soon' && at('2032-11-01').lunar === 'now');
+}
+
 await vite.close();
 console.log(`\n기록 보존 점검: ${pass}개 통과, ${fail}개 실패`);
 process.exitCode = fail ? 1 : 0;

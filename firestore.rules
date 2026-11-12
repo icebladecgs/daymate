@@ -209,6 +209,15 @@ service cloud.firestore {
         && request.resource.data.stack is string && request.resource.data.stack.size() <= 2000;
       allow read, delete: if isAppAdmin();
     }
+    // 📋 업그레이드 할 일 (2026-11-12) — 관리자 화면에서 앱 관리자만 적고 보는 개발 목록. 다른 사람은 읽지도 못함.
+    match /adminRoadmap/{itemId} {
+      allow read, delete: if isAppAdmin();
+      allow create, update: if isAppAdmin()
+        && request.resource.data.keys().hasOnly(['text', 'note', 'status', 'pri', 'createdAt', 'doneAt', 'from'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 3000
+        && request.resource.data.status in ['todo', 'doing', 'done'];
+    }
     match /suggestions/{suggestionId} {
       allow create: if request.auth != null;
       allow read, update: if request.auth != null &&

@@ -1,10 +1,33 @@
 import { titleLabel } from "../utils/gear.js";
 import { useState, useEffect, useMemo } from "react";
-import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings, clearRankingEmails } from "../firebase.js";
+import { loadAllUsersMeta, getUserDaysCount, loadSuggestions, replySuggestion, approveAppUnlock, loadAllCommunities, deleteCommunityFull, isLegacyCommunity, migrateCommunitySecret, loadAllChallenges, deleteChallengeFull, endChallenge, isPrimaryAdmin, loadRankings, clearRankingEmails, saveRoadmapItem, roadmapItemExists } from "../firebase.js";
 import { calcLevel } from "../data/stats.js";
 import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
 import AdminErrorLogs from "../components/AdminErrorLogs.jsx";
+import AdminRoadmap from "../components/AdminRoadmap.jsx";
+
+// 문의·제안 → 📋 업그레이드 할 일로 옮기기. 문서 id를 s_제안id로 해서 두 번 들어가지 않는다. 이메일은 옮기지 않는다.
+function SuggestionToRoadmap({ s }) {
+  const [state, setState] = useState(""); // '' | busy | added | exists | error
+  const add = async () => {
+    setState("busy");
+    const id = `s_${s.id}`;
+    try {
+      if (await roadmapItemExists(id)) { setState("exists"); return; }
+      const first = String(s.text || "").split("\n").map(x => x.trim()).find(Boolean) || "문의·제안";
+      await saveRoadmapItem({ id, text: first.slice(0, 120), note: String(s.text || "").slice(0, 2900), status: "todo", pri: "normal", from: s.id });
+      setState("added");
+    } catch { setState("error"); }
+  };
+  const label = { busy: "넣는 중…", added: "✓ 업그레이드 할 일에 넣음", exists: "이미 넣은 제안이에요", error: "못 넣었어요 (보안 규칙 게시 확인)" }[state] || "📋 업그레이드 할 일로";
+  return (
+    <button onClick={add} disabled={state === "busy" || state === "added" || state === "exists"}
+      style={{ ...S.btnGhost, marginTop: 6, fontSize: 13, padding: "8px 0", color: state === "error" ? "#F87171" : "var(--dm-sub)" }}>
+      {label}
+    </button>
+  );
+}
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
@@ -253,6 +276,7 @@ export default function Admin({ authUser, onBack }) {
                 { key: 'communities', label: `커뮤니티 (${communities.length})` },
                 { key: 'challenges', label: `챌린지 (${challenges.length})` },
                 { key: 'errors', label: '🐞 오류' },
+                { key: 'roadmap', label: '📋 업그레이드' },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   flex: '1 1 30%', padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
@@ -273,6 +297,9 @@ export default function Admin({ authUser, onBack }) {
 
         {/* 오류 탭 — 앱 오류 자동 수집 결과 */}
         {activeTab === 'errors' && <AdminErrorLogs />}
+
+        {/* 업그레이드 탭 — 관리자만 보는 개발 할 일 메모장 (원본 목록은 docs/ROADMAP.md) */}
+        {activeTab === 'roadmap' && <AdminRoadmap />}
 
         {/* 랭킹 탭 */}
         {activeTab === 'rankings' && (
@@ -508,6 +535,7 @@ export default function Admin({ authUser, onBack }) {
                     {s.adminReply ? '✏️ 답변 수정' : '💬 답변하기'}
                   </button>
                 )}
+                {s.kind !== 'appLock' && <SuggestionToRoadmap s={s} />}
               </div>
             ))}
           </div>

@@ -571,6 +571,36 @@ export async function purgeOldErrorLogs(days = 30) {
   return snap.size;
 }
 
+// ---------- 📋 업그레이드 할 일 (관리자 화면, 앱 관리자만 — firestore.rules adminRoadmap) ----------
+export async function loadRoadmap() {
+  const snap = await getDocs(collection(db, 'adminRoadmap'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// id가 없으면 새로 만든다. 문의·제안에서 옮길 때는 id를 `s_제안id`로 줘서 두 번 들어가지 않게 한다.
+export async function saveRoadmapItem(item) {
+  const id = item.id || doc(collection(db, 'adminRoadmap')).id;
+  const data = {
+    text: String(item.text || '').trim().slice(0, 500),
+    note: String(item.note || '').slice(0, 3000),
+    status: ['todo', 'doing', 'done'].includes(item.status) ? item.status : 'todo',
+    pri: ['high', 'normal', 'low'].includes(item.pri) ? item.pri : 'normal',
+    createdAt: item.createdAt || new Date().toISOString(),
+    doneAt: item.status === 'done' ? (item.doneAt || new Date().toISOString()) : null,
+    from: item.from || '',
+  };
+  await setDoc(doc(db, 'adminRoadmap', id), data);
+  return { id, ...data };
+}
+
+export async function roadmapItemExists(id) {
+  return (await getDoc(doc(db, 'adminRoadmap', id))).exists();
+}
+
+export async function deleteRoadmapItem(id) {
+  await deleteDoc(doc(db, 'adminRoadmap', id));
+}
+
 // ---------- 커뮤니티 단체 채팅 ----------
 // communities/{id}/chat/{msgId} = { uid, nickname, text, photos: [{url, path}], createdAt(ISO) }
 // 읽기·쓰기는 멤버만, 삭제는 보낸 사람·커뮤니티 관리자·앱 관리자 (보안 규칙). 수정은 없다.
