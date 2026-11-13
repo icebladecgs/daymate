@@ -623,8 +623,11 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
   const z = (oldV, newV) => (nl ? newV : oldV);
 
   const saved = useRef({ text: initial, title: task?.title || "" });
-  const save = (t, ti) => {
+  // 📄 틀로 넣은 글을 한 글자도 안 바꿨으면 빈 메모로 둔다 — 그대로 나가면 빈 새 메모처럼 정리된다 (2026-11-13 사용자 요청)
+  const tplRef = useRef(null);
+  const save = (t0, ti) => {
     if (!item) return;
+    const t = item.kind === "memo" && tplRef.current !== null && t0.trim() === tplRef.current.trim() ? "" : t0;
     if (t === saved.current.text && ti === saved.current.title) return;
     saved.current = { text: t, title: ti };
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { text: t }));
@@ -753,7 +756,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
+        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -795,7 +798,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
           style={{ padding: z("7px 10px", "10px 14px"), borderRadius: z(8, 12), border: nl ? "none" : "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
-      {item.kind === "memo" && !viewMode && <TemplateRow text={text} setText={setText} taRef={textRef} style={{ flexShrink: 0 }} />}
+      {item.kind === "memo" && !viewMode && <TemplateRow text={text} setText={setText} taRef={textRef} onPick={(t) => { tplRef.current = t; }} onNotice={onError} style={{ flexShrink: 0 }} />}
       {viewMode ? (
         <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
           onEdit={onToggleView} placeholder={item.kind === "task" ? "일정 메모가 없어요" : "내용이 없어요"} />

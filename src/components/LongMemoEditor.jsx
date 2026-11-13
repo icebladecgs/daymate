@@ -186,9 +186,14 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     return () => clearTimeout(t);
   }, []);
 
-  const flush = (value) => {
+  // 📄 틀로 넣은 글 — 한 글자도 안 바꾼 동안은 저장하지 않는다 (2026-11-13 사용자 요청: 틀만 누르고 나가면 빈 틀 메모가 남았다)
+  const tplRef = useRef(null);
+  const untouchedTpl = (value) => tplRef.current !== null && value.trim() === tplRef.current.trim();
+  // force: "저장" 버튼을 직접 누른 경우 — 틀 그대로여도 저장
+  const flush = (value, force = false) => {
     const trimmed = value.trim();
     if (!trimmed || trimmed === savedTextRef.current) return;
+    if (!force && untouchedTpl(value)) return;
     if (idRef.current) onUpdate(idRef.current, trimmed);
     else idRef.current = onCreate(trimmed);
     savedTextRef.current = trimmed;
@@ -254,7 +259,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
   useBackClose(handleClose, !tabScreen); // 메모 탭의 쓰기 화면은 창이 아니라 탭이다
 
   const handleSaveAndContinue = () => {
+    const skipped = untouchedTpl(text) && !idRef.current;
     flush(text);
+    tplRef.current = null;
     setText('');
     setPhotos([]);
     setFiles([]);
@@ -262,7 +269,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     idRef.current = null;
     savedTextRef.current = '';
     setSavedAt(null);
-    onPhotoError?.('저장했어요 · 새 메모를 써 보세요');
+    onPhotoError?.(skipped ? '틀만 넣은 메모는 저장하지 않았어요 · 새 메모를 써 보세요' : '저장했어요 · 새 메모를 써 보세요');
     if (canAutoFocus()) requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
@@ -271,7 +278,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
   const handleSaveClick = () => {
     if (!isNewEntry) { handleClose(); return; }
     if (!text.trim() && !idRef.current) { onPhotoError?.('저장할 내용이 없어요'); return; }
-    flush(text);
+    flush(text, true);
     onPhotoError?.('저장됨 ✅');
   };
   const startNewMemo = () => {
@@ -333,7 +340,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     <div style={{ padding: boxed ? 0 : '0 20px 12px' }}>
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
       {viewer && <PhotoViewer photos={viewer.photos} index={viewer.index} onClose={() => setViewer(null)} />}
-      <div style={{ paddingTop: 10 }}><MemoLinks text={text} /></div>
+      {/(https?:\/\/|www\.)/i.test(text) && <div style={{ paddingTop: 10 }}><MemoLinks text={text} /></div>}
 
       {photos.map((p, idx) => (
         <div key={p.path || idx} style={{ position: 'relative', marginBottom: 12 }}>
@@ -364,9 +371,9 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
           AI 정리도 같은 줄 첫 칸(아이콘만 강조색). 누르는 동안·켜진 상태만 아이콘 뒤에 옅은 동그라미 (2026-11-10 상자형에서 바꿈) */}
       {newLook && (() => {
         const accent = 'var(--dm-accent, #5B7CFA)';
-        const item = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0, padding: '2px 0', background: 'none', border: 'none',
+        const item = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 0, padding: '0', background: 'none', border: 'none',
           cursor: 'pointer', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' };
-        const dot = (on, color) => ({ width: 44, height: 44, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        const dot = (on, color) => ({ width: 44, height: 34, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: on ? `color-mix(in srgb, ${color} 16%, transparent)` : 'transparent', color: on ? color : 'var(--dm-text)', transition: 'background .15s' });
         const label = (on, color) => ({ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: on ? color : 'var(--dm-sub)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
         const Ico = ({ d, children }) => (
@@ -374,7 +381,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
         );
         const cols = onUpdateFiles ? 6 : 5;
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 2, margin: '2px 0 14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 2, margin: '0 0 6px' }}>
             <button onClick={tidy.open} style={item} aria-label="AI로 정리하기">
               <span style={dot(true, accent)}><Ico><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" /><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z" /></Ico></span>
               <span style={label(true, accent)}>AI 정리</span>
@@ -584,7 +591,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
 
   const textareaEl = (<>
     {/* 📄 틀로 시작 — 빈 메모일 때만 (2026-11-13) */}
-    <TemplateRow text={text} setText={setText} taRef={textareaRef} style={{ padding: boxed ? '12px 14px 0' : '12px 20px 0' }} />
+    <TemplateRow text={text} setText={setText} taRef={textareaRef} onPick={(t) => { tplRef.current = t; }} onNotice={onPhotoError} style={{ padding: boxed ? '12px 14px 0' : '12px 20px 0' }} />
     <textarea
       ref={textareaRef}
       value={text}
@@ -596,7 +603,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       }}
       onPaste={handlePaste}
       placeholder="자유롭게 작성하세요"
-      style={{ width: '100%', minHeight: boxed ? '28vh' : '35vh', background: boxed ? 'transparent' : 'var(--dm-bg)', border: 'none', outline: 'none', padding: boxed ? '14px' : '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
+      style={{ width: '100%', minHeight: boxed ? '40vh' : '35vh', background: boxed ? 'transparent' : 'var(--dm-bg)', border: 'none', outline: 'none', padding: boxed ? '14px' : '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
     />
   </>);
 

@@ -39,6 +39,26 @@ export function templateNameOf(text) {
   const first = String(text || "").split("\n").map((l) => l.replace(/^[#\s\-*•]+|\[[ xX]\]\s*/g, "").trim()).find(Boolean) || "내 틀";
   return first.replace(/\d{4}-\d{2}-\d{2}.*$/, "").trim().slice(0, 12) || "내 틀";
 }
+// 숨긴 기본 틀 (2026-11-13 사용자 요청 "틀 삭제로 없애게") — 기본 틀은 지우지 않고 숨긴다(되살리기 가능). 계정 설정 memoTplHidden
+const HIDDEN_KEY = "dm_memo_tpl_hidden";
+export function getHiddenBuiltins() {
+  try { const v = JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); return Array.isArray(v) ? v.filter((id) => BUILTIN_TEMPLATES.some((t) => t.id === id)) : []; } catch { return []; }
+}
+export function setHiddenBuiltins(ids, { remote = false } = {}) {
+  const v = [...new Set((ids || []).filter((id) => BUILTIN_TEMPLATES.some((t) => t.id === id)))];
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(v)); } catch { /* 무시 */ }
+  window.dispatchEvent(new CustomEvent("dm:templates-changed", { detail: { hidden: v, remote } }));
+  return v;
+}
+// ＋ 틀 만들기 창에서 이름을 직접 정해 저장 (2026-11-13 사용자 요청). 같은 이름이면 바꿔 쓴다
+export function addNamedTemplate(list, name, text) {
+  const nm = String(name || "").trim().slice(0, 12);
+  if (!nm) return { error: "틀 이름을 써 주세요" };
+  if (!String(text || "").trim()) return { error: "틀 내용을 써 주세요" };
+  const rest = (list || []).filter((t) => t.name !== nm);
+  if (rest.length >= MAX_USER_TEMPLATES) return { error: `내 틀은 ${MAX_USER_TEMPLATES}개까지예요 — 안 쓰는 틀을 지워 주세요` };
+  return { list: [...rest, { id: `u${Date.now().toString(36)}`, name: nm, text: String(text).slice(0, 3000) }], name: nm };
+}
 export function addUserTemplate(list, text) {
   if (!String(text || "").trim()) return { error: "틀로 저장할 글이 없어요" };
   const name = templateNameOf(text);

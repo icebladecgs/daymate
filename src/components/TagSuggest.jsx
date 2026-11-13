@@ -96,7 +96,7 @@ export default function TagSuggest({ taRef, tags }) {
   ));
   if (touch) {
     return createPortal(
-      <div data-tag-suggest style={{ position: "fixed", left: 0, right: 0, bottom: bottom + 52, zIndex: 921, display: "flex", gap: 6, overflowX: "auto", padding: "6px 8px", background: "var(--dm-card)", borderTop: "1px solid var(--dm-border)", maxWidth: 430, margin: "0 auto" }}>
+      <div data-tag-suggest className="dm-noscrollbar" style={{ position: "fixed", left: 0, right: 0, bottom: bottom + 52, zIndex: 921, display: "flex", gap: 6, overflowX: "auto", padding: "6px 8px", background: "var(--dm-card)", borderTop: "1px solid var(--dm-border)", maxWidth: 430, margin: "0 auto" }}>
         {row}
       </div>,
       document.body
@@ -104,7 +104,7 @@ export default function TagSuggest({ taRef, tags }) {
   }
   if (!box) return null;
   return createPortal(
-    <div data-tag-suggest style={{ position: "fixed", left: box.left + 8, width: Math.max(160, box.width - 16), top: box.bottom - 46, zIndex: 1600, display: "flex", gap: 6, overflowX: "auto", padding: 4, borderRadius: 12, background: "var(--dm-card)", boxShadow: "0 4px 16px rgba(0,0,0,.25)" }}>
+    <div data-tag-suggest className="dm-noscrollbar" style={{ position: "fixed", left: box.left + 8, width: Math.max(160, box.width - 16), top: box.bottom - 46, zIndex: 1600, display: "flex", gap: 6, overflowX: "auto", padding: 4, borderRadius: 12, background: "var(--dm-card)", boxShadow: "0 4px 16px rgba(0,0,0,.25)" }}>
       {row}
     </div>,
     document.body

@@ -32,7 +32,7 @@ import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/sta
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
 import { recordMemoChanges } from "./utils/memoHistory.js";
-import { getUserTemplates, setUserTemplates } from "./utils/memoTemplates.js";
+import { getUserTemplates, setUserTemplates, setHiddenBuiltins } from "./utils/memoTemplates.js";
 import { bagSize, stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT, challengeCertReward, attendReward, raidReward, markChallengesDone } from "./utils/gear.js";
 import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
@@ -1663,6 +1663,7 @@ export default function App() {
             // 📄 내 메모 틀 (2026-11-13) — 서버에 있으면 그것으로, 없고 이 기기에만 있으면 올린다(처음 이관)
             if (Array.isArray(s.memoTemplates)) setUserTemplates(s.memoTemplates, { remote: true });
             else if (getUserTemplates().length) saveSettings(firebaseUser.uid, { memoTemplates: getUserTemplates() }).catch(() => {});
+            if (Array.isArray(s.memoTplHidden)) setHiddenBuiltins(s.memoTplHidden, { remote: true });
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             if (s.inviteCode) { setMyInviteCode(s.inviteCode); store.set("dm_invite_code", s.inviteCode); }
             if (s.usedInviteCodes) { setUsedInviteCodes(s.usedInviteCodes); store.set("dm_used_invite_codes", s.usedInviteCodes); }
@@ -1851,7 +1852,12 @@ export default function App() {
   // 📄 내 메모 틀이 바뀌면 계정에 올린다 (서버에서 받아 넣은 것은 제외)
   useEffect(() => {
     if (!authUser) return;
-    const on = (e) => { if (!e.detail?.remote) saveSettings(authUser.uid, { memoTemplates: e.detail?.list || [] }).catch(() => {}); };
+    const on = (e) => {
+      const d = e.detail || {};
+      if (d.remote) return;
+      if (Array.isArray(d.list)) saveSettings(authUser.uid, { memoTemplates: d.list }).catch(() => {});
+      if (Array.isArray(d.hidden)) saveSettings(authUser.uid, { memoTplHidden: d.hidden }).catch(() => {}); // 숨긴 기본 틀
+    };
     window.addEventListener('dm:templates-changed', on);
     return () => window.removeEventListener('dm:templates-changed', on);
   }, [authUser]);
