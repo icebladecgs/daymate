@@ -14,8 +14,10 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
   const [hiddenIds, setHiddenIds] = useState(getHiddenBuiltins);
   const [making, setMaking] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [picked, setPicked] = useState(null); // 방금 넣은 틀 글 — 안 고친 동안 "↩ 틀 빼기"를 보인다
   const rowRef = useRef(null);
   const touch = !canAutoFocus();
+  const untouched = picked !== null && String(text || "").trim() === picked.trim();
   const hidden = !!String(text || "").trim();
   useEffect(() => {
     const on = () => { setMine(getUserTemplates()); setHiddenIds(getHiddenBuiltins()); };
@@ -41,6 +43,7 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
     if (editing) return;
     const f = fillTemplate(t.text);
     onPick?.(f.text);
+    setPicked(f.text);
     setText(f.text);
     setTimeout(() => { const ta = taRef?.current; if (ta) { ta.focus(); ta.setSelectionRange(f.caret, f.caret); } }, 0);
   };
@@ -50,6 +53,16 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
   };
   const hideBuiltin = (t) => setHiddenBuiltins([...hiddenIds, t.id]);
   const sheet = making && <TemplateMakeSheet onClose={() => setMaking(false)} onSaved={(nm) => onNotice?.(`📄 "${nm}" 틀을 만들었어요`)} />;
+  // ↩ 틀 빼기 (2026-11-13 사용자 요청) — 틀을 넣고 아직 안 고쳤을 때만. 누르면 빈 칸 + 틀 줄이 다시 나온다(한 글자라도 쓰면 사라짐)
+  if (hidden && untouched) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 6, ...style }}>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setPicked(null); onPick?.(null); setText(""); }}
+          style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "1px dashed var(--dm-border)", background: "none", color: "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>↩ 틀 빼기</button>
+        <span style={{ fontSize: 13, color: "var(--dm-muted)" }}>안 고치고 나가면 저장되지 않아요</span>
+      </div>
+    );
+  }
   if (hidden) return sheet || null;
 
   const builtins = BUILTIN_TEMPLATES.filter((t) => !hiddenIds.includes(t.id));
