@@ -104,6 +104,16 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     setSplit(s => ({ ...s, [wide ? "hWide" : "hNarrow"]: f }));
   };
   const listFrac = wide ? split.hWide : split.hNarrow;
+  // 목록 칸 폭 — 분류 칸을 넓히거나 화면을 키워 좁아지면 수정일·태그 칸을 빼고 태그는 제목 뒤에 (제목 칸이 0이 되던 문제)
+  const [paneW, setPaneW] = useState(9999);
+  useEffect(() => {
+    const el = colRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setPaneW(el.offsetWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  const cols = wide && (!nl || paneW >= 720);
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
     window.addEventListener("resize", onResize);
@@ -364,8 +374,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
             {th("kind", "", { width: z(30, 34) })}
             {th("title", "제목")}
             {th("date", "날짜", { width: wide ? 150 : z(96, 84) })}
-            {wide && th("updated", filter === "trash" ? "삭제일" : "수정일", { width: 130 })}
-            {wide && <th style={{ width: 150, textAlign: "left", padding: z("7px 8px", "8px 8px"), fontSize: z(12, 13), fontWeight: 700, ...muted, position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border }}>태그</th>}
+            {cols && th("updated", filter === "trash" ? "삭제일" : "수정일", { width: 130 })}
+            {cols && <th style={{ width: 150, textAlign: "left", padding: z("7px 8px", "8px 8px"), fontSize: z(12, 13), fontWeight: 700, ...muted, position: "sticky", top: 0, background: "var(--dm-bg)", borderBottom: border }}>태그</th>}
             {th("photo", "📷", { width: z(40, 36) })}
           </tr>
         </thead>
@@ -380,11 +390,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.starred && "⭐ "}{it.title}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
-                  {!wide && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
+                  {!cols && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
                 </td>
                 <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{wide ? it.ds : it.ds.slice(2)}{wide && it.time ? ` ${it.time}` : ""}</td>
-                {wide && <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
-                {wide && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
+                {cols && <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
+                {cols && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
                 <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted) }}>{it.photos.length || ""}</td>
               </tr>
             );
@@ -433,7 +443,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide}
+    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -779,7 +789,7 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
   // 아이콘 + 아래 설명 (누르는 칸 44, 테두리·바탕 없음). on = 켜진 상태(보냄 등)만 옅은 동그라미
   const tool = (key, icon, label, onClick, { on = false, color = accent, strong = false, keepFocus = false, title } = {}) => (
     <button key={key} onClick={onClick} title={title || label} aria-label={label} onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
-      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, minWidth: 0, flex: wide ? "0 0 72px" : "1 1 0", padding: "2px 0",
+      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, minWidth: wide ? 48 : 0, flex: wide ? "0 1 72px" : "1 1 0", padding: "2px 0",
         background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}>
       <span style={{ width: 44, height: 40, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
         background: on || strong ? `color-mix(in srgb, ${color} 16%, transparent)` : "transparent", color: on || strong ? color : "var(--dm-text)", transition: "background .15s" }}>
@@ -815,15 +825,17 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
   ].filter(Boolean);
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 6, rowGap: 6, flexShrink: 0 }}>
+    // 넓은 화면은 한 줄(줄바꿈 없음): 머리는 남는 자리만(기준 0), 기능 버튼은 모자라면 줄어든다 — 오른쪽으로 잘려 나가지 않게
+    // (2026-11-13 데스크탑 앱에서 머리가 내용보다 넓게 잡혀 버튼이 창 밖으로 밀린 제보)
+    <div style={{ display: "flex", flexWrap: wide ? "nowrap" : "wrap", alignItems: "center", columnGap: 6, rowGap: 6, flexShrink: 0, minWidth: 0 }}>
       {/* 머리: 종류·날짜 / 저장 상태 · ☆ · 크게 · 보기 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2, flex: wide ? "0 1 auto" : "1 1 100%", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 2, flex: wide ? "1 1 0" : "1 1 100%", minWidth: 0, overflow: wide ? "hidden" : undefined }}>
         <div style={{ minWidth: 0, marginRight: 2 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--dm-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ color: KIND[item.kind].color }}>{KIND[item.kind].label}</span>
             <span style={{ color: "var(--dm-sub)", fontWeight: 500 }}> · {formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
           </div>
-          <div style={{ fontSize: 13, color: dirty ? accent : "var(--dm-muted)", marginTop: 1 }}>{savedLabel(dirty, item.updatedAt)}</div>
+          <div style={{ fontSize: 13, color: dirty ? accent : "var(--dm-muted)", marginTop: 1, whiteSpace: "nowrap" }}>{savedLabel(dirty, item.updatedAt)}</div>
         </div>
         {memo && (
           <button onClick={toggleStar} aria-label={item.starred ? "즐겨찾기 해제" : "즐겨찾기"} title={item.starred ? "즐겨찾기 해제" : "즐겨찾기"} aria-pressed={!!item.starred}
@@ -836,9 +848,8 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
         {headBtn(big ? "shrink" : "expand", big ? "목록" : "크게", onToggleBig, big, big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기")}
         {headBtn(viewMode ? "pencil" : "eye", viewMode ? "편집" : "보기", onToggleView, viewMode, viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)")}
       </div>
-      {wide && <span style={{ flex: 1 }} />}
       {/* 기능 줄 */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? "0 0 auto" : "1 1 100%", minWidth: 0, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? `0 1 ${(tools.length + (menu.length ? 1 : 0)) * 72}px` : "1 1 100%", minWidth: 0, position: "relative" }}>
         {tools}
         {menu.length > 0 && tool("more", "more", "더보기", () => setMoreOpen(o => !o), { on: moreOpen, color: "var(--dm-text)" })}
         {moreOpen && (
