@@ -9,6 +9,7 @@ import {
   raidWeekOf, prevRaidWeek, raidDaysLeft, raidDamage, raidHpFor, nextRaidLevel, raidTotal, raidDefeated,
   raidBoss, bossPixels, RAID_REWARD_XP,
 } from "../utils/bossRaid.js";
+import { RAID_GOLD } from "../utils/gear.js";
 
 // 협동 보스전 칸 + 상세 창 (2026-11-08) — 커뮤니티 상세 화면 위쪽. 계산은 utils/bossRaid.js
 // 공격량은 App이 능력치가 바뀔 때마다 hits에 올린다(saveRaidHit). 여기서는 내 것만 지금 값으로 바꿔 보여 준다.
@@ -98,8 +99,10 @@ export default function BossRaidCard({ communityId, uid, nickname, members = [],
       const myDmg = (hs.find(h => h.uid === uid)?.dmg) || 0;
       if (!r || !raidDefeated(r, hs) || myDmg <= 0 || claims.includes(key) || claimedRef.current.has(key)) return;
       claimedRef.current.add(key);
-      onClaim?.(key, myByStat);
-      setToast?.(`⚔️ 보스 처치 보상 +${RAID_REWARD_XP} XP`);
+      // 처치 보상: XP + 🪙 골드 + 장비 상자 (2026-11-13 — App claimRaid가 받은 것을 돌려준다)
+      const got = onClaim?.(key, myByStat);
+      const extra = got?.gold ? ` · 🪙 +${got.gold}${got.item ? ` · 🎁 ${got.item.name}` : got.full ? ' · 가방이 꽉 차서 장비는 못 받았어요' : ''}` : '';
+      setToast?.(`⚔️ 보스 처치 보상 +${RAID_REWARD_XP} XP${extra}`);
     };
     if (raid) tryClaim(week, raid, hits, mine.byStat);
     if (prev?.raid) tryClaim(lastWeek, prev.raid, prev.hits, prev.hits.find(h => h.uid === uid)?.byStat);
@@ -192,7 +195,7 @@ export default function BossRaidCard({ communityId, uid, nickname, members = [],
         <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 4px", fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5 }}>
           {lastResult && <span>· {lastResult}</span>}
           <span>· 공격 버튼은 없어요 — 평소 오르는 능력치 XP가 그대로 공격이 돼요</span>
-          <span>· 쓰러뜨리면 공격한 멤버 모두 +{RAID_REWARD_XP} XP, 다음 주 보스는 한 단계 셉니다</span>
+          <span>· 쓰러뜨리면 공격한 멤버 모두 +{RAID_REWARD_XP} XP · 🪙 +{RAID_GOLD} · 🎁 장비 상자, 다음 주 보스는 한 단계 셉니다</span>
           <span>· 못 쓰러뜨린 주는 그냥 지나가요 (벌점 없음)</span>
         </div>
       </div>

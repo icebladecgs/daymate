@@ -31,7 +31,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT } from "./utils/gear.js";
+import { stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT, challengeCertReward, attendReward, raidReward, markChallengesDone } from "./utils/gear.js";
 import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
@@ -1821,13 +1821,39 @@ export default function App() {
     }, 15000);
     return () => clearTimeout(t);
   }, [authUser, syncStatus, statXp, raidBase, raidWeek, communityIds, user.name]);
+  // 🎁 챌린지·커뮤니티 보상 (2026-11-13) — 그 화면들이 dm:reward 이벤트로 알린다(골드는 계정 설정 battleGear라 App이 준다)
+  //   challengeCert {id}: 인증 +5 (챌린지마다 하루 한 번, 하루 3개) · attend: 커뮤니티 출석 +3 (하루 한 번) ·
+  //   challengeDone {ids}: 끝까지 해낸 챌린지 기록(칭호용)
+  useEffect(() => {
+    const onReward = (e) => {
+      const d = e.detail || {};
+      const today = toDateStr();
+      let r = null, label = '';
+      if (d.kind === 'challengeCert') { r = challengeCertReward(battleGearRef.current, d.id, today); label = '챌린지 인증'; }
+      else if (d.kind === 'attend') { r = attendReward(battleGearRef.current, today); label = '출석'; }
+      else if (d.kind === 'challengeDone') {
+        const m = markChallengesDone(battleGearRef.current, d.ids);
+        if (m.added.length) { updateGear(m.gear); setTimeout(() => setToast('🏅 챌린지를 끝까지 해냈어요! 배틀 화면 칭호를 확인해 보세요'), 600); }
+        return;
+      }
+      if (!r || !r.gold) return;
+      updateGear(r.gear);
+      showGold(r.gold, label);
+    };
+    window.addEventListener('dm:reward', onReward);
+    return () => window.removeEventListener('dm:reward', onReward);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 최신 값은 ref로 읽는다
   const claimRaid = (key, byStat) => {
-    if (raidClaims.includes(key)) return;
+    if (raidClaims.includes(key)) return null;
+    // 🪙 보스 처치 +30 골드 + 장비 상자 (2026-11-13, 예전엔 +10 XP만)
+    const rr = raidReward(battleGearRef.current, key, toDateStr());
+    if (rr.gold) updateGear(rr.gear);
     grantStatXp(raidRewardStat(byStat) || 'ACHIEVE', RAID_REWARD_XP);
     const next = [...raidClaims, key].slice(-60);
     setRaidClaims(next);
     store.set("dm_raid_claims", next);
     if (authUser) saveSettings(authUser.uid, { raidClaims: next }).catch(() => {});
+    return { gold: rr.gold, item: rr.item, full: !!rr.full };
   };
   useEffect(() => { store.set("dm_notif_enabled", notifEnabled); }, [notifEnabled]);
   useEffect(() => {

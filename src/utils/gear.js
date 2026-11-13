@@ -117,7 +117,15 @@ export function normalizeGear(g) {
     // 📖 도감 — 한 번이라도 가져 본 장비 이름(지금 가방에 있는 것 포함, 팔아도 남는다)
     seen: [...new Set([...(Array.isArray(g?.seen) ? g.seen : []), ...items.map((x) => x.name)].map(String))].slice(0, 200),
     // 🏅 칭호 기록 — maxPlus: 가장 높게 강화한 단계, questWeeks: 퀘스트 3개를 다 끝낸 주 수
-    stats: { maxPlus: Math.max(0, Math.min(ENHANCE_MAX, Number(g?.stats?.maxPlus) || 0), ...items.map((x) => Number(x.plus) || 0)), questWeeks: Math.max(0, Math.floor(Number(g?.stats?.questWeeks) || 0)) },
+    // 2026-11-13 보상 2단계: steps(골드 받은 작은 단계 수)·attend(커뮤니티 출석 보상 받은 날 수)·raids(보스 처치 보상 수)·chDone(끝까지 해낸 챌린지 id)
+    stats: {
+      maxPlus: Math.max(0, Math.min(ENHANCE_MAX, Number(g?.stats?.maxPlus) || 0), ...items.map((x) => Number(x.plus) || 0)),
+      questWeeks: Math.max(0, Math.floor(Number(g?.stats?.questWeeks) || 0)),
+      steps: Math.max(0, Math.floor(Number(g?.stats?.steps) || 0)),
+      attend: Math.max(0, Math.floor(Number(g?.stats?.attend) || 0)),
+      raids: Math.max(0, Math.floor(Number(g?.stats?.raids) || 0)),
+      chDone: [...new Set((Array.isArray(g?.stats?.chDone) ? g.stats.chDone : []).map(String))].slice(-100),
+    },
     title: typeof g?.title === 'string' ? g.title : '',
     // 🔄 기기 간 합치기 (2026-11-13, 아래 mergeGear) — gl: 기기마다 번·쓴 골드(늘기만 함), base: 이 방식 전 골드,
     // gone: 판·지운 장비 id(다른 기기에서 되살아나지 않게), at: 마지막으로 바꾼 시각
@@ -197,7 +205,11 @@ export function mergeGear(x, y) {
     rolled: [...new Set([...A.rolled, ...B.rolled])].slice(-ROLLED_MAX),
     npcClaimed: [...new Set([...A.npcClaimed, ...B.npcClaimed])],
     seen: [...new Set([...A.seen, ...B.seen])],
-    stats: { maxPlus: Math.max(A.stats.maxPlus, B.stats.maxPlus), questWeeks: Math.max(A.stats.questWeeks, B.stats.questWeeks) },
+    stats: {
+      maxPlus: Math.max(A.stats.maxPlus, B.stats.maxPlus), questWeeks: Math.max(A.stats.questWeeks, B.stats.questWeeks),
+      steps: Math.max(A.stats.steps, B.stats.steps), attend: Math.max(A.stats.attend, B.stats.attend), raids: Math.max(A.stats.raids, B.stats.raids),
+      chDone: [...new Set([...A.stats.chDone, ...B.stats.chDone])],
+    },
     earned, shop, quests, weekWins, wander,
     at: Math.max(A.at, B.at),
   });
@@ -395,6 +407,12 @@ export const TITLES = [
   { id: 'dexFull', label: '박물관장', how: '도감 모두 채우기', ok: (c) => c.dex.got >= c.dex.total },
   { id: 'wins100', label: '백전노장', how: '배틀 100승', ok: (c) => (Number(c.record?.wins) || 0) >= 100 },
   { id: 'streak10', label: '파죽지세', how: '10연승', ok: (c) => (Number(c.record?.bestStreak) || 0) >= 10 },
+  // 2026-11-13 보상 2단계 — 할일·챌린지·커뮤니티에서 얻는 칭호
+  { id: 'steps100', label: '쪼개기 달인', how: '작은 단계 100개 끝내기', ok: (c) => c.gear.stats.steps >= 100 },
+  { id: 'challenge1', label: '끝까지 해낸 사람', how: '챌린지 하나를 끝까지 (7일 이상, 80% 넘게 인증)', ok: (c) => c.gear.stats.chDone.length >= 1 },
+  { id: 'challenge3', label: '도전 중독', how: '챌린지 3개를 끝까지', ok: (c) => c.gear.stats.chDone.length >= 3 },
+  { id: 'attend30', label: '개근상', how: '커뮤니티 출석 30일', ok: (c) => c.gear.stats.attend >= 30 },
+  { id: 'raid5', label: '보스 사냥꾼', how: '협동 보스 5번 쓰러뜨리기', ok: (c) => c.gear.stats.raids >= 5 },
 ];
 export function titleList(gear, record) {
   const g = normalizeGear(gear);
@@ -511,7 +529,7 @@ export function stepReward(gear, taskId, stepId, todayStr) {
   const prefix = `s:${taskId}:`;
   if (!taskId || !stepId || g.rolled.includes(key) || g.rolled.filter((k) => k.startsWith(prefix)).length >= STEP_GOLD_PER_TASK) return { gear: g, gold: 0 };
   const paid = addGold(g, todayStr, 'task', GOLD.step);
-  return { gear: { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: paid.added };
+  return { gear: { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX), stats: { ...g.stats, steps: g.stats.steps + 1 } }, gold: paid.added };
 }
 // 단계를 다 끝냈을 때 +2 (단계가 2개 이상인 할일, 할일마다 한 번)
 export function stepsDoneReward(gear, taskId, todayStr) {
@@ -521,6 +539,55 @@ export function stepsDoneReward(gear, taskId, todayStr) {
   const paid = addGold(g, todayStr, 'task', STEPS_DONE_BONUS);
   return { gear: { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: paid.added };
 }
+// ── 🎁 보상 2단계 (2026-11-13 사용자 승인) — 챌린지·커뮤니티. 모두 할일 상한 밖, 각자 하루 한 번이라 저절로 제한 ──
+export const CHALLENGE_CERT_GOLD = 5;
+export const CHALLENGE_CERT_MAX = 3;   // 하루에 골드를 받는 챌린지 수
+export const ATTEND_GOLD = 3;          // 커뮤니티 출석 (커뮤니티가 여러 개여도 하루 한 번)
+export const RAID_GOLD = 30;           // 보스 처치 (보스마다 한 번) + 장비 상자(주간 퀘스트 상자와 같은 등급)
+// 챌린지 인증 — 챌린지마다 하루 한 번, 하루 3개 챌린지까지
+export function challengeCertReward(gear, challengeId, todayStr) {
+  const g = normalizeGear(gear);
+  const key = `ch:${todayStr}:${challengeId}`;
+  if (!challengeId || g.rolled.includes(key) || g.rolled.filter((k) => k.startsWith(`ch:${todayStr}:`)).length >= CHALLENGE_CERT_MAX) return { gear: g, gold: 0 };
+  return { gear: { ...g, gold: g.gold + CHALLENGE_CERT_GOLD, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: CHALLENGE_CERT_GOLD };
+}
+// 커뮤니티 출석 — 하루 한 번 (출석한 날 수는 칭호 "개근상"에 센다)
+export function attendReward(gear, todayStr) {
+  const g = normalizeGear(gear);
+  const key = `att:${todayStr}`;
+  if (g.rolled.includes(key)) return { gear: g, gold: 0 };
+  return { gear: { ...g, gold: g.gold + ATTEND_GOLD, rolled: [...g.rolled, key].slice(-ROLLED_MAX), stats: { ...g.stats, attend: g.stats.attend + 1 } }, gold: ATTEND_GOLD };
+}
+// 보스 처치 — 보스(커뮤니티·주)마다 한 번. 가방이 차면 골드만. 결과 { gear, gold, item, full }
+export function raidReward(gear, raidKey, todayStr, rand = Math.random) {
+  const g = normalizeGear(gear);
+  const key = `raid:${raidKey}`;
+  if (!raidKey || g.rolled.includes(key)) return { gear: g, gold: 0, item: null };
+  const base = { ...g, gold: g.gold + RAID_GOLD, rolled: [...g.rolled, key].slice(-ROLLED_MAX), stats: { ...g.stats, raids: g.stats.raids + 1 } };
+  if (g.items.length >= BAG_MAX) return { gear: base, gold: RAID_GOLD, item: null, full: true };
+  const item = { ...makeItem(rollRarity(rand(), QUEST_BOX_RARITY), rand), at: todayStr };
+  return { gear: { ...base, items: [...base.items, item] }, gold: RAID_GOLD, item };
+}
+// 챌린지를 "끝까지 해냈나" — 끝난 챌린지(마감일 지남·종료)에서, 참여한 날부터 끝난 날까지 7일 이상이고 그중 80% 이상 인증
+const dayNum = (s) => Math.floor(new Date(`${String(s).slice(0, 10)}T00:00:00`).getTime() / 86400000);
+export function challengeCompleted(ch, member, todayStr) {
+  if (!ch || !member) return false;
+  const ended = (ch.status && ch.status !== 'open') || (ch.endDate && ch.endDate < todayStr);
+  if (!ended) return false;
+  const start = String(member.joinedAt || ch.createdAt || '').slice(0, 10);
+  const end = String(ch.endedAt || ch.endDate || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return false;
+  const days = dayNum(end) - dayNum(start) + 1;
+  return days >= 7 && (Number(member.totalCerts) || 0) >= Math.ceil(days * 0.8);
+}
+// 끝까지 해낸 챌린지 기록 (칭호용 — 골드는 없음)
+export function markChallengesDone(gear, ids) {
+  const g = normalizeGear(gear);
+  const add = [...new Set((ids || []).map(String))].filter((id) => !g.stats.chDone.includes(id));
+  if (!add.length) return { gear: g, added: [] };
+  return { gear: { ...g, stats: { ...g.stats, chDone: [...g.stats.chDone, ...add] } }, added: add };
+}
+
 // 하루 마무리를 마쳤을 때 +10 — 하루 한 번, 할일 상한 밖(할일을 많이 한 날에도 받게)
 export function wrapReward(gear, todayStr) {
   const g = normalizeGear(gear);

@@ -1023,6 +1023,31 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('단계: 상한(100)에 같이 셈', G.stepReward(g2, 'T9', 'x', D).gold === 0);
   const w = G.wrapReward(g2, D);
   t('하루 마무리: +10, 할일 상한 밖, 하루 한 번', w.gold === G.WRAP_GOLD && w.gear.gold === G.TASK_GOLD_MAX + G.WRAP_GOLD && G.wrapReward(w.gear, D).gold === 0 && G.wrapReward(w.gear, '2026-11-12').gold === G.WRAP_GOLD);
+  // 🎁 보상 2단계 (챌린지·커뮤니티·칭호)
+  const seq = (...xs) => { let i = 0; return () => xs[i++ % xs.length]; };
+  let c = { gear: {} }; let cGold = 0;
+  for (const id of ['A', 'B', 'C', 'D']) { c = G.challengeCertReward(c.gear, id, D); cGold += c.gold; }
+  t('챌린지 인증: +5, 하루 3개 챌린지까지', cGold === 15 && G.challengeCertReward(c.gear, 'A', D).gold === 0 && G.challengeCertReward(c.gear, 'A', '2026-11-12').gold === 5);
+  const at = G.attendReward(g2, D);
+  t('출석: +3, 하루 한 번, 할일 상한 밖, 날 수 셈', at.gold === 3 && at.gear.gold === G.TASK_GOLD_MAX + 3 && G.attendReward(at.gear, D).gold === 0 && G.normalizeGear(at.gear).stats.attend === 1);
+  const rd = G.raidReward({}, 'c1_2026-11-09', D, seq(0.5, 0.3, 0.3, 0.3, 0.3));
+  t('보스 처치: +30 + 장비 상자(고급 이상), 보스마다 한 번', rd.gold === 30 && !!rd.item && rd.item.rarity !== 'common' && G.raidReward(rd.gear, 'c1_2026-11-09', D).gold === 0);
+  const fullBag = { items: Array.from({ length: G.BAG_MAX }, (_, i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `f${i}` })) };
+  t('보스 처치: 가방이 차면 골드만', (() => { const r = G.raidReward(fullBag, 'k', D); return r.gold === 30 && !r.item && r.full; })());
+  const ch = { endDate: '2026-11-09', createdAt: '2026-11-01T00:00:00Z' }; // 오늘(D) 11-10 기준 끝남, 11/1~11/9 = 9일 → 8번 필요
+  t('챌린지 완주: 끝난 챌린지, 9일 중 8번 인증 → 완주', G.challengeCompleted(ch, { joinedAt: '2026-11-01T09:00:00Z', totalCerts: 8 }, D));
+  t('챌린지 완주: 7번은 부족, 진행 중·7일 미만은 아님',
+    !G.challengeCompleted(ch, { joinedAt: '2026-11-01T09:00:00Z', totalCerts: 7 }, D)
+    && !G.challengeCompleted({ endDate: '2026-11-30' }, { joinedAt: '2026-11-01', totalCerts: 30 }, D)
+    && !G.challengeCompleted({ endDate: '2026-11-10' }, { joinedAt: '2026-11-06', totalCerts: 5 }, D));
+  t('챌린지 완주: 운영자가 끝낸 챌린지는 끝난 날 기준', G.challengeCompleted({ status: 'ended', endedAt: '2026-11-08T10:00:00Z', endDate: '2026-12-31' }, { joinedAt: '2026-11-01', totalCerts: 7 }, D));
+  const md = G.markChallengesDone({}, ['x', 'x', 'y']);
+  t('완주 기록은 한 번만', md.added.length === 2 && G.markChallengesDone(md.gear, ['x']).added.length === 0);
+  const titled = (stats) => G.titleList({ stats }, {}).filter((x) => x.ok).map((x) => x.id).sort().join();
+  t('새 칭호: 단계 100·챌린지 1·3·출석 30·보스 5', titled({ steps: 100, attend: 30, raids: 5, chDone: ['a', 'b', 'c'] }) === 'attend30,challenge1,challenge3,raid5,steps100', titled({ steps: 100, attend: 30, raids: 5, chDone: ['a', 'b', 'c'] }));
+  t('새 칭호: 조건 못 채우면 없음', titled({ steps: 99, attend: 29, raids: 4, chDone: [] }) === '');
+  const mg = G.mergeGear({ v: 2, stats: { steps: 5, attend: 2, chDone: ['a'] } }, { v: 2, stats: { steps: 3, attend: 4, raids: 1, chDone: ['b'] } });
+  t('기기 합치기: 칭호 기록은 큰 쪽·합집합', mg.stats.steps === 5 && mg.stats.attend === 4 && mg.stats.raids === 1 && mg.stats.chDone.sort().join() === 'a,b');
   t('보상 기록: 오래된 키부터 800개까지 기억', G.normalizeGear({ rolled: Array.from({ length: 900 }, (_, i) => `k${i}`) }).rolled.length === G.ROLLED_MAX);
   let b = { gear: {} }; for (let i = 0; i < 8; i++) b = G.addGold(b.gear, D, 'battle', G.battleGoldFor(15, 15).amount);
   const gf = (n, m) => G.battleGoldFor(n, m).amount;

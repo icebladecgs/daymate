@@ -853,6 +853,7 @@ export default function Community({ user, authUser, myTotalScore, habits, onTogg
       const nickname = members.find(m => m.uid === authUser?.uid)?.nickname || user?.name || '익명';
       await checkinCommunity(communityId, authUser.uid, nickname, todayCompletion);
       setToast('출석 완료 ✅');
+      window.dispatchEvent(new CustomEvent('dm:reward', { detail: { kind: 'attend' } })); // 🪙 +3, 하루 한 번 (App)
     } catch { setToast('출석 실패 ❌'); }
     setCheckingIn(false);
   };

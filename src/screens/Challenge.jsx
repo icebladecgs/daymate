@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { calcLevel } from "../data/stats.js";
 import { createChallenge, loadPublicChallenges, loadMyChallenges, joinChallenge, certifyChallenge, loadChallengeCerts, cheerCert, deleteCert, loadChallengeMembers, syncChallengeMemberCount, deleteChallengeFull, endChallenge, updateMemberLinkedHabit, loadRankingProfiles, isPrimaryAdmin } from "../firebase.js";
 import { toDateStr, formatRelativeTime } from "../utils/date.js";
+import { challengeCompleted, CHALLENGE_CERT_GOLD } from "../utils/gear.js";
 import { store } from "../utils/storage.js";
 import S, { UI } from "../styles.js";
 import { newDesignOn } from "../utils/todayLook.js";
@@ -104,6 +105,9 @@ export default function Challenge({ authUser, myTotalScore = 0, habits = [], onT
     try {
       const [my, pub] = await Promise.all([loadMyChallenges(authUser.uid), loadPublicChallenges()]);
       setMyChallenges(my);
+      // 🏅 끝까지 해낸 챌린지 (끝난 챌린지·7일 이상·80% 넘게 인증) → 칭호 기록 (App, utils/gear.js challengeCompleted)
+      const doneIds = my.filter(ch => challengeCompleted(ch, ch.myMember, toDateStr())).map(ch => ch.id);
+      if (doneIds.length) window.dispatchEvent(new CustomEvent('dm:reward', { detail: { kind: 'challengeDone', ids: doneIds } }));
       // 이미 참여 중인 챌린지는 explore에서 제외
       const myIds = new Set(my.map(c => c.id));
       setPublicChallenges(pub.filter(c => !myIds.has(c.id)));
@@ -313,6 +317,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
     try {
       await certifyChallenge(authUser.uid, nickname, c.id, certText.trim() || '✓');
       setCertText("");
+      window.dispatchEvent(new CustomEvent('dm:reward', { detail: { kind: 'challengeCert', id: c.id } })); // 🪙 +5 (App, 하루 3개 챌린지까지)
       // 연결된 습관 자동 체크 (멤버 개인 설정 우선)
       if (linkedHabitId && onToggleHabit) {
         onToggleHabit(linkedHabitId);
@@ -472,7 +477,7 @@ function ChallengeDetail({ challenge: c, authUser, nickname, myLevel, onBack, sh
                 background: certifying ? 'var(--dm-input)' : 'linear-gradient(135deg,#4ADE80,#22C55E)',
                 opacity: (isClosed || certifying) ? 0.6 : 1,
               }}>
-                {isClosed ? '종료된 챌린지' : certifying ? '인증 중...' : '✓ 오늘 인증하기'}
+                {isClosed ? '종료된 챌린지' : certifying ? '인증 중...' : `✓ 오늘 인증하기 · 🪙 +${CHALLENGE_CERT_GOLD}`}
               </button>
             </div>
           )}
