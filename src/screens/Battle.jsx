@@ -135,7 +135,7 @@ function tagRound(prevLog, nextLog, round) {
 }
 
 // gear: 끼운 장비 효과(utils/gear.js gearBonus), npcOverride: 떠돌이 도전자처럼 NPC 목록에 없는 상대 (2026-11-08)
-export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd, gear = null, npcOverride = null, bag = [], gold = 0 }) {
+export default function Battle({ totalScore, statXp, npcId, battleNickname, onExit, onBattleEnd, gear = null, npcOverride = null, bag = [], bagMax = BAG_MAX, gold = 0 }) {
   const playerLabel = battleNickname?.trim() || '나';
   const npcDef = npcOverride || getNpcById(npcId);
   const npcAvatar = npcOverride?.emoji || getNpcAvatar(npcId);
@@ -403,7 +403,7 @@ export default function Battle({ totalScore, statXp, npcId, battleNickname, onEx
               <div style={{ fontSize: 13, color: 'var(--dm-sub)', marginTop: 2 }}>{itemEffects(reward).join(' · ')} — 배틀 화면 가방에서 끼울 수 있어요</div>
             </div>
           )}
-          {status === 'win' && !reward && (bag || []).length >= BAG_MAX && (
+          {status === 'win' && !reward && (bag || []).length >= bagMax && (
             <div style={{ marginTop: 10, fontSize: 13, color: '#FF9F0A' }}>🎒 가방이 꽉 차서 장비를 못 받았어요 — 안 쓰는 장비를 팔고 다시 이기면 받아요</div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>

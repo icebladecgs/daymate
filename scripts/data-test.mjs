@@ -1048,6 +1048,24 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('새 칭호: 조건 못 채우면 없음', titled({ steps: 99, attend: 29, raids: 4, chDone: [] }) === '');
   const mg = G.mergeGear({ v: 2, stats: { steps: 5, attend: 2, chDone: ['a'] } }, { v: 2, stats: { steps: 3, attend: 4, raids: 1, chDone: ['b'] } });
   t('기기 합치기: 칭호 기록은 큰 쪽·합집합', mg.stats.steps === 5 && mg.stats.attend === 4 && mg.stats.raids === 1 && mg.stats.chDone.sort().join() === 'a,b');
+  // 🪙 골드 쓸 곳 (2026-11-13) — 가방 늘리기·상점 다시 뽑기
+  t('가방: 기본 40칸', G.bagSize({}) === 40 && G.bagNextPrice({}) === 300);
+  let bg = { gold: 5000 }; const costs = [];
+  for (let i = 0; i < 5; i++) { const r = G.expandBag(bg); if (r.error) { costs.push(r.error); break; } costs.push(r.cost); bg = r.gear; }
+  t('가방: 300·600·1000·1500으로 80칸까지, 그 뒤는 더 못 늘림', costs.join() === '300,600,1000,1500,max' && G.bagSize(bg) === 80 && bg.gold === 5000 - 3400, costs.join());
+  t('가방: 골드가 모자라면 안 늘어남', G.expandBag({ gold: 299 }).error === 'gold');
+  const big = { bagPlus: 1, items: Array.from({ length: 45 }, (_, i) => ({ ...G.makeItem('common', seq(0.3), 'charm'), id: `b${i}` })) };
+  t('가방: 늘린 칸만큼 장비가 들어감 (45개 + 줍기 가능)', G.normalizeGear(big).items.length === 45 && !G.rollDrop(big, 't:full', 'task', D, seq(0)).full);
+  t('가방: 기기 합치기는 큰 쪽', G.mergeGear({ v: 2, bagPlus: 2 }, { v: 2, bagPlus: 1 }).bagPlus === 2);
+  const shop0 = JSON.stringify(G.shopItems(D, 'u1').map(x => x.name));
+  t('상점: 다시 뽑기 전은 예전과 같은 물건', shop0 === JSON.stringify(G.shopItems(D, 'u1', 0).map(x => x.name)));
+  let sg = { gold: 1000 }; const rc = [];
+  for (let i = 0; i < 4; i++) { const r = G.rerollShop(sg, D); if (r.error) { rc.push(r.error); break; } rc.push(r.cost); sg = r.gear; }
+  t('상점: 다시 뽑기 50·100·150, 하루 3번', rc.join() === '50,100,150,max' && sg.gold === 700 && G.shopRerollPrice(sg, D) === null && G.shopRerollPrice(sg, '2026-11-11') === 50, rc.join());
+  t('상점: 뽑으면 다른 물건', JSON.stringify(G.shopItems(D, 'u1', 1).map(x => x.id)) !== JSON.stringify(G.shopItems(D, 'u1', 0).map(x => x.id)));
+  const bought = G.buyShopItem({ gold: 5000, shop: { date: D, bought: [], reroll: 2 } }, D, 'u1', 0);
+  t('상점: 뽑은 뒤 산 물건은 뽑은 칸 것, 사도 뽑은 횟수 유지', bought.item.name === G.shopItems(D, 'u1', 2)[0].name && G.shopRerolls(bought.gear, D) === 2);
+  t('상점: 기기 합치기 — 더 많이 뽑은 쪽', G.mergeGear({ v: 2, shop: { date: D, bought: [0], reroll: 0 } }, { v: 2, shop: { date: D, bought: [], reroll: 1 } }).shop.reroll === 1);
   t('보상 기록: 오래된 키부터 800개까지 기억', G.normalizeGear({ rolled: Array.from({ length: 900 }, (_, i) => `k${i}`) }).rolled.length === G.ROLLED_MAX);
   let b = { gear: {} }; for (let i = 0; i < 8; i++) b = G.addGold(b.gear, D, 'battle', G.battleGoldFor(15, 15).amount);
   const gf = (n, m) => G.battleGoldFor(n, m).amount;
@@ -1124,6 +1142,11 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('노란 표시: 찾은 자리 (대소문자 무시, 초성 단어는 표시 안 함)',
     JSON.stringify(M.termRanges('Abc abc 회의', M.highlightTerms('ABC ㅎㅇ'))) === JSON.stringify([{ start: 0, end: 3 }, { start: 4, end: 7 }]));
   t('노란 표시: 겹치는 단어는 한 번만', M.termRanges('회의록', ['회의', '의록']).length === 1);
+  // 📍 고정 (2026-11-13) — 어떤 정렬이든 맨 위
+  const pinPlans = { '2026-11-01': { memos: [{ id: 'old', text: '오래된 고정 메모', pinned: true }] }, '2026-11-13': { memos: [{ id: 'new', text: '새 메모' }] } };
+  const pinItems = M.buildManagerItems(pinPlans);
+  t('고정: 날짜 최신순이어도 고정한 메모가 맨 위', M.sortItems(pinItems, { key: 'date', dir: 'desc' }, today)[0].id === 'old');
+  t('고정: 제목순이어도 맨 위', M.sortItems(pinItems, { key: 'title', dir: 'asc' }, today)[0].id === 'old');
 }
 
 // ── 📋 업그레이드 할 일 (관리자 화면, utils/roadmap.js) ──

@@ -31,7 +31,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
-import { stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT, challengeCertReward, attendReward, raidReward, markChallengesDone } from "./utils/gear.js";
+import { bagSize, stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT, challengeCertReward, attendReward, raidReward, markChallengesDone } from "./utils/gear.js";
 import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
@@ -2815,6 +2815,7 @@ export default function App() {
           gear={gearBonus(battleGear)}
           npcOverride={battleNpcId === "wander" ? wanderer : null}
           bag={battleGear.items}
+          bagMax={bagSize(battleGear)}
           gold={battleGear.gold}
         />
       );

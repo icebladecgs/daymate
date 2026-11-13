@@ -23,7 +23,16 @@ export const RARITY_ORDER = ['legend', 'epic', 'rare', 'uncommon', 'common'];
 const RARITY_UP = ['common', 'uncommon', 'rare', 'epic', 'legend'];
 export const DROP_CHANCE = { task: 0.10, habit: 0.05 };
 export const DROPS_PER_DAY = 3;
-export const BAG_MAX = 40;
+export const BAG_MAX = 40; // 기본 가방 칸
+// 🪙 골드 쓸 곳 (2026-11-13 사용자 승인) — 가방 늘리기: 한 번에 +10칸, 값 300·600·1000·1500, 최대 80칸.
+// 가방 크기는 bagSize(gear)로 읽는다(BAG_MAX를 바로 쓰면 늘린 칸이 무시된다)
+export const BAG_STEP = 10;
+export const BAG_PRICES = [300, 600, 1000, 1500];
+export const BAG_LIMIT = BAG_MAX + BAG_STEP * BAG_PRICES.length;
+export const bagSize = (gear) => BAG_MAX + BAG_STEP * Math.min(BAG_PRICES.length, Math.max(0, Math.floor(Number(gear?.bagPlus) || 0)));
+export const bagNextPrice = (gear) => BAG_PRICES[Math.max(0, Math.floor(Number(gear?.bagPlus) || 0))] ?? null;
+// 상점 다시 뽑기: 하루 3번, 50·100·150 (산 칸도 새 물건으로 바뀐다)
+export const SHOP_REROLL_PRICES = [50, 100, 150];
 // 이미 받은 보상 키(할일·습관·단계·하루 마무리…)를 기억하는 개수 — 작은 단계가 생겨 300에서 늘림 (2026-11-13)
 export const ROLLED_MAX = 800;
 export const WANDER_RARITY = { rare: 70, epic: 27, legend: 3 }; // 떠돌이 도전자를 이기면 희귀 이상 (전설 10% → 3%, 2026-11-09)
@@ -92,7 +101,7 @@ export function itemEffects(raw) {
 }
 
 export function normalizeGear(g) {
-  const items = (Array.isArray(g?.items) ? g.items : []).filter((x) => x?.id && RARITIES[x.rarity] && GEAR_SLOTS.some((s) => s.id === x.slot)).slice(0, BAG_MAX);
+  const items = (Array.isArray(g?.items) ? g.items : []).filter((x) => x?.id && RARITIES[x.rarity] && GEAR_SLOTS.some((s) => s.id === x.slot)).slice(0, BAG_LIMIT);
   const ids = new Set(items.map((x) => x.id));
   const eq = g?.equipped || {};
   const equipped = Object.fromEntries(GEAR_SLOTS.map((s) => [s.id, ids.has(eq[s.id]) && items.find((x) => x.id === eq[s.id]).slot === s.id ? eq[s.id] : null]));
@@ -110,7 +119,9 @@ export function normalizeGear(g) {
     // 🪙 골드·상점 (2026-11-10) — gold: 가진 골드, earned: 오늘 받은 양(상한 확인용), shop: 오늘 상점에서 산 칸
     gold: Math.max(0, Math.floor(Number(g?.gold) || 0)),
     earned: g?.earned?.date ? { date: String(g.earned.date), task: Math.max(0, Number(g.earned.task) || 0), battle: Math.max(0, Number(g.earned.battle) || 0) } : null,
-    shop: g?.shop?.date ? { date: String(g.shop.date), bought: (Array.isArray(g.shop.bought) ? g.shop.bought : []).map(Number).filter((i) => i >= 0 && i < SHOP_SIZE) } : null,
+    shop: g?.shop?.date ? { date: String(g.shop.date), bought: (Array.isArray(g.shop.bought) ? g.shop.bought : []).map(Number).filter((i) => i >= 0 && i < SHOP_SIZE),
+      reroll: Math.max(0, Math.min(SHOP_REROLL_PRICES.length, Math.floor(Number(g.shop.reroll) || 0))) } : null,
+    bagPlus: Math.max(0, Math.min(BAG_PRICES.length, Math.floor(Number(g?.bagPlus) || 0))), // 가방 늘린 횟수 (2026-11-13)
     // 📜 주간 퀘스트 (2026-11-10) — quests: 이번 주 받은 칸, weekWins: 이번 주 배틀 승리 수
     quests: g?.quests?.week ? { week: String(g.quests.week), claimed: (Array.isArray(g.quests.claimed) ? g.quests.claimed : []).map(Number).filter((i) => i >= 0 && i < QUEST_COUNT), box: !!g.quests.box } : null,
     weekWins: g?.weekWins?.week ? { week: String(g.weekWins.week), n: Math.max(0, Math.floor(Number(g.weekWins.n) || 0)) } : null,
@@ -186,13 +197,17 @@ export function mergeGear(x, y) {
     // 같은 장비가 양쪽에 있으면 더 강화한 쪽(강화에 쓴 골드가 늘기만 함)
     if (!had || (Number(it.spent) || 0) > (Number(had.spent) || 0) || (Number(it.plus) || 0) > (Number(had.plus) || 0)) byId.set(it.id, it);
   }
-  const items = [...byId.values()].sort((p, q) => String(p.at || '').localeCompare(String(q.at || ''))).slice(0, BAG_MAX);
+  const items = [...byId.values()].sort((p, q) => String(p.at || '').localeCompare(String(q.at || ''))).slice(0, BAG_LIMIT);
   const sameDay = (p, q, key) => p && q && p[key] === q[key];
   const laterOf = (p, q, key) => (!p ? q : !q ? p : String(q[key]) > String(p[key]) ? q : p);
   const earned = sameDay(A.earned, B.earned, 'date')
     ? { date: A.earned.date, task: Math.max(A.earned.task, B.earned.task), battle: Math.max(A.earned.battle, B.earned.battle) }
     : laterOf(A.earned, B.earned, 'date');
-  const shop = sameDay(A.shop, B.shop, 'date') ? { date: A.shop.date, bought: [...new Set([...A.shop.bought, ...B.shop.bought])] } : laterOf(A.shop, B.shop, 'date');
+  // 같은 날 상점: 다시 뽑은 횟수가 다르면 더 많이 뽑은 쪽(그쪽 물건이 지금 상점), 같으면 산 칸 합치기
+  const shop = sameDay(A.shop, B.shop, 'date')
+    ? (A.shop.reroll !== B.shop.reroll ? (A.shop.reroll > B.shop.reroll ? A.shop : B.shop)
+      : { date: A.shop.date, reroll: A.shop.reroll, bought: [...new Set([...A.shop.bought, ...B.shop.bought])] })
+    : laterOf(A.shop, B.shop, 'date');
   const quests = sameDay(A.quests, B.quests, 'week')
     ? { week: A.quests.week, claimed: [...new Set([...A.quests.claimed, ...B.quests.claimed])], box: A.quests.box || B.quests.box }
     : laterOf(A.quests, B.quests, 'week');
@@ -210,7 +225,7 @@ export function mergeGear(x, y) {
       steps: Math.max(A.stats.steps, B.stats.steps), attend: Math.max(A.stats.attend, B.stats.attend), raids: Math.max(A.stats.raids, B.stats.raids),
       chDone: [...new Set([...A.stats.chDone, ...B.stats.chDone])],
     },
-    earned, shop, quests, weekWins, wander,
+    earned, shop, quests, weekWins, wander, bagPlus: Math.max(A.bagPlus, B.bagPlus),
     at: Math.max(A.at, B.at),
   });
 }
@@ -274,7 +289,7 @@ export function setPieceReward(gear, streak, todayStr, rand = Math.random) {
   if (!streak || streak % SET_STREAK !== 0) return { gear: g, item: null };
   const key = `set:${todayStr}`;
   if (g.rolled.includes(key)) return { gear: g, item: null };
-  if (g.items.length >= BAG_MAX) return { gear: g, item: null, full: true }; // 받은 것으로 치지 않는다
+  if (g.items.length >= bagSize(g)) return { gear: g, item: null, full: true }; // 받은 것으로 치지 않는다
   const owned = new Set(g.items.filter((x) => x.set).map((x) => `${x.set}|${x.slot}`));
   const missing = SETS.flatMap((s) => GEAR_SLOTS.map((sl) => ({ set: s.id, slot: sl.id }))).filter((p) => !owned.has(`${p.set}|${p.slot}`));
   const started = missing.filter((p) => GEAR_SLOTS.some((sl) => owned.has(`${p.set}|${sl.id}`)));
@@ -379,7 +394,7 @@ export function claimQuestBox(gear, week, todayStr, rand = Math.random) {
   const g = normalizeGear(gear);
   if (questClaimed(g, week).length < QUEST_COUNT) return { gear: g, error: 'notyet' };
   if (questBoxClaimed(g, week)) return { gear: g, error: 'claimed' };
-  if (g.items.length >= BAG_MAX) return { gear: g, error: 'full' };
+  if (g.items.length >= bagSize(g)) return { gear: g, error: 'full' };
   const item = { ...makeItem(rollRarity(rand(), QUEST_BOX_RARITY), rand), at: todayStr };
   return { gear: { ...g, items: [...g.items, item], quests: { ...g.quests, box: true } }, item };
 }
@@ -444,7 +459,7 @@ export function rollDrop(gear, key, source, todayStr, rand = Math.random, goldMu
   if (g.dropsOff) return { gear: next, item: null, gold };
   const todayCount = g.items.filter((x) => x.at === todayStr && !x.set).length; // 세트 조각은 따로(습관 7일 보상)
   if (todayCount >= DROPS_PER_DAY || rand() >= (DROP_CHANCE[source] || 0)) return { gear: next, item: null, gold };
-  if (g.items.length >= BAG_MAX) return { gear: next, item: null, full: true, gold };
+  if (g.items.length >= bagSize(g)) return { gear: next, item: null, full: true, gold };
   const item = { ...makeItem(rollRarity(rand()), rand), at: todayStr };
   return { gear: { ...next, items: [...next.items, item] }, item, gold };
 }
@@ -454,7 +469,7 @@ export function wanderReward(gear, todayStr, rand = Math.random) {
   const g = normalizeGear(gear);
   if (g.wander?.date === todayStr && g.wander.won) return { gear: g, item: null };
   const won = { ...g, wander: { date: todayStr, won: true } };
-  if (g.items.length >= BAG_MAX) return { gear: won, item: null, full: true };
+  if (g.items.length >= bagSize(g)) return { gear: won, item: null, full: true };
   const item = { ...makeItem(rollRarity(rand(), WANDER_RARITY), rand), at: todayStr };
   return { gear: { ...won, items: [...won.items, item] }, item };
 }
@@ -465,7 +480,7 @@ export function npcReward(gear, npc, todayStr, rand = Math.random) {
   const g = normalizeGear(gear);
   if (!npc?.id || npcRewardDone(g, npc.id)) return { gear: g, item: null };
   // 가방이 차면 받은 것으로 치지 않는다 — 정리하고 다시 이기면 받는다
-  if (g.items.length >= BAG_MAX) return { gear: g, item: null, full: true };
+  if (g.items.length >= bagSize(g)) return { gear: g, item: null, full: true };
   const marked = { ...g, npcClaimed: [...g.npcClaimed, String(npc.id)] };
   const item = { ...makeItem(rollRarity(rand(), npcRarityWeights(npc.level)), rand), at: todayStr };
   return { gear: { ...marked, items: [...marked.items, item] }, item };
@@ -564,7 +579,7 @@ export function raidReward(gear, raidKey, todayStr, rand = Math.random) {
   const key = `raid:${raidKey}`;
   if (!raidKey || g.rolled.includes(key)) return { gear: g, gold: 0, item: null };
   const base = { ...g, gold: g.gold + RAID_GOLD, rolled: [...g.rolled, key].slice(-ROLLED_MAX), stats: { ...g.stats, raids: g.stats.raids + 1 } };
-  if (g.items.length >= BAG_MAX) return { gear: base, gold: RAID_GOLD, item: null, full: true };
+  if (g.items.length >= bagSize(g)) return { gear: base, gold: RAID_GOLD, item: null, full: true };
   const item = { ...makeItem(rollRarity(rand(), QUEST_BOX_RARITY), rand), at: todayStr };
   return { gear: { ...base, items: [...base.items, item] }, gold: RAID_GOLD, item };
 }
@@ -609,30 +624,51 @@ export function sellItem(gear, itemId) {
   return { gear: { ...g, gold: g.gold + gold, items: g.items.filter((x) => x.id !== itemId), equipped }, gold };
 }
 
-// 오늘 상점 — 같은 날·같은 계정이면 기기가 달라도 같은 3칸. 칸마다 무기·갑옷·부적이 겹치지 않게
-export function shopItems(dateStr, seed) {
-  const r = seededRand(`shop|${dateStr}|${seed}`);
+// 오늘 상점 — 같은 날·같은 계정이면 기기가 달라도 같은 3칸. 칸마다 무기·갑옷·부적이 겹치지 않게.
+// reroll: 오늘 다시 뽑은 횟수 (0이면 예전과 똑같은 3칸)
+export function shopItems(dateStr, seed, reroll = 0) {
+  const r = seededRand(`shop|${dateStr}|${seed}${reroll ? `|r${reroll}` : ''}`);
   const slots = ['weapon', 'armor', 'charm'].map((x) => [x, r()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
   return slots.slice(0, SHOP_SIZE).map((slot, i) => {
     const rarity = rollRarity(r(), SHOP_RARITY);
     const item = makeItem(rarity, r, slot);
-    return { ...item, id: `shop_${dateStr}_${i}`, price: SHOP_PRICE[rarity] };
+    return { ...item, id: `shop_${dateStr}_${reroll}_${i}`, price: SHOP_PRICE[rarity] };
   });
 }
 export const shopBought = (gear, dateStr) => { const s = normalizeGear(gear).shop; return s?.date === dateStr ? s.bought : []; };
+export const shopRerolls = (gear, dateStr) => { const s = normalizeGear(gear).shop; return s?.date === dateStr ? s.reroll : 0; };
+// 다음 다시 뽑기 값 (오늘 다 썼으면 null)
+export const shopRerollPrice = (gear, dateStr) => SHOP_REROLL_PRICES[shopRerolls(gear, dateStr)] ?? null;
+// 다시 뽑기 — 결과 { gear, cost } 또는 { gear, error: 'max'|'gold' }
+export function rerollShop(gear, dateStr) {
+  const g = normalizeGear(gear);
+  const n = shopRerolls(g, dateStr);
+  const cost = SHOP_REROLL_PRICES[n];
+  if (cost == null) return { gear: g, error: 'max' };
+  if (g.gold < cost) return { gear: g, error: 'gold' };
+  return { gear: { ...g, gold: g.gold - cost, shop: { date: dateStr, bought: [], reroll: n + 1 } }, cost };
+}
+// 가방 늘리기 — 결과 { gear, cost } 또는 { gear, error: 'max'|'gold' }
+export function expandBag(gear) {
+  const g = normalizeGear(gear);
+  const cost = bagNextPrice(g);
+  if (cost == null) return { gear: g, error: 'max' };
+  if (g.gold < cost) return { gear: g, error: 'gold' };
+  return { gear: { ...g, gold: g.gold - cost, bagPlus: g.bagPlus + 1 }, cost };
+}
 
 // 사기 — 결과 { gear, item } 또는 { gear, error: 'bought'|'gold'|'full' }
 export function buyShopItem(gear, dateStr, seed, index) {
   const g = normalizeGear(gear);
-  const it = shopItems(dateStr, seed)[index];
+  const it = shopItems(dateStr, seed, shopRerolls(g, dateStr))[index];
   if (!it) return { gear: g, error: 'bought' };
   const bought = shopBought(g, dateStr);
   if (bought.includes(index)) return { gear: g, error: 'bought' };
   if (g.gold < it.price) return { gear: g, error: 'gold' };
-  if (g.items.length >= BAG_MAX) return { gear: g, error: 'full' };
+  if (g.items.length >= bagSize(g)) return { gear: g, error: 'full' };
   const { price, ...rest } = it;
   const item = { ...rest, id: `g${Date.now().toString(36)}s${index}`, at: dateStr, bought: price };
-  return { gear: { ...g, gold: g.gold - price, items: [...g.items, item], shop: { date: dateStr, bought: [...bought, index] } }, item };
+  return { gear: { ...g, gold: g.gold - price, items: [...g.items, item], shop: { date: dateStr, bought: [...bought, index], reroll: shopRerolls(g, dateStr) } }, item };
 }
 
 // ── 떠돌이 도전자: 날짜로 정해지는 상대 (같은 날은 같은 상대, 기기가 달라도 같음) ──

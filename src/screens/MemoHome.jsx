@@ -77,6 +77,18 @@ function MemoHomeInner({
     ...prev,
     memos: (prev.memos || []).map(m => m.id === id ? { ...m, starred } : m),
   }));
+  // 📍 위에 고정 (2026-11-13 사용자 요청 — 자주 보는 메모를 직접 고정). 고정 풀 때는 칸을 지운다(merge 저장이라 false로 남지 않게)
+  const updateMemoPinnedAt = (id, pinned) => onUpdateDayData(targetDs, prev => ({
+    ...prev,
+    memos: (prev.memos || []).map(m => { if (m.id !== id) return m; const { pinned: _p, ...rest } = m; return pinned ? { ...rest, pinned: true } : rest; }), // eslint-disable-line no-unused-vars
+  }));
+  // 고정한 메모 (모든 날짜, 최근 고친 순) — 누르면 메모 관리자에서 그 메모를 연다
+  const pinnedMemos = Object.entries(plans || {}).flatMap(([ds, d]) => (d?.memos || []).filter(m => m.pinned).map(m => ({ ds, m })))
+    .sort((a, b) => String(b.m.updatedAt || b.ds).localeCompare(String(a.m.updatedAt || a.ds)));
+  const openInManager = (ds, id) => {
+    try { sessionStorage.setItem('dm_mm_select', `memo|${ds}|${id}`); } catch { /* 무시 */ }
+    openMemoManager();
+  };
   const deleteMemoAt = (id) => {
     onUpdateDayData(targetDs, prev => ({
       ...prev,
@@ -145,6 +157,22 @@ function MemoHomeInner({
         </button>
         </div>
       )}
+      {/* 📍 고정한 메모 (새 디자인, 2026-11-13) — 있을 때만, 날짜와 상관없이 모아 보여 준다 */}
+      {newDesignOn() && pinnedMemos.length > 0 && (
+        <SectionBox on>
+          <div style={{ fontSize: UI.title, fontWeight: 900, color: 'var(--dm-text)', marginBottom: 8 }}>📍 고정한 메모</div>
+          {pinnedMemos.slice(0, 8).map(({ ds, m }) => (
+            <button key={`${ds}|${m.id}`} onClick={() => openInManager(ds, m.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 0', background: 'none', border: 'none', borderTop: '1px solid var(--dm-row)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: UI.item, color: 'var(--dm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.locked ? '🔒 잠긴 메모' : (String(m.text || '').split('\n').map(l => l.trim()).find(Boolean) || '(빈 메모)')}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--dm-muted)', flexShrink: 0 }}>{shortDayLabel(ds)}</span>
+            </button>
+          ))}
+          {pinnedMemos.length > 8 && <div style={{ fontSize: 13, color: 'var(--dm-muted)', paddingTop: 6 }}>외 {pinnedMemos.length - 8}개 — 메모 관리자에서 모두 보여요</div>}
+        </SectionBox>
+      )}
       <SectionBox on={newDesignOn()}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: newDesignOn() ? UI.titleGap : 10 }}>
         <span style={{ fontSize: newDesignOn() ? UI.title : 13, fontWeight: 900, color: 'var(--dm-text)', whiteSpace: 'nowrap' }}>{newDesignOn() && Math.abs(dayOffset) > 1 ? shortDayLabel(targetDs) : dayLabel} 메모</span>
@@ -165,6 +193,7 @@ function MemoHomeInner({
         onDelete={deleteMemoAt}
         onOpenLongEditor={(item) => setLongMemo({ id: item.id, text: item.text, photos: item.photos || [], files: item.files || [], starred: item.starred || false })}
         onToggleStar={updateMemoStarredAt}
+        onTogglePin={newDesignOn() ? updateMemoPinnedAt : undefined}
         placeholder="메모 입력 후 + 버튼"
         extraAction={
           <button

@@ -81,7 +81,10 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState({ key: "date", dir: "desc" });
-  const [selectedKey, setSelectedKey] = useState(null);
+  // 메모 탭 "📍 고정한 메모"에서 눌러 열었으면 그 메모를 골라 둔다 (한 번 읽고 지움, 2026-11-13)
+  const [selectedKey, setSelectedKey] = useState(() => {
+    try { const k = sessionStorage.getItem("dm_mm_select"); sessionStorage.removeItem("dm_mm_select"); return k || null; } catch { return null; }
+  });
   const [limit, setLimit] = useState(PAGE);
   const [tagsOpen, setTagsOpen] = useState(false); // 좁은 화면: 태그 칩 묶음 펼침
   const [showSettings, setShowSettings] = useState(false); // ⚙️ 메모 설정
@@ -444,7 +447,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
                 style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
-                  {it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}
+                  {it.pinned && "📍 "}{it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
                   {!cols && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
                 </td>
@@ -726,6 +729,8 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
     setTimeout(() => setSentToday(""), 2500);
   };
   const toggleStar = () => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }));
+  // 📍 위에 고정 (2026-11-13) — 풀 때는 칸을 비운다
+  const togglePin = () => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { pinned: item.pinned ? undefined : true }));
   const toggleDone = () => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }));
   const smallHit = nl && window.innerWidth < 900 ? "dm-hit" : undefined;
   const small = { padding: z("5px 10px", "7px 12px"), borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
@@ -733,7 +738,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-        toggleStar, toggleDone, taskDone: !!task?.done, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
+        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -746,6 +751,9 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
         {canAutoFocus() && <button className={smallHit} onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
         {item.kind === "memo" && (
           <button className={smallHit} onClick={toggleStar} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
+        )}
+        {item.kind === "memo" && (
+          <button className={smallHit} onClick={togglePin} style={small}>{item.pinned ? "📍 고정 풀기" : "📍 위에 고정"}</button>
         )}
         {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js. 보기 모드엔 커서가 없어 숨김 */}
         {item.kind === "memo" && !viewMode && (
@@ -822,6 +830,7 @@ const ICONS = {
   done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  pin: <><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z" /><circle cx="12" cy="10.5" r="2.2" /></>,
   expand: <><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></>,
   shrink: <><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" /></>,
   eye: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
@@ -846,7 +855,7 @@ const savedLabel = (dirty, updatedAt) => {
 };
 
 function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-  toggleStar, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }) {
+  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }) {
   const accent = "var(--dm-accent, #5B7CFA)";
   const memo = item.kind === "memo";
   useEffect(() => {
@@ -912,6 +921,13 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
             style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 999, background: "none", border: "none", cursor: "pointer",
               color: item.starred ? "#F5B400" : "var(--dm-sub)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Ico name="star" size={22} fill={item.starred ? "currentColor" : undefined} />
+          </button>
+        )}
+        {memo && (
+          <button onClick={togglePin} aria-label={item.pinned ? "고정 풀기" : "위에 고정"} title={item.pinned ? "고정 풀기" : "목록·메모 탭 맨 위에 고정"} aria-pressed={!!item.pinned}
+            style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 999, background: "none", border: "none", cursor: "pointer",
+              color: item.pinned ? "#EF4444" : "var(--dm-sub)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Ico name="pin" size={22} fill={item.pinned ? "currentColor" : undefined} />
           </button>
         )}
         <span style={{ flex: 1 }} />

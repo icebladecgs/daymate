@@ -121,7 +121,7 @@ const viewBtn = (danger) => ({
   minHeight: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--dm-border)', background: 'var(--dm-input)',
   color: danger ? '#EF4444' : 'var(--dm-text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
 });
-function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onToggleStar }) {
+function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onToggleStar, onTogglePin }) {
   const [copied, setCopied] = useState(false);
   const icons = `${item.starred ? '⭐ ' : ''}${item.photos?.length ? '📷 ' : ''}${item.files?.length ? '📎 ' : ''}`;
   const rowStyle = { display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', minHeight: 44, padding: '11px 2px', background: 'none', border: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' };
@@ -154,6 +154,7 @@ function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onTogg
           {onOpenLongEditor && <button onClick={() => onOpenLongEditor(item)} style={{ ...viewBtn(), color: 'var(--dm-accent, #5B7CFA)', fontWeight: 800 }}>열기</button>}
           <button onClick={() => { navigator.clipboard?.writeText(item.text); setCopied(true); setTimeout(() => setCopied(false), 1500); }} style={viewBtn()}>{copied ? '복사됨 ✓' : '복사'}</button>
           {onToggleStar && <button onClick={() => onToggleStar(item.id, !item.starred)} style={viewBtn()}>{item.starred ? '★ 즐겨찾기 빼기' : '☆ 즐겨찾기'}</button>}
+            {onTogglePin && <button onClick={() => onTogglePin(item.id, !item.pinned)} style={viewBtn()}>{item.pinned ? '📍 고정 풀기' : '📍 위에 고정'}</button>}
           {item.id !== 'legacy' && <button onClick={() => requestMemoLock(item.id, 'lock')} style={viewBtn()}>잠그기</button>}
           <button onClick={() => onDelete(item.id)} style={viewBtn(true)}>삭제</button>
         </div>
@@ -161,7 +162,7 @@ function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onTogg
     </div>
   );
 }
-function MemoViewList({ memos, onDelete, onOpenLongEditor, onToggleStar }) {
+function MemoViewList({ memos, onDelete, onOpenLongEditor, onToggleStar, onTogglePin }) {
   const [openId, setOpenId] = useState(null);
   if (!memos.length) return <div style={{ fontSize: 15, color: 'var(--dm-muted)', padding: '6px 2px 4px' }}>이 날은 메모가 없어요</div>;
   return (
@@ -169,7 +170,7 @@ function MemoViewList({ memos, onDelete, onOpenLongEditor, onToggleStar }) {
       {memos.map((m, i) => (
         <div key={m.id} style={{ borderTop: i ? '1px solid var(--dm-row)' : 'none' }}>
           <MemoViewItem item={m} open={openId === m.id} onToggle={() => setOpenId(openId === m.id ? null : m.id)}
-            onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} />
+            onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} onTogglePin={onTogglePin} />
         </div>
       ))}
     </div>
@@ -197,7 +198,7 @@ export function withMemoList(day) {
 }
 
 export default function MemoTimeline(props) {
-  if (props.viewOnly) return <MemoViewList memos={props.memos || []} onDelete={props.onDelete} onOpenLongEditor={props.onOpenLongEditor} onToggleStar={props.onToggleStar} />;
+  if (props.viewOnly) return <MemoViewList memos={props.memos || []} onDelete={props.onDelete} onOpenLongEditor={props.onOpenLongEditor} onToggleStar={props.onToggleStar} onTogglePin={props.onTogglePin} />;
   return <MemoTimelineEdit {...props} />;
 }
 
@@ -229,7 +230,7 @@ function MemoTimelineEdit({ memos = [], onAdd, onUpdate, onDelete, placeholder, 
               {memo.createdAt || ""}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} />
+              <MemoItem item={memo} onSave={onUpdate} onDelete={onDelete} onOpenLongEditor={onOpenLongEditor} onToggleStar={onToggleStar} onTogglePin={onTogglePin} />
             </div>
           </div>
         ))}

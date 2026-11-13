@@ -54,8 +54,23 @@ export default function StickyMemo() {
       desktop()?.stickyCreated?.({ ds, id });
       return { ds, id, isNew: true };
     }
-    return { ds: q.get("ds"), id: q.get("id"), isNew: false };
+    const ds = q.get("ds"), id = q.get("id");
+    // 새로 만든 빈 포스트잇이 창 새로고침(새 버전 배포 때 자동)으로 다시 열린 경우 (2026-11-13) — 떠날 때 빈 메모를 지워서
+    // 예전엔 "이 메모는 삭제되었어요"가 떴다. 같은 창 안에서만 남는 표시(sessionStorage)로 알아보고 같은 id로 다시 만든다
+    let wasEmptyNew = false;
+    try { wasEmptyNew = sessionStorage.getItem(`dm_sticky_new_${id}`) === "1"; } catch { /* 무시 */ }
+    if (wasEmptyNew && ds && id && !findMemo(ds, id)) {
+      const day = loadDay(ds) || newDay(ds);
+      saveDay(ds, { ...day, memos: [...memoListOf(day), { id, text: "", createdAt: getMemoTimeStr(), updatedAt: new Date().toISOString() }] });
+      markDayUnsynced(ds, true);
+    }
+    return { ds, id, isNew: wasEmptyNew };
   });
+  // 이 창이 "새로 만든 포스트잇"인 동안 표시 — 글을 쓰면 일반 메모가 되므로 지운다(아래 onLeave)
+  useEffect(() => {
+    if (!target.isNew) return;
+    try { sessionStorage.setItem(`dm_sticky_new_${target.id}`, "1"); } catch { /* 무시 */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { ds, id } = target;
   const isNewRef = useRef(target.isNew); // 새로 만든 메모 — 비워 둔 채 닫으면 지운다
   const [memo, setMemo] = useState(() => findMemo(ds, id));
@@ -114,7 +129,10 @@ export default function StickyMemo() {
   const onLeave = () => {
     flush(textRef.current);
     const m = findMemo(ds, id);
-    if (isNewRef.current && m && !m.text?.trim() && !m.photos?.length && !m.files?.length) writeMemo(ds, id, null);
+    const empty = m && !m.text?.trim() && !m.photos?.length && !m.files?.length;
+    if (isNewRef.current && empty) writeMemo(ds, id, null);
+    // 글을 쓴 포스트잇은 더 이상 "새 빈 포스트잇"이 아니다 — 새로고침 뒤 되살리지 않게 표시를 지운다
+    else { try { sessionStorage.removeItem(`dm_sticky_new_${id}`); } catch { /* 무시 */ } }
   };
   const onLeaveRef = useRef(onLeave);
   onLeaveRef.current = onLeave;

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import S, { UI, boxCard } from "../../styles.js";
 import { newDesignOn } from "../../utils/todayLook.js";
 import { chatFetch } from "../../api/chatFetch.js";
-import { RARITIES, BAG_MAX, itemEffects, normalizeGear } from "../../utils/gear.js";
+import { RARITIES, bagSize, itemEffects, normalizeGear } from "../../utils/gear.js";
 import { fameRate, territoryFame, shortName, TRIES_PER_DAY } from "../../utils/territory.js";
 import { useBackClose } from "../../utils/useBackClose.js";
 import TerritoryReplay from "./TerritoryReplay.jsx";
@@ -65,7 +65,7 @@ export default function TerritoryPanel({ loggedIn, gear, setGear, nickname }) {
         if (j.won && j.captured) {
           if (j.reward) {
             const g = normalizeGear(gear);
-            if (g.items.length < BAG_MAX) setGear?.((cur) => { const c = normalizeGear(cur); return c.items.length < BAG_MAX ? { ...c, items: [...c.items, { ...j.reward, at: new Date().toISOString().slice(0, 10) }] } : c; });
+            if (g.items.length < bagSize(g)) setGear?.((cur) => { const c = normalizeGear(cur); return c.items.length < bagSize(c) ? { ...c, items: [...c.items, { ...j.reward, at: new Date().toISOString().slice(0, 10) }] } : c; });
             else setResult({ ...j, bagFull: true });
           }
           if (j.lostFrom) chatFetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "territory", code: j.region.code }) }).catch(() => {});

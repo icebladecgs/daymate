@@ -22,7 +22,7 @@ export function buildManagerItems(plans) {
     displayMemos(d).forEach(m => {
       if (m.locked) { // 잠긴 메모는 제목·내용 없이 표시만 (검색되지 않음)
         items.push({ key: `memo|${ds}|${m.id}`, kind: "memo", ds, id: m.id, title: "🔒 잠긴 메모", text: "", time: validTime(m.createdAt),
-          updatedAt: m.updatedAt || "", starred: !!m.starred, photos: [], tags: [], locked: true });
+          updatedAt: m.updatedAt || "", starred: !!m.starred, photos: [], tags: [], locked: true, pinned: !!m.pinned });
         return;
       }
       const text = m.text || "";
@@ -31,7 +31,7 @@ export function buildManagerItems(plans) {
         title: titleLine(text) || (m.photos?.length ? "(사진 메모)" : "(빈 메모)"),
         text, time: validTime(m.createdAt), updatedAt: m.updatedAt || "",
         starred: !!m.starred, photos: m.photos || [], tags: parseWikiLinks(text),
-        color: m.color || "", alarm: m.alarm?.time ? m.alarm : null,
+        color: m.color || "", alarm: m.alarm?.time ? m.alarm : null, pinned: !!m.pinned,
       });
     });
     (d.tasks || []).forEach(t => {
@@ -210,6 +210,8 @@ export function sortItems(items, { key, dir }, today = toDateStr()) {
   const sign = dir === "asc" ? 1 : -1;
   const futureLast = key === "date" && dir === "desc";
   return [...items].sort((a, b) => {
+    // 📍 고정한 메모는 어떤 정렬이든 맨 위 (2026-11-13)
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     if (futureLast) {
       const fa = a.ds > today ? 1 : 0;
       const fb = b.ds > today ? 1 : 0;

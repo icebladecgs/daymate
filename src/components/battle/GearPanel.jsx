@@ -7,7 +7,8 @@ import UndoBar from "../UndoBar.jsx";
 import { useBattleFold, FoldHeader } from "./BattleFold.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
-import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
+import { bagSize, bagNextPrice, expandBag, BAG_STEP, BAG_LIMIT, shopRerolls, shopRerollPrice, rerollShop, SHOP_REROLL_PRICES } from "../../utils/gear.js";
+import { GEAR_SLOTS, RARITIES, RARITY_ORDER, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
   GOLD, TASK_GOLD_CAP, TASK_GOLD_MAX, BATTLE_GOLD_CAP, STEP_GOLD_PER_TASK, STEPS_DONE_BONUS, WRAP_GOLD, shopItems, shopBought, buyShopItem, sellItem,
   itemDisplayName, sellPriceOf, enhanceCost, enhanceItem, ENHANCE_MAX, ENHANCE_STEP, setById, equippedSets, setBonusText, SET_STREAK } from "../../utils/gear.js";
 
@@ -68,6 +69,16 @@ export default function GearPanel({ gear, setGear }) {
       return { ...c, gold: c.gold - r.gold, items: putBack(c.items, it, idx), equipped: wasOn ? { ...c.equipped, [it.slot]: it.id } : c.equipped };
     }));
   };
+  const expandBagNow = () => {
+    const r = expandBag(g);
+    if (r.error) return;
+    setGear(r.gear);
+    undo.offer(`🎒 가방 ${bagSize(r.gear)}칸 · 🪙 -${r.cost}`, () => setGear((cur) => {
+      const c = normalizeGear(cur);
+      if (c.bagPlus < 1 || c.items.length > bagSize({ bagPlus: c.bagPlus - 1 })) return c; // 늘린 칸을 벌써 썼으면 그대로
+      return { ...c, gold: c.gold + r.cost, bagPlus: c.bagPlus - 1 };
+    }));
+  };
   // 🔨 강화 — 확률이라 되돌리기 없음(되돌리면 실패를 다시 굴릴 수 있다). 실패해도 장비는 그대로
   const enhance = (it) => {
     const r = enhanceItem(g, it.id);
@@ -111,12 +122,25 @@ export default function GearPanel({ gear, setGear }) {
       })}
 
       <button onClick={() => setBagOpen((v) => !v)} aria-expanded={bagOpen} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", minHeight: 44, padding: "8px 0 0", marginTop: 4, background: "none", border: "none", borderTop: "1px solid var(--dm-row)", borderRadius: 0, cursor: "pointer", fontFamily: "inherit", color: ACCENT, fontSize: 15, fontWeight: 800 }}>
-        가방 {g.items.length}/{BAG_MAX}{newCount ? <span style={{ fontSize: 12, color: "#fff", background: "#FF3B30", borderRadius: 999, padding: "1px 7px" }}>오늘 +{newCount}</span> : null}
+        가방 {g.items.length}/{bagSize(g)}{newCount ? <span style={{ fontSize: 12, color: "#fff", background: "#FF3B30", borderRadius: 999, padding: "1px 7px" }}>오늘 +{newCount}</span> : null}
         <span style={{ marginLeft: "auto", color: "var(--dm-sub)", fontSize: 13 }}>{bagOpen ? "접기 ▲" : "열기 ▼"}</span>
       </button>
       {bagOpen && (
         <div style={{ marginTop: 6 }}>
           {sorted.length === 0 && <div style={{ fontSize: 14, color: "var(--dm-sub)", padding: "6px 0", lineHeight: 1.5 }}>할일을 끝내거나 습관을 체크하면 가끔 장비가 떨어져요. 도전 상대를 처음 이기면 상대마다 한 번, 떠돌이 도전자를 이기면 희귀 이상을 받아요.</div>}
+          {/* 🪙 가방 늘리기 (2026-11-13) — +10칸씩 최대 80칸. 5초 되돌리기(그 사이 늘어난 칸에 장비가 들어왔으면 못 되돌림) */}
+          {(() => {
+            const price = bagNextPrice(g);
+            if (price == null) return <div style={{ fontSize: 13, color: "var(--dm-muted)", padding: "0 0 8px" }}>가방을 가장 크게 늘렸어요 ({BAG_LIMIT}칸)</div>;
+            const can = g.gold >= price;
+            return (
+              <button className="dm-hit" onClick={expandBagNow} disabled={!can}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minHeight: 40, padding: "6px 12px", margin: "0 0 10px", borderRadius: 10, border: "none", fontFamily: "inherit", cursor: can ? "pointer" : "default",
+                  background: can ? "rgba(255,159,10,.14)" : "var(--dm-input)", color: can ? "#FF9F0A" : "var(--dm-muted)", fontSize: 14, fontWeight: 800 }}>
+                🎒 가방 +{BAG_STEP}칸 늘리기 <span style={{ marginLeft: "auto" }}>🪙 {price.toLocaleString()}{can ? "" : ` (가진 골드 ${g.gold.toLocaleString()})`}</span>
+              </button>
+            );
+          })()}
           <div style={{ fontSize: 13, color: "var(--dm-muted)", padding: "0 0 8px", lineHeight: 1.5, wordBreak: "keep-all" }}>⛓️ 습관을 {SET_STREAK}일 이어 할 때마다 세트 조각 1개 · 🔨 장비를 눌러 골드로 강화(+{ENHANCE_MAX}까지, 한 단계 +{Math.round(ENHANCE_STEP * 100)}%, 실패해도 안 깨져요)</div>
           {sorted.map((it) => (
             <div key={it.id} style={{ borderTop: "1px solid var(--dm-row)" }}>
@@ -172,8 +196,16 @@ export function ShopCard({ gear, setGear, seed }) {
   const g = normalizeGear(gear);
   const today = toDateStr();
   const undo = useUndo();
-  const items = shopItems(today, seed);
+  const items = shopItems(today, seed, shopRerolls(g, today));
   const bought = shopBought(g, today);
+  // 🔄 다시 뽑기 (2026-11-13) — 하루 3번 50·100·150. 되돌리기 없음(되돌리면 원하는 물건이 나올 때까지 공짜로 뽑을 수 있다)
+  const rerollPrice = shopRerollPrice(g, today);
+  const reroll = () => {
+    const r = rerollShop(g, today);
+    if (r.error) { setMsg(r.error === 'gold' ? '골드가 모자라요' : '오늘은 다 뽑았어요'); return; }
+    setMsg('🔄 새 물건이 들어왔어요');
+    setGear(r.gear);
+  };
   const earned = g.earned?.date === today ? g.earned : { task: 0, battle: 0 };
   const [msg, setMsg] = useState('');
   const [open, toggle] = useBattleFold("shop");
@@ -224,6 +256,13 @@ export function ShopCard({ gear, setGear, seed }) {
           </div>
         );
       })}
+      <button className="dm-hit" onClick={reroll} disabled={rerollPrice == null || g.gold < rerollPrice}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minHeight: 40, padding: "6px 12px", marginTop: 6, borderRadius: 10, border: "none", fontFamily: "inherit",
+          cursor: rerollPrice != null && g.gold >= rerollPrice ? "pointer" : "default",
+          background: rerollPrice != null && g.gold >= rerollPrice ? "rgba(255,159,10,.14)" : "var(--dm-input)", color: rerollPrice != null && g.gold >= rerollPrice ? "#FF9F0A" : "var(--dm-muted)", fontSize: 14, fontWeight: 800 }}>
+        🔄 물건 다시 뽑기 <span style={{ fontSize: 13, fontWeight: 600 }}>(오늘 {shopRerolls(g, today)}/{SHOP_REROLL_PRICES.length})</span>
+        <span style={{ marginLeft: "auto" }}>{rerollPrice == null ? "내일 다시" : `🪙 ${rerollPrice}`}</span>
+      </button>
       {msg && <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700, marginTop: 4 }}>{msg}</div>}
       <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
         골드는 할일 +{GOLD.task}(🎯 목표에서 온 할일은 2배) · 습관 +{GOLD.habit} · 작은 단계 +{GOLD.step}(할일 하나에 {STEP_GOLD_PER_TASK}까지, 다 끝내면 +{STEPS_DONE_BONUS}) · 하루 마무리 +{WRAP_GOLD} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 할일·습관·단계는 하루 {TASK_GOLD_CAP}까지 그대로, 그 뒤엔 1골드씩 {TASK_GOLD_MAX}까지 · 배틀은 하루 {BATTLE_GOLD_CAP}. 안 쓰는 장비는 가방에서 팔 수 있어요. 전설 장비는 상점에서 팔지 않아요.

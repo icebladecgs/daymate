@@ -2,7 +2,7 @@
 import { useState } from "react";
 import S from "../../styles.js";
 import { toDateStr } from "../../utils/date.js";
-import { RARITIES, GEAR_SLOTS, QUEST_GOLD, QUEST_COUNT, BAG_MAX, normalizeGear, questClaimed, questBoxClaimed, claimQuest, claimQuestBox,
+import { RARITIES, GEAR_SLOTS, QUEST_GOLD, QUEST_COUNT, bagSize, normalizeGear, questClaimed, questBoxClaimed, claimQuest, claimQuestBox,
   dexInfo, titleList, SETS, itemDisplayName } from "../../utils/gear.js";
 import { useBattleFold, FoldHeader } from "./BattleFold.jsx";
 
@@ -32,7 +32,7 @@ export function QuestCard({ quest, gear, setGear }) {
   };
   const openBox = () => {
     const r = claimQuestBox(g, week, toDateStr());
-    if (r.error) { setMsg(r.error === "full" ? `가방이 꽉 찼어요(${BAG_MAX}) — 안 쓰는 장비를 팔아 주세요` : ""); return; }
+    if (r.error) { setMsg(r.error === "full" ? `가방이 꽉 찼어요(${bagSize(gear)}) — 안 쓰는 장비를 팔아 주세요` : ""); return; }
     setGear(r.gear);
     setMsg(`🎁 [${RARITIES[r.item.rarity].label}] ${itemDisplayName(r.item)} — 가방에 넣었어요`);
   };
