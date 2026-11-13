@@ -1149,6 +1149,42 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('고정: 제목순이어도 맨 위', M.sortItems(pinItems, { key: 'title', dir: 'asc' }, today)[0].id === 'old');
 }
 
+// ── 메모 입력란 업그레이드 (2026-11-13) — 키보드 띠 목록·#태그·이전 내용·틀·사진 글자 ──
+{
+  const E = await load('/src/utils/editorAssist.js');
+  t('목록 띠: 글머리 붙이기·다시 누르면 빼기', E.listLines('우유\n계란', 'bullet') === '- 우유\n- 계란' && E.listLines('- 우유\n- 계란', 'bullet') === '우유\n계란');
+  t('목록 띠: 번호 붙이기, 글머리를 번호로 바꾸기, 들여쓰기 유지', E.listLines('a\nb', 'number') === '1. a\n2. b' && E.listLines('- a', 'number') === '1. a' && E.listLines('    x', 'bullet') === '    - x');
+  t('목록 띠: 빈 줄은 그대로', E.listLines('a\n\nb', 'bullet') === '- a\n\n- b');
+  t('#태그: 줄 처음·띄어쓰기 뒤의 #만', E.hashPrefixAt('회의 #업', 6) === '업' && E.hashPrefixAt('#', 1) === '' && E.hashPrefixAt('색 #FF0000x', 20) === 'FF0000x' && E.hashPrefixAt('abc#업', 5) === null && E.hashPrefixAt('회의 #업무 끝', 9) === null);
+  const TS = await load('/src/components/TagSuggest.jsx');
+  t('#태그: 앞글자로 찾기, 이미 다 쓴 태그·중복은 빼기', JSON.stringify(TS.tagMatches(['업무', '업무일지', '가족', '#업무'], '업')) === '["업무","업무일지"]' && JSON.stringify(TS.tagMatches(['업무'], '업무')) === '[]' && TS.tagMatches(['a', 'b'], '').length === 2);
+  const H = await load('/src/utils/memoHistory.js');
+  const T0 = Date.parse('2026-11-13T09:00:00');
+  let h = H.addSnapshot({}, 'm1', '처음 글', T0);
+  h = H.addSnapshot(h, 'm1', '조금 고침', T0 + 60000);
+  t('이전 내용: 쓰는 동안은 5분에 한 번만', h.m1.length === 1);
+  h = H.addSnapshot(h, 'm1', '조금 고침', T0 + 6 * 60000);
+  t('이전 내용: 5분 지나면 하나 더, 최신이 앞', h.m1.length === 2 && h.m1[0].text === '조금 고침');
+  t('이전 내용: 같은 글·빈 글은 안 남김', H.addSnapshot(h, 'm1', '조금 고침', T0 + 20 * 60000) === h && H.addSnapshot(h, 'm2', '  ', T0) === h);
+  t('이전 내용: 크게 바뀌면(AI 정리처럼) 바로', H.addSnapshot(h, 'm1', '새 글', T0 + 7 * 60000, true).m1.length === 3);
+  t('이전 내용: 7일 지나면 지움', !H.pruneHistory(h, T0 + 8 * 86400000).m1);
+  let many = {}; for (let i = 0; i < 25; i++) many = H.addSnapshot(many, 'm', `글${i}`, T0 + i * 6 * 60000);
+  t('이전 내용: 메모마다 20개까지', many.m.length === 20 && many.m[0].text === '글24');
+  const ch = H.changesToRecord({ memos: [{ id: 'a', text: '줄1\n줄2\n줄3\n줄4' }, { id: 'b', text: '그대로' }, { id: 'c', text: '', locked: { iv: 1 } }] },
+    { memos: [{ id: 'a', text: '완전히\n다른\n글' }, { id: 'b', text: '그대로' }, { id: 'c', text: '' }] });
+  t('이전 내용: 바뀐 메모만, 잠긴 메모 제외, 통째로 바뀌면 바로 남김', ch.length === 1 && ch[0].id === 'a' && ch[0].force === true);
+  t('이전 내용: 한 줄 고친 건 크게 바뀐 게 아님', H.bigChange('줄1\n줄2\n줄3', '줄1\n줄2 고침\n줄3') === false);
+  const MT = await load('/src/utils/memoTemplates.js');
+  const f = MT.fillTemplate('회의록 {날짜}\n참석: {커서}\n끝', new Date('2026-11-13T14:05:00'));
+  t('틀: 날짜 넣고 커서 자리', f.text === '회의록 2026-11-13 (금)\n참석: \n끝' && f.caret === f.text.indexOf('참석: ') + 4);
+  const a1 = MT.addUserTemplate([], '# 주간 보고 2026-11-13\n- 한 일');
+  t('틀: 내 틀 이름은 첫 줄(기호·날짜 빼고)', a1.name === '주간 보고' && a1.list.length === 1);
+  t('틀: 같은 이름은 바꿔 씀, 빈 글은 안 됨', MT.addUserTemplate(a1.list, '주간 보고\n새 내용').list.length === 1 && !!MT.addUserTemplate([], '  ').error);
+  t('틀: 10개까지', !!MT.addUserTemplate(Array.from({ length: 10 }, (_, i) => ({ id: `x${i}`, name: `틀${i}`, text: 'a' })), '새 틀').error);
+  const P = await load('/src/utils/photoText.js');
+  t('사진 글자: 빈 메모·자동 글자면 글자만, 아니면 아래에 덧붙임', P.appendPhotoText('', '영수증') === '영수증' && P.appendPhotoText('📷 사진', '영수증', '📷 사진') === '영수증' && P.appendPhotoText('메모', '영수증') === '메모\n\n📷 사진 글자\n영수증');
+}
+
 // ── 📋 업그레이드 할 일 (관리자 화면, utils/roadmap.js) ──
 {
   const R = await load('/src/utils/roadmap.js');

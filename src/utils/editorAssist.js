@@ -464,6 +464,54 @@ export function indentAtCursor(ta, shift) {
   if (imeComposing) afterIme(ta, fn); else fn();
 }
 
+// ── 휴대폰 키보드 위 띠 버튼 (2026-11-13 사용자 승인) — PC 단축키를 휴대폰에서. 직접 누른 버튼이라 자동완성 설정과 상관없이 ──
+// 한글 조합 중이면 조합이 끝난 뒤에 바꾼다(indentAtCursor와 같음)
+const atCursor = (ta, fn) => {
+  if (!ta) return;
+  if (document.activeElement !== ta) ta.focus();
+  if (imeComposing) afterIme(ta, fn); else fn();
+};
+// ☐ 체크박스 켜기/끄기 (Ctrl+Shift+X와 같음)
+export const checkboxAtCursor = (ta) => atCursor(ta, () => { toggleCheckbox(ta); autoRenumber(ta); });
+// • 글머리 / 1. 번호 — 같은 기호가 있으면 빼고, 다른 목록 기호면 바꾸고, 없으면 붙인다 (고른 여러 줄 한꺼번에, 들여쓰기·체크박스는 그대로)
+export function listLines(text, kind) {
+  const lines = text.split("\n");
+  const re = /^([ \t]*)((?:[-•*]|\d+[.)]|(?:하\d{1,2}|[가나다라마바사아자차카타파하])[.)])[ \t]+)?/;
+  const isKind = (mk) => (kind === "bullet" ? /^[-•*]$/.test(mk) : /^\d+[.)]$/.test(mk));
+  const target = lines.filter((l) => l.trim());
+  const allHave = target.length > 0 && target.every((l) => { const m = re.exec(l); return m[2] && isKind(m[2].trim()); });
+  let n = 0;
+  return lines.map((l) => {
+    if (!l.trim() && lines.length > 1) return l;
+    const m = re.exec(l);
+    const rest = l.slice(m[0].length);
+    if (allHave) return m[1] + rest;
+    n += 1;
+    return `${m[1]}${kind === "bullet" ? "-" : `${n}.`} ${rest}`;
+  }).join("\n");
+}
+export const listAtCursor = (ta, kind) => atCursor(ta, () => {
+  const { start, end, lines } = selectedLines(ta);
+  const caretCol = ta.selectionStart - start;
+  const before = lines.join("\n");
+  const after = listLines(before, kind);
+  const one = lines.length === 1;
+  replaceRange(ta, start, end, after, one ? Math.max(start, start + caretCol + (after.length - before.length)) : undefined);
+  autoRenumber(ta);
+});
+// #태그 자동완성 (2026-11-13) — 커서 앞에서 쓰던 "#글자"(count 글자)를 고른 태그로 바꾼다
+export const replaceBeforeCaret = (ta, count, text) => atCursor(ta, () => {
+  const end = ta.selectionStart;
+  replaceRange(ta, Math.max(0, end - count), end, text);
+});
+// 커서 앞 "#글자" — 줄 처음이나 띄어쓰기 바로 뒤의 #만 (색 코드 #FF0000·"1#"은 아님). 없으면 null
+export function hashPrefixAt(text, caret) {
+  const m = /(^|[\s(\[])#([\w가-힣ㄱ-ㅎㅏ-ㅣ/]{0,20})$/.exec(String(text || "").slice(0, caret));
+  return m ? m[2] : null;
+}
+// 🕐 지금 날짜·시간 넣기 ("2026-11-13 (금) 14:30")
+export const dateTimeAtCursor = (ta) => atCursor(ta, () => replaceRange(ta, ta.selectionStart, ta.selectionEnd, `${todayText()} ${nowTimeText()}`));
+
 // 커서가 목록 기호 바로 뒤인가 → 그 줄의 목록 정보
 function backspacePlan(ta) {
   if (ta.selectionStart !== ta.selectionEnd) return null;

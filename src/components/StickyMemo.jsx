@@ -14,6 +14,7 @@ import { APP_VERSION } from "../version.js";
 import MemoSettings from "./MemoSettings.jsx";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { ALARM_REPEATS, alarmLabel, nextOnceDate } from "../utils/alarms.js";
+import { recordMemoChanges } from "../utils/memoHistory.js";
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -29,6 +30,8 @@ const findMemo = (ds, id) => memoListOf(loadDay(ds)).find(m => m.id === id) || n
 function writeMemo(ds, id, patchOrRemove) {
   const day = loadDay(ds) || newDay(ds);
   const list = memoListOf(day);
+  // 🕘 고치기 전 글을 이 기기에 남김 (포스트잇은 앱의 저장 경로를 거치지 않아 여기서 직접 — utils/memoHistory.js)
+  if (patchOrRemove && typeof patchOrRemove.text === "string") recordMemoChanges(day, { memos: list.map(m => (m.id === id ? { ...m, text: patchOrRemove.text } : m)) });
   const memos = patchOrRemove === null
     ? list.filter(m => m.id !== id)
     : list.map(m => (m.id === id ? { ...m, ...patchOrRemove, updatedAt: new Date().toISOString() } : m));

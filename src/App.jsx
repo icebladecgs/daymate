@@ -31,6 +31,8 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
+import { recordMemoChanges } from "./utils/memoHistory.js";
+import { getUserTemplates, setUserTemplates } from "./utils/memoTemplates.js";
 import { bagSize, stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT, challengeCertReward, attendReward, raidReward, markChallengesDone } from "./utils/gear.js";
 import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
@@ -1658,6 +1660,9 @@ export default function App() {
             if (s.statXp && typeof s.statXp === 'object') { setStatXp({ ...DEFAULT_STAT_XP, ...s.statXp }); store.set("dm_stat_xp", { ...DEFAULT_STAT_XP, ...s.statXp }); }
             if (s.raidBase?.week) { setRaidBase(s.raidBase); store.set("dm_raid_base", s.raidBase); }
             if (Array.isArray(s.raidClaims)) { setRaidClaims(s.raidClaims); store.set("dm_raid_claims", s.raidClaims); }
+            // 📄 내 메모 틀 (2026-11-13) — 서버에 있으면 그것으로, 없고 이 기기에만 있으면 올린다(처음 이관)
+            if (Array.isArray(s.memoTemplates)) setUserTemplates(s.memoTemplates, { remote: true });
+            else if (getUserTemplates().length) saveSettings(firebaseUser.uid, { memoTemplates: getUserTemplates() }).catch(() => {});
             if (s.inviteBonus !== undefined) { setInviteBonus(s.inviteBonus); store.set("dm_invite_bonus", s.inviteBonus); }
             if (s.inviteCode) { setMyInviteCode(s.inviteCode); store.set("dm_invite_code", s.inviteCode); }
             if (s.usedInviteCodes) { setUsedInviteCodes(s.usedInviteCodes); store.set("dm_used_invite_codes", s.usedInviteCodes); }
@@ -1843,6 +1848,13 @@ export default function App() {
     window.addEventListener('dm:reward', onReward);
     return () => window.removeEventListener('dm:reward', onReward);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 최신 값은 ref로 읽는다
+  // 📄 내 메모 틀이 바뀌면 계정에 올린다 (서버에서 받아 넣은 것은 제외)
+  useEffect(() => {
+    if (!authUser) return;
+    const on = (e) => { if (!e.detail?.remote) saveSettings(authUser.uid, { memoTemplates: e.detail?.list || [] }).catch(() => {}); };
+    window.addEventListener('dm:templates-changed', on);
+    return () => window.removeEventListener('dm:templates-changed', on);
+  }, [authUser]);
   const claimRaid = (key, byStat) => {
     if (raidClaims.includes(key)) return null;
     // 🪙 보스 처치 +30 골드 + 장비 상자 (2026-11-13, 예전엔 +10 XP만)
@@ -2077,6 +2089,7 @@ export default function App() {
     setPlans((prev) => {
       const cur = prev[todayStr] || newDay(todayStr);
       const nextDay = stampMemoUpdates(cur, typeof updater === "function" ? updater(cur) : updater);
+      recordMemoChanges(cur, nextDay); // 🕘 고치기 전 메모 글을 이 기기에 남김 (utils/memoHistory.js — 같은 글은 한 번만이라 두 번 불려도 같음)
       const savedDay = persistDayData(todayStr, nextDay);
       const next = { ...prev, [todayStr]: savedDay };
       return next;
@@ -2091,6 +2104,7 @@ export default function App() {
     const cur = plansRef.current[dateStr] || plans[dateStr] || newDay(dateStr);
     const prevTasks = cur.tasks || [];
     const nextDayRaw = stampMemoUpdates(cur, typeof updater === "function" ? updater(cur) : updater);
+    recordMemoChanges(cur, nextDayRaw); // 🕘 고치기 전 메모 글 (utils/memoHistory.js)
     const nextTasks = applyTaskXpGrants(prevTasks, nextDayRaw.tasks || [], dateStr);
     const nextDay = { ...nextDayRaw, tasks: nextTasks };
     const savedDay = persistDayData(dateStr, nextDay);

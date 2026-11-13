@@ -30,6 +30,10 @@ import UndoBar from "./UndoBar.jsx";
 import { useUndo } from "../utils/useUndo.js";
 import { useAiTidy } from "./AiTidy.jsx";
 import Splitter from "./Splitter.jsx";
+import TagSuggest from "./TagSuggest.jsx";
+import MemoHistorySheet from "./MemoHistorySheet.jsx";
+import TemplateRow from "./TemplateRow.jsx";
+import { addUserTemplate, getUserTemplates, setUserTemplates } from "../utils/memoTemplates.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "var(--dm-accent, #6C8EFF)" },
@@ -155,6 +159,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   }, [items]);
   const [period, setPeriod] = useState("all"); // 기간 — 새 디자인은 분류와 따로 고른다
   const tags = useMemo(() => tagTree(items), [items]);
+  // #태그 자동완성용 — 많이 쓴 순서의 태그 이름 (#부모/자식은 그대로)
+  const tagNames = useMemo(() => tags.flatMap(e => (e.type === "group" ? [{ name: e.name, n: e.n }, ...e.children.map(c => ({ name: c.name, n: c.n }))] : [e]))
+    .sort((a, b) => b.n - a.n).map(e => e.name), [tags]);
   const colors = useMemo(() => colorCounts(items), [items]); // 🎨 포스트잇 색별 개수
   const related = useMemo(() => relatedTags(items, filter), [items, filter]);
   const tagFilter = filter.startsWith("#") || filter.startsWith("@");
@@ -516,7 +523,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} hlTerms={hlTerms} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
+    <DetailPane key={selected?.key || "none"} hlTerms={hlTerms} tagNames={tagNames} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -600,7 +607,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -611,6 +618,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
   const [sentTask, setSentTask] = useState(false);
   const [sentToday, setSentToday] = useState("");
   const [moreOpen, setMoreOpen] = useState(false); // 새 디자인 ⋯ 더보기
+  const [showHist, setShowHist] = useState(false); // 🕘 이전 내용 (2026-11-13)
   const textRef = useRef(null);
   const z = (oldV, newV) => (nl ? newV : oldV);
 
@@ -729,6 +737,13 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
     setTimeout(() => setSentToday(""), 2500);
   };
   const toggleStar = () => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }));
+  // 📄 지금 글을 내 틀로 (이름은 첫 줄, utils/memoTemplates.js)
+  const saveTemplate = () => {
+    const r = addUserTemplate(getUserTemplates(), text);
+    if (r.error) { onError?.(r.error); return; }
+    setUserTemplates(r.list);
+    onError?.(`📄 "${r.name}" 틀로 저장했어요 — 빈 메모에서 골라 쓸 수 있어요`);
+  };
   // 📍 위에 고정 (2026-11-13) — 풀 때는 칸을 비운다
   const togglePin = () => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { pinned: item.pinned ? undefined : true }));
   const toggleDone = () => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }));
@@ -738,7 +753,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
+        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -755,6 +770,8 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
         {item.kind === "memo" && (
           <button className={smallHit} onClick={togglePin} style={small}>{item.pinned ? "📍 고정 풀기" : "📍 위에 고정"}</button>
         )}
+        {item.kind === "memo" && <button className={smallHit} onClick={() => setShowHist(true)} style={small}>🕘 이전 내용</button>}
+        {item.kind === "memo" && text.trim() && <button className={smallHit} onClick={saveTemplate} style={small}>📄 틀로 저장</button>}
         {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js. 보기 모드엔 커서가 없어 숨김 */}
         {item.kind === "memo" && !viewMode && (
           <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={sendSomeday} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로" style={sentTask ? { ...small, color: "#4ADE80", borderColor: "rgba(74,222,128,.5)" } : small}>{sentTask ? "보냄 ✓" : "📋 언젠가로"}</button>
@@ -778,6 +795,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
           style={{ padding: z("7px 10px", "10px 14px"), borderRadius: z(8, 12), border: nl ? "none" : "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
+      {item.kind === "memo" && !viewMode && <TemplateRow text={text} setText={setText} taRef={textRef} style={{ flexShrink: 0 }} />}
       {viewMode ? (
         <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
           onEdit={onToggleView} placeholder={item.kind === "task" ? "일정 메모가 없어요" : "내용이 없어요"} />
@@ -792,6 +810,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
         {/* 링크 자리에 연한 파란 바탕·밑줄 (입력칸 위에 겹친 표시 층) */}
         <LinkOverlay taRef={textRef} text={text} terms={hlTerms} />
         <IndentBar taRef={textRef} />
+        <TagSuggest taRef={textRef} tags={tagNames} />
       </div>
       )}
       {/* 편집 칸의 링크를 누를 수 있게 (보기 모드에선 글 속 링크를 바로 누르면 돼서 생략). 휴대폰은 Ctrl+클릭이 없어 이 버튼으로 연다 */}
@@ -815,6 +834,7 @@ function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, ui
         </div>
       )}
       {viewer !== null && <PhotoViewer photos={photos} index={viewer} onClose={() => setViewer(null)} />}
+      {showHist && <MemoHistorySheet memoId={item.id} currentText={text} onRestore={(t) => { setText(t); onError?.("🕘 이전 내용으로 되살렸어요"); }} onClose={() => setShowHist(false)} />}
     </div>
   );
 }
@@ -830,6 +850,8 @@ const ICONS = {
   done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  template: <><rect x="4" y="3" width="16" height="18" rx="2.5" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+  history: <><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" /><path d="M3 4v4h4" /><path d="M12 8v4l3 2" /></>,
   pin: <><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z" /><circle cx="12" cy="10.5" r="2.2" /></>,
   expand: <><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></>,
   shrink: <><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" /></>,
@@ -855,7 +877,7 @@ const savedLabel = (dirty, updatedAt) => {
 };
 
 function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }) {
+  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate }) {
   const accent = "var(--dm-accent, #5B7CFA)";
   const memo = item.kind === "memo";
   useEffect(() => {
@@ -899,6 +921,8 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
     canAutoFocus() && { icon: "print", label: "출력 (A4)", run: printText },
     memo && window.daymateDesktop?.openSticky && { icon: "sticky", label: "포스트잇으로 열기", run: () => window.daymateDesktop.openSticky(item.ds, item.id) },
     onOpenDate && { icon: "date", label: "그 날짜 열기", run: () => onOpenDate(item.ds) },
+    memo && { icon: "history", label: "이전 내용", run: openHistory },
+    memo && saveTemplate && { icon: "template", label: "이 글을 틀로 저장", run: saveTemplate },
     memo && item.id !== "legacy" && { icon: "lock", label: "잠그기", run: () => requestMemoLock(item.id, "lock") },
     memo && { icon: "trash", label: "삭제", run: () => onDeleteMemo(item), danger: true },
   ].filter(Boolean);

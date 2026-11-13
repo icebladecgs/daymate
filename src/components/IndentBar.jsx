@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { indentAtCursor } from "../utils/editorAssist.js";
+import { indentAtCursor, checkboxAtCursor, listAtCursor, dateTimeAtCursor } from "../utils/editorAssist.js";
 import { canAutoFocus } from "../utils/device.js";
 import { newDesignOn } from "../utils/todayLook.js";
 
@@ -36,20 +36,27 @@ export default function IndentBar({ taRef }) {
 
   if (!touch || !focused) return null;
   const press = (shift) => indentAtCursor(taRef.current, shift);
-  // 새 디자인 (2026-11-13 사용자 요청 "구식") — 테두리 상자 두 개 대신 얇은 띠에 선 아이콘 + 글자
+  // 새 디자인 (2026-11-13 사용자 요청 "구식") — 얇은 띠에 선 아이콘 + 아래 글자.
+  // 같은 날 6칸으로 늘림(사용자 승인): 내어쓰기·들여쓰기 + ☐ 체크·• 목록·1. 번호·🕐 날짜 — 휴대폰엔 Ctrl+Shift+X 같은 단축키가 없어서
   if (newDesignOn()) {
-    const tb = { flex: 1, height: 44, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: "none", color: "var(--dm-text)", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" };
-    const Ico = ({ flip }) => (
-      <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M11 6h10M11 12h10M11 18h10" />
-        <path d={flip ? "M7 9l-3 3 3 3" : "M3 9l3 3-3 3"} />
-      </svg>
+    const tb = { flex: 1, minWidth: 0, height: 52, padding: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "none", border: "none", color: "var(--dm-text)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent", whiteSpace: "nowrap" };
+    const Ico = ({ children }) => (
+      <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
     );
+    const ta = () => taRef.current;
+    const items = [
+      { key: "out", label: "내어쓰기", run: () => press(true), icon: <><path d="M11 6h10M11 12h10M11 18h10" /><path d="M7 9l-3 3 3 3" /></> },
+      { key: "in", label: "들여쓰기", run: () => press(false), icon: <><path d="M11 6h10M11 12h10M11 18h10" /><path d="M3 9l3 3-3 3" /></> },
+      { key: "check", label: "체크", run: () => checkboxAtCursor(ta()), icon: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></> },
+      { key: "bullet", label: "목록", run: () => listAtCursor(ta(), "bullet"), icon: <><circle cx="5" cy="7" r="1.2" /><circle cx="5" cy="12" r="1.2" /><circle cx="5" cy="17" r="1.2" /><path d="M10 7h10M10 12h10M10 17h10" /></> },
+      { key: "number", label: "번호", run: () => listAtCursor(ta(), "number"), icon: <><path d="M4 5h1.5v5M4 10h3" /><path d="M4 14.5c0-1 2.8-1 2.8.4 0 1-2.8 2-2.8 3.6h3" /><path d="M11 7h9M11 12h9M11 17h9" /></> },
+      { key: "date", label: "날짜", run: () => dateTimeAtCursor(ta()), icon: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></> },
+    ];
     return createPortal(
-      <div data-indent-bar style={{ position: "fixed", left: 0, right: 0, bottom, zIndex: 920, display: "flex", alignItems: "center", padding: "0 8px", background: "var(--dm-card)", borderTop: "1px solid var(--dm-border)", maxWidth: 430, margin: "0 auto" }}>
-        <button onMouseDown={e => e.preventDefault()} onClick={() => press(true)} style={tb}><Ico flip />내어쓰기</button>
-        <span aria-hidden style={{ width: 1, height: 20, background: "var(--dm-border)" }} />
-        <button onMouseDown={e => e.preventDefault()} onClick={() => press(false)} style={tb}><Ico />들여쓰기</button>
+      <div data-indent-bar style={{ position: "fixed", left: 0, right: 0, bottom, zIndex: 920, display: "flex", alignItems: "center", padding: "0 4px", background: "var(--dm-card)", borderTop: "1px solid var(--dm-border)", maxWidth: 430, margin: "0 auto" }}>
+        {items.map((it) => (
+          <button key={it.key} aria-label={it.label} onMouseDown={e => e.preventDefault()} onClick={it.run} style={tb}><Ico>{it.icon}</Ico>{it.label}</button>
+        ))}
       </div>,
       document.body
     );

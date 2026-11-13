@@ -8,6 +8,11 @@ import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { useDriveUpload, DriveFileList, MemoLinks } from "./DriveFiles.jsx";
 import { handleEditorKey } from "../utils/editorAssist.js";
 import IndentBar from "./IndentBar.jsx";
+import TagSuggest from "./TagSuggest.jsx";
+import MemoHistorySheet from "./MemoHistorySheet.jsx";
+import { photoTextConsent, readPhotoText, appendPhotoText } from "../utils/photoText.js";
+import TemplateRow from "./TemplateRow.jsx";
+import { addUserTemplate, getUserTemplates, setUserTemplates } from "../utils/memoTemplates.js";
 import { requestMemoLock } from "../utils/memoLock.js";
 import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
 import { toDateStr as todayYmd } from "../utils/date.js";
@@ -190,6 +195,21 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
     setSavedAt(getMemoTimeStr());
   };
 
+  const flushNow = () => flush(text);
+  // 📝 사진 속 글자 읽기 (utils/photoText.js)
+  const [ocrBusy, setOcrBusy] = useState(null);
+  const readTextFrom = async (p, idx) => {
+    if (ocrBusy !== null || !photoTextConsent()) return;
+    setOcrBusy(idx);
+    try {
+      const read = await readPhotoText(p.url);
+      if (!read.trim()) onPhotoError?.('사진에서 읽을 글자를 못 찾았어요');
+      else { setText(prev => appendPhotoText(prev, read, PHOTO_MEMO_LABEL)); onPhotoError?.('📝 사진 글자를 메모 끝에 넣었어요'); }
+    } catch (e) { onPhotoError?.(e.message || '사진 글자를 읽지 못했어요'); }
+    setOcrBusy(null);
+  };
+  const [showHist, setShowHist] = useState(false); // 🕘 이전 내용 (2026-11-13)
+
   // 자동 저장 debounce (1초)
   useEffect(() => {
     if (text.trim() === savedTextRef.current) return;
@@ -327,6 +347,13 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
               fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
             }}
           >✕</button>
+          {/* 📝 사진 속 글자 읽기 (2026-11-13) — 누를 때만 AI로 보낸다(처음 한 번 안내), 글자는 메모 끝에 덧붙임. 사진은 그대로 */}
+          {p.url && (
+            <button onClick={() => readTextFrom(p, idx)} disabled={ocrBusy === idx}
+              style={{ position: 'absolute', left: 10, bottom: 10, height: 34, padding: '0 12px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {ocrBusy === idx ? '읽는 중…' : '📝 글자 읽기'}
+            </button>
+          )}
         </div>
       ))}
 
@@ -535,12 +562,29 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
   );
 
   const footerBlock = (
-    <div style={{ padding: boxed ? '0 14px 12px' : '0 20px 20px', fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)' }}>
-      {text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: boxed ? '0 14px 12px' : '0 20px 20px', fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)' }}>
+      <span style={{ flex: 1, minWidth: 0 }}>{text.length}자 · {savedAt ? `${savedAt} 자동저장됨` : '1초간 멈추면 자동저장돼요'}</span>
+      {/* 🕘 이전 내용 (2026-11-13) — 저장된 메모일 때만 (utils/memoHistory.js, 이 기기 7일) */}
+      {idRef.current && (
+        <button onMouseDown={e => e.preventDefault()} onClick={() => { flushNow(); setShowHist(true); }}
+          style={{ flexShrink: 0, minHeight: 32, padding: '0 8px', border: 'none', background: 'none', color: 'var(--dm-accent, #5B7CFA)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>🕘 이전 내용</button>
+      )}
+      {/* 📄 지금 글을 내 틀로 저장 (이름은 첫 줄) */}
+      {text.trim() && (
+        <button onMouseDown={e => e.preventDefault()} onClick={() => {
+          const r = addUserTemplate(getUserTemplates(), text);
+          if (r.error) { onPhotoError?.(r.error); return; }
+          setUserTemplates(r.list);
+          onPhotoError?.(`📄 "${r.name}" 틀로 저장했어요 — 빈 메모에서 골라 쓸 수 있어요`);
+        }}
+          style={{ flexShrink: 0, minHeight: 32, padding: '0 8px', border: 'none', background: 'none', color: 'var(--dm-sub)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>📄 틀로 저장</button>
+      )}
     </div>
   );
 
-  const textareaEl = (
+  const textareaEl = (<>
+    {/* 📄 틀로 시작 — 빈 메모일 때만 (2026-11-13) */}
+    <TemplateRow text={text} setText={setText} taRef={textareaRef} style={{ padding: boxed ? '12px 14px 0' : '12px 20px 0' }} />
     <textarea
       ref={textareaRef}
       value={text}
@@ -554,7 +598,7 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
       placeholder="자유롭게 작성하세요"
       style={{ width: '100%', minHeight: boxed ? '28vh' : '35vh', background: boxed ? 'transparent' : 'var(--dm-bg)', border: 'none', outline: 'none', padding: boxed ? '14px' : '20px 20px', fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.8, resize: 'none', fontFamily: 'inherit', wordBreak: 'break-word', overflowWrap: 'break-word', boxSizing: 'border-box', display: 'block' }}
     />
-  );
+  </>);
 
   return (
     <div className="dm-memo-panel" style={S.fullScreenPanel(90)}>
@@ -617,6 +661,11 @@ export default function LongMemoEditor({ tabScreen = false, hideBack = false, me
         </>
       )}
       <IndentBar taRef={textareaRef} />
+      <TagSuggest taRef={textareaRef} tags={[...myTags, ...frequentTags]} />
+      {showHist && idRef.current && (
+        <MemoHistorySheet memoId={idRef.current} currentText={text} zIndex={1500}
+          onRestore={(t) => { setText(t); onPhotoError?.('🕘 이전 내용으로 되살렸어요'); }} onClose={() => setShowHist(false)} />
+      )}
       {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
     </div>
   );
