@@ -124,7 +124,8 @@ const viewBtn = (danger) => ({
 function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onToggleStar, onTogglePin }) {
   const [copied, setCopied] = useState(false);
   const icons = `${item.starred ? '⭐ ' : ''}${item.photos?.length ? '📷 ' : ''}${item.files?.length ? '📎 ' : ''}`;
-  const rowStyle = { display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', minHeight: 44, padding: '11px 2px', background: 'none', border: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' };
+  // 높이 44 = 안쪽 여백 포함 (2026-11-13 — boxSizing이 없어 44 + 여백 22 = 66px로 줄 간격이 너무 넓었다, 사용자 지적)
+  const rowStyle = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, boxSizing: 'border-box', padding: '9px 2px', background: 'none', border: 'none', borderRadius: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' };
   const time = <span style={{ fontSize: 13, color: 'var(--dm-accent, #6C8EFF)', fontWeight: 900, width: 42, flexShrink: 0 }}>{item.createdAt || ''}</span>;
   if (item.locked) {
     return (
@@ -137,7 +138,7 @@ function MemoViewItem({ item, open, onToggle, onDelete, onOpenLongEditor, onTogg
   return (
     <div>
       {/* 펼친 글에는 링크가 있어 button 대신 div — 링크를 누르면 접히지 않게 */}
-      <div role="button" tabIndex={0} aria-expanded={open} style={rowStyle}
+      <div role="button" tabIndex={0} aria-expanded={open} style={open ? { ...rowStyle, alignItems: 'baseline' } : rowStyle}
         onClick={(e) => { if (!e.target.closest?.('a')) onToggle(); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
         {time}
