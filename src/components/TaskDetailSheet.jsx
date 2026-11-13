@@ -210,6 +210,7 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
                 style={{ width: 32, height: 38, padding: 0, border: 'none', background: 'none', color: 'var(--dm-muted)', fontSize: 16, cursor: 'pointer', flexShrink: 0 }}>✕</button>
             </div>
           ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
           <input
             ref={draftRef}
             value={stepDraft}
@@ -224,8 +225,18 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             enterKeyHint="enter"
             maxLength={80}
             placeholder="＋ 단계 추가 (예: 서류 출력)"
-            style={{ ...S.input, padding: '8px 10px', fontSize: 15, borderStyle: 'dashed', marginBottom: 14 }}
+            style={{ ...S.input, flex: 1, minWidth: 0, width: 'auto', padding: '8px 10px', fontSize: 15, borderStyle: 'dashed', marginBottom: 0 }}
           />
+          {/* ＋ 추가 버튼 (2026-11-13 사용자 요청 — Enter 말고 누르는 버튼도). 누르는 순간 입력칸이 포커스를 잃어
+              한글 조합이 먼저 확정된 뒤 추가하고, 다음 단계를 바로 쓰게 입력칸으로 돌아간다 */}
+          <button onClick={() => { addStep(); setTimeout(() => draftRef.current?.focus(), 0); }}
+            disabled={!stepDraft.trim()} aria-label="단계 추가" title="단계 추가"
+            style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 999, border: 'none', cursor: stepDraft.trim() ? 'pointer' : 'default',
+              background: stepDraft.trim() ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-input)', color: stepDraft.trim() ? '#fff' : 'var(--dm-muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }}>
+            <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+          </div>
           {onComplete && !task.done && stepTotal > 0 && stepDone === stepTotal && (
             // 완료를 먼저 저장하고 닫는다 (닫을 때 저장하는 제목·메모는 그 위에 합쳐짐)
             <button onClick={() => { onComplete(task); handleClose(); }}
