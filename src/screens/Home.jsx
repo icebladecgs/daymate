@@ -576,7 +576,7 @@ export default function Home({ user, goals, setGoals = () => {}, lifeGoals = [],
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < items.length - 1 ? '1px solid var(--dm-row)' : 'none', cursor: onItemClick ? 'pointer' : 'default' }}>
               <div style={{ width: newLook ? 22 : 18, height: newLook ? 22 : 18, borderRadius: 999, background: accent, color: '#fff', fontSize: newLook ? UI.sub : 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: newLook ? UI.item : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
+                <div style={{ fontSize: newLook ? UI.item - 1 : 13, color: 'var(--dm-text)', lineHeight: 1.5 }}>{g}</div>
                 {progressOf?.(i) && <div style={{ fontSize: newLook ? 13 : 11, color: 'var(--dm-muted)', marginTop: 1 }}>{progressOf(i)}</div>}
               </div>
               {/* 목표 상세로 들어가는 표시 — 실천 항목 개수 */}

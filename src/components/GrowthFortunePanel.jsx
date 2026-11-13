@@ -254,7 +254,7 @@ ${lottoNums.join(' · ')}`, time);
               할 일·습관을 끝내면 {GROWTH_STATS.slice(0, 3).map(s => `${s.icon} ${s.name}`).join(" · ")} 같은 능력치가 쌓여요.
             </div>
           ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: nl ? 14 : 8 }}>
             {GROWTH_STATS.map(stat => {
               const score = calcStatScore(statXp[stat.id] || 0);
               return (
@@ -283,18 +283,18 @@ ${lottoNums.join(' · ')}`, time);
         const fl = fortuneLevel(todayFortuneScore);
         return (
         <div style={nl ? boxCard : { margin: '0 16px 10px' }}>
-          {nl ? <SectionHeading icon="sparkle" style={{ paddingTop: 0 }}>운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
+          {nl ? <SectionHeading icon="sparkle" style={{ paddingTop: 0, marginBottom: 10 }}>운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
-              style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
+              style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: nl ? '7px 12px' : '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 3 }}>오늘의 운세</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span style={{ fontSize: nl ? 18 : 15, fontWeight: 900, color: fl.color }}>{fl.label}</span>
                 <span style={{ fontSize: nl ? 13 : 11, color: 'var(--dm-muted)' }}>{fl.desc}</span>
               </div>
             </button>
-            <div style={{ flex: 1.2, background: nl ? 'var(--dm-input)' : 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: nl ? '9px 10px' : '9px 12px', minWidth: 0 }}>
-              <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 5 }}>🎱 오늘의 로또</div>
+            <div style={{ flex: 1.2, background: nl ? 'var(--dm-input)' : 'var(--dm-card)', border: '1px solid var(--dm-border)', borderRadius: 12, padding: nl ? '7px 10px' : '9px 12px', minWidth: 0 }}>
+              <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: nl ? 4 : 5 }}>🎱 오늘의 로또</div>
               {lottoNums ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
                   {lottoNums.map((n, i) => {
@@ -303,8 +303,8 @@ ${lottoNums.join(' · ')}`, time);
                   })}
                 </div>
               ) : (
-                <button onClick={drawLotto} disabled={lottoAnim}
-                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'var(--dm-btn-bg, linear-gradient(135deg,#7C3AED,#A78BFA))', border: 'none', borderRadius: 8, padding: nl ? 0 : '6px 0', height: nl ? UI.touch : undefined, fontSize: nl ? UI.sub : 12, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                <button onClick={drawLotto} disabled={lottoAnim} className={nl ? 'dm-hit-y' : undefined}
+                  style={{ background: lottoAnim ? 'var(--dm-input)' : 'var(--dm-btn-bg, linear-gradient(135deg,#7C3AED,#A78BFA))', border: 'none', borderRadius: 8, padding: nl ? 0 : '6px 0', height: nl ? 34 : undefined, fontSize: nl ? UI.sub : 12, color: '#fff', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
                   {lottoAnim ? '추출 중...' : '번호 뽑기'}
                 </button>
               )}
@@ -562,7 +562,7 @@ ${lottoNums.join(' · ')}`, time);
                     </div>
                   </>
                 ) : (
-                  <button onClick={drawLotto} disabled={lottoAnim}
+                  <button onClick={drawLotto} disabled={lottoAnim} className={nl ? 'dm-hit-y' : undefined}
                     style={{ ...S.btn, background: lottoAnim ? "var(--dm-input)" : "linear-gradient(135deg,#7C3AED,#A78BFA)", fontSize: 14, marginTop: 0 }}>
                     {lottoAnim ? "🎱 추출 중..." : "🎱 번호 뽑기"}
                   </button>

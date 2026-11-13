@@ -203,7 +203,7 @@ export default function MemoTimeline(props) {
   return <MemoTimelineEdit {...props} />;
 }
 
-function MemoTimelineEdit({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar }) {
+function MemoTimelineEdit({ memos = [], onAdd, onUpdate, onDelete, placeholder, extraAction, onOpenLongEditor, onToggleStar, onTogglePin }) {
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
   const listRef = useRef(null);
