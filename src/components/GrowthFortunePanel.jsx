@@ -187,7 +187,7 @@ ${lottoNums.join(' · ')}`, time);
       {/* 🌱 나의 성장 능력치 (+ My탭과 동일한 레벨/XP 요약) */}
       {statXp && (
         <div style={{ ...S.card, background: "var(--dm-hero-bg, linear-gradient(135deg,rgba(75,111,255,.12),rgba(108,142,255,.05)))", border: "1.5px solid var(--dm-accent-line, rgba(108,142,255,.3))" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: nl ? "wrap" : "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: nl ? 14 : 10, flexWrap: nl ? "wrap" : "nowrap" }}>
             <span style={{ fontSize: 20 }}>{levelInfo.icon}</span>
             <span style={{ fontSize: nl ? 16 : 13, fontWeight: 900, color: "var(--dm-text)" }}>{levelInfo.title}</span>
             <span style={{ fontSize: nl ? 14 : 11, fontWeight: 700, color: "var(--dm-accent, #6C8EFF)" }}>Lv.{levelInfo.level}</span>
@@ -230,20 +230,20 @@ ${lottoNums.join(' · ')}`, time);
             </div>
           )}
           {(!nl || myRank) && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: nl ? 12 : 8 }}>
             {myRank ? (
               <button className="dm-hit-y" onClick={onOpenStats} style={{ background: "var(--dm-accent-soft, rgba(75,111,255,.15))", border: "1px solid var(--dm-accent-line, rgba(108,142,255,.4))", borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
                 <span style={{ fontSize: nl ? 13 : 11, fontWeight: 900, color: "var(--dm-accent, #6C8EFF)" }}>🏆 전체 {myRank.rank}위</span>
-                <span style={{ fontSize: 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
+                <span style={{ fontSize: nl ? UI.sub : 10, color: "var(--dm-muted)", marginLeft: 4 }}>{myRank.total}명 중</span>
               </button>
             ) : <span />}
             {!nl && xpBadge}
           </div>
           )}
-          <div style={{ height: 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: nl ? 6 : 4, background: "var(--dm-row)", borderRadius: 4, overflow: "hidden", marginBottom: nl ? 8 : 6 }}>
             <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", width: `${levelInfo.progress}%`, transition: "width 0.4s" }} />
           </div>
-          <div style={{ display: "flex", flexWrap: nl ? "wrap" : "nowrap", columnGap: 8, justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", flexWrap: nl ? "wrap" : "nowrap", columnGap: 8, justifyContent: "space-between", marginBottom: 14, ...(nl ? { paddingBottom: 14, borderBottom: "1px solid var(--dm-row)" } : {}) }}>
             <span style={{ fontSize: nl ? UI.sub : 10, color: "var(--dm-muted)" }}>다음 레벨까지 {(levelInfo.nextFloor - totalScore).toLocaleString()} XP</span>
             <span style={{ fontSize: nl ? UI.sub : 10, color: "var(--dm-muted)" }}>오늘 +{todayScore}pt · 이달 {monthScore}pt</span>
           </div>
@@ -254,7 +254,7 @@ ${lottoNums.join(' · ')}`, time);
               할 일·습관을 끝내면 {GROWTH_STATS.slice(0, 3).map(s => `${s.icon} ${s.name}`).join(" · ")} 같은 능력치가 쌓여요.
             </div>
           ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: nl ? 14 : 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14, rowGap: 8 }}>
             {GROWTH_STATS.map(stat => {
               const score = calcStatScore(statXp[stat.id] || 0);
               return (
