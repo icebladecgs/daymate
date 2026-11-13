@@ -227,15 +227,10 @@ export default function TaskDetailSheet({ task, uid, onSave, onClose, onError, o
             placeholder="＋ 단계 추가 (예: 서류 출력)"
             style={{ ...S.input, flex: 1, minWidth: 0, width: 'auto', padding: '8px 10px', fontSize: 15, borderStyle: 'dashed', marginBottom: 0 }}
           />
-          {/* ＋ 추가 버튼 (2026-11-13 사용자 요청 — Enter 말고 누르는 버튼도). 누르는 순간 입력칸이 포커스를 잃어
-              한글 조합이 먼저 확정된 뒤 추가하고, 다음 단계를 바로 쓰게 입력칸으로 돌아간다 */}
-          <button onClick={() => { addStep(); setTimeout(() => draftRef.current?.focus(), 0); }}
-            disabled={!stepDraft.trim()} aria-label="단계 추가" title="단계 추가"
-            style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 999, border: 'none', cursor: stepDraft.trim() ? 'pointer' : 'default',
-              background: stepDraft.trim() ? 'var(--dm-accent, #5B7CFA)' : 'var(--dm-input)', color: stepDraft.trim() ? '#fff' : 'var(--dm-muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }}>
-            <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
+          {/* ＋ 추가 버튼 (2026-11-13 사용자 요청 — Enter 말고 누르는 버튼도). 오늘 할일·언젠가할일·목표 실천 항목의 + 와
+              같은 모양·동작(빈 칸이면 아무 일 없음). 누르는 순간 입력칸이 포커스를 잃어 한글 조합이 먼저 확정된 뒤 추가된다 */}
+          <button onClick={addStep} aria-label="단계 추가" title="단계 추가"
+            style={{ width: 42, height: 42, padding: 0, borderRadius: 10, border: '1.5px solid var(--dm-accent-line, rgba(108,142,255,.35))', background: 'var(--dm-accent-soft, rgba(108,142,255,.12))', fontSize: 20, cursor: 'pointer', color: 'var(--dm-accent, #6C8EFF)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
           </div>
           {onComplete && !task.done && stepTotal > 0 && stepDone === stepTotal && (
             // 완료를 먼저 저장하고 닫는다 (닫을 때 저장하는 제목·메모는 그 위에 합쳐짐)
