@@ -8,7 +8,7 @@ import { useBattleFold, FoldHeader } from "./BattleFold.jsx";
 import { useUndo, putBack } from "../../utils/useUndo.js";
 import { toDateStr } from "../../utils/date.js";
 import { GEAR_SLOTS, RARITIES, RARITY_ORDER, BAG_MAX, DROP_CHANCE, DROPS_PER_DAY, normalizeGear, gearBonus, itemEffects,
-  GOLD, TASK_GOLD_CAP, BATTLE_GOLD_CAP, shopItems, shopBought, buyShopItem, sellItem,
+  GOLD, TASK_GOLD_CAP, TASK_GOLD_MAX, BATTLE_GOLD_CAP, STEP_GOLD_PER_TASK, STEPS_DONE_BONUS, WRAP_GOLD, shopItems, shopBought, buyShopItem, sellItem,
   itemDisplayName, sellPriceOf, enhanceCost, enhanceItem, ENHANCE_MAX, ENHANCE_STEP, setById, equippedSets, setBonusText, SET_STREAK } from "../../utils/gear.js";
 
 const ACCENT = "var(--dm-accent, #5B7CFA)";
@@ -200,7 +200,7 @@ export function ShopCard({ gear, setGear, seed }) {
       <FoldHeader title="🏪 오늘의 상점" open={open} onToggle={toggle} summary={`🪙 ${g.gold.toLocaleString()}`} summaryColor="#FF9F0A" />
       {open && <>
       <div style={{ fontSize: 13, color: "var(--dm-sub)", lineHeight: 1.45, wordBreak: "keep-all", margin: "2px 0 6px" }}>
-        오늘 받은 골드 · 할일·습관 {earned.task}/{TASK_GOLD_CAP} · 배틀 {earned.battle}/{BATTLE_GOLD_CAP} · 물건은 내일 바뀌어요
+        오늘 받은 골드 · 할일·습관·단계 {earned.task}/{TASK_GOLD_MAX}{earned.task >= TASK_GOLD_CAP && earned.task < TASK_GOLD_MAX ? " (지금은 1골드씩)" : ""} · 배틀 {earned.battle}/{BATTLE_GOLD_CAP} · 물건은 내일 바뀌어요
       </div>
       {items.map((it, i) => {
         const done = bought.includes(i);
@@ -226,7 +226,7 @@ export function ShopCard({ gear, setGear, seed }) {
       })}
       {msg && <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700, marginTop: 4 }}>{msg}</div>}
       <div style={{ fontSize: 13, color: "var(--dm-muted)", lineHeight: 1.5, wordBreak: "keep-all", paddingTop: 8, borderTop: "1px solid var(--dm-row)" }}>
-        골드는 할일 +{GOLD.task} · 습관 +{GOLD.habit} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 하루 최대 할일·습관 {TASK_GOLD_CAP} · 배틀 {BATTLE_GOLD_CAP}. 안 쓰는 장비는 가방에서 팔 수 있어요. 전설 장비는 상점에서 팔지 않아요.
+        골드는 할일 +{GOLD.task}(🎯 목표에서 온 할일은 2배) · 습관 +{GOLD.habit} · 작은 단계 +{GOLD.step}(할일 하나에 {STEP_GOLD_PER_TASK}까지, 다 끝내면 +{STEPS_DONE_BONUS}) · 하루 마무리 +{WRAP_GOLD} · 배틀 승리(나보다 강한 상대일수록 많이, 이미 이긴 상대는 0~100% 운). 할일·습관·단계는 하루 {TASK_GOLD_CAP}까지 그대로, 그 뒤엔 1골드씩 {TASK_GOLD_MAX}까지 · 배틀은 하루 {BATTLE_GOLD_CAP}. 안 쓰는 장비는 가방에서 팔 수 있어요. 전설 장비는 상점에서 팔지 않아요.
       </div>
       </>}
     </div>

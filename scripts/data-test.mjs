@@ -1007,7 +1007,23 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('골드: 할일 끝내면 +5, 같은 할일 다시 체크해도 한 번만', r1.gold === 5 && r1.gear.gold === 5 && G.rollDrop(r1.gear, 't:a', 'task', D).gold === 0);
   t('골드: 습관 +3, 장비 줍기를 꺼도 골드는 받음', G.rollDrop({ dropsOff: true }, 'h:x', 'habit', D).gear.gold === 3);
   let g = {}; for (let i = 0; i < 20; i++) g = G.rollDrop(g, `t:${i}`, 'task', D, () => 0.99).gear;
-  t('골드: 할일·습관은 하루 60까지', g.gold === G.TASK_GOLD_CAP && G.rollDrop(g, 't:new', 'task', '2026-11-11', () => 0.99).gear.gold === G.TASK_GOLD_CAP + 5);
+  // 2026-11-13: 60까지 그대로, 그 뒤 1골드씩 100까지 (12개 = 60, 13~20번째는 1씩 → 68)
+  t('골드: 60까지 그대로, 그 뒤는 1골드씩', g.gold === G.TASK_GOLD_CAP + 8 && G.rollDrop(g, 't:new', 'task', '2026-11-11', () => 0.99).gear.gold === G.TASK_GOLD_CAP + 8 + 5, String(g.gold));
+  let g2 = {}; for (let i = 0; i < 80; i++) g2 = G.rollDrop(g2, `t:${i}`, 'task', D, () => 0.99).gear;
+  t('골드: 할일 쪽은 하루 100에서 멈춤', g2.gold === G.TASK_GOLD_MAX, String(g2.gold));
+  t('골드: 🎯 목표 할일은 2배', G.rollDrop({}, 't:goal', 'task', D, () => 0.99, G.GOAL_GOLD_MULT).gold === 10);
+  // 🎁 작은 단계 (2026-11-13)
+  let s = { gear: {} }; let sGold = 0;
+  for (let i = 0; i < 7; i++) { s = G.stepReward(s.gear, 'T1', `s${i}`, D); sGold += s.gold; }
+  t('단계: 1골드씩, 할일 하나에 5까지', sGold === G.STEP_GOLD_PER_TASK, String(sGold));
+  t('단계: 같은 단계 다시 체크해도 한 번만', G.stepReward(s.gear, 'T1', 's0', D).gold === 0);
+  t('단계: 다른 할일은 따로 셈', G.stepReward(s.gear, 'T2', 's0', D).gold === 1);
+  const sa = G.stepsDoneReward(s.gear, 'T1', D);
+  t('단계: 다 끝내면 +2, 할일마다 한 번', sa.gold === G.STEPS_DONE_BONUS && G.stepsDoneReward(sa.gear, 'T1', D).gold === 0);
+  t('단계: 상한(100)에 같이 셈', G.stepReward(g2, 'T9', 'x', D).gold === 0);
+  const w = G.wrapReward(g2, D);
+  t('하루 마무리: +10, 할일 상한 밖, 하루 한 번', w.gold === G.WRAP_GOLD && w.gear.gold === G.TASK_GOLD_MAX + G.WRAP_GOLD && G.wrapReward(w.gear, D).gold === 0 && G.wrapReward(w.gear, '2026-11-12').gold === G.WRAP_GOLD);
+  t('보상 기록: 오래된 키부터 800개까지 기억', G.normalizeGear({ rolled: Array.from({ length: 900 }, (_, i) => `k${i}`) }).rolled.length === G.ROLLED_MAX);
   let b = { gear: {} }; for (let i = 0; i < 8; i++) b = G.addGold(b.gear, D, 'battle', G.battleGoldFor(15, 15).amount);
   const gf = (n, m) => G.battleGoldFor(n, m).amount;
   t('골드: 배틀 기본 10+상대 레벨, 강한 상대 +30%/레벨(최대 2배), 5레벨 이상 약하면 절반',

@@ -85,6 +85,7 @@ export default function Today({
   myTags,
   onHideTag,
   statFeedback,
+  onWrapDone,
   onClearStatFeedback,
   contacts,
   onOpenPeople,
@@ -1040,7 +1041,13 @@ export default function Today({
         <DayWrapUpSheet leave={wrapOpen === 'leave'} dateStr={dateStr} tasks={tasks} plans={plans} journalBody={bodyText}
           onMoveTaskDate={onMoveTaskDate} setData={setData} setSomeday={setSomeday} pickDetail={pickTaskDetail}
           onClose={() => setWrapOpen(false)}
-          onFinish={() => { const leaving = wrapOpen === 'leave'; setWrapOpen(false); setToast(leaving ? '오늘도 수고했어요 🏁' : '오늘 하루 수고했어요 🌙'); }} />
+          onFinish={() => {
+            const leaving = wrapOpen === 'leave';
+            setWrapOpen(false);
+            // 🪙 하루 마무리 +10 (하루 한 번, 퇴근 전 체크는 제외 — utils/gear.js wrapReward)
+            const gold = !leaving && onWrapDone ? onWrapDone() : 0;
+            setToast(leaving ? '오늘도 수고했어요 🏁' : `오늘 하루 수고했어요 🌙${gold ? ` · 🪙 +${gold}` : ''}`);
+          }} />
       )}
       {detailTask && (
         <TaskDetailSheet

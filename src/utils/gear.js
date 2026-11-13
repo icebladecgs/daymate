@@ -24,6 +24,8 @@ const RARITY_UP = ['common', 'uncommon', 'rare', 'epic', 'legend'];
 export const DROP_CHANCE = { task: 0.10, habit: 0.05 };
 export const DROPS_PER_DAY = 3;
 export const BAG_MAX = 40;
+// 이미 받은 보상 키(할일·습관·단계·하루 마무리…)를 기억하는 개수 — 작은 단계가 생겨 300에서 늘림 (2026-11-13)
+export const ROLLED_MAX = 800;
 export const WANDER_RARITY = { rare: 70, epic: 27, legend: 3 }; // 떠돌이 도전자를 이기면 희귀 이상 (전설 10% → 3%, 2026-11-09)
 
 // 레벨별 상대를 이기면 상대마다 딱 한 번(처음 이겼을 때) 장비 1개 (2026-11-09) — 저레벨은 일반·고급, 높을수록 좋은 등급.
@@ -96,7 +98,7 @@ export function normalizeGear(g) {
   const equipped = Object.fromEntries(GEAR_SLOTS.map((s) => [s.id, ids.has(eq[s.id]) && items.find((x) => x.id === eq[s.id]).slot === s.id ? eq[s.id] : null]));
   return {
     items, equipped,
-    rolled: (Array.isArray(g?.rolled) ? g.rolled : []).slice(-300),
+    rolled: (Array.isArray(g?.rolled) ? g.rolled : []).slice(-ROLLED_MAX),
     wander: g?.wander?.date ? { date: String(g.wander.date), won: !!g.wander.won } : null,
     // 레벨별 상대 보상은 상대마다 딱 한 번 (2026-11-09 사용자 결정 — 처음엔 하루 한 번이었다).
     // 받은 상대 id를 영구로 남긴다. 예전 하루 기록(npcDrops)에 있던 상대도 받은 것으로 친다(그 기능은 같은 날 배포돼 그 전 기록은 없음)
@@ -192,7 +194,7 @@ export function mergeGear(x, y) {
     ...late,
     v: 2, base, gl, gone, items, equipped: late.equipped,
     gold: goldFromLedger(base, gl),
-    rolled: [...new Set([...A.rolled, ...B.rolled])].slice(-300),
+    rolled: [...new Set([...A.rolled, ...B.rolled])].slice(-ROLLED_MAX),
     npcClaimed: [...new Set([...A.npcClaimed, ...B.npcClaimed])],
     seen: [...new Set([...A.seen, ...B.seen])],
     stats: { maxPlus: Math.max(A.stats.maxPlus, B.stats.maxPlus), questWeeks: Math.max(A.stats.questWeeks, B.stats.questWeeks) },
@@ -267,7 +269,7 @@ export function setPieceReward(gear, streak, todayStr, rand = Math.random) {
   const pool = started.length ? started : missing.length ? missing : SETS.flatMap((s) => GEAR_SLOTS.map((sl) => ({ set: s.id, slot: sl.id })));
   const p = pick(pool, rand());
   const item = { ...makeSetItem(p.set, p.slot, rand), at: todayStr };
-  return { gear: { ...g, rolled: [...g.rolled, key].slice(-300), items: [...g.items, item] }, item };
+  return { gear: { ...g, rolled: [...g.rolled, key].slice(-ROLLED_MAX), items: [...g.items, item] }, item };
 }
 
 // ── 🔨 강화 (2026-11-10) — 골드를 내고 +1씩, 최대 +5. 실패하면 골드만 쓰고 장비는 그대로(깨지지 않는다).
@@ -413,12 +415,13 @@ export function currentTitle(gear, record) {
 }
 
 // 할일·습관을 끝냈을 때 — 같은 키는 한 번만 굴린다(체크를 풀었다 다시 해도). 결과: { gear, item|null, full }
-export function rollDrop(gear, key, source, todayStr, rand = Math.random) {
+// goldMult: 목표에서 온 할일은 2 (GOAL_GOLD_MULT)
+export function rollDrop(gear, key, source, todayStr, rand = Math.random, goldMult = 1) {
   const g = normalizeGear(gear);
   if (g.rolled.includes(key)) return { gear: g, item: null, gold: 0 };
   // 골드는 장비 줍기를 꺼도 받는다 (같은 키는 한 번만 — 체크를 풀었다 다시 해도 같음)
-  const paid = addGold(g, todayStr, 'task', GOLD[source] || 0);
-  const next = { ...paid.gear, rolled: [...g.rolled, key].slice(-300) };
+  const paid = addGold(g, todayStr, 'task', (GOLD[source] || 0) * (goldMult || 1));
+  const next = { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX) };
   const gold = paid.added;
   if (g.dropsOff) return { gear: next, item: null, gold };
   const todayCount = g.items.filter((x) => x.at === todayStr && !x.set).length; // 세트 조각은 따로(습관 7일 보상)
@@ -453,8 +456,17 @@ export function npcReward(gear, npc, todayStr, rand = Math.random) {
 // ── 🪙 골드·상점 (2026-11-10 사용자 요청 — "배틀에서 이기면 골드, 그 골드로 장비를 산다") ──
 // 원칙: 골드는 할일·습관에서 주로, 배틀은 보너스(하루 상한). 자동 배틀로 끝없이 모으지 못하게 상한을 둔다.
 // 상점은 날마다 바뀌는 3칸(떠돌이 도전자처럼 날짜+계정으로 정해짐), 일반~희귀 + 가끔 영웅, 전설은 팔지 않는다(줍기·떠돌이에서만).
-export const GOLD = { task: 5, habit: 3 };
-export const TASK_GOLD_CAP = 60;    // 할일·습관 골드 하루 최대 (할일을 만들고 지우며 모으지 못하게)
+export const GOLD = { task: 5, habit: 3, step: 1 };
+// 할일·습관·작은 단계 골드 — 하루 60까지는 그대로, 넘으면 무엇이든 1골드씩 100까지 (2026-11-13 사용자 승인 —
+// 예전엔 60에서 딱 멈춰 열심히 한 날일수록 손해였다. 100에서 멈추는 건 할일을 만들고 지우며 찍어 내지 못하게)
+export const TASK_GOLD_CAP = 60;
+export const TASK_GOLD_MAX = 100;
+// 🎁 보상 강화 (2026-11-13 사용자 승인) — 작은 단계 1골드(할일 하나에 5까지), 단계를 다 끝내면 +2,
+// 목표에서 온 할일(🎯)은 골드 2배, 하루 마무리 +10(하루 한 번, 위 상한 밖)
+export const STEP_GOLD_PER_TASK = 5;
+export const STEPS_DONE_BONUS = 2;
+export const GOAL_GOLD_MULT = 2;
+export const WRAP_GOLD = 10;
 export const BATTLE_GOLD_CAP = 50;  // 배틀 골드 하루 최대 (2026-11-10 사용자 결정 100→50 — 골드는 할일·습관에서 주로)
 // 배틀 골드 (2026-11-10 사용자 확정) — 기본 10 + 상대 레벨, 나보다 높은 상대는 레벨 차이 1당 +30%(최대 2배),
 // 나보다 5레벨 이상 낮은 상대는 절반. 강한 상대를 넘으면 크게, 약한 상대만 돌리면 손해.
@@ -476,14 +488,45 @@ export const SHOP_SIZE = 3;
 export const SHOP_RARITY = { common: 45, uncommon: 35, rare: 17, epic: 3 };
 export const SHOP_PRICE = { common: 60, uncommon: 150, rare: 400, epic: 1000 }; // 모의 전투(2026-11-10): 고급 3개만 껴도 바로 위 레벨 승률이 20%대→80~90%대라 줍기(희귀 3개 ≈ 50일)보다 너무 빠르지 않게
 
-// kind: 'task'(할일·습관) | 'battle'. 하루 상한을 넘는 만큼은 버린다. 결과 { gear, added }
+// kind: 'task'(할일·습관·단계) | 'battle'. 하루 상한을 넘는 만큼은 버린다. 결과 { gear, added }
+// 할일 쪽은 60까지 그대로, 그 뒤는 한 번에 1골드씩 100까지
 export function addGold(gear, todayStr, kind, amount) {
   const g = normalizeGear(gear);
   const earned = g.earned?.date === todayStr ? g.earned : { date: todayStr, task: 0, battle: 0 };
-  const cap = kind === 'battle' ? BATTLE_GOLD_CAP : TASK_GOLD_CAP;
-  const added = Math.max(0, Math.min(Math.floor(amount) || 0, cap - earned[kind]));
+  const want = Math.max(0, Math.floor(amount) || 0);
+  let added;
+  if (kind === 'battle') added = Math.min(want, BATTLE_GOLD_CAP - earned.battle);
+  else if (earned.task < TASK_GOLD_CAP) added = Math.min(want, TASK_GOLD_CAP - earned.task);
+  else added = want && earned.task < TASK_GOLD_MAX ? 1 : 0;
+  added = Math.max(0, added);
   if (!added) return { gear: g, added: 0 };
   return { gear: { ...g, gold: g.gold + added, earned: { ...earned, [kind]: earned[kind] + added } }, added };
+}
+export const taskGoldToday = (gear, todayStr) => { const e = normalizeGear(gear).earned; return e?.date === todayStr ? e.task : 0; };
+
+// 작은 단계를 처음 체크했을 때 1골드 — 단계마다 한 번(체크를 풀었다 다시 해도), 할일 하나에 5까지. 결과 { gear, gold }
+export function stepReward(gear, taskId, stepId, todayStr) {
+  const g = normalizeGear(gear);
+  const key = `s:${taskId}:${stepId}`;
+  const prefix = `s:${taskId}:`;
+  if (!taskId || !stepId || g.rolled.includes(key) || g.rolled.filter((k) => k.startsWith(prefix)).length >= STEP_GOLD_PER_TASK) return { gear: g, gold: 0 };
+  const paid = addGold(g, todayStr, 'task', GOLD.step);
+  return { gear: { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: paid.added };
+}
+// 단계를 다 끝냈을 때 +2 (단계가 2개 이상인 할일, 할일마다 한 번)
+export function stepsDoneReward(gear, taskId, todayStr) {
+  const g = normalizeGear(gear);
+  const key = `sa:${taskId}`;
+  if (!taskId || g.rolled.includes(key)) return { gear: g, gold: 0 };
+  const paid = addGold(g, todayStr, 'task', STEPS_DONE_BONUS);
+  return { gear: { ...paid.gear, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: paid.added };
+}
+// 하루 마무리를 마쳤을 때 +10 — 하루 한 번, 할일 상한 밖(할일을 많이 한 날에도 받게)
+export function wrapReward(gear, todayStr) {
+  const g = normalizeGear(gear);
+  const key = `wrap:${todayStr}`;
+  if (g.rolled.includes(key)) return { gear: g, gold: 0 };
+  return { gear: { ...g, gold: g.gold + WRAP_GOLD, rolled: [...g.rolled, key].slice(-ROLLED_MAX) }, gold: WRAP_GOLD };
 }
 export const battleGoldLeft = (gear, todayStr) => { const e = normalizeGear(gear).earned; return BATTLE_GOLD_CAP - (e?.date === todayStr ? e.battle : 0); };
 

@@ -31,6 +31,7 @@ import { stampMemoUpdates, keepUnsyncedLocal, restoreLostTaskDetails, isImported
 import { calcDayScore, calcLevel, calcStreak, calcStreakBonus } from "./data/stats.js";
 import { DEFAULT_STAT_XP, STAT_XP_HABIT, STAT_XP_TASK, STAT_XP_PRIORITY_TASK, STAT_XP_MONTH_GOAL, classifyTodoStat, calcStatScore, normalizeStatWord, setUserStatWords } from "./data/growthStats.js";
 import { raidWeekOf, nextRaidBase, raidDamage, raidRewardStat, RAID_REWARD_XP } from "./utils/bossRaid.js";
+import { stepReward, stepsDoneReward, wrapReward, GOAL_GOLD_MULT } from "./utils/gear.js";
 import { normalizeGear, applyLocalGear, mergeGear, rollDrop, wanderReward, npcReward, RARITIES, gearBonus, makeWanderer, addGold, battleWinGold, setPieceReward, setById, addWeekWin, currentTitleId, weekOf, weekQuests, questProgress } from "./utils/gear.js";
 import { habitStreak } from "./utils/habitStreak.js";
 import { createPlayerFighter } from "./data/battle/engine.js";
@@ -475,16 +476,34 @@ export default function App() {
     statAskedRef.current.add(key);
     setStatAsk({ ds, taskId: task.id, title: task.title.trim(), key });
   };
+  // 🎁 작은 단계 골드 (2026-11-13) — 새로 체크한 단계마다 1골드(할일 하나에 5까지), 2개 이상을 다 끝내면 +2.
+  // 체크를 풀어도 회수하지 않는다(다시 체크해도 다시 안 줌 — utils/gear.js stepReward)
+  const grantStepGold = (prevTask, task) => {
+    const live = (task.steps || []).filter(s => s?.id && s.text?.trim());
+    if (!live.length) return;
+    const wasDone = new Set((prevTask?.steps || []).filter(s => s.done).map(s => s.id));
+    const today = toDateStr();
+    let g = battleGearRef.current, gold = 0;
+    live.forEach(s => { if (s.done && !wasDone.has(s.id)) { const r = stepReward(g, task.id, s.id, today); g = r.gear; gold += r.gold; } });
+    const prevLive = (prevTask?.steps || []).filter(s => s?.id && s.text?.trim());
+    const allNow = live.length >= 2 && live.every(s => s.done);
+    const allBefore = prevLive.length >= 2 && prevLive.every(s => s.done);
+    let bonus = 0;
+    if (allNow && !allBefore) { const r = stepsDoneReward(g, task.id, today); g = r.gear; bonus = r.gold; }
+    if (g !== battleGearRef.current) updateGear(g);
+    if (gold + bonus) showGold(gold + bonus, bonus ? '단계 완주' : '작은 단계');
+  };
   const applyTaskXpGrants = (prevTasks, nextTasks, ds) => {
     const prevMap = new Map((prevTasks || []).map(t => [t.id, t]));
     return (nextTasks || []).map(task => {
       const prevTask = prevMap.get(task.id);
+      if (task.steps?.length) grantStepGold(prevTask, task);
       // 다른 날짜에서 옮겨온 완료 할일(이미 지급 기록 있음)은 새로 완료한 것이 아니므로 다시 지급하지 않는다
       if (!prevTask && task.done && task.statXpGrant) return task;
       const wasDone = !!prevTask?.done;
       if (task.done === wasDone) return task;
       if (task.done) {
-        maybeDropGear(`t:${ds}:${task.id}`, 'task');
+        maybeDropGear(`t:${ds}:${task.id}`, 'task', task.goalRef?.title ? GOAL_GOLD_MULT : 1); // 🎯 목표에서 온 할일은 골드 2배
         const statId = resolveTaskStat(task);
         if (!statId) maybeAskStat(ds, task); // 사전에도 내 단어에도 없는 할일 — 어느 능력치인지 한 번 묻는다
         if (!statId || statId === 'NONE') return task;
@@ -565,9 +584,21 @@ export default function App() {
     battleGearRef.current = v; setBattleGear(v);
   };
   // 할일·습관을 끝냈을 때 가끔 장비가 떨어진다 (같은 할일·습관·날짜는 한 번만 굴림 — 체크를 풀었다 다시 해도 같음)
-  const maybeDropGear = (key, source) => {
-    const r = rollDrop(battleGearRef.current, key, source, toDateStr());
+  // 🪙 받은 골드를 화면 어디서든 잠깐 띄운다 (XP 숫자처럼 위로 떠오름, 2026-11-13). 0.5초 안에 또 받으면 합쳐서
+  const [goldFloat, setGoldFloat] = useState(null); // { amount, label, key }
+  const goldFloatRef = useRef(null);
+  const showGold = (amount, label = '') => {
+    if (!amount) return;
+    const now = Date.now();
+    const prev = goldFloatRef.current;
+    const next = prev && now - prev.at < 500 ? { amount: prev.amount + amount, label: label || prev.label, key: prev.key, at: now } : { amount, label, key: now, at: now };
+    goldFloatRef.current = next;
+    setGoldFloat(next);
+  };
+  const maybeDropGear = (key, source, goldMult = 1) => {
+    const r = rollDrop(battleGearRef.current, key, source, toDateStr(), Math.random, goldMult);
     if (r.gear !== battleGearRef.current) updateGear(r.gear);
+    if (r.gold) showGold(r.gold, goldMult > 1 ? '🎯 목표 2배' : '');
     if (r.item) setTimeout(() => setToast(`🎁 장비를 주웠어요! [${RARITIES[r.item.rarity].label}] ${r.item.name}`), 1300);
     else if (r.full) setTimeout(() => setToast('🎒 가방이 꽉 차서 장비를 못 주웠어요 — 배틀 화면 가방에서 안 쓰는 장비를 팔아 주세요'), 1300);
   };
@@ -2598,6 +2629,7 @@ export default function App() {
           onHideTag={hideMemoTag}
           hiddenTags={hiddenTags}
           statFeedback={statFeedback}
+          onWrapDone={() => { const r = wrapReward(battleGearRef.current, toDateStr()); if (r.gold) updateGear(r.gear); return r.gold; }}
           onClearStatFeedback={clearStatFeedback}
           contacts={contacts} onOpenPeople={openPeople} onBonusXp={addInviteBonus}
           ddays={ddays} setDdays={setDdays}
@@ -3005,6 +3037,12 @@ export default function App() {
           }}
           onClose={(item) => setAlarmBar(prev => prev.filter(x => x !== item))}
         />
+        {goldFloat && (
+          <div key={goldFloat.key} className="xp-float" onAnimationEnd={() => { if (goldFloatRef.current?.key === goldFloat.key) { goldFloatRef.current = null; setGoldFloat(null); } }}
+            style={{ top: '25%', left: '50%', color: '#FF9F0A', textShadow: '0 0 12px rgba(255,159,10,.55)' }}>
+            🪙 +{goldFloat.amount}{goldFloat.label ? ` · ${goldFloat.label}` : ''}
+          </div>
+        )}
         {statAsk && (
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
