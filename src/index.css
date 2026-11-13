@@ -531,6 +531,16 @@ button:focus-visible {
   0%, 100% { transform: none; } 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, 0); }
 }
 .dm-st-quake { animation: dm-st-quake .3s linear both; }
+/* 다크 판타지 그림 (2026-11-13, components/battle/DarkSprite.jsx) — 프레임 3장을 1.2초에 한 바퀴 */
+.dm-ds .dm-ds-f { opacity: 0; animation: dm-ds-fr 1.2s steps(1) infinite; }
+.dm-ds .dm-ds-f1 { animation-delay: -.8s; }
+.dm-ds .dm-ds-f2 { animation-delay: -.4s; }
+@keyframes dm-ds-fr { 0% { opacity: 1; } 33.4% { opacity: 0; } }
+/* 배경 불티 — 아래에서 떠올라 사라진다 */
+@keyframes dm-ember { from { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } to { transform: translateY(-120px); opacity: 0; } }
+.dm-ember { position: absolute; width: 3px; height: 3px; background: #FF8A4C; box-shadow: 0 0 6px #FF5A1F; animation: dm-ember 3.2s linear infinite; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
-  .dm-st-idle, .dm-st-dash, .dm-st-hit, .dm-st-dodge, .dm-st-stumble, .dm-st-cutin, .dm-st-quake { animation: none !important; }
+  .dm-st-idle, .dm-st-dash, .dm-st-hit, .dm-st-dodge, .dm-st-stumble, .dm-st-cutin, .dm-st-quake, .dm-ember { animation: none !important; }
+  .dm-ds .dm-ds-f { animation: none !important; }
+  .dm-ds .dm-ds-f0 { opacity: 1; }
 }

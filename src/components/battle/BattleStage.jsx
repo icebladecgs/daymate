@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import PixelWarrior from "./PixelWarrior.jsx";
-import { ARMOR_TIERS, NPC_ARMOR } from "./armor.js";
+import DarkSprite from "./DarkSprite.jsx";
+import { foeKindOf } from "../../utils/darkSprite.js";
 
 // 배틀 전투 장면 (2026-10-30, 영걸전 느낌). 배틀 계산은 그대로 두고, 엔진이 만든 기록 한 줄씩을 짧은 동작으로 보여 준다.
 // events: [{ key, entry, icon }] — 새 기록이 생길 때마다 Battle이 뒤에 붙인다. 하나씩 차례로 재생(겹치지 않게).
@@ -72,7 +72,9 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
   const cut = e && hasCutin(e);
   const delay = cut ? CUTIN_MS : 0;
   const isAttack = e && (e.kind === 'attack' || e.kind === 'miss' || e.kind === 'fumble');
-  const playerArmor = ARMOR_TIERS[playerTier] || ARMOR_TIERS[0];
+  // 그림 (2026-11-13 다크 판타지 48×48 — utils/darkSprite.js): 주인공은 등급 색, 상대는 레벨대마다 도적·뿔 투구 무법자·해골 기사
+  const foeKind = foeKindOf(npc?.level);
+  const look = (side, extra = {}) => (side === 'player' ? { kind: 'hero', tier: playerTier || 0, ...extra } : { kind: foeKind, flip: true, ...extra });
 
   // 장수 한 명의 움직임 클래스·변수
   const motion = (side) => {
@@ -95,9 +97,7 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
         style={{ position: 'absolute', bottom: 26, [side === 'player' ? 'left' : 'right']: '14%', ...m.vars,
           ...(fallen(f) && !(cur && e?.kind !== 'result') ? { transform: `rotate(${side === 'player' ? -90 : 90}deg) translate(${side === 'player' ? '-14px' : '14px'}, 10px)`, opacity: 0.75, transition: 'transform .5s, opacity .5s' } : {}) }}>
         {side === 'npc' && npcEmoji && <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', fontSize: 18, lineHeight: 1 }}>{npcEmoji}</div>}
-        <div className="dm-st-idle" style={{ animationDelay: side === 'npc' ? '.4s' : '0s' }}>
-          <PixelWarrior armor={side === 'player' ? playerArmor : NPC_ARMOR} size={72} flip={side === 'npc'} />
-        </div>
+        <DarkSprite {...look(side)} size={104} />
         {/* 회복·보호막·버프 빛 */}
         {e && side === actor && ['heal', 'regen', 'shield', 'buff'].includes(e.kind) && (
           <div className="dm-st-aura" style={{ animationDelay: `${delay}ms`, borderColor: e.kind === 'shield' ? '#60A5FA' : e.kind === 'buff' ? '#A78BFA' : '#4ADE80' }} />
@@ -105,7 +105,8 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
         {/* 베기 자국 + 숫자 */}
         {e && side === target && e.kind === 'attack' && (
           <svg className="dm-st-slash" viewBox="0 0 40 40" width="64" height="64" style={{ animationDelay: `${delay + 180}ms`, position: 'absolute', left: 4, top: 0 }}>
-            <path d={side === 'npc' ? 'M6 34 L34 6' : 'M34 34 L6 6'} stroke={e.crit ? '#FDE047' : '#fff'} strokeWidth={e.crit ? 5 : 3.5} strokeLinecap="round" />
+            <path d={side === 'npc' ? 'M6 34 L34 6' : 'M34 34 L6 6'} stroke="#B91C1C" strokeOpacity=".75" strokeWidth={e.crit ? 10 : 7.5} strokeLinecap="round" />
+            <path d={side === 'npc' ? 'M6 34 L34 6' : 'M34 34 L6 6'} stroke={e.crit ? '#FDE047' : '#fff'} strokeWidth={e.crit ? 4.5 : 3} strokeLinecap="round" />
           </svg>
         )}
         {e && (
@@ -122,16 +123,19 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
   return (
     <div style={{ margin: '0 16px 12px' }}>
       <div key={e?.crit ? `q-${cur.key}` : 'still'} className={e?.crit ? 'dm-st-quake' : undefined} style={{ animationDelay: `${delay + 200}ms`,
-        position: 'relative', height: 200, borderRadius: 14, overflow: 'hidden', border: '3px solid #1F2937', boxShadow: '0 0 0 2px #F8FAFC inset',
-        // 들판 배경 — 하늘·먼 산·풀밭 (그림 파일 없이 색 면으로)
+        position: 'relative', height: 200, borderRadius: 14, overflow: 'hidden', border: '3px solid #1A0F12', boxShadow: '0 0 0 1px #3A2228 inset',
+        // 다크 판타지 배경 (2026-11-13) — 붉은 안개·검은 땅 (그림 파일 없이 색 면으로). 예전: 하늘·풀밭
         background: [
-          'linear-gradient(180deg, transparent 70%, #5B7F2E 70%, #4D6B27 100%)',
-          'repeating-linear-gradient(90deg, transparent 0 12px, rgba(0,0,0,.06) 12px 14px)',
-          'radial-gradient(120% 60% at 20% 78%, #7FA05A 0 40%, transparent 41%)',
-          'radial-gradient(90% 50% at 85% 80%, #6E9150 0 40%, transparent 41%)',
-          'linear-gradient(180deg, #7DB4E6 0%, #CDE6F7 70%)',
+          'linear-gradient(180deg, transparent 80%, #1C1013 80%, #080507 100%)',
+          'radial-gradient(70% 28% at 50% 82%, rgba(170,120,130,.16), transparent 70%)',
+          'repeating-linear-gradient(115deg, transparent 0 6px, rgba(255,255,255,.015) 6px 7px)',
+          'radial-gradient(ellipse at 50% 32%, #3D1B22 0%, #1A0A0E 52%, #07050A 100%)',
         ].join(','),
       }}>
+        {/* 불티 */}
+        {[[18, 0], [42, 1.1], [63, 2.2], [80, .6], [30, 1.7]].map(([left, d], i) => (
+          <span key={i} className="dm-ember" style={{ left: `${left}%`, bottom: 30, animationDelay: `${d}s`, ...(i % 2 ? { width: 2, height: 2 } : {}) }} />
+        ))}
         <div style={{ position: 'absolute', top: 8, left: 10, right: 10, display: 'flex', gap: 14, zIndex: 3 }}>
           {/* 체력은 맞는 순간(컷인 뒤 베기)에 줄어들게 */}
           <HpBar name={playerLabel} fighter={player} side="player" delayMs={delay + 220} />
@@ -145,7 +149,7 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
             position: 'absolute', left: 0, right: 0, top: 70, height: 66, zIndex: 4, display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
             flexDirection: actor === 'player' ? 'row' : 'row-reverse',
             background: `linear-gradient(90deg, ${SIDE_COLOR[actor]}ee, ${SIDE_COLOR[actor]}aa)`, borderTop: '2px solid #fff', borderBottom: '2px solid #fff' }}>
-            <PixelWarrior armor={actor === 'player' ? playerArmor : NPC_ARMOR} size={64} headOnly flip={actor === 'npc'} />
+            <DarkSprite {...look(actor)} size={64} headOnly />
             <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', textShadow: '2px 2px 0 #000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {cur.icon || (e.crit ? '💥' : '✨')} {e.move}{e.crit ? ' 크리티컬!' : '!'}
             </div>
@@ -158,7 +162,7 @@ export default function BattleStage({ events, player, npc, playerLabel, npcLabel
         {speaker ? (
           <>
             <div style={{ width: 40, height: 40, flexShrink: 0, background: '#1E293B', border: `2px solid ${SIDE_COLOR[speaker]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <PixelWarrior armor={speaker === 'player' ? playerArmor : NPC_ARMOR} size={40} headOnly flip={speaker === 'npc'} />
+              <DarkSprite {...look(speaker)} size={40} headOnly />
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 900, color: speaker === 'player' ? '#93C5FD' : '#FCA5A5' }}>{speaker === 'player' ? playerLabel : npcLabel}</div>

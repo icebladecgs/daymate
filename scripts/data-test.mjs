@@ -1185,6 +1185,17 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('사진 글자: 빈 메모·자동 글자면 글자만, 아니면 아래에 덧붙임', P.appendPhotoText('', '영수증') === '영수증' && P.appendPhotoText('📷 사진', '영수증', '📷 사진') === '영수증' && P.appendPhotoText('메모', '영수증') === '메모\n\n📷 사진 글자\n영수증');
 }
 
+// ── 🗡️ 배틀 그림 (2026-11-13, utils/darkSprite.js) ──
+{
+  const DS = await load('/src/utils/darkSprite.js');
+  const kinds = ['hero', 'bandit', 'horn', 'skull'];
+  t('그림: 4종 × 프레임 3장 모두 그려짐(48칸 안)', kinds.every(k => [0, 1, 2].every(f => { const c = DS.spriteCells(k, 2, f); return c.length > 400 && c.every(([x, y]) => x >= 0 && y >= 0 && x < 48 && y < 48); })));
+  t('그림: 주인공 등급마다 색이 다름', new Set(DS.HERO_TIERS.map((_, i) => DS.spriteCells('hero', i, 0).find(([x, y]) => x === 22 && y === 24)?.[2])).size === 6);
+  t('그림: 숨쉬기 프레임은 모양이 다름', JSON.stringify(DS.spriteCells('hero', 0, 0)) !== JSON.stringify(DS.spriteCells('hero', 0, 1)));
+  t('그림: 상대 레벨 → 도적·무법자·해골 기사', DS.foeKindOf(1) === 'bandit' && DS.foeKindOf(6) === 'bandit' && DS.foeKindOf(7) === 'horn' && DS.foeKindOf(14) === 'horn' && DS.foeKindOf(15) === 'skull' && DS.foeKindOf(undefined) === 'bandit');
+  t('그림: 같은 그림은 한 번만 계산', DS.spriteCells('skull', 0, 1) === DS.spriteCells('skull', 0, 1));
+}
+
 // ── 📋 업그레이드 할 일 (관리자 화면, utils/roadmap.js) ──
 {
   const R = await load('/src/utils/roadmap.js');
