@@ -28,6 +28,7 @@ import { newDesignOn } from "../utils/todayLook.js";
 import UndoBar from "./UndoBar.jsx";
 import { useUndo } from "../utils/useUndo.js";
 import { useAiTidy } from "./AiTidy.jsx";
+import Splitter from "./Splitter.jsx";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "var(--dm-accent, #6C8EFF)" },
@@ -72,6 +73,37 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const [viewMode, setViewMode] = useState(false);
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
   const hit = nl && !wide ? "dm-hit" : undefined; // 모양·배치는 그대로, 누르는 범위만 40px
+  // 칸 크기 직접 바꾸기 (2026-11-13 사용자 요청, 새 디자인) — 왼쪽 분류 폭(PC)·목록/편집 높이 비율. 기기마다 dm_mm_split
+  const SPLIT_DEF = { w: 220, hWide: 0.45, hNarrow: 0.4 };
+  const [split, setSplit] = useState(() => {
+    try { return { ...SPLIT_DEF, ...JSON.parse(localStorage.getItem("dm_mm_split") || "{}") }; } catch { return SPLIT_DEF; }
+  });
+  const splitRef = useRef(split);
+  splitRef.current = split;
+  const saveSplit = () => { try { localStorage.setItem("dm_mm_split", JSON.stringify(splitRef.current)); } catch { /* 무시 */ } };
+  const resetSplit = (keys) => setSplit(s => { const n = { ...s }; keys.forEach(k => { n[k] = SPLIT_DEF[k]; }); splitRef.current = n; saveSplit(); return n; });
+  const leftRef = useRef(null);
+  const colRef = useRef(null);
+  const dragLeft = (clientX) => {
+    const el = leftRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const scale = r.width / (splitRef.current.w || 1); // 화면 확대(zoom) 때문에 보이는 크기와 CSS 크기가 다르다
+    const w = Math.round(Math.min(420, Math.max(150, (clientX - r.left) / (scale || 1))));
+    setSplit(s => ({ ...s, w }));
+  };
+  const dragList = (clientY) => {
+    const el = colRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.height < 1) return;
+    const scale = r.height / (el.offsetHeight || r.height);
+    const minList = 90 * scale, minDetail = 170 * scale; // 목록 2줄쯤·편집 4줄쯤은 남긴다
+    const y = Math.min(r.height - minDetail, Math.max(minList, clientY - r.top));
+    const f = Math.min(0.85, Math.max(0.08, y / r.height));
+    setSplit(s => ({ ...s, [wide ? "hWide" : "hNarrow"]: f }));
+  };
+  const listFrac = wide ? split.hWide : split.hNarrow;
   useEffect(() => {
     const onResize = () => setWide(window.innerWidth >= 900);
     window.addEventListener("resize", onResize);
@@ -401,7 +433,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl}
+    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -431,12 +463,37 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       </div>
       {!uid && onRequireLogin && <div style={{ paddingTop: 8 }}><LoginNotice onLogin={onRequireLogin} /></div>}
 
-      {wide ? (
+      {wide && nl ? (
+        /* 새 디자인: 선을 끌어 칸 크기를 바꾼다 (두 번 누르면 원래대로) */
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <div ref={leftRef} style={{ width: split.w, flexShrink: 0, overflowY: "auto", padding: 8 }}>{filters}</div>
+          <Splitter dir="x" label="분류 칸 폭 바꾸기" onMove={dragLeft} onEnd={saveSplit} onReset={() => resetSplit(["w"])} />
+          <div ref={colRef} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            {!isBig && <div style={{ flex: `0 0 ${listFrac * 100}%`, minHeight: 0, display: "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>}
+            {!isBig && <Splitter dir="y" label="목록·편집 칸 높이 바꾸기" onMove={dragList} onEnd={saveSplit} onReset={() => resetSplit(["hWide"])} />}
+            <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {detail}
+            </div>
+          </div>
+        </div>
+      ) : wide ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <div style={{ width: z(200, 220), flexShrink: 0, borderRight: border, overflowY: "auto", padding: 8 }}>{filters}</div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             {!isBig && <div style={{ flex: "1 1 45%", minHeight: 0, display: "flex", flexDirection: "column", borderBottom: border }}>{relatedRow}{listArea}</div>}
             <div style={{ flex: "1 1 55%", minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {detail}
+            </div>
+          </div>
+        </div>
+      ) : nl ? (
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {!isBig && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>}
+          {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          <div ref={colRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", borderTop: isBig ? "none" : border }}>
+            {!isBig && <div style={{ flex: `0 0 ${listFrac * 100}%`, minHeight: 0, display: "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>}
+            {!isBig && <Splitter dir="y" label="목록·편집 칸 높이 바꾸기" onMove={dragList} onEnd={saveSplit} onReset={() => resetSplit(["hNarrow"])} />}
+            <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column" }}>
               {detail}
             </div>
           </div>
@@ -460,7 +517,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ nl, wide, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -470,6 +527,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
   const [viewer, setViewer] = useState(null);
   const [sentTask, setSentTask] = useState(false);
   const [sentToday, setSentToday] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false); // 새 디자인 ⋯ 더보기
   const textRef = useRef(null);
   const z = (oldV, newV) => (nl ? newV : oldV);
 
@@ -570,11 +628,32 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
     const head = `${formatKoreanDate(item.ds)}${item.kind === "task" && title.trim() ? ` · ${title.trim()}` : item.kind === "journal" ? " · 일기" : ""}`;
     if (!printMemo(t, head)) onError?.("출력 창을 열지 못했어요");
   };
+  // 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가·오늘 할일로 — utils/memoToTask.js
+  const sendSomeday = () => {
+    const el = textRef.current;
+    const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+    if (!t) { onError?.("언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
+    sendMemoToSomeday(t, item.id);
+    setSentTask(true);
+    setTimeout(() => setSentTask(false), 2000);
+  };
+  const sendToday = () => {
+    const el = textRef.current;
+    const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
+    if (!t) { onError?.("오늘로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
+    const sent = sendMemoToToday(t, item.id); // 줄에 시간·날짜가 있으면 그대로
+    setSentToday(sentLabel(sent, toDateStr()));
+    setTimeout(() => setSentToday(""), 2500);
+  };
+  const toggleStar = () => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }));
+  const toggleDone = () => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }));
   const smallHit = nl && window.innerWidth < 900 ? "dm-hit" : undefined;
   const small = { padding: z("5px 10px", "7px 12px"), borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
+      {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
+        toggleStar, toggleDone, taskDone: !!task?.done, dirty: text !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -586,32 +665,18 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
         <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={copyText} title="내용 전체 복사" style={small}>⧉ 복사</button>
         {canAutoFocus() && <button className={smallHit} onClick={printText} title="A4 종이에 글만 출력 (위에 날짜)" style={small}>🖨 출력</button>}
         {item.kind === "memo" && (
-          <button className={smallHit} onClick={() => onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { starred: !item.starred }))} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
+          <button className={smallHit} onClick={toggleStar} style={small}>{item.starred ? "⭐ 즐겨찾기 해제" : "☆ 즐겨찾기"}</button>
         )}
         {/* 커서가 있는 줄(고른 글자가 있으면 그 부분)을 언젠가할일로 — utils/memoToTask.js. 보기 모드엔 커서가 없어 숨김 */}
         {item.kind === "memo" && !viewMode && (
-          <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={() => {
-            const el = textRef.current;
-            const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
-            if (!t) { onError?.("언젠가로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
-            sendMemoToSomeday(t, item.id);
-            setSentTask(true);
-            setTimeout(() => setSentTask(false), 2000);
-          }} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로" style={sentTask ? { ...small, color: "#4ADE80", borderColor: "rgba(74,222,128,.5)" } : small}>{sentTask ? "보냄 ✓" : "📋 언젠가로"}</button>
+          <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={sendSomeday} title="커서가 있는 줄(또는 고른 글자)을 언젠가할일로" style={sentTask ? { ...small, color: "#4ADE80", borderColor: "rgba(74,222,128,.5)" } : small}>{sentTask ? "보냄 ✓" : "📋 언젠가로"}</button>
         )}
         {/* 📌 오늘로 (2026-11-10) — 같은 줄을 오늘 할일로 */}
         {item.kind === "memo" && !viewMode && (
-          <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={() => {
-            const el = textRef.current;
-            const t = pickTaskTitle(text, el?.selectionStart ?? 0, el?.selectionEnd ?? 0);
-            if (!t) { onError?.("오늘로 보낼 줄에 커서를 두거나 글자를 골라 주세요"); return; }
-            const sent = sendMemoToToday(t, item.id); // 줄에 시간·날짜가 있으면 그대로 (utils/memoToTask.js)
-            setSentToday(sentLabel(sent, toDateStr()));
-            setTimeout(() => setSentToday(""), 2500);
-          }} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 — 시간·날짜가 쓰여 있으면 그대로" style={sentToday ? { ...small, color: "#5B7CFA", borderColor: "rgba(91,124,250,.5)" } : small}>{sentToday || "📌 오늘로"}</button>
+          <button className={smallHit} onMouseDown={e => e.preventDefault()} onClick={sendToday} title="커서가 있는 줄(또는 고른 글자)을 오늘 할일로 — 시간·날짜가 쓰여 있으면 그대로" style={sentToday ? { ...small, color: "#5B7CFA", borderColor: "rgba(91,124,250,.5)" } : small}>{sentToday || "📌 오늘로"}</button>
         )}
         {item.kind === "task" && (
-          <button className={smallHit} onClick={() => onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, done: !x.done } : x)) }))} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
+          <button className={smallHit} onClick={toggleDone} style={small}>{task?.done ? "✓ 완료됨" : "☐ 완료 표시"}</button>
         )}
         {item.kind === "memo" && window.daymateDesktop?.openSticky && (
           <button className={smallHit} onClick={() => window.daymateDesktop.openSticky(item.ds, item.id)} style={small}>📌 포스트잇으로</button>
@@ -620,9 +685,10 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
         {item.kind === "memo" && item.id !== "legacy" && <button className={smallHit} onClick={() => requestMemoLock(item.id, "lock")} style={small}>🔒 잠그기</button>}
         {item.kind === "memo" && <button className={smallHit} onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
       </div>
+      )}
       {item.kind === "task" && (
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={60}
-          style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
+          style={{ padding: z("7px 10px", "10px 14px"), borderRadius: z(8, 12), border: nl ? "none" : "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), fontWeight: 700, fontFamily: "inherit", outline: "none", flexShrink: 0 }} />
       )}
       {viewMode ? (
         <MemoView text={text} onToggle={(line) => setText(t => toggleCheckAt(t, line))} onTag={onTag}
@@ -634,7 +700,7 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
           onClick={openLinkOnCtrlClick}
           onKeyDown={e => handleEditorKey(e, () => onError?.("계산할 수식이 없어요 (예: 1500000*12)"))}
           placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
-          style={{ flex: 1, minHeight: 80, resize: "none", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
+          style={{ flex: 1, minHeight: 80, resize: "none", padding: z("10px 12px", "12px 14px"), borderRadius: z(8, 12), border: nl ? "none" : "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
         {/* 링크 자리에 연한 파란 바탕·밑줄 (입력칸 위에 겹친 표시 층) */}
         <LinkOverlay taRef={textRef} text={text} />
         <IndentBar taRef={textRef} />
@@ -661,6 +727,140 @@ function DetailPane({ nl, item, plans, onUpdateDayData, uid, onError, onOpenDate
         </div>
       )}
       {viewer !== null && <PhotoViewer photos={photos} index={viewer} onClose={() => setViewer(null)} />}
+    </div>
+  );
+}
+
+// ── 새 디자인 편집 칸 버튼 줄 (2026-11-13 사용자 승인, UX-GUIDE 4장) ──
+// 상자·색 이모지 대신 색 없는 선 아이콘 + 아래 설명. 자주 쓰는 것(AI 정리·복사·오늘로·언젠가로)만 줄에 두고
+// 나머지(출력·포스트잇으로·날짜 열기·잠그기·삭제)는 ⋯ 더보기. 즐겨찾기는 날짜 옆 ☆, 자동 저장 상태를 날짜 아래에.
+const ICONS = {
+  ai: <><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" /><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z" /></>,
+  copy: <><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
+  today: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /><path d="M9 15l2 2 4-4" /></>,
+  someday: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></>,
+  done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
+  more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  expand: <><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></>,
+  shrink: <><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" /></>,
+  eye: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+  pencil: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
+  print: <><path d="M7 9V3h10v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M7 14h10v7H7z" /></>,
+  sticky: <><path d="M5 4h14v10l-5 6H5z" /><path d="M14 20v-6h5" /></>,
+  date: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17M12 14h4m-2-2l2 2-2 2" /></>,
+  lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
+  trash: <><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></>,
+};
+const Ico = ({ name, size = 23, fill }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={fill || "none"} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[name]}</svg>
+);
+const savedLabel = (dirty, updatedAt) => {
+  if (dirty) return "저장 중…";
+  if (!updatedAt) return "자동 저장";
+  const d = new Date(updatedAt);
+  if (Number.isNaN(d.getTime())) return "자동 저장";
+  const p = (n) => String(n).padStart(2, "0");
+  const hm = `${p(d.getHours())}:${p(d.getMinutes())}`;
+  return `저장됨 · ${d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`}`;
+};
+
+function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
+  toggleStar, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }) {
+  const accent = "var(--dm-accent, #5B7CFA)";
+  const memo = item.kind === "memo";
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setMoreOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moreOpen, setMoreOpen]);
+
+  // 아이콘 + 아래 설명 (누르는 칸 44, 테두리·바탕 없음). on = 켜진 상태(보냄 등)만 옅은 동그라미
+  const tool = (key, icon, label, onClick, { on = false, color = accent, strong = false, keepFocus = false, title } = {}) => (
+    <button key={key} onClick={onClick} title={title || label} aria-label={label} onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
+      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, minWidth: 0, flex: wide ? "0 0 72px" : "1 1 0", padding: "2px 0",
+        background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}>
+      <span style={{ width: 44, height: 40, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+        background: on || strong ? `color-mix(in srgb, ${color} 16%, transparent)` : "transparent", color: on || strong ? color : "var(--dm-text)", transition: "background .15s" }}>
+        <Ico name={icon} />
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: on || strong ? color : "var(--dm-sub)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+    </button>
+  );
+  // 머리 줄의 작은 버튼 (아이콘 + 옆 글자)
+  const headBtn = (icon, label, onClick, on, title) => (
+    <button onClick={onClick} title={title || label} aria-pressed={on}
+      style={{ display: "inline-flex", alignItems: "center", gap: 5, minHeight: 40, padding: "0 8px", borderRadius: 10, background: on ? `color-mix(in srgb, ${accent} 14%, transparent)` : "none",
+        border: "none", color: on ? accent : "var(--dm-sub)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+      <Ico name={icon} size={19} />{label}
+    </button>
+  );
+
+  const tools = [
+    !viewMode && tool("ai", "ai", "AI 정리", tidy.open, { strong: true, title: "AI가 메모를 정리 — 내 글과 비교하고 고른 뒤 바꾸기" }),
+    tool("copy", "copy", "복사", copyText, { keepFocus: true, title: "내용 전체 복사" }),
+    memo && !viewMode && tool("today", "today", sentToday || "오늘로", sendToday, { on: !!sentToday, keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 오늘 할일로 — 시간·날짜가 쓰여 있으면 그대로" }),
+    memo && !viewMode && tool("someday", "someday", sentTask ? "보냄 ✓" : "언젠가로", sendSomeday, { on: sentTask, color: "#22C55E", keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 언젠가할일로" }),
+    item.kind === "task" && tool("done", "done", taskDone ? "완료됨" : "완료", toggleDone, { on: taskDone, color: "#22C55E" }),
+  ].filter(Boolean);
+
+  // ⋯ 더보기 — 가끔 쓰는 것. 삭제는 맨 아래 빨간 글자
+  const menu = [
+    canAutoFocus() && { icon: "print", label: "출력 (A4)", run: printText },
+    memo && window.daymateDesktop?.openSticky && { icon: "sticky", label: "포스트잇으로 열기", run: () => window.daymateDesktop.openSticky(item.ds, item.id) },
+    onOpenDate && { icon: "date", label: "그 날짜 열기", run: () => onOpenDate(item.ds) },
+    memo && item.id !== "legacy" && { icon: "lock", label: "잠그기", run: () => requestMemoLock(item.id, "lock") },
+    memo && { icon: "trash", label: "삭제", run: () => onDeleteMemo(item), danger: true },
+  ].filter(Boolean);
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 6, rowGap: 6, flexShrink: 0 }}>
+      {/* 머리: 종류·날짜 / 저장 상태 · ☆ · 크게 · 보기 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 2, flex: wide ? "0 1 auto" : "1 1 100%", minWidth: 0 }}>
+        <div style={{ minWidth: 0, marginRight: 2 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--dm-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span style={{ color: KIND[item.kind].color }}>{KIND[item.kind].label}</span>
+            <span style={{ color: "var(--dm-sub)", fontWeight: 500 }}> · {formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
+          </div>
+          <div style={{ fontSize: 13, color: dirty ? accent : "var(--dm-muted)", marginTop: 1 }}>{savedLabel(dirty, item.updatedAt)}</div>
+        </div>
+        {memo && (
+          <button onClick={toggleStar} aria-label={item.starred ? "즐겨찾기 해제" : "즐겨찾기"} title={item.starred ? "즐겨찾기 해제" : "즐겨찾기"} aria-pressed={!!item.starred}
+            style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 999, background: "none", border: "none", cursor: "pointer",
+              color: item.starred ? "#F5B400" : "var(--dm-sub)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Ico name="star" size={22} fill={item.starred ? "currentColor" : undefined} />
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        {headBtn(big ? "shrink" : "expand", big ? "목록" : "크게", onToggleBig, big, big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기")}
+        {headBtn(viewMode ? "pencil" : "eye", viewMode ? "편집" : "보기", onToggleView, viewMode, viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)")}
+      </div>
+      {wide && <span style={{ flex: 1 }} />}
+      {/* 기능 줄 */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? "0 0 auto" : "1 1 100%", minWidth: 0, position: "relative" }}>
+        {tools}
+        {menu.length > 0 && tool("more", "more", "더보기", () => setMoreOpen(o => !o), { on: moreOpen, color: "var(--dm-text)" })}
+        {moreOpen && (
+          <>
+            <div onClick={() => setMoreOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+            <div role="menu" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 41, minWidth: 200, padding: 6, borderRadius: 14,
+              background: "var(--dm-card)", boxShadow: "0 10px 30px rgba(0,0,0,.35)", border: "1px solid var(--dm-border)" }}>
+              {menu.map((m, i) => (
+                <div key={m.label}>
+                  {m.danger && i > 0 && <div style={{ height: 1, background: "var(--dm-border)", margin: "4px 6px" }} />}
+                  <button role="menuitem" onClick={() => { setMoreOpen(false); m.run(); }}
+                    style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", minHeight: 44, padding: "0 12px", borderRadius: 10, background: "none", border: "none",
+                      color: m.danger ? "#F87171" : "var(--dm-text)", fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                    <span style={{ color: m.danger ? "#F87171" : "var(--dm-sub)", display: "flex" }}><Ico name={m.icon} size={20} /></span>{m.label}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {tidy.ui}
     </div>
   );
 }
