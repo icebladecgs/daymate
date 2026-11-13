@@ -2903,6 +2903,7 @@ export default function App() {
           plans={plans}
           onUpdateDayData={setDayData}
           uid={authUser?.uid}
+          catCtx={catCtx}
           onClose={() => history.back()}
           onOpenDate={(ds) => openDetail(ds)}
           onRequireLogin={() => googleSignIn().catch(() => {})}

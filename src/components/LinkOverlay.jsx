@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { linkRanges } from "../utils/links.js";
+import { termRanges } from "../utils/searchText.js";
 
 // 입력칸(textarea) 위에 얹는 투명한 층 — 글 속 링크 자리에만 연한 파란 바탕·밑줄을 그린다 (2026-10-08).
 // 입력칸 안의 글자는 한 가지 색이라 링크만 파랗게 할 수 없어서, 같은 글꼴·여백·줄바꿈으로 겹쳐 그린다.
 // 글꼴·여백은 입력칸의 실제 계산값을 읽어 맞춘다(큰 글씨 zoom·창 크기가 바뀌어도 제자리).
 // 클릭은 통과시킨다(pointer-events: none) — 여는 건 Ctrl+클릭(openLinkOnCtrlClick)이나 🔗 버튼.
+// terms: 찾은 단어를 노랗게 (메모 관리자 검색, 2026-11-13). 링크와 겹치면 링크 표시가 먼저.
 // 쓰는 쪽: 입력칸을 position:relative 상자 안에 두고 같은 상자에 <LinkOverlay taRef text />를 넣는다.
-export default function LinkOverlay({ taRef, text }) {
-  const ranges = linkRanges(text);
+export default function LinkOverlay({ taRef, text, terms = null }) {
+  const links = linkRanges(text).map((r) => ({ ...r, kind: "link" }));
+  const hits = terms?.length ? termRanges(text, terms).map((r) => ({ ...r, kind: "hl" })) : [];
+  const ranges = [];
+  [...links, ...hits].sort((a, b) => a.start - b.start || (a.kind === "link" ? -1 : 1)).forEach((r) => {
+    if (!ranges.length || r.start >= ranges[ranges.length - 1].end) ranges.push(r);
+  });
   const [box, setBox] = useState(null);
   const [scrollTop, setScrollTop] = useState(0);
   const has = ranges.length > 0;
@@ -37,7 +44,9 @@ export default function LinkOverlay({ taRef, text }) {
   let at = 0;
   ranges.forEach((r, i) => {
     parts.push(text.slice(at, r.start));
-    parts.push(<mark key={i} style={{ color: "transparent", background: "var(--dm-accent-soft, rgba(108,142,255,.16))", textDecoration: "underline", textDecorationColor: "var(--dm-accent, #6C8EFF)", textUnderlineOffset: 2, borderRadius: 2 }}>{text.slice(r.start, r.end)}</mark>);
+    parts.push(r.kind === "hl"
+      ? <mark key={i} style={{ color: "transparent", background: "rgba(250,204,21,.45)", borderRadius: 2 }}>{text.slice(r.start, r.end)}</mark>
+      : <mark key={i} style={{ color: "transparent", background: "var(--dm-accent-soft, rgba(108,142,255,.16))", textDecoration: "underline", textDecorationColor: "var(--dm-accent, #6C8EFF)", textUnderlineOffset: 2, borderRadius: 2 }}>{text.slice(r.start, r.end)}</mark>);
     at = r.end;
   });
   parts.push(text.slice(at) + "\n");

@@ -1057,6 +1057,34 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('내일 미리보기: 기록 없는 날도 동작', P.tomorrowTasks({}, null, ds).length === 0);
 }
 
+// ── 메모 관리자 검색·기간·분류 (2026-11-13, utils/memoManager.js·searchText.js) ──
+{
+  const M = await load('/src/utils/memoManager.js');
+  const C = await load('/src/utils/taskCategory.js');
+  const today = '2026-11-13';
+  const plans = {
+    '2026-11-13': { memos: [{ id: 'a', text: '주간 회의 정리\n예산 확정 #가족' }], tasks: [{ id: 't1', title: '거래처 미팅', time: '10:00' }, { id: 't2', title: '카드값 납부' }, { id: 't3', title: '산책', cat: 'c_fam' }] },
+    '2026-11-01': { memos: [{ id: 'b', text: '예산 초안 회의' }, { id: 'c', text: '회의만 있음' }] },
+  };
+  const taskCats = { custom: [{ id: 'c_fam', name: '가족', color: '#EC4899' }], words: {} };
+  const cats = C.allCats(taskCats);
+  const items = M.buildManagerItems(plans).map(it => ({ ...it, catId: M.itemCatId(it, cats, (x) => C.catOf({ title: x.title, time: x.time, cat: x.cat }, x.ds, taskCats, null)) }));
+  const ids = (list) => list.map(i => i.id).sort().join();
+  t('검색: 띄어쓰기는 "그리고" (순서·붙임 상관없음)', ids(M.filterItems(items, 'all', '예산 회의', today)) === 'a,b', ids(M.filterItems(items, 'all', '예산 회의', today)));
+  t('검색: 초성 ㅎㅇ → 회의', ids(M.filterItems(items, 'all', 'ㅎㅇ', today)) === 'a,b,c', ids(M.filterItems(items, 'all', 'ㅎㅇ', today)));
+  t('검색: 초성 + 일반 단어 섞기', ids(M.filterItems(items, 'all', 'ㅇㅅ 초안', today)) === 'b');
+  t('검색: 빈 검색어는 전부', M.filterItems(items, 'all', '  ', today).length === items.length);
+  t('검색: 자모 분리(NFD) 글도 찾음', M.matchesQuery('회의'.normalize('NFD'), M.searchTokens('회의')));
+  t('분류: 일정은 달력과 같은 기준 (미팅→업무, 카드값→재무, 직접 고른 가족)',
+    items.find(i => i.id === 't1').catId === 'work' && items.find(i => i.id === 't2').catId === 'fin' && items.find(i => i.id === 't3').catId === 'c_fam');
+  t('분류: 메모는 그 이름 태그(#가족)가 있으면', ids(M.filterItems(items, 'cat:c_fam', '', today)) === 'a,t3', ids(M.filterItems(items, 'cat:c_fam', '', today)));
+  t('기간: 분류와 함께 (업무 + 오늘)', ids(M.filterItems(items, 'cat:work', '', today, null, 'today')) === 't1');
+  t('기간: 메모 + 최근 일주일이면 11/1 메모는 빠짐', ids(M.filterItems(items, 'memo', '', today, null, 'd7')) === 'a');
+  t('노란 표시: 찾은 자리 (대소문자 무시, 초성 단어는 표시 안 함)',
+    JSON.stringify(M.termRanges('Abc abc 회의', M.highlightTerms('ABC ㅎㅇ'))) === JSON.stringify([{ start: 0, end: 3 }, { start: 4, end: 7 }]));
+  t('노란 표시: 겹치는 단어는 한 번만', M.termRanges('회의록', ['회의', '의록']).length === 1);
+}
+
 // ── 📋 업그레이드 할 일 (관리자 화면, utils/roadmap.js) ──
 {
   const R = await load('/src/utils/roadmap.js');

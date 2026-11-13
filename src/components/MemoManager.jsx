@@ -6,7 +6,8 @@ import PhotoWall from "./PhotoWall.jsx";
 import { deletePhoto, uploadPhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
-import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts } from "../utils/memoManager.js";
+import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts, PERIOD_FILTERS, isPeriodFilter, itemCatId, highlightTerms, termRanges } from "../utils/memoManager.js";
+import { allCats, catOf } from "../utils/taskCategory.js";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
@@ -39,6 +40,22 @@ const KIND = {
 const PAGE = 300;
 const ACCENT = (nl) => (nl ? "var(--dm-accent, #5B7CFA)" : "var(--dm-accent, #6C8EFF)"); // 새 디자인: 밝은·어두운 화면 둘 다 보이는 파랑
 
+// 찾은 단어 노란 표시 (목록 제목) — utils/memoManager.js termRanges
+const HL_BG = "rgba(250,204,21,.45)";
+const markTerms = (text, terms) => {
+  const ranges = termRanges(text, terms);
+  if (!ranges.length) return text;
+  const out = [];
+  let at = 0;
+  ranges.forEach((r, i) => {
+    out.push(text.slice(at, r.start));
+    out.push(<mark key={i} style={{ background: HL_BG, color: "inherit", borderRadius: 3, padding: 0 }}>{text.slice(r.start, r.end)}</mark>);
+    at = r.end;
+  });
+  out.push(text.slice(at));
+  return out;
+};
+
 const fmtUpdated = (v) => {
   if (!v) return "";
   const d = new Date(v);
@@ -56,7 +73,7 @@ const updateMemoIn = (day, id, patch) => {
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
 // 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
-export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOpenDate, onRequireLogin, scaleControl = null, zoom = 1 }) {
+export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null, onClose, onOpenDate, onRequireLogin, scaleControl = null, zoom = 1 }) {
   const [toast, setToast] = useState("");
   // 새 디자인(2026-11-01): 글씨 12~13px → 14~16px, 버튼·줄 높이 크게. 배치는 그대로
   const [nl] = useState(newDesignOn);
@@ -120,7 +137,20 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const items = useMemo(() => buildManagerItems(plans), [plans]);
+  // 일정 분류(업무·재무·직접 만든 것, 2026-11-13) — 일정은 달력과 같은 기준(catOf), 메모·일기는 그 이름 태그(#업무)
+  const cats = useMemo(() => allCats(catCtx?.taskCats), [catCtx?.taskCats]);
+  const items = useMemo(() => {
+    const built = buildManagerItems(plans);
+    if (!catCtx) return built;
+    const ofTask = (it) => catOf({ title: it.title, time: it.time, cat: it.cat }, it.ds, catCtx.taskCats, catCtx.workHours);
+    return built.map(it => (it.kind === "trash" ? it : { ...it, catId: itemCatId(it, cats, ofTask) }));
+  }, [plans, catCtx, cats]);
+  const catCounts = useMemo(() => {
+    const n = {};
+    items.forEach(it => { if (it.catId && it.kind !== "trash") n[it.catId] = (n[it.catId] || 0) + 1; });
+    return n;
+  }, [items]);
+  const [period, setPeriod] = useState("all"); // 기간 — 새 디자인은 분류와 따로 고른다
   const tags = useMemo(() => tagTree(items), [items]);
   const colors = useMemo(() => colorCounts(items), [items]); // 🎨 포스트잇 색별 개수
   const related = useMemo(() => relatedTags(items, filter), [items, filter]);
@@ -151,7 +181,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       return next;
     });
   };
-  const list = useMemo(() => sortItems(filterItems(items, filter, query, undefined, stickyKeys), sort), [items, filter, query, sort, stickyKeys]);
+  const list = useMemo(() => sortItems(filterItems(items, filter, query, undefined, stickyKeys, nl ? period : "all"), sort), [items, filter, query, sort, stickyKeys, nl, period]);
+  const hlTerms = useMemo(() => (nl ? highlightTerms(query) : []), [nl, query]); // 찾은 단어 노란 표시 (새 디자인)
   const selected = items.find(it => it.key === selectedKey) || null;
   const selIndex = list.findIndex(it => it.key === selectedKey);
 
@@ -299,14 +330,39 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       메모에 <b>#태그</b>나 <b>[[키워드]]</b>를 쓰면 여기에 모여요. <b>#투자/주식</b>처럼 쓰면 📂 투자 묶음으로 보여요.
     </div>
   );
-  const tagButtons = tags.length === 0 ? tagGuide : tags.map(e => (e.type === "group"
+  // 새 디자인: 분류 이름과 같은 태그(#업무)는 위 "분류"에 이미 들어가므로 태그 목록에서 뺀다
+  const shownTags = nl ? tags.filter(e => !(e.type === "tag" && cats.some(c => c.name === e.name))) : tags;
+  const tagButtons = shownTags.length === 0 ? tagGuide : shownTags.map(e => (e.type === "group"
     ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂"), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true))]
     : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#")));
   // 🎨 색상 — 포스트잇에서 색을 고른 메모가 있을 때만
   const colorButtons = Object.keys(STICKY_COLORS).filter(k => colors[k]).map(k => filterButton(`color:${k}`, `${STICKY_COLORS[k].name} (${colors[k]})`,
     <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: STICKY_COLORS[k].bg, border: `1px solid ${STICKY_COLORS[k].line}`, verticalAlign: "middle" }} />));
   const tagChipLabel = tagFilter ? `${filter.startsWith("@") ? "📂" : "#"} ${filter.slice(1)}` : "🏷 태그";
-  const filters = wide ? (
+  // 새 디자인 (2026-11-13 사용자 승인): 기간은 목록 위 칩 줄로 빼고(분류와 함께 고름), 🎨 색상 대신 일정 분류(업무·재무·직접 만든 것)
+  const nlBase = baseFilters.filter(f => !isPeriodFilter(f.id));
+  const catButtons = cats.map(c => filterButton(`cat:${c.id}`, `${c.name} (${catCounts[c.id] || 0})`,
+    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: c.color, verticalAlign: "middle" }} />));
+  const groupLabel = (txt) => <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>{txt}</div>;
+  const filters = nl ? (wide ? (
+    <>
+      {nlBase.map(f => filterButton(f.id, f.label, f.icon))}
+      {cats.length > 0 && groupLabel("분류")}
+      {catButtons}
+      {groupLabel("태그")}
+      {tagButtons}
+    </>
+  ) : (
+    <>
+      {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
+      {catButtons}
+      <button className={hit} onClick={() => setTagsOpen(o => !o)}
+        style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 16, border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+        {tagChipLabel} {tagsOpen ? "▴" : "▾"}
+      </button>
+      {nlBase.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
+    </>
+  )) : wide ? (
     <>
       {baseFilters.map(f => filterButton(f.id, f.label, f.icon))}
       {colorButtons.length > 0 && <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>🎨 색상</div>}
@@ -388,7 +444,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
                 style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
-                  {it.starred && "⭐ "}{it.title}
+                  {it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
                   {!cols && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
                 </td>
@@ -437,13 +493,27 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
       )}
     </div>
   );
-  const listArea = filter === "photo" ? wall : <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{pickBar}{table}</div>;
+  // 기간 칩 줄 (새 디자인) — 왼쪽 분류·태그와 함께 걸린다. "전체 기간"이 아니면 파랗게
+  const periodRow = nl && filter !== "trash" && (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
+      {PERIOD_FILTERS.map(p => {
+        const on = period === p.id;
+        return (
+          <button key={p.id} className={hit} onClick={() => { setPeriod(p.id); setLimit(PAGE); }} aria-pressed={on}
+            style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 16, border: on ? `1.5px solid ${ACCENT(nl)}` : border, background: on ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "transparent", color: on ? ACCENT(nl) : "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+            {p.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+  const listArea = <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{periodRow}{filter === "photo" ? wall : <>{pickBar}{table}</>}</div>;
 
   // [[키워드]]·#태그를 누르면 그 태그 목록으로 (크게 보던 중이면 목록이 보이게 돌아온다)
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
+    <DetailPane key={selected?.key || "none"} hlTerms={hlTerms} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
       big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -527,7 +597,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, onClose, onOp
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ nl, wide, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ nl, wide, hlTerms = null, item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -712,7 +782,7 @@ function DetailPane({ nl, wide, item, plans, onUpdateDayData, uid, onError, onOp
           placeholder={item.kind === "task" ? "일정 메모" : item.kind === "journal" ? "일기" : "메모"}
           style={{ flex: 1, minHeight: 80, resize: "none", padding: z("10px 12px", "12px 14px"), borderRadius: z(8, 12), border: nl ? "none" : "1px solid var(--dm-border)", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(14, 16), lineHeight: 1.7, fontFamily: "inherit", outline: "none" }} />
         {/* 링크 자리에 연한 파란 바탕·밑줄 (입력칸 위에 겹친 표시 층) */}
-        <LinkOverlay taRef={textRef} text={text} />
+        <LinkOverlay taRef={textRef} text={text} terms={hlTerms} />
         <IndentBar taRef={textRef} />
       </div>
       )}

@@ -1,6 +1,7 @@
 import { displayMemos } from "../components/MemoTimeline.jsx";
 import { parseWikiLinks } from "./knowledge.js";
 import { toDateStr, addDays } from "./date.js";
+import { searchTokens, matchesQuery } from "./searchText.js";
 
 const norm = (s) => (s || "").normalize("NFC").toLowerCase();
 const validTime = (t) => (/^\d{1,2}:\d{2}$/.test(t || "") ? t : ""); // 예전 앱이 넣은 "편집됨" 같은 값은 시각이 아님
@@ -37,7 +38,7 @@ export function buildManagerItems(plans) {
       if (!t.title?.trim()) return;
       items.push({
         key: `task|${ds}|${t.id}`, kind: "task", ds, id: t.id,
-        title: t.title.trim(), text: t.note || "", time: t.time || "", updatedAt: "",
+        title: t.title.trim(), text: t.note || "", time: t.time || "", updatedAt: "", cat: t.cat || "",
         done: !!t.done, starred: false, photos: t.photos || [], tags: parseWikiLinks(`${t.title} ${t.note || ""}`),
       });
     });
@@ -141,8 +142,31 @@ export function colorCounts(items) {
   return n;
 }
 
-// stickyKeys: 데스크탑 앱에서 지금 포스트잇으로 띄워 둔 메모("날짜|id")
-export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null) {
+// ── 검색 (2026-11-13 사용자 승인) — 띄어쓰기 = 그리고, 초성 검색, 찾은 단어 자리: utils/searchText.js ──
+export { choseongOf, searchTokens, highlightTerms, matchesQuery, termRanges } from "./searchText.js";
+
+// 기간 — 새 디자인에서는 왼쪽 분류와 따로 골라 겹쳐 쓴다("업무 + 최근 일주일")
+export const PERIOD_FILTERS = [
+  { id: "all", label: "전체 기간" },
+  { id: "today", label: "오늘" },
+  { id: "yesterday", label: "어제" },
+  { id: "d7", label: "일주일" },
+  { id: "d15", label: "15일" },
+  { id: "d30", label: "한달" },
+];
+export const isPeriodFilter = (id) => PERIOD_FILTERS.some((p) => p.id === id && id !== "all");
+
+// 일정 분류(업무·재무·직접 만든 것) — "cat:work"처럼. 일정은 달력과 같은 기준(it.catId — 화면이 catOf로 채움),
+// 메모·일기는 그 분류 이름 태그(#업무)가 붙은 것
+export const catMatcher = (filter) => (filter.startsWith("cat:") ? (it) => it.catId === filter.slice(4) : null);
+export function itemCatId(it, cats, catOfTask) {
+  if (it.kind === "task") return catOfTask(it) || "";
+  const hit = cats.find((c) => it.tags.includes(c.name));
+  return hit ? hit.id : "";
+}
+
+// stickyKeys: 데스크탑 앱에서 지금 포스트잇으로 띄워 둔 메모("날짜|id"). period: 기간(새 디자인 칩 줄, 기본 전체)
+export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null, period = "all") {
   const recent = (days) => {
     const from = addDays(today, -(days - 1));
     return (it) => it.ds >= from && it.ds <= today;
@@ -162,11 +186,13 @@ export function filterItems(items, filter, query, today = toDateStr(), stickyKey
     d15: recent(15),
     d30: recent(30),
     trash: () => true,
-  }[filter] || colorMatcher(filter) || tagMatcher(filter) || (() => true);
-  const q = norm(query.trim());
+  };
+  const pick = byFilter[filter] || colorMatcher(filter) || catMatcher(filter) || tagMatcher(filter) || (() => true);
+  const byPeriod = period && period !== "all" && byFilter[period] ? byFilter[period] : () => true;
+  const tokens = searchTokens(query);
   // 휴지통 항목은 휴지통 보기에서만, 다른 보기에서는 제외
   const inView = (it) => (filter === "trash" ? it.kind === "trash" : it.kind !== "trash");
-  return items.filter(it => inView(it) && byFilter(it) && (!q || norm(`${it.title}\n${it.text}`).includes(q)));
+  return items.filter(it => inView(it) && pick(it) && byPeriod(it) && matchesQuery(`${it.title}\n${it.text}`, tokens));
 }
 
 const SORTERS = {
