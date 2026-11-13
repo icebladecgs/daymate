@@ -3,9 +3,9 @@ import PhotoViewer from "./PhotoViewer.jsx";
 import { uploadPhoto, deletePhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 
-const TILE = 72;
-
-export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, onError }) {
+// tile: 칸 크기(기본 72). openRef: 밖의 버튼이 사진 고르기를 열 수 있게 함수를 넣어 준다.
+// emptyAdd=false면 사진이 없을 때 ＋ 칸을 그리지 않는다 (메모 관리자 — 버튼 줄의 "사진"으로 연다, 2026-11-14)
+export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, onError, tile: TILE = 72, openRef, emptyAdd = true }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
   const inputRef = useRef(null);
@@ -14,6 +14,7 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
     if (uploading || !uid) return;
     inputRef.current?.click();
   };
+  if (openRef) openRef.current = handlePick;
 
   const handleFile = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -44,8 +45,9 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   };
 
+  const small = TILE < 60;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: small ? 6 : 8 }}>
       <input ref={inputRef} type="file" accept="image/*" multiple onChange={handleFile} style={{ display: 'none' }} />
 
       {photos.map((p, idx) => (
@@ -69,13 +71,13 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
 
       {uploading ? (
         <div style={{ ...tileStyle, background: 'var(--dm-input)', border: '1.5px solid var(--dm-border)' }}>
-          <span className="dm-spin" style={{ fontSize: 26 }}>⏳</span>
+          <span className="dm-spin" style={{ fontSize: small ? 18 : 26 }}>⏳</span>
         </div>
       ) : (
-        uid && (
+        uid && (emptyAdd || photos.length > 0) && (
           <button
-            onClick={handlePick}
-            style={{ ...tileStyle, background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', fontSize: 22, color: 'var(--dm-muted)', cursor: 'pointer' }}
+            onClick={handlePick} aria-label="사진 추가"
+            style={{ ...tileStyle, ...(small ? { padding: 0 } : {}), background: 'var(--dm-input)', border: '1.5px dashed var(--dm-border)', fontSize: small ? 18 : 22, color: 'var(--dm-muted)', cursor: 'pointer' }}
           >＋</button>
         )
       )}

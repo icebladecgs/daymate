@@ -410,7 +410,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     </th>
   );
   const bulkBtn = { padding: z("4px 10px", "6px 12px"), borderRadius: 8, border, background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 };
-  const pickBar = filter !== "trash" && (
+  // 새 디자인은 "여러 개 고르기"를 따로 한 줄로 두지 않는다 — PC는 기간 줄 오른쪽 끝, 휴대폰은 분류 줄 오른쪽 ☑ (2026-11-14). 고르는 중일 때만 이 줄
+  const pickBar = filter !== "trash" && (!nl || picking) && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
       {!picking ? (
         <button className={hit} onClick={() => setPicking(true)} style={bulkBtn}>☑ 여러 개 고르기</button>
@@ -435,7 +436,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const table = (
     <div tabIndex={0} onKeyDown={onListKey} style={{ flex: 1, minHeight: 0, overflow: "auto", outline: "none" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-        <thead>
+        {/* 휴대폰(새 디자인)은 머리 줄(제목·날짜·📷) 없이 — 날짜 최신순 (2026-11-14). 머리 줄이 없으면 칸 폭은 colgroup으로 */}
+        {nl && !wide && <colgroup><col style={{ width: 34 }} /><col /><col style={{ width: 84 }} /><col style={{ width: 36 }} /></colgroup>}
+        <thead style={nl && !wide ? { display: "none" } : undefined}>
           <tr>
             {th("kind", "", { width: z(30, 34) })}
             {th("title", "제목")}
@@ -504,7 +507,23 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     </div>
   );
   // 기간 칩 줄 (새 디자인) — 왼쪽 분류·태그와 함께 걸린다. "전체 기간"이 아니면 파랗게
-  const periodRow = nl && filter !== "trash" && (
+  const pickStart = !picking && filter !== "trash" && filter !== "photo";
+  // 휴대폰(새 디자인): 기간은 칩 6개 대신 "전체 기간 ▾" 하나 — 분류 줄 맨 앞 (2026-11-14)
+  const periodLabel = PERIOD_FILTERS.find(p => p.id === period)?.label || "기간";
+  const periodSelect = nl && !wide && filter !== "trash" && (
+    <label className={hit} style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "7px 12px", borderRadius: 16, border: period !== PERIOD_FILTERS[0].id ? `1.5px solid ${ACCENT(nl)}` : border, background: period !== PERIOD_FILTERS[0].id ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: period !== PERIOD_FILTERS[0].id ? ACCENT(nl) : "var(--dm-sub)", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>
+      {periodLabel} ▾
+      <select value={period} onChange={e => { setPeriod(e.target.value); setLimit(PAGE); }} aria-label="기간"
+        style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }}>
+        {PERIOD_FILTERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+      </select>
+    </label>
+  );
+  const pickIconBtn = nl && !wide && pickStart && (
+    <button className={hit} onClick={() => setPicking(true)} aria-label="여러 개 고르기" title="여러 개 고르기"
+      style={{ flexShrink: 0, width: 40, height: 36, padding: 0, borderRadius: 10, border, background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: 17, cursor: "pointer" }}>☑</button>
+  );
+  const periodRow = nl && wide && filter !== "trash" && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
       {PERIOD_FILTERS.map(p => {
         const on = period === p.id;
@@ -515,6 +534,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
           </button>
         );
       })}
+      {pickStart && <span style={{ flex: 1 }} />}
+      {pickStart && <button className={hit} onClick={() => setPicking(true)} style={{ ...bulkBtn, border: "none", background: "transparent", color: "var(--dm-sub)" }}>☑ 여러 개 고르기</button>}
     </div>
   );
   const listArea = <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{periodRow}{filter === "photo" ? wall : <>{pickBar}{table}</>}</div>;
@@ -538,13 +559,16 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
           <input value={query} onChange={e => { setQuery(e.target.value); setLimit(PAGE); }}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); rememberQuery(); move(1); } else if (e.key === "ArrowDown" && (query || !recentQs.length)) { e.preventDefault(); move(1); } else if (e.key === "ArrowUp" && (query || !recentQs.length)) { e.preventDefault(); move(-1); } }}
             onBlur={rememberQuery} list="dm-memo-recent-q"
-            placeholder="검색 (메모·일정·일기)" autoFocus={canAutoFocus()}
+            placeholder={nl && !wide ? `${list.length}개에서 검색` : "검색 (메모·일정·일기)"} autoFocus={canAutoFocus()}
             style={{ flex: 1, minWidth: 0, padding: z("7px 10px", "9px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 16), fontFamily: "inherit", outline: "none" }} />
           <datalist id="dm-memo-recent-q">{recentQs.map(q => <option key={q} value={q} />)}</datalist>
+          {/* 휴대폰(새 디자인)은 ▼▲·개수 없이 — 목록 줄을 누르면 되고, 개수는 검색칸 안에 (2026-11-14) */}
+          {!(nl && !wide) && <>
           <button className={hit} onClick={() => move(1)} aria-label="다음" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▼</button>
           <button className={hit} onClick={() => move(-1)} aria-label="이전" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", color: ACCENT(nl), cursor: "pointer", fontSize: z(13, 15), flexShrink: 0 }}>▲</button>
+          </>}
           <button className={hit} onClick={() => setShowSettings(true)} aria-label="메모 설정" title="메모 설정 (자동완성·단축키)" style={{ width: z(30, 38), height: z(30, 38), padding: 0, borderRadius: 8, border, background: "var(--dm-input)", cursor: "pointer", fontSize: z(14, 16), flexShrink: 0 }}>⚙️</button>
-          <span style={{ fontSize: z(12, 14), ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), whiteSpace: "nowrap" }}>{list.length}개</span>
+          {!(nl && !wide) && <span style={{ fontSize: z(12, 14), ...(nl ? { color: "var(--dm-sub)", fontWeight: 700 } : muted), whiteSpace: "nowrap" }}>{list.length}개</span>}
           {scaleControl /* 가− 가+ 화면 크기 (PC만, 2026-11-11) */}
           {filter === "trash" && list.length > 0 && (
             <button onClick={emptyTrash} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(248,113,113,.4)", background: "rgba(248,113,113,.1)", color: "#F87171", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>휴지통 비우기</button>
@@ -578,7 +602,12 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
         </div>
       ) : nl ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          {!isBig && <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px", flexShrink: 0 }}>{filters}</div>}
+          {!isBig && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", flexShrink: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, overflowX: "auto" }}>{periodSelect}{filters}</div>
+              {pickIconBtn}
+            </div>
+          )}
           {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
           <div ref={colRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", borderTop: isBig ? "none" : border }}>
             {!isBig && <div style={{ flex: `0 0 ${listFrac * 100}%`, minHeight: 0, display: "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>}
@@ -620,6 +649,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
   const [moreOpen, setMoreOpen] = useState(false); // 새 디자인 ⋯ 더보기
   const [showHist, setShowHist] = useState(false); // 🕘 이전 내용 (2026-11-13)
   const textRef = useRef(null);
+  const photoPickRef = useRef(null); // 버튼 줄 "사진" → PhotoGallery 사진 고르기
   const z = (oldV, newV) => (nl ? newV : oldV);
 
   const saved = useRef({ text: initial, title: task?.title || "" });
@@ -756,7 +786,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
+        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, pickPhoto: uid && item.kind !== "journal" ? () => photoPickRef.current?.() : null, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -817,7 +847,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
       </div>
       )}
       {/* 편집 칸의 링크를 누를 수 있게 (보기 모드에선 글 속 링크를 바로 누르면 돼서 생략). 휴대폰은 Ctrl+클릭이 없어 이 버튼으로 연다 */}
-      {!viewMode && <MemoLinks text={text} hint={canAutoFocus() ? "Ctrl+클릭으로도 열려요" : ""} style={{ marginTop: 0, marginBottom: 0, flexShrink: 0 }} />}
+      {!viewMode && <MemoLinks text={text} hint={canAutoFocus() && !nl ? "Ctrl+클릭으로도 열려요" : ""} style={{ marginTop: 0, marginBottom: 0, flexShrink: 0 }} />}
       {item.kind === "journal" && (journal?.good || journal?.regret || journal?.tomorrow) && (
         <div style={{ fontSize: z(12, 14), color: "var(--dm-sub)", lineHeight: 1.6, flexShrink: 0, maxHeight: z(90, 110), overflowY: "auto" }}>
           {journal.good && <div>😊 잘한 일: {journal.good}</div>}
@@ -828,7 +858,9 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
       {item.kind !== "journal" && (
         <div style={{ flexShrink: 0 }}>
           {uid ? (
-            <PhotoGallery uid={uid} pathPrefix={`users/${uid}/memos`} photos={photos} onChange={setPhotos} onError={onError} />
+            // 새 디자인: 작은 칸(44), 사진이 없으면 ＋ 칸 없이 버튼 줄의 "사진"으로 (2026-11-14 사용자 요청)
+            <PhotoGallery uid={uid} pathPrefix={`users/${uid}/memos`} photos={photos} onChange={setPhotos} onError={onError}
+              {...(nl ? { tile: 44, emptyAdd: false, openRef: photoPickRef } : {})} />
           ) : photos.length > 0 && (
             <div style={{ display: "flex", gap: 6 }}>
               {photos.map((p, i) => <img key={p.path || i} src={p.url} alt="첨부 사진" onClick={() => setViewer(i)} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, cursor: "zoom-in" }} />)}
@@ -851,6 +883,7 @@ const ICONS = {
   today: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /><path d="M9 15l2 2 4-4" /></>,
   someday: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></>,
   done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
+  photo: <><rect x="3" y="5" width="18" height="15" rx="3" /><circle cx="9" cy="11" r="2" /><path d="M21 16l-5-5-8 9" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
   template: <><rect x="4" y="3" width="16" height="18" rx="2.5" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
@@ -880,15 +913,16 @@ const savedLabel = (dirty, updatedAt) => {
 };
 
 function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate }) {
+  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate, pickPhoto }) {
   const accent = "var(--dm-accent, #5B7CFA)";
   const memo = item.kind === "memo";
+  const [taskOpen, setTaskOpen] = useState(false); // "할일로" → 오늘로·언젠가로 고르기 (2026-11-14)
   useEffect(() => {
-    if (!moreOpen) return;
-    const onKey = (e) => { if (e.key === "Escape") setMoreOpen(false); };
+    if (!moreOpen && !taskOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") { setMoreOpen(false); setTaskOpen(false); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [moreOpen, setMoreOpen]);
+  }, [moreOpen, taskOpen, setMoreOpen]);
 
   // 아이콘 + 아래 설명 (누르는 칸 44, 테두리·바탕 없음). on = 켜진 상태(보냄 등)만 옅은 동그라미
   const tool = (key, icon, label, onClick, { on = false, color = accent, strong = false, keepFocus = false, title } = {}) => (
@@ -902,22 +936,34 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
       <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: on || strong ? color : "var(--dm-sub)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
     </button>
   );
-  // 머리 줄의 작은 버튼 (아이콘 + 옆 글자)
+  // 머리 줄의 작은 버튼 — 넓은 화면은 아이콘만(이름은 마우스를 올리면), 휴대폰은 아이콘 + 옆 글자 (2026-11-14)
   const headBtn = (icon, label, onClick, on, title) => (
-    <button onClick={onClick} title={title || label} aria-pressed={on}
-      style={{ display: "inline-flex", alignItems: "center", gap: 5, minHeight: 40, padding: "0 8px", borderRadius: 10, background: on ? `color-mix(in srgb, ${accent} 14%, transparent)` : "none",
+    <button onClick={onClick} title={title || label} aria-label={label} aria-pressed={on}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, minHeight: 40, minWidth: 40, padding: wide ? 0 : "0 8px", borderRadius: 10, background: on ? `color-mix(in srgb, ${accent} 14%, transparent)` : "none",
         border: "none", color: on ? accent : "var(--dm-sub)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-      <Ico name={icon} size={19} />{label}
+      <Ico name={icon} size={wide ? 21 : 19} />{!wide && label}
     </button>
   );
 
+  // 오늘로·언젠가로는 "할일로" 하나로 묶고 누르면 고른다 — 보낸 뒤 잠깐 결과를 버튼 이름에 (2026-11-14)
+  const taskSent = sentToday || (sentTask ? "보냄 ✓" : "");
   const tools = [
     !viewMode && tool("ai", "ai", "AI 정리", tidy.open, { strong: true, title: "AI가 메모를 정리 — 내 글과 비교하고 고른 뒤 바꾸기" }),
     tool("copy", "copy", "복사", copyText, { keepFocus: true, title: "내용 전체 복사" }),
-    memo && !viewMode && tool("today", "today", sentToday || "오늘로", sendToday, { on: !!sentToday, keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 오늘 할일로 — 시간·날짜가 쓰여 있으면 그대로" }),
-    memo && !viewMode && tool("someday", "someday", sentTask ? "보냄 ✓" : "언젠가로", sendSomeday, { on: sentTask, color: "#22C55E", keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 언젠가할일로" }),
+    memo && !viewMode && tool("task", "today", taskSent || "할일로", () => { setMoreOpen(false); setTaskOpen(o => !o); }, { on: !!taskSent || taskOpen, keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 오늘 할일·언젠가할일로" }),
     item.kind === "task" && tool("done", "done", taskDone ? "완료됨" : "완료", toggleDone, { on: taskDone, color: "#22C55E" }),
+    pickPhoto && tool("photo", "photo", "사진", pickPhoto, { title: "사진 추가 (캡처는 Ctrl+V로도 붙어요)" }),
   ].filter(Boolean);
+  const popStyle = { position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 41, minWidth: 200, padding: 6, borderRadius: 14,
+    background: "var(--dm-card)", boxShadow: "0 10px 30px rgba(0,0,0,.35)", border: "1px solid var(--dm-border)" };
+  const popItem = (icon, label, run, sub) => (
+    <button key={label} role="menuitem" onMouseDown={e => e.preventDefault()} onClick={() => { setTaskOpen(false); run(); }}
+      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", minHeight: 48, padding: "0 12px", borderRadius: 10, background: "none", border: "none",
+        color: "var(--dm-text)", fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span style={{ color: "var(--dm-sub)", display: "flex" }}><Ico name={icon} size={20} /></span>
+      <span>{label}<span style={{ display: "block", fontSize: 13, color: "var(--dm-muted)" }}>{sub}</span></span>
+    </button>
+  );
 
   // ⋯ 더보기 — 가끔 쓰는 것. 삭제는 맨 아래 빨간 글자
   const menu = [
@@ -964,12 +1010,20 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
       {/* 기능 줄 */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? `0 1 ${(tools.length + (menu.length ? 1 : 0)) * 72}px` : "1 1 100%", minWidth: 0, position: "relative" }}>
         {tools}
-        {menu.length > 0 && tool("more", "more", "더보기", () => setMoreOpen(o => !o), { on: moreOpen, color: "var(--dm-text)" })}
+        {menu.length > 0 && tool("more", "more", "더보기", () => { setTaskOpen(false); setMoreOpen(o => !o); }, { on: moreOpen, color: "var(--dm-text)" })}
+        {taskOpen && (
+          <>
+            <div onClick={() => setTaskOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+            <div role="menu" style={popStyle}>
+              {popItem("today", "오늘 할일로", sendToday, "시간·날짜가 쓰여 있으면 그대로")}
+              {popItem("someday", "언젠가할일로", sendSomeday, "커서가 있는 줄(또는 고른 글자)")}
+            </div>
+          </>
+        )}
         {moreOpen && (
           <>
             <div onClick={() => setMoreOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-            <div role="menu" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 41, minWidth: 200, padding: 6, borderRadius: 14,
-              background: "var(--dm-card)", boxShadow: "0 10px 30px rgba(0,0,0,.35)", border: "1px solid var(--dm-border)" }}>
+            <div role="menu" style={popStyle}>
               {menu.map((m, i) => (
                 <div key={m.label}>
                   {m.danger && i > 0 && <div style={{ height: 1, background: "var(--dm-border)", margin: "4px 6px" }} />}
