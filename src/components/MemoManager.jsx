@@ -92,6 +92,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   });
   const [limit, setLimit] = useState(PAGE);
   const [tagsOpen, setTagsOpen] = useState(false); // 좁은 화면: 태그 칩 묶음 펼침
+  const [fGroup, setFGroup] = useState(null); // 휴대폰(새 디자인): 펼친 묶음 "kind"·"cat"·"tag" (2026-11-14)
   const [showSettings, setShowSettings] = useState(false); // ⚙️ 메모 설정
   // ⤢ 크게: 목록을 접고 편집 칸을 넓게 / 👁 보기: 읽기 좋게 그린 화면 (둘 다 기본 꺼짐 — 지금처럼 바로 고치는 방식이 기본)
   const [big, setBig] = useState(false);
@@ -337,7 +338,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const filterButton = (id, label, icon, indent = false) => {
     const active = filter === id;
     return (
-      <button key={id} className={hit} onClick={() => { changeFilter(id); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
+      <button key={id} className={hit} onClick={() => { changeFilter(id); setFGroup(null); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
         style={wide
           ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "var(--dm-accent-soft, rgba(108,142,255,.18))" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
           : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
@@ -345,14 +346,25 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       </button>
     );
   };
-  // 휴대폰(새 디자인) 분류 줄의 글자 탭
-  const tabBtn = (key, active, onClick, label, count) => (
-    <button key={key} onClick={onClick} aria-pressed={active}
-      style={{ flexShrink: 0, height: 42, padding: "0 10px", border: "none", borderRadius: 0, background: "none", borderBottom: `2.5px solid ${active ? ACCENT(nl) : "transparent"}`,
-        color: active ? "var(--dm-text)" : "var(--dm-sub)", fontSize: 15, fontWeight: active ? 800 : 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
-      {label}{count !== undefined && <span style={{ marginLeft: 4, fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>{count}</span>}
-    </button>
-  );
+  // 휴대폰(새 디자인) 묶음 버튼 [종류 ▾] [분류 ▾] [태그 ▾] — 누른 묶음만 아래로 펼치고, 고르면 버튼 이름이 고른 것으로 (2026-11-14 사용자 제안)
+  const curGroup = filter === BASE_FILTERS[0].id ? null : filter.startsWith("cat:") ? "cat" : (filter.startsWith("#") || filter.startsWith("@")) ? "tag" : "kind";
+  const groupBtn = (g, name) => {
+    const active = curGroup === g;
+    const open = fGroup === g;
+    const label = !active ? name
+      : g === "cat" ? (cats.find(c => `cat:${c.id}` === filter)?.name || name)
+      : g === "tag" ? filter.slice(1)
+      : (BASE_FILTERS.find(f => f.id === filter)?.label || name);
+    return (
+      <button key={g} onClick={() => setFGroup(o => (o === g ? null : g))} aria-expanded={open}
+        style={{ flexShrink: 1, minWidth: 0, maxWidth: 130, height: 38, padding: "0 12px", display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 19, border: "none",
+          background: active ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : open ? "var(--dm-row)" : "var(--dm-input)",
+          color: active ? ACCENT(nl) : "var(--dm-text)", fontSize: 15, fontWeight: active ? 800 : 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ fontSize: 10, opacity: 0.7, flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+      </button>
+    );
+  };
   // 태그 영역 — #부모/자식은 📂 카테고리로 묶는다(지식 화면에서 옮겨 옴). 좁은 화면에서는 "🏷 태그" 칩 하나로 접어 둔다
   const tagGuide = (
     <div style={{ ...muted, fontSize: z(12, 13), lineHeight: 1.6, padding: wide ? "2px 10px" : "2px 2px" }}>
@@ -382,13 +394,15 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       {tagButtons}
     </>
   ) : (
-    // 휴대폰: 상자 없는 글자 탭 — 고른 것만 진하게 + 파란 밑줄, 숫자는 괄호 없이 연하게 (2026-11-14 사용자 승인 A안)
+    // 휴대폰: [✕ 전체](고른 게 있을 때만) [종류 ▾] [분류 ▾] [태그 ▾] — 세 묶음 중 하나만 걸린다
     <>
-      {tabBtn(BASE_FILTERS[0].id, filter === BASE_FILTERS[0].id, () => changeFilter(BASE_FILTERS[0].id), BASE_FILTERS[0].label)}
-      {cats.map(c => tabBtn(`cat:${c.id}`, filter === `cat:${c.id}`, () => changeFilter(`cat:${c.id}`),
-        <><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: c.color, marginRight: 6, verticalAlign: "middle", position: "relative", top: -1 }} />{c.name}</>, catCounts[c.id] || 0))}
-      {tabBtn("tags", !!tagFilter || tagsOpen, () => setTagsOpen(o => !o), <>{tagFilter ? tagChipLabel.replace("🏷 ", "") : "태그"} <span style={{ fontSize: 11 }}>{tagsOpen ? "▲" : "▼"}</span></>)}
-      {nlBase.slice(1).map(f => tabBtn(f.id, filter === f.id, () => changeFilter(f.id), f.label))}
+      {curGroup && (
+        <button onClick={() => { changeFilter(BASE_FILTERS[0].id); setFGroup(null); }} aria-label="전체 보기" title="전체 보기"
+          style={{ flexShrink: 0, height: 38, padding: "0 10px", display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 19, border: "none", background: "none", color: "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>✕ 전체</button>
+      )}
+      {groupBtn("kind", "종류")}
+      {cats.length > 0 && groupBtn("cat", "분류")}
+      {groupBtn("tag", "태그")}
     </>
   )) : wide ? (
     <>
@@ -719,15 +733,19 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       ) : nl ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {!phoneEdit && (
-            // 글자 탭(옆으로 밀기, 끝은 흐리게) | 📅 기간 · ☑ 여러 개 고르기
-            <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "2px 8px 0 4px", flexShrink: 0, borderBottom: border }}>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", overflowX: "auto", scrollbarWidth: "none",
-                WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 28px), transparent)", maskImage: "linear-gradient(to right, #000 calc(100% - 28px), transparent)" }}>{filters}</div>
+            // [종류 ▾] [분류 ▾] [태그 ▾] | 📅 기간 · ☑ 여러 개 고르기
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 8px 8px 12px", flexShrink: 0, borderBottom: fGroup ? "none" : border }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>{filters}</div>
               {periodSelect}
               {pickIconBtn}
             </div>
           )}
-          {!phoneEdit && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          {/* 누른 묶음만 펼침 — 4줄 높이까지, 넘치면 그 안에서 스크롤. 하나 고르면 접힌다 */}
+          {!phoneEdit && fGroup && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 10px", maxHeight: 4 * 44, overflowY: "auto", flexShrink: 0, borderBottom: border }}>
+              {fGroup === "kind" ? nlBase.slice(1).map(f => filterButton(f.id, f.label, f.icon)) : fGroup === "cat" ? catButtons : tagButtons}
+            </div>
+          )}
           {/* 목록은 편집 중에도 지우지 않고 숨긴다 — 돌아오면 보던 자리 그대로 */}
           <div style={{ flex: 1, minHeight: 0, display: phoneEdit ? "none" : "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>
           {phoneEdit && (
