@@ -69,7 +69,8 @@ export default function WrongNotes({ uid, notes, setNotes, exam, todayStr, onClo
   const target = document.querySelector('.dm-phone') || document.body;
   const open = list.find(n => n.id === openId);
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 260, background: 'var(--dm-bg)', display: 'flex', flexDirection: 'column' }}>
+    // zIndex 600: 메모 탭 쓰기 화면(fullScreenPanel 500) 위 — 260이던 때 메모 탭에서 열면 뒤에 숨어 안 열리는 것처럼 보였다 (2026-11-14)
+    <div style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'var(--dm-bg)', display: 'flex', flexDirection: 'column' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'max(14px, env(safe-area-inset-top)) 16px 10px', borderBottom: '1px solid var(--dm-border)' }}>
         <div style={{ flex: 1, fontSize: 20, fontWeight: 900, color: 'var(--dm-text)' }}>📕 오답 노트</div>
@@ -158,7 +159,7 @@ function WrongNoteDetail({ note, todayStr, onClose, onReview, onEdit, onDelete }
   const ans = note.answerPhotos || [];
   const big = { width: '100%', borderRadius: 12, border: '1px solid var(--dm-border)', marginBottom: 8, cursor: 'zoom-in', display: 'block' };
   return (
-    <ExamSheet label={`📕 ${dueText(note, todayStr)} · ${formatShortKoreanDate(note.ds || todayStr)} 저장`} title={`${note.sub}${note.unit ? ` · ${note.unit}` : ''}`} onClose={onClose}>
+    <ExamSheet zIndex={650} label={`📕 ${dueText(note, todayStr)} · ${formatShortKoreanDate(note.ds || todayStr)} 저장`} title={`${note.sub}${note.unit ? ` · ${note.unit}` : ''}`} onClose={onClose}>
       {ph.map((p, i) => <img key={p.path || i} src={p.url} alt="문제 사진" onClick={() => setViewer({ photos: ph, index: i })} style={big} />)}
       {(note.reason || note.memo) && (
         <div style={{ fontSize: 15, color: 'var(--dm-text)', lineHeight: 1.6, margin: '6px 0 12px', whiteSpace: 'pre-wrap' }}>
@@ -225,7 +226,7 @@ function WrongNoteEditor({ uid, note, exam, notes, todayStr, onSave, onClose, on
   };
   const label = { fontSize: 14, fontWeight: 900, color: 'var(--dm-text)', margin: '14px 0 8px' };
   return (
-    <ExamSheet label="📕 오답 노트" title={isNew ? '오답 추가' : '오답 고치기'} onClose={close}>
+    <ExamSheet zIndex={650} label="📕 오답 노트" title={isNew ? '오답 추가' : '오답 고치기'} onClose={close}>
       <div style={{ ...label, marginTop: 0 }}>문제 사진 <span style={{ fontSize: 13, color: 'var(--dm-muted)', fontWeight: 700 }}>· 앨범이나 카메라에서 그대로</span></div>
       <PhotoGallery uid={uid} pathPrefix={`users/${uid}/wrong`} photos={photos} onChange={setPhotos} onError={onError} />
       <div style={label}>과목</div>

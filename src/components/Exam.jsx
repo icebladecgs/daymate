@@ -25,11 +25,12 @@ const smallBtn = {
 const xBtn = { background: 'none', border: 'none', color: 'var(--dm-muted)', cursor: 'pointer', fontSize: 17, padding: '0 4px', flexShrink: 0 };
 
 // 할일 상세와 같은 이유로 앱 루트(.dm-phone)에 포털 (하단 메뉴에 가려지지 않게)
-export function ExamSheet({ label, title, onClose, children }) {
+// zIndex: 오답 노트(600) 안에서 열 때는 그보다 위로 (WrongNotes.jsx)
+export function ExamSheet({ label, title, onClose, children, zIndex = 300 }) {
   useBackClose(onClose);
   const target = document.querySelector('.dm-phone') || document.body;
   return createPortal(
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 430, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'var(--dm-bg)', borderRadius: '20px 20px 0 0', border: '1px solid var(--dm-border)', borderBottom: 'none', boxShadow: '0 -8px 32px rgba(0,0,0,.35)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 20px 10px' }}>
