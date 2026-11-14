@@ -85,6 +85,8 @@ const Dashboard = lazy(() => import("./screens/Dashboard.jsx"));
 
 // 1회성 복구 완료 표시 — 예전 병합 로직이 서버의 할일 메모·사진·파일을 지웠을 수 있어 한 번 되살린다
 const DAY_DETAIL_RESTORED_KEY = "dm_day_detail_restored_v1";
+// 아래 메뉴의 탭 화면 (BottomNav) — 뒤로가기 기록에서 탭끼리는 쌓지 않는다
+const TAB_SCREENS = new Set(["today", "my", "memo", "history", "community", "settings"]);
 
 
 const CHUNK_LOAD_ERROR_RE =/Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
@@ -137,23 +139,35 @@ export default function App() {
   const screenRef = useRef(null);
   useEffect(() => { screenRef.current = screen; window.__dmScreen = screen; }, [screen]); // __dmScreen: 오류 기록에 어느 화면이었는지 남김
 
-  // 안드로이드 뒤로가기 처리
+  // 안드로이드 뒤로가기 처리 (2026-11-14 다시 짬 — 사용자 제보 "뒤로 가면 직전 메뉴가 아니라 종료 안내, 종료도 안 됨")
+  // 기록: [바닥(isRoot)] [오늘(base)] [아래 탭(onBase) — 탭끼리는 바꿔 끼움] [세부 화면들…]
+  //  · 아래 메뉴로 탭을 옮기면 쌓지 않고 바꿔 끼운다 → 어느 탭이든 뒤로 한 번이면 오늘, 오늘에서 뒤로는 종료
+  //  · 주소로 바로 연 화면(앱 아이콘 바로가기·알림)도 오늘 위에 한 칸 얹어 → 뒤로 가면 오늘 (예전엔 바로 종료 안내)
+  //  · 종료: "한 번 더 누르면 종료돼요" 안내 — 2.5초 안에 또 누르면 앱이 닫힌다(바닥 아래로는 웹이 막을 수 없음).
+  //    예전 확인창 + history.go(-1)은 바닥에서 더 갈 곳이 없어 아무 일도 없었다.
+  const exitTimerRef = useRef(null);
   useEffect(() => {
+    const first = screenRef.current || 'today';
     history.replaceState({ screen: 'today', isRoot: true }, '', window.location.href);
-    history.pushState({ screen: 'today', isRoot: false }, '', window.location.href);
+    history.pushState({ screen: 'today', base: true }, '', window.location.href);
+    if (first !== 'today') history.pushState({ screen: first, onBase: TAB_SCREENS.has(first) }, '', window.location.href);
     const handler = (e) => {
       if (!e.state || e.state.isRoot) {
-        const confirmed = window.confirm('앱을 종료하시겠습니까?');
-        if (confirmed) {
-          history.go(-1); // 히스토리 바닥 이전으로 → Android PWA 종료
-        } else {
-          history.pushState({ screen: screenRef.current, isRoot: false, rootBelow: true }, '', `?screen=${screenRef.current}`);
+        clearTimeout(exitTimerRef.current);
+        if (screenRef.current !== 'today') { // 오늘이 아닌 곳에서 바닥에 닿음 → 먼저 오늘로
+          setScreen('today');
+          history.pushState({ screen: 'today', base: true }, '', window.location.pathname);
+          return;
         }
-      } else {
-        setScreen(e.state.screen === 'home' ? 'today' : e.state.screen);
-        if (e.state.screen === 'detail' && e.state.date) {
-          setOpenDate(e.state.date);
-        }
+        setToast('뒤로 한 번 더 누르면 종료돼요');
+        exitTimerRef.current = setTimeout(() => {
+          if (history.state?.isRoot) history.pushState({ screen: 'today', base: true }, '', window.location.pathname);
+        }, 2500);
+        return;
+      }
+      setScreen(e.state.screen === 'home' ? 'today' : (e.state.screen || 'today'));
+      if (e.state.screen === 'detail' && e.state.date) {
+        setOpenDate(e.state.date);
       }
     };
     window.addEventListener('popstate', handler);
@@ -2581,9 +2595,40 @@ export default function App() {
     setHistoryInitialGoalsOpen(s === 'history' && !!options.openGoals);
     setScreen(s);
     try { document.activeElement?.blur?.(); } catch {}
-    history.pushState({ screen: s, isRoot: false }, '', `?screen=${s}`);
+    if (history.state?.isRoot) history.pushState({ screen: 'today', base: true }, '', window.location.pathname); // 종료 안내 중에 옮김
+    history.pushState({ screen: s }, '', `?screen=${s}`);
   };
   navigateRef.current = changeScreen;
+  // 아래 메뉴로 탭 옮기기 — 오늘 바로 위 탭 칸은 쌓지 않고 바꿔 끼운다 (위 "안드로이드 뒤로가기 처리" 참고)
+  const navTab = (s) => {
+    const st = history.state || {};
+    if (s === screenRef.current) return;
+    if (st.onBase) {
+      if (s === 'today') { history.back(); return; } // 오늘 칸으로 돌아가면 popstate가 화면을 바꾼다
+      setCommunityInitialTab(null); setCommunityInitialChallengeId(null); setHistoryInitialGoalsOpen(false);
+      setScreen(s);
+      try { document.activeElement?.blur?.(); } catch {}
+      history.replaceState({ screen: s, onBase: true }, '', `?screen=${s}`);
+      return;
+    }
+    if (st.base || st.isRoot) {
+      if (st.isRoot) history.pushState({ screen: 'today', base: true }, '', window.location.pathname);
+      if (s === 'today') { setScreen('today'); return; }
+      setCommunityInitialTab(null); setCommunityInitialChallengeId(null); setHistoryInitialGoalsOpen(false);
+      setScreen(s);
+      try { document.activeElement?.blur?.(); } catch {}
+      history.pushState({ screen: s, onBase: true }, '', `?screen=${s}`);
+      return;
+    }
+    changeScreen(s); // 세부 화면 위에서 누른 탭은 예전처럼 쌓는다(뒤로 가면 그 세부 화면)
+  };
+  // 화면 안 ← 버튼: 이 화면으로 들어온 기록이 있으면 직전 메뉴로, 없으면 fallback
+  const goBack = (fallback) => {
+    const st = history.state;
+    if (st && !st.isRoot && !st.base && st.screen === screenRef.current) history.back();
+    else if (TAB_SCREENS.has(fallback)) navTab(fallback);
+    else changeScreen(fallback);
+  };
 
   const renderScreen = () => {
     if (screen === "my") {
@@ -2722,7 +2767,7 @@ export default function App() {
           user={user}
           questions={diaryQuestions}
           toast={toast} setToast={setToast}
-          onBack={() => changeScreen("today")}
+          onBack={() => goBack("today")}
           onComplete={(composedText) => {
             setTodayData(prev => ({
               ...prev,
@@ -2816,7 +2861,7 @@ export default function App() {
           battleRecord={battleRecord}
           battleNickname={battleNickname}
           onSetBattleNickname={setBattleNickname}
-          onBack={() => changeScreen("today")}
+          onBack={() => goBack("my")}
           onStartBattle={(npcId) => { setBattleNpcId(npcId); changeScreen("battle"); }}
           gear={battleGear} setGear={updateGear} wanderer={wanderer} loggedIn={!!authUser} shopSeed={authUser?.uid || "local"}
           quest={(() => { const week = weekOf(toDateStr()); return { week, quests: weekQuests(week, authUser?.uid || "local", habits.length > 0), progress: questProgress(plans, week, toDateStr(), battleGear) }; })()}
@@ -2830,7 +2875,7 @@ export default function App() {
           statXp={statXp}
           npcId={battleNpcId}
           battleNickname={battleNickname}
-          onExit={() => changeScreen("battle-arena")}
+          onExit={() => goBack("battle-arena")}
           onBattleEnd={onBattleEnd}
           gear={gearBonus(battleGear)}
           npcOverride={battleNpcId === "wander" ? wanderer : null}
@@ -2911,7 +2956,7 @@ export default function App() {
     }
     if (screen === "admin") {
       return canOpenAdmin
-        ? <Admin authUser={authUser} onBack={() => changeScreen("settings")} />
+        ? <Admin authUser={authUser} onBack={() => goBack("settings")} />
         : <Settings catCtx={catCtx}
           statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser}
@@ -2950,7 +2995,7 @@ export default function App() {
         />;
     }
     if (screen === "chat") {
-      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => changeScreen("my")}
+      return <Chat user={user} todayData={todayData} habits={habits} scores={scores} onBack={() => goBack("my")}
         onSetTodayTasks={onSetTodayTasks}
         onSetMemo={(memo) => setTodayData(prev => ({ ...prev, memos: [...(prev.memos || []), { id: `m_${Date.now()}`, text: memo, createdAt: new Date().toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' }) }] }))}
         onToggleHabit={onToggleHabit}
@@ -2972,7 +3017,7 @@ export default function App() {
           onOpenDate={openDetail}
           authUser={authUser}
           toast={toast} setToast={setToast}
-          onBack={() => changeScreen('my')}
+          onBack={() => goBack('my')}
         />
       );
     }
@@ -2995,7 +3040,7 @@ export default function App() {
     if (screen === "life-coach") {
       return <LifeCoach
         user={user}
-        onBack={() => changeScreen("settings")}
+        onBack={() => goBack("settings")}
         onApplyPlan={(plan) => {
           // 할일 등록
           if (plan.tasks?.length) {
@@ -3094,7 +3139,7 @@ export default function App() {
           <StatAskBar key={statAsk.key} title={statAsk.title} onAnswer={answerStatAsk}
             onClose={() => setStatAsk(null)} onStop={() => { setStatAsk(null); setStatAskOff(true); }} />
         )}
-        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "dashboard" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={changeScreen} badge={{
+        {screen !== "detail" && screen !== "admin" && screen !== "chat" && screen !== "manager" && screen !== "dashboard" && screen !== "battle-arena" && screen !== "battle" && <BottomNav screen={screen} setScreen={navTab} badge={{
           home: (todayData?.tasks || []).filter(t => t.title.trim() && !t.done).length || 0,
           community: screen !== "community" ? communityUnread : 0,
         }} />}

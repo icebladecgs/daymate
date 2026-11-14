@@ -285,7 +285,7 @@ ${lottoNums.join(' · ')}`, time);
         <div style={nl ? boxCard : { margin: '0 16px 10px' }}>
           {nl ? <SectionHeading icon="sparkle" style={{ paddingTop: 0, marginBottom: 10 }}>운세 · 로또</SectionHeading> : <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--dm-muted)', letterSpacing: '0.06em', marginBottom: 8, paddingTop: 4 }}>🔮 운세 · 로또</div>}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); history.pushState({ modal: 'fortune' }, ''); }}
+            <button onClick={() => { if (!fortuneData && birthDate) loadFortune(); setFortuneModalOpen(true); /* 뒤로가기 기록은 useBackClose가 만든다 — 따로 쌓으면 뒤로를 두 번 눌러야 했다 */ }}
               style={{ flex: 1, background: `${fl.color}22`, border: `1px solid ${fl.color}55`, borderRadius: 12, padding: nl ? '7px 12px' : '9px 12px', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ fontSize: nl ? 13 : 10, color: 'var(--dm-muted)', fontWeight: 700, marginBottom: 3 }}>오늘의 운세</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>

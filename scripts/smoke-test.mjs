@@ -57,6 +57,15 @@ try {
   if ((await page.evaluate(() => JSON.stringify(history.state))).includes('dmSheetGuard')) fail('뒤로가기: 창을 닫았는데 기록에 칸이 남음');
   else ok('뒤로가기: 기록 정리');
 
+  // 뒤로가기 (2026-11-14): 아래 메뉴로 탭을 여러 번 옮겨도 뒤로 한 번이면 오늘, 바로 연 화면(앱 아이콘 바로가기)도 뒤로 → 오늘
+  const backTo = async (label) => { await page.evaluate(() => history.back()); await sleep(500); const s = await page.evaluate(() => window.__dmScreen); if (s === 'today') ok(label); else fail(`${label} (화면=${s})`); };
+  page.on('dialog', d => { fail(`뒤로가기 중 대화상자: ${d.message()}`); d.dismiss(); });
+  await page.goto(BASE); await page.waitForSelector('.dm-phone'); await sleep(700);
+  for (const t of ['메모', 'My', '달력', '설정']) { await page.locator('button', { hasText: new RegExp(`^${t}`) }).last().click(); await sleep(350); }
+  await backTo('뒤로가기: 탭 여러 번 옮긴 뒤 → 오늘');
+  await page.goto(`${BASE}/?screen=manager`); await page.waitForSelector('.dm-phone'); await sleep(900);
+  await backTo('뒤로가기: 바로 연 메모 관리자 → 오늘');
+
   // 대시보드 ✕ 닫기: 주소로 바로 열어 돌아갈 화면이 없어도 닫힌다 ("앱을 종료하시겠습니까?"가 뜨던 문제)
   await page.goto(`${BASE}/?screen=dashboard`);
   await page.waitForSelector('.dm-dash', { timeout: 15000 });
