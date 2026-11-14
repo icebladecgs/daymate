@@ -537,6 +537,20 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('통계: 틀린 이유 많은 순·두 번 이상 틀린 단원만', st.reasons[0][0] === '계산 실수' && st.reasons[0][1] === 2 && same(st.units, [['수학 · 극한', 2]]));
 }
 
+// ── 첫 로그인 동의 (2026-11-14, utils/consent.js) ──
+{
+  const C = await load('/src/utils/consent.js');
+  t('동의: 기록 없음·버전 다름·14세 확인 없음이면 다시 묻기', C.needsConsent(null) && C.needsConsent({ terms: 'old', privacy: C.LEGAL_VERSION, age14: true })
+    && C.needsConsent({ terms: C.LEGAL_VERSION, privacy: C.LEGAL_VERSION }) && !C.needsConsent(C.makeConsent()));
+  const mc = C.makeConsent(new Date('2026-11-14T01:02:03Z'));
+  t('동의: 저장 모양(버전·14세·날짜)', mc.terms === C.LEGAL_VERSION && mc.privacy === C.LEGAL_VERSION && mc.age14 === true && mc.at === '2026-11-14T01:02:03.000Z');
+  const terms = C.cleanLegal(readFileSync('docs/legal/terms.md', 'utf8'));
+  const privacy = C.cleanLegal(readFileSync('docs/legal/privacy.md', 'utf8'));
+  t('약관 보기: 초안 메모(인용 줄·🔶·"(초안)")는 빼고 빈칸은 채움', ![terms, privacy].some(d => /🔶|^\s*>|\(초안\)|\[운영자명\]|\[문의 이메일\]|\[YYYY/m.test(d)), [terms, privacy].map(d => (d.match(/🔶|^\s*>.*|\(초안\)|\[[^\]]+\](?!\()/m) || [''])[0]).join(' / '));
+  t('약관 보기: 중요한 문장은 그대로', terms.includes('**만 14세 미만은 가입할 수 없습니다.**') && terms.startsWith('# DayMate 이용약관') && privacy.includes('| Anthropic PBC (Claude) | 미국 |'));
+  t('약관 보기: 정해진 운영자명·이메일은 그대로 들어감', C.cleanLegal('[운영자명]·[문의 이메일]', { operator: '홍길동', email: 'a@b.c', effective: '' }) === '홍길동·a@b.c');
+}
+
 // ── 다가오는 날·날씨 조언 ──
 {
   const people = [

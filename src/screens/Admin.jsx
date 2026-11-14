@@ -6,6 +6,7 @@ import { pad2 } from "../utils/date.js";
 import S from "../styles.js";
 import AdminErrorLogs from "../components/AdminErrorLogs.jsx";
 import AdminRoadmap from "../components/AdminRoadmap.jsx";
+import { CONSENT_ENABLED, LEGAL_VERSION, LEGAL_INFO } from "../utils/consent.js";
 
 // 문의·제안 → 📋 업그레이드 할 일로 옮기기. 문서 id를 s_제안id로 해서 두 번 들어가지 않는다. 이메일은 옮기지 않는다.
 function SuggestionToRoadmap({ s }) {
@@ -79,7 +80,7 @@ function isWithinDays(isoStr, days) {
   return Date.now() - new Date(isoStr).getTime() < days * 86400000;
 }
 
-export default function Admin({ authUser, onBack }) {
+export default function Admin({ authUser, onBack, onPreviewConsent, consent }) {
   const [status, setStatus] = useState("checking"); // checking | denied | loading | ready | error
   const [users, setUsers] = useState([]);
   const [daysMap, setDaysMap] = useState({});
@@ -299,6 +300,18 @@ export default function Admin({ authUser, onBack }) {
         {activeTab === 'errors' && <AdminErrorLogs />}
 
         {/* 업그레이드 탭 — 관리자만 보는 개발 할 일 메모장 (원본 목록은 docs/ROADMAP.md) */}
+        {activeTab === 'roadmap' && onPreviewConsent && (
+          // 📜 첫 로그인 동의 화면 (2026-11-14, utils/consent.js) — 공개 전에는 꺼 두고 여기서만 미리 본다
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 12, borderRadius: 12, background: 'var(--dm-input)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--dm-text)' }}>📜 첫 로그인 동의 화면 — {CONSENT_ENABLED ? '켜짐' : '꺼짐 (공개 때 켬)'}</div>
+              <div style={{ fontSize: 13, color: 'var(--dm-muted)', marginTop: 3 }}>
+                약관·방침 버전 {LEGAL_VERSION} · 내 동의: {consent?.at ? consent.at.slice(0, 10) : '없음'}{!LEGAL_INFO.operator || !LEGAL_INFO.email || !LEGAL_INFO.officer ? ' · 운영자명·문의 이메일·보호책임자 빈칸' : ''}
+              </div>
+            </div>
+            <button onClick={onPreviewConsent} style={{ flexShrink: 0, height: 40, padding: '0 14px', borderRadius: 10, border: 'none', background: 'var(--dm-accent, #5B7CFA)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>미리 보기</button>
+          </div>
+        )}
         {activeTab === 'roadmap' && <AdminRoadmap />}
 
         {/* 랭킹 탭 */}

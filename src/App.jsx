@@ -8,6 +8,7 @@ import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
 import { normalizeDdays } from "./utils/ddays.js";
 import { normalizeTaskCats, rememberCat } from "./utils/taskCategory.js";
 import { normalizeTagLayout } from "./utils/memoManager.js";
+import { CONSENT_ENABLED, needsConsent, makeConsent } from "./utils/consent.js";
 import { normalizeSubs } from "./utils/subscriptions.js";
 import { normalizeDreams } from "./utils/dreams.js";
 import Dreams from "./screens/Dreams.jsx";
@@ -78,6 +79,7 @@ const LifeCoach = lazy(() => import("./screens/LifeCoach.jsx"));
 const VoiceDiary = lazy(() => import("./screens/VoiceDiary.jsx"));
 const MemoHome = lazy(() => import("./screens/MemoHome.jsx"));
 const MemoManager = lazy(() => import("./components/MemoManager.jsx"));
+const ConsentGate = lazy(() => import("./components/ConsentGate.jsx")); // 첫 로그인 동의 (2026-11-14, utils/consent.js)
 const MemoLockSheet = lazy(() => import("./components/MemoLockSheet.jsx"));
 const BattleArena = lazy(() => import("./screens/BattleArena.jsx"));
 const Battle = lazy(() => import("./screens/Battle.jsx"));
@@ -345,6 +347,9 @@ export default function App() {
 
   const [authUser, setAuthUser] = useState(null);
   const canOpenAdmin = isPrimaryAdmin(authUser?.uid);
+  // 첫 로그인 동의 (2026-11-14) — undefined: 아직 모름(로그인 정리 중), null: 동의 기록 없음
+  const [consent, setConsent] = useState(undefined);
+  const [consentPreview, setConsentPreview] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [authResolved, setAuthResolved] = useState(false); // 로그인 여부를 처음 확인했는지 (반복 할일 넣기를 그때까지 미룸)
   const syncReadyRef = useRef(false);
@@ -1595,6 +1600,7 @@ export default function App() {
       }
       setAuthUser(firebaseUser);
       setAuthResolved(true);
+      setConsent(undefined);
       if (!firebaseUser) return;
 
       setSyncStatus('syncing');
@@ -1613,6 +1619,7 @@ export default function App() {
         if (hasRemote) {
           if (remote.settings) {
             const s = remote.settings;
+            setConsent(s.consent || null);
             if (s.name) { setUser({ name: s.name }); store.set("dm_user", { name: s.name }); updateUserMeta(firebaseUser.uid, { name: s.name }).catch(() => {}); }
             if (s.notifEnabled !== undefined) { setNotifEnabled(s.notifEnabled); store.set("dm_notif_enabled", s.notifEnabled); }
             if (s.alarmTimes) { setAlarmTimes(s.alarmTimes); store.set("dm_alarm_times", s.alarmTimes); }
@@ -1771,6 +1778,7 @@ export default function App() {
         }
         syncReadyRef.current = true;
         setSyncStatus('synced');
+        setConsent(c => (c === undefined ? null : c)); // 설정이 없던 계정(새 가입)도 동의 기록 없음으로
         // Firebase 동기화 완료 후 GCal 자동 동기화 — syncReadyRef=true 이후 실행해야 Firestore에 저장됨
         const gcalToday = toDateStr();
         if (store.get('dm_last_gcal_sync', '') !== gcalToday) {
@@ -2964,7 +2972,7 @@ export default function App() {
     }
     if (screen === "admin") {
       return canOpenAdmin
-        ? <Admin authUser={authUser} onBack={() => goBack("settings")} />
+        ? <Admin authUser={authUser} onBack={() => goBack("settings")} onPreviewConsent={() => setConsentPreview(true)} consent={consent} />
         : <Settings catCtx={catCtx}
           statWords={statWords} setStatWords={setStatWords} statAskOff={statAskOff} setStatAskOff={setStatAskOff} exam={exam} setExam={setExam} workHours={workHours} setWorkHours={setWorkHours}
           user={user} setUser={setUser}
@@ -3118,6 +3126,18 @@ export default function App() {
             {renderScreen()}
           </ScreenErrorBoundary>
         </Suspense>
+        {authUser && (consentPreview || (CONSENT_ENABLED && consent !== undefined && needsConsent(consent))) && (
+          <Suspense fallback={null}>
+            <ConsentGate preview={consentPreview} onClosePreview={() => setConsentPreview(false)}
+              onAgree={async () => {
+                const c = makeConsent();
+                await saveSettings(authUser.uid, { consent: c });
+                setConsent(c);
+                setConsentPreview(false);
+              }}
+              onDecline={() => { if (consentPreview) setConsentPreview(false); else googleSignOut().catch(() => {}); }} />
+          </Suspense>
+        )}
         {showWrongNotes && (
           <WrongNotes uid={authUser?.uid} notes={authUser ? wrongNotes : []} setNotes={setWrongNotes} exam={exam} todayStr={todayStr}
             onClose={() => setShowWrongNotes(false)} onRequireLogin={() => googleSignIn().catch(() => {})} />
