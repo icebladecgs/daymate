@@ -72,7 +72,8 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
       style={{ width: 24, height: 24, padding: 0, marginRight: -4, background: "none", border: "none", color: "#F87171", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>✕</button>
   );
   const named = (t, isMine) => (
-    <span key={t.id} style={{ ...chip, ...(editing ? { paddingRight: 8 } : {}), ...(isMine ? { color: "var(--dm-accent, #5B7CFA)", borderColor: "var(--dm-accent-line, rgba(91,124,250,.35))" } : {}) }}>
+    // 오른쪽 여백은 늘 적는다 — 편집 때만 paddingRight를 넣었다 빼면 React가 그 칸을 지우면서 padding의 오른쪽까지 비워 칩이 줄었다 (2026-11-15)
+    <span key={t.id} style={{ ...chip, paddingRight: editing ? 8 : 12, ...(isMine ? { color: "var(--dm-accent, #5B7CFA)", borderColor: "var(--dm-accent-line, rgba(91,124,250,.35))" } : {}) }}>
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(t)} title={editing ? undefined : `${t.name} 틀로 시작`}
         style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", cursor: editing ? "default" : "pointer" }}>{t.name}</button>
       {editing && (isMine ? x(`${t.name} 틀 지우기`, () => removeMine(t)) : x(`${t.name} 틀 숨기기`, () => hideBuiltin(t)))}

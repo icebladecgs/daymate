@@ -24,7 +24,7 @@ import Toast from "./Toast.jsx";
 import MemoView from "./MemoView.jsx";
 import { toggleCheckAt } from "../utils/memoView.js";
 import { openLinkOnCtrlClick } from "../utils/links.js";
-import { MemoLinks } from "./DriveFiles.jsx";
+import { MemoLinks, DriveFileList } from "./DriveFiles.jsx";
 import LinkOverlay from "./LinkOverlay.jsx";
 import IndentBar from "./IndentBar.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
@@ -749,7 +749,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
                 style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: open ? "none" : "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
-                  {it.pinned && "📍 "}{it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}
+                  {it.pinned && "📍 "}{it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}{it.fileCount > 0 && <span title={`첨부 파일 ${it.fileCount}개`} style={{ marginLeft: 6, fontSize: z(12, 13), opacity: 0.8 }}>📎{it.fileCount > 1 ? it.fileCount : ""}</span>}
                   {/* 좁은 화면엔 태그 칸이 없어 제목 뒤에 흐리게 — 제목에 이미 보이는 [[키워드]]는 빼고 */}
                   {!cols && it.tags.filter(t => !it.title.includes(t)).map(t => <span key={t} style={{ marginLeft: 6, fontSize: z(11, 13), fontWeight: z(400, 500), color: ACCENT(nl), opacity: z(0.75, 0.9) }}>#{t}</span>)}
                 </td>
@@ -758,8 +758,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
                 {cols && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
                 <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), position: "relative" }}>
                   {rowDel && !picking && it.kind === "memo" && (hoverKey === it.key || active) ? (
+                    // 줄 높이를 바꾸지 않게 칸 위에 띄워 둔다 (2026-11-15 — 마우스를 옮길 때마다 목록 간격이 움직였다)
                     <button onClick={(e) => { e.stopPropagation(); deleteFromList(it); }} aria-label="메모 지우기" title="휴지통으로 (Delete 키) — 5초 안에 되돌릴 수 있어요"
-                      style={{ width: 30, height: 30, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: "none", color: "#F87171", cursor: "pointer", verticalAlign: "middle" }}>
+                      style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 30, height: 30, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: "none", color: "#F87171", cursor: "pointer" }}>
                       <Ico name="trash" size={18} />
                     </button>
                   ) : (it.photos.length || "")}
@@ -1074,6 +1075,12 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
       onError?.(photoErrorMessage(err));
     }
   };
+  // 📎 첨부 파일(구글 드라이브 링크, 메모 탭 "드라이브"로 붙인 것) — 메모 관리자에서도 보이게 (2026-11-15 사용자 요청). ✕는 목록에서만 빼기
+  const files = item.kind === "memo" ? (memo?.files || []) : item.kind === "task" ? (task?.files || []) : [];
+  const setFiles = (next) => {
+    if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { files: next }));
+    else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, files: next } : x)) }));
+  };
   const setPhotos = (next) => {
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { photos: next }));
     else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: next } : x)) }));
@@ -1198,6 +1205,7 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
           {journal.tomorrow && <div>➡️ 내일: {journal.tomorrow}</div>}
         </div>
       )}
+      {files.length > 0 && <div style={{ flexShrink: 0 }}><DriveFileList files={files} onChange={setFiles} /></div>}
       {item.kind !== "journal" && (
         <div style={{ flexShrink: 0 }}>
           {uid ? (

@@ -32,6 +32,7 @@ export function buildManagerItems(plans) {
         text, time: validTime(m.createdAt), updatedAt: m.updatedAt || "",
         starred: !!m.starred, photos: m.photos || [], tags: parseWikiLinks(text),
         color: m.color || "", alarm: m.alarm?.time ? m.alarm : null, pinned: !!m.pinned,
+        fileCount: (m.files || []).length, // 📎 드라이브 첨부 수 (2026-11-15)
       });
     });
     (d.tasks || []).forEach(t => {
@@ -40,6 +41,7 @@ export function buildManagerItems(plans) {
         key: `task|${ds}|${t.id}`, kind: "task", ds, id: t.id,
         title: t.title.trim(), text: t.note || "", time: t.time || "", updatedAt: "", cat: t.cat || "",
         done: !!t.done, starred: false, photos: t.photos || [], tags: parseWikiLinks(`${t.title} ${t.note || ""}`),
+        fileCount: (t.files || []).length,
       });
     });
     (d.memoTrash || []).forEach(m => {
