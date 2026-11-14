@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
@@ -221,7 +221,21 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const onListKey = (e) => {
     if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+    else if (e.key === "Delete" && !picking) { // PC: 고른 메모를 Delete 키로 휴지통에 (2026-11-15)
+      const it = list.find(x => x.key === selectedKey);
+      if (it?.kind === "memo") { e.preventDefault(); deleteFromList(it); }
+    }
   };
+  // 목록에서 지우기 (2026-11-15 사용자 요청 — PC는 지우기가 ⋯ 더보기 안에만 있어 안 보였다) — 줄 끝 🗑·Delete 키.
+  // 휴지통으로 + 5초 되돌리기(deleteMemo), 다음 줄을 골라 둔다
+  const deleteFromList = (it) => {
+    const i = list.findIndex(x => x.key === it.key);
+    const next = list[i + 1] || list[i - 1] || null;
+    deleteMemo(it);
+    if (next) setSelectedKey(next.key);
+  };
+  const [hoverKey, setHoverKey] = useState(null);
+  const rowDel = !phone && !isTouchScreen();
   const changeFilter = (f) => { setFilter(f); setLimit(PAGE); };
   const toggleSort = (key) => setSort(s => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "title" || key === "kind" ? "asc" : "desc" }));
 
@@ -724,6 +738,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
             return (
               <Fragment key={it.key}>
               <tr ref={el => { rowRefs.current[it.key] = el; }}
+                onMouseEnter={rowDel ? () => setHoverKey(it.key) : undefined} onMouseLeave={rowDel ? () => setHoverKey(k => (k === it.key ? null : k)) : undefined}
                 {...(canDrag && it.kind === "memo" && !it.locked ? {
                   draggable: true,
                   title: "왼쪽 태그·분류 위에 끌어 놓으면 그 #태그가 붙어요",
@@ -741,7 +756,14 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
                 <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{wide ? it.ds : it.ds.slice(2)}{wide && it.time ? ` ${it.time}` : ""}</td>
                 {cols && <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), whiteSpace: "nowrap" }}>{fmtUpdated(it.updatedAt)}</td>}
                 {cols && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
-                <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted) }}>{it.photos.length || ""}</td>
+                <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted), position: "relative" }}>
+                  {rowDel && !picking && it.kind === "memo" && (hoverKey === it.key || active) ? (
+                    <button onClick={(e) => { e.stopPropagation(); deleteFromList(it); }} aria-label="메모 지우기" title="휴지통으로 (Delete 키) — 5초 안에 되돌릴 수 있어요"
+                      style={{ width: 30, height: 30, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: "none", color: "#F87171", cursor: "pointer", verticalAlign: "middle" }}>
+                      <Ico name="trash" size={18} />
+                    </button>
+                  ) : (it.photos.length || "")}
+                </td>
               </tr>
               {open && <tr style={{ background: "var(--dm-accent-soft, rgba(108,142,255,.2))", borderBottom: "1px solid var(--dm-row)" }}><td colSpan={4} style={{ padding: "0 12px 12px 12px" }}>{rowPreview(it)}</td></tr>}
               </Fragment>
@@ -1251,15 +1273,15 @@ function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, ti
   }, [moreOpen, taskOpen, setMoreOpen]);
 
   // 아이콘 + 아래 설명 (누르는 칸 44, 테두리·바탕 없음). on = 켜진 상태(보냄 등)만 옅은 동그라미
-  const tool = (key, icon, label, onClick, { on = false, color = accent, strong = false, keepFocus = false, title } = {}) => (
+  const tool = (key, icon, label, onClick, { on = false, color = accent, strong = false, keepFocus = false, title, danger = false } = {}) => (
     <button key={key} onClick={onClick} title={title || label} aria-label={label} onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, minWidth: wide ? 48 : 0, flex: wide ? "0 1 72px" : "1 1 0", padding: "2px 0",
         background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}>
       <span style={{ width: 44, height: 40, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
-        background: on || strong ? `color-mix(in srgb, ${color} 16%, transparent)` : "transparent", color: on || strong ? color : "var(--dm-text)", transition: "background .15s" }}>
+        background: on || strong ? `color-mix(in srgb, ${color} 16%, transparent)` : "transparent", color: danger ? "#F87171" : on || strong ? color : "var(--dm-text)", transition: "background .15s" }}>
         <Ico name={icon} />
       </span>
-      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: on || strong ? color : "var(--dm-sub)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: danger ? "#F87171" : on || strong ? color : "var(--dm-sub)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
     </button>
   );
   // 머리 줄의 작은 버튼 — 넓은 화면은 아이콘만(이름은 마우스를 올리면), 휴대폰은 아이콘 + 옆 글자 (2026-11-14)
@@ -1292,22 +1314,58 @@ function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, ti
   );
 
   // ⋯ 더보기 — 가끔 쓰는 것. 삭제는 맨 아래 빨간 글자
+  // short: 버튼 줄에 꺼냈을 때 이름, pri: 자리가 모자랄 때 먼저 꺼내는 순서(작을수록 먼저 — 삭제가 1번)
   const menu = [
-    canAutoFocus() && { icon: "print", label: "출력 (A4)", run: printText },
-    memo && window.daymateDesktop?.openSticky && { icon: "sticky", label: "포스트잇으로 열기", run: () => window.daymateDesktop.openSticky(item.ds, item.id) },
-    onOpenDate && { icon: "date", label: "그 날짜 열기", run: () => onOpenDate(item.ds) },
-    memo && { icon: "history", label: "이전 내용", run: openHistory },
-    memo && saveTemplate && { icon: "template", label: "이 글을 틀로 저장", run: saveTemplate },
-    memo && item.id !== "legacy" && { icon: "lock", label: "잠그기", run: () => requestMemoLock(item.id, "lock") },
-    memo && { icon: "trash", label: "삭제", run: () => onDeleteMemo(item), danger: true },
+    canAutoFocus() && { icon: "print", label: "출력 (A4)", short: "출력", run: printText, pri: 5 },
+    memo && window.daymateDesktop?.openSticky && { icon: "sticky", label: "포스트잇으로 열기", short: "포스트잇", run: () => window.daymateDesktop.openSticky(item.ds, item.id), pri: 4 },
+    onOpenDate && { icon: "date", label: "그 날짜 열기", short: "날짜 열기", run: () => onOpenDate(item.ds), pri: 6 },
+    memo && { icon: "history", label: "이전 내용", short: "이전 내용", run: openHistory, pri: 3 },
+    memo && saveTemplate && { icon: "template", label: "이 글을 틀로 저장", short: "틀로 저장", run: saveTemplate, pri: 7 },
+    memo && item.id !== "legacy" && { icon: "lock", label: "잠그기", short: "잠그기", run: () => requestMemoLock(item.id, "lock"), pri: 2 },
+    memo && { icon: "trash", label: "삭제", short: "삭제", run: () => onDeleteMemo(item), danger: true, pri: 1 },
   ].filter(Boolean);
+  // 넓은 화면: 자리가 있으면 더보기 항목을 버튼 줄에 꺼내 놓는다 (2026-11-15 사용자 제안 "화면이 안 잘리면 다 보여주기")
+  // 줄 전체 폭 − 머리에 필요한 폭 = 버튼 자리(한 칸 72). 다 못 꺼내면 ⋯ 칸 하나를 남긴다
+  const rowRef = useRef(null);
+  const headRef = useRef(null);
+  const toolsRef = useRef(null);
+  const [fit, setFit] = useState(0);
+  useLayoutEffect(() => {
+    if (phone) return undefined; // 휴대폰은 예전처럼 ⋯ 하나
+    const calc = () => {
+      const row = rowRef.current, head = headRef.current;
+      if (!row || !head) return;
+      if (!wide) { // 좁은 PC 창: 버튼 줄이 머리 아래 따로 한 줄 — 그 줄 폭으로
+        const room2 = Math.floor((toolsRef.current?.clientWidth || 0) / 72);
+        let k2 = Math.max(0, Math.min(menu.length, room2 - tools.length));
+        if (k2 < menu.length) k2 = Math.max(0, Math.min(menu.length, room2 - tools.length - 1));
+        setFit(k2);
+        return;
+      }
+      // 머리는 남는 자리까지 늘어나 있어서, 안의 항목(글자·버튼)이 실제로 차지하는 폭을 더해 잰다 (빈 칸 data-spacer는 뺌)
+      const natural = (el) => Math.max(el.scrollWidth, ...[...el.children].map(natural), 0);
+      const need = [...head.children].reduce((sum, c) => sum + (c.dataset.spacer ? 0 : natural(c) + 2), 0);
+      const room = Math.floor((row.clientWidth - need - 12) / 72);
+      let k = Math.max(0, Math.min(menu.length, room - tools.length));
+      if (k < menu.length) k = Math.max(0, Math.min(menu.length, room - tools.length - 1));
+      setFit(k);
+    };
+    calc();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(calc);
+    ro.observe(rowRef.current);
+    return () => ro.disconnect();
+  }); // 항목 수가 바뀔 수 있어 매번 다시 잰다(값이 같으면 다시 그리지 않음)
+  const outKeys = new Set(!phone ? [...menu].sort((a, b) => a.pri - b.pri).slice(0, fit).map(m => m.label) : []);
+  const outTools = menu.filter(m => outKeys.has(m.label)).map(m => tool(`m_${m.icon}`, m.icon, m.short, () => { setMoreOpen(false); setTaskOpen(false); m.run(); }, { danger: m.danger, title: m.label }));
+  const restMenu = menu.filter(m => !outKeys.has(m.label));
 
   return (
     // 넓은 화면은 한 줄(줄바꿈 없음): 머리는 남는 자리만(기준 0), 기능 버튼은 모자라면 줄어든다 — 오른쪽으로 잘려 나가지 않게
     // (2026-11-13 데스크탑 앱에서 머리가 내용보다 넓게 잡혀 버튼이 창 밖으로 밀린 제보)
-    <div style={{ display: "flex", flexWrap: wide ? "nowrap" : "wrap", alignItems: "center", columnGap: 6, rowGap: 6, flexShrink: 0, minWidth: 0 }}>
+    <div ref={rowRef} style={{ display: "flex", flexWrap: wide ? "nowrap" : "wrap", alignItems: "center", columnGap: 6, rowGap: 6, flexShrink: 0, minWidth: 0 }}>
       {/* 머리: 종류·날짜 / 저장 상태 · ☆ · 크게 · 보기 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2, flex: wide ? "1 1 0" : "1 1 100%", minWidth: 0, overflow: wide ? "hidden" : undefined }}>
+      <div ref={headRef} style={{ display: "flex", alignItems: "center", gap: 2, flex: wide ? "1 1 0" : "1 1 100%", minWidth: 0, overflow: wide ? "hidden" : undefined }}>
         <div style={{ minWidth: 0, marginRight: 2 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--dm-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ color: KIND[item.kind].color }}>{KIND[item.kind].label}</span>
@@ -1329,16 +1387,17 @@ function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, ti
             <Ico name="pin" size={22} fill={item.pinned ? "currentColor" : undefined} />
           </button>
         )}
-        <span style={{ flex: 1 }} />
+        <span data-spacer="1" style={{ flex: 1 }} />
         {/* 휴대폰은 편집 화면이 따로라 "‹ 목록"(돌아가기) — 켜진 표시 없이 (2026-11-14) */}
         {!phone ? headBtn(big ? "shrink" : "expand", big ? "목록" : "크게", onToggleBig, big, big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기")
           : headBtn("back", "목록", onToggleBig, false, "목록으로 돌아가기")}
         {headBtn(viewMode ? "pencil" : "eye", viewMode ? "편집" : "보기", onToggleView, viewMode, viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)")}
       </div>
       {/* 기능 줄 */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? `0 1 ${(tools.length + (menu.length ? 1 : 0)) * 72}px` : "1 1 100%", minWidth: 0, position: "relative" }}>
+      <div ref={toolsRef} style={{ display: "flex", alignItems: "flex-start", gap: wide ? 0 : 2, flex: wide ? `0 1 ${(tools.length + outTools.length + (restMenu.length ? 1 : 0)) * 72}px` : "1 1 100%", minWidth: 0, position: "relative" }}>
         {tools}
-        {menu.length > 0 && tool("more", "more", "더보기", () => { setTaskOpen(false); setMoreOpen(o => !o); }, { on: moreOpen, color: "var(--dm-text)" })}
+        {outTools}
+        {restMenu.length > 0 && tool("more", "more", "더보기", () => { setTaskOpen(false); setMoreOpen(o => !o); }, { on: moreOpen, color: "var(--dm-text)" })}
         {taskOpen && (
           <>
             <div onClick={() => setTaskOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
@@ -1352,7 +1411,7 @@ function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, ti
           <>
             <div onClick={() => setMoreOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
             <div role="menu" style={popStyle}>
-              {menu.map((m, i) => (
+              {restMenu.map((m, i) => (
                 <div key={m.label}>
                   {m.danger && i > 0 && <div style={{ height: 1, background: "var(--dm-border)", margin: "4px 6px" }} />}
                   <button role="menuitem" onClick={() => { setMoreOpen(false); m.run(); }}

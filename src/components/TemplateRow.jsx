@@ -3,12 +3,12 @@ import { BUILTIN_TEMPLATES, fillTemplate, getUserTemplates, setUserTemplates, ge
 import { canAutoFocus } from "../utils/device.js";
 import TemplateMakeSheet from "./TemplateMakeSheet.jsx";
 
-// 📄 틀로 시작 (2026-11-13) — 빈 메모일 때만 입력칸 위에. 누르면 틀 글을 넣고 {커서} 자리에 커서. utils/memoTemplates.js
+// 📄 틀로 시작 (2026-11-13) — 빈 메모일 때만 입력칸 위에(앞의 "📄 틀로 시작" 글자는 2026-11-15 뺌 — 한 줄에 들어가게). 누르면 틀 글을 넣고 {커서} 자리에 커서. utils/memoTemplates.js
 // - onPick(넣은 글): 쓰는 쪽이 기억해 두고, 한 글자도 안 바꾼 동안은 저장하지 않는다 (사용자 요청)
 // - 칩이 많으면: PC는 다음 줄로 내려가고, 휴대폰은 좌우로 민다(스크롤 막대는 숨김 — 막대가 칩 아래에 회색 줄로 겹쳤다).
 //   PC 가로 스크롤은 "이쁘지 않다"는 사용자 의견으로 줄바꿈 (2026-11-13)
 // - "편집"을 눌렀을 때만 ✕: 기본 틀은 숨기기(되살리기 가능), 내 틀은 지우기. 평소엔 ✕ 없이 깔끔하게
-// - "＋ 만들기"로 이름·내용을 직접 써서 내 틀을 만든다(TemplateMakeSheet)
+// - "＋ 만들기"로 이름·내용을 직접 써서 내 틀을 만든다(TemplateMakeSheet) — 평소엔 ✎ 하나, 누르면 편집 상태에서 보인다 (2026-11-15)
 export default function TemplateRow({ text, setText, taRef, style, onPick, onNotice }) {
   const [mine, setMine] = useState(getUserTemplates);
   const [hiddenIds, setHiddenIds] = useState(getHiddenBuiltins);
@@ -73,7 +73,7 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
   );
   const named = (t, isMine) => (
     <span key={t.id} style={{ ...chip, ...(editing ? { paddingRight: 8 } : {}), ...(isMine ? { color: "var(--dm-accent, #5B7CFA)", borderColor: "var(--dm-accent-line, rgba(91,124,250,.35))" } : {}) }}>
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(t)}
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(t)} title={editing ? undefined : `${t.name} 틀로 시작`}
         style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", cursor: editing ? "default" : "pointer" }}>{t.name}</button>
       {editing && (isMine ? x(`${t.name} 틀 지우기`, () => removeMine(t)) : x(`${t.name} 틀 숨기기`, () => hideBuiltin(t)))}
     </span>
@@ -83,20 +83,26 @@ export default function TemplateRow({ text, setText, taRef, style, onPick, onNot
     <>
       <div ref={rowRef} className={touch ? "dm-noscrollbar" : undefined}
         style={{ display: "flex", alignItems: "center", gap: 6, rowGap: 8, paddingBottom: 6, ...(touch ? { overflowX: "auto" } : { flexWrap: "wrap" }), ...style }}>
-        <span style={{ flexShrink: 0, fontSize: 13, color: "var(--dm-muted)", fontWeight: 700 }}>📄 틀로 시작</span>
+        {/* "📄 틀로 시작" 글자는 뺐다 (2026-11-15 사용자 요청 — 그 글자 때문에 칩이 두 줄로 내려갔다). 이름은 칩마다 title로 */}
         {builtins.map((t) => named(t, false))}
         {mine.map((t) => named(t, true))}
-        {!editing && (
+        {/* 평소엔 ✎ 하나(만들기·편집은 자주 안 써서 — 2026-11-15 한 줄에 들어가게), 누르면 편집 상태에서 ＋ 만들기·되살리기·완료 */}
+        {editing && (
           <button type="button" onClick={() => setMaking(true)} aria-label="틀 만들기"
             style={{ ...ghost, color: "var(--dm-accent, #5B7CFA)", borderColor: "var(--dm-accent-line, rgba(91,124,250,.45))" }}>＋ 만들기</button>
         )}
         {editing && hiddenIds.length > 0 && (
           <button type="button" onClick={() => setHiddenBuiltins([])} style={{ ...ghost, color: "var(--dm-sub)" }}>↺ 기본 틀 되살리기</button>
         )}
-        <button type="button" onClick={() => setEditing((v) => !v)} aria-pressed={editing}
-          style={{ ...ghost, color: editing ? "var(--dm-accent, #5B7CFA)" : "var(--dm-muted)", borderColor: editing ? "var(--dm-accent, #5B7CFA)" : "var(--dm-border)", fontWeight: 700 }}>
-          {editing ? "완료" : "편집"}
-        </button>
+        {editing ? (
+          <button type="button" onClick={() => setEditing(false)} aria-pressed="true"
+            style={{ ...ghost, color: "var(--dm-accent, #5B7CFA)", borderColor: "var(--dm-accent, #5B7CFA)", fontWeight: 700 }}>완료</button>
+        ) : (
+          <button type="button" onClick={() => setEditing(true)} aria-label="틀 만들기·편집" title="틀 만들기·편집"
+            style={{ ...ghost, width: 34, padding: 0, justifyContent: "center", color: "var(--dm-muted)" }}>
+            <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+          </button>
+        )}
       </div>
       {sheet}
     </>
