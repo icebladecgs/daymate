@@ -16,6 +16,7 @@ import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { ALARM_REPEATS, alarmLabel, nextOnceDate } from "../utils/alarms.js";
 import { recordMemoChanges } from "../utils/memoHistory.js";
 import { newDesignOn } from "../utils/todayLook.js";
+import { useDriveUpload } from "./DriveFiles.jsx";
 
 // 포스트잇 선 아이콘 (2026-11-14, 새 디자인만 — 메모 관리자와 같은 색 없는 선 모양). 예전 디자인은 글자·이모지 그대로
 const STICKY_PATHS = {
@@ -34,6 +35,7 @@ const STICKY_PATHS = {
   alarm: <><circle cx="12" cy="13" r="7" /><path d="M12 10v3l2 2M5 4L3 6M19 4l2 2" /></>,
   opacity: <><circle cx="12" cy="12" r="8" /><path d="M12 4v16" /><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none" opacity=".35" /></>,
   trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>,
+  attach: <path d="M20 11.5l-7.6 7.6a5 5 0 0 1-7.1-7.1l7.9-7.9a3.4 3.4 0 0 1 4.8 4.8l-7.9 7.9a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" />,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></>,
 };
 const SIcon = ({ name, size = 15, fill }) => (
@@ -196,6 +198,13 @@ export default function StickyMemo() {
 
   const flash = (msg) => { setStatus(msg); setTimeout(() => setStatus(""), 1800); };
   const patch = (p) => { writeMemo(ds, id, p); setMemo(findMemo(ds, id)); };
+  // 📎 파일 올리기 (2026-11-15 사용자 요청) — 메모 탭·메모 관리자와 같은 useDriveUpload(내 드라이브 "DayMate/첨부파일", 링크만 메모에).
+  // 드라이브 연결 정보는 메인 창과 같은 저장소라 그대로 쓴다. 서버 저장은 메인 창이 storage 이벤트로 받아서(포스트잇 구조 그대로)
+  const drive = useDriveUpload({
+    files: memo?.files || [],
+    onChange: (next) => patch({ files: next }),
+    onError: (msg) => flash(msg),
+  });
 
   // 캡처한 이미지 Ctrl+V → 사진으로 첨부
   const onPaste = async (e) => {
@@ -352,7 +361,7 @@ export default function StickyMemo() {
       <div onDoubleClick={toggleFold}
         style={{ display: "flex", alignItems: "center", gap: 1, height: folded ? "100%" : 28, padding: "0 4px 0 8px", background: c.bar, WebkitAppRegion: "drag", flexShrink: 0, userSelect: "none" }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: folded ? 12 : 11, fontWeight: folded ? 700 : 400, color: folded ? "#000" : c.sub, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-          {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}${memo.alarm?.time ? ` · ⏰ ${alarmLabel(memo.alarm, toDateStr())}` : ""}`}
+          {(drive.busy && drive.label) || status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}${memo.alarm?.time ? ` · ⏰ ${alarmLabel(memo.alarm, toDateStr())}` : ""}`}
         </span>
         {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} aria-label="새 메모" style={iconBtn}>{ico("plus", "＋")}</button>}
         {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} aria-label="항상 위" style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>{ico("pin", "📌", pinned ? { fill: "currentColor" } : undefined)}</button>}
@@ -375,6 +384,7 @@ export default function StickyMemo() {
               ["🔍", "찾기 (Ctrl+F)", openFind, "search"],
               ["⏰", memo.alarm?.time ? `알람 (${alarmLabel(memo.alarm, toDateStr())})` : "알람", () => setShowAlarm(v => !v), "alarm"],
               ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v), "opacity"]] : []),
+              ["📎", "파일 올리기 (드라이브)", drive.pick, "attach"],
               ["🗑", "삭제", () => setConfirmDel(true), "trash"],
               ["⚙️", "메모 설정", () => setShowSettings(true), "gear"],
             ].map(([icon, label, fn, svg]) => (
@@ -496,6 +506,22 @@ export default function StickyMemo() {
           {photos.map((p, i) => (
             <img key={p.path || i} src={p.url} alt="첨부 사진" onClick={() => setViewer(i)}
               style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 4, cursor: "zoom-in", border: `1px solid ${c.line}`, flexShrink: 0 }} />
+          ))}
+        </div>
+      )}
+      {drive.input}
+      {/* 📎 첨부 파일 — 누르면 기본 브라우저에서 드라이브로, ✕는 목록에서만 빼기(드라이브엔 남음) */}
+      {!folded && (memo.files || []).length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 6px 6px", flexShrink: 0, maxHeight: 96, overflowY: "auto" }}>
+          {memo.files.map(f => (
+            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#222" }}>
+              <button onClick={() => f.link && openLink(f.link)} title={`${f.name} — 드라이브에서 열기`}
+                style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 4, padding: "2px 4px", border: `1px solid ${c.line}`, borderRadius: 4, background: "rgba(255,255,255,.35)", color: "#222", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <span aria-hidden="true">📎</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+              </button>
+              <button onClick={() => { patch({ files: (memo.files || []).filter(x => x.id !== f.id) }); flash("목록에서 뺐어요 (드라이브엔 남아요)"); }} aria-label={`${f.name} 목록에서 빼기`}
+                style={{ ...iconBtn, width: 20, height: 20, fontSize: 11, color: "#666" }}>✕</button>
+            </div>
           ))}
         </div>
       )}
