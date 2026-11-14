@@ -1065,7 +1065,16 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
   const pastePhotos = async (e) => {
     if (item.kind !== "memo" && item.kind !== "task") return;
     if (e.clipboardData?.getData("text/plain")?.trim()) return;
-    const files = [...(e.clipboardData?.items || [])].filter(it => it.type.startsWith("image/")).map(it => it.getAsFile()).filter(Boolean);
+    // 탐색기에서 복사한 파일: 이미지는 사진으로, 그 밖의 파일은 드라이브로 (2026-11-15, 포스트잇과 같음)
+    const pasted = e.clipboardData?.files?.length ? [...e.clipboardData.files]
+      : [...(e.clipboardData?.items || [])].filter(it => it.kind === "file").map(it => it.getAsFile()).filter(Boolean);
+    const others = pasted.filter(f => !f.type.startsWith("image/"));
+    if (others.length) {
+      e.preventDefault();
+      if (!uid) onError?.("파일은 로그인 후 붙일 수 있어요");
+      else drive.uploadFiles(others);
+    }
+    const files = pasted.filter(f => f.type.startsWith("image/"));
     if (!files.length) return;
     e.preventDefault();
     if (!uid) { onError?.("사진은 로그인 후 붙일 수 있어요"); return; }

@@ -206,10 +206,14 @@ export default function StickyMemo() {
     onError: (msg) => flash(msg),
   });
 
-  // 캡처한 이미지 Ctrl+V → 사진으로 첨부
+  // 캡처한 이미지 Ctrl+V → 사진으로 첨부. 탐색기에서 복사한 파일 Ctrl+V → 이미지는 사진, 그 밖의 파일은 드라이브로 (2026-11-15)
   const onPaste = async (e) => {
     if (e.clipboardData?.getData("text/plain")?.trim()) return; // 엑셀·워드처럼 글자와 그림이 함께 복사되면 글자를 붙인다
-    const files = [...(e.clipboardData?.items || [])].filter(it => it.type.startsWith("image/")).map(it => it.getAsFile()).filter(Boolean);
+    const pasted = e.clipboardData?.files?.length ? [...e.clipboardData.files]
+      : [...(e.clipboardData?.items || [])].filter(it => it.kind === "file").map(it => it.getAsFile()).filter(Boolean);
+    const others = pasted.filter(f => !f.type.startsWith("image/"));
+    const files = pasted.filter(f => f.type.startsWith("image/"));
+    if (others.length) { e.preventDefault(); drive.uploadFiles(others); }
     if (!files.length) return;
     e.preventDefault();
     if (!uid) { flash("사진은 로그인 후 붙일 수 있어요"); return; }
@@ -495,7 +499,7 @@ export default function StickyMemo() {
             onPaste={onPaste}
             onClick={onTextClick}
             onScroll={e => { if (backRef.current) backRef.current.scrollTop = e.currentTarget.scrollTop; }}
-            placeholder="메모를 입력하세요 (이미지 붙여넣기 가능)"
+            placeholder="메모를 입력하세요 (이미지·파일 붙여넣기 가능)"
             style={{ position: "relative", flex: 1, minHeight: 0, resize: "none", border: "none", outline: "none", background: "transparent", color: "#000", fontSize: 14, lineHeight: 1.6, padding: "8px 10px", fontFamily: "inherit", boxSizing: "border-box", whiteSpace: "pre-wrap", overflowWrap: "break-word" }}
           />
           <LinkOverlay taRef={taRef} text={text} />

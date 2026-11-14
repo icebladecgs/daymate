@@ -65,12 +65,16 @@ export function useDriveUpload({ files = [], onChange, onError }) {
     setStatus('');
   };
 
-  const handleFiles = async (e) => {
+  const handleFiles = (e) => {
     const picked = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!picked.length) return;
+    uploadFiles(picked);
+  };
+  // 파일 목록을 바로 올리기 — 고르기 창(handleFiles)과 Ctrl+V 붙여넣기(2026-11-15)가 같이 쓴다
+  const uploadFiles = async (picked) => {
+    if (!picked?.length || status) return;
     const token = validToken();
-    if (!token) { onError?.('드라이브 연결이 만료됐어요. 다시 눌러 연결해주세요'); return; }
+    if (!token) { onError?.('드라이브가 연결돼 있지 않아요. 먼저 "파일 올리기"를 눌러 연결해 주세요'); return; }
     const tooBig = picked.filter(f => f.size > DRIVE_ATTACH_MAX_BYTES);
     if (tooBig.length) onError?.(`100MB가 넘는 파일은 올릴 수 없어요 (${tooBig.map(f => f.name).join(', ')})`);
     const targets = picked.filter(f => f.size <= DRIVE_ATTACH_MAX_BYTES);
@@ -103,7 +107,7 @@ export function useDriveUpload({ files = [], onChange, onError }) {
   const input = <input ref={inputRef} type="file" multiple onChange={handleFiles} style={{ display: 'none' }} />;
   const connected = !!validToken();
   const label = status === 'connecting' ? '연결 중...' : status || (connected ? '📁 구글 드라이브에 올리기' : '📁 구글 드라이브 연결');
-  return { pick, input, label, busy: !!status };
+  return { pick, input, label, busy: !!status, uploadFiles };
 }
 
 // 메모에 붙여넣은 링크(모바일 청첩장, 드라이브 공유 링크 등)를 입력칸 아래에 누를 수 있게 보여줌
