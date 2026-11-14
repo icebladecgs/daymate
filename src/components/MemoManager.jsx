@@ -6,8 +6,9 @@ import PhotoWall from "./PhotoWall.jsx";
 import { deletePhoto, uploadPhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
-import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, colorCounts, PERIOD_FILTERS, isPeriodFilter, itemCatId, highlightTerms, termRanges } from "../utils/memoManager.js";
-import { allCats, catOf } from "../utils/taskCategory.js";
+import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, canDropTag, dropTag, takeOutTag, colorCounts, PERIOD_FILTERS, isPeriodFilter, itemCatId, highlightTerms, termRanges } from "../utils/memoManager.js";
+import { allCats, catOf, moveCat } from "../utils/taskCategory.js";
+import { isTouchScreen } from "../utils/fontScale.js";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { restoreMemoFromTrash } from "../utils/dayMerge.js";
 import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
@@ -78,7 +79,7 @@ const updateMemoIn = (day, id, patch) => {
 // 메모잇 "메모관리자"를 본뜬 PC용 관리 화면 — 왼쪽 필터 / 오른쪽 위 목록 / 오른쪽 아래 바로 편집.
 // 좁은 창(휴대폰·데스크탑 앱 기본 창)에서는 필터를 가로 칩으로, 목록·편집을 위아래로 배치한다.
 // 알림은 이 화면 안에 직접 그린다 — 앱 화면(zIndex 1) 위에 덮인 창이라 앱의 알림이 보이지 않았다(2026-10-08)
-export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null, onClose, onOpenDate, onRequireLogin, scaleControl = null, zoom = 1 }) {
+export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null, tagLayout = null, setTagLayout = null, onClose, onOpenDate, onRequireLogin, scaleControl = null, zoom = 1 }) {
   const [toast, setToast] = useState("");
   // 새 디자인(2026-11-01): 글씨 12~13px → 14~16px, 버튼·줄 높이 크게. 배치는 그대로
   const [nl] = useState(newDesignOn);
@@ -164,12 +165,12 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     return n;
   }, [items]);
   const [period, setPeriod] = useState("all"); // 기간 — 새 디자인은 분류와 따로 고른다
-  const tags = useMemo(() => tagTree(items), [items]);
+  const tags = useMemo(() => tagTree(items, tagLayout), [items, tagLayout]);
   // #태그 자동완성용 — 많이 쓴 순서의 태그 이름 (#부모/자식은 그대로)
   const tagNames = useMemo(() => tags.flatMap(e => (e.type === "group" ? [{ name: e.name, n: e.n }, ...e.children.map(c => ({ name: c.name, n: c.n }))] : [e]))
     .sort((a, b) => b.n - a.n).map(e => e.name), [tags]);
   const colors = useMemo(() => colorCounts(items), [items]); // 🎨 포스트잇 색별 개수
-  const related = useMemo(() => relatedTags(items, filter), [items, filter]);
+  const related = useMemo(() => relatedTags(items, filter, 8, tagLayout), [items, filter, tagLayout]);
   const tagFilter = filter.startsWith("#") || filter.startsWith("@");
   // 📌 포스트잇 분류 — 데스크탑 앱(1.3.1~)에서만. 지금 띄워 둔 포스트잇 목록을 앱에서 받아 온다(창으로 돌아올 때 다시)
   const canSticky = !!window.daymateDesktop?.getOpenStickies;
@@ -197,7 +198,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       return next;
     });
   };
-  const list = useMemo(() => sortItems(filterItems(items, filter, query, undefined, stickyKeys, nl ? period : "all"), sort), [items, filter, query, sort, stickyKeys, nl, period]);
+  const list = useMemo(() => sortItems(filterItems(items, filter, query, undefined, stickyKeys, nl ? period : "all", tagLayout), sort), [items, filter, query, sort, stickyKeys, nl, period, tagLayout]);
   const hlTerms = useMemo(() => (nl ? highlightTerms(query) : []), [nl, query]); // 찾은 단어 노란 표시 (새 디자인)
   const selected = items.find(it => it.key === selectedKey) || null;
   const selIndex = list.findIndex(it => it.key === selectedKey);
@@ -335,12 +336,67 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const muted = { color: "var(--dm-muted)" };
   const border = "1px solid var(--dm-border)";
 
-  const filterButton = (id, label, icon, indent = false) => {
+  // ── 끌어서 순서·폴더 (2026-11-14, PC만 — 휴대폰은 스크롤 실수 때문에 끌기를 넣지 않는다) ──
+  // 태그: 위·아래 1/3에 놓으면 그 앞·뒤로, 가운데에 놓으면 그 태그(묶음) 폴더 안으로. 분류: 앞·뒤로만(달력 칩 순서도 같이)
+  const canDrag = wide && !isTouchScreen();
+  const dragRef = useRef(null);
+  const [dropHint, setDropHint] = useState(null); // { id, where }
+  const dropWhere = (e, kind, name) => {
+    const d = dragRef.current;
+    if (!d || d.kind !== kind) return null;
+    const r = e.currentTarget.getBoundingClientRect();
+    const y = r.height ? (e.clientY - r.top) / r.height : 0.5;
+    if (kind === "cat") return d.name === name ? null : (y < 0.5 ? "before" : "after");
+    const pref = y < 0.3 ? "before" : y > 0.7 ? "after" : "into";
+    const tries = pref === "into" ? ["into", y < 0.5 ? "before" : "after"] : [pref];
+    return tries.find(w => canDropTag(tags, d.name, name, w)) || null;
+  };
+  const applyDrop = (kind, name, where) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDropHint(null);
+    if (!d || !where) return;
+    if (kind === "cat" && catCtx?.setTaskCats) {
+      const prev = catCtx.taskCats;
+      catCtx.setTaskCats(v => moveCat(v, d.name, name, where));
+      undo.offer("분류 순서를 바꿨어요 (달력 칩도 같은 순서)", () => catCtx.setTaskCats(prev));
+    } else if (kind === "tag" && setTagLayout) {
+      const prev = tagLayout;
+      setTagLayout(dropTag(tagLayout, tags, d.name, name, where));
+      undo.offer(where === "into" ? `#${d.name} → 📂 ${name} 폴더에 넣었어요` : "태그 순서를 바꿨어요", () => setTagLayout(prev));
+    }
+  };
+  const dragProps = (kind, name) => {
+    if (!canDrag || !name || (kind === "tag" ? !setTagLayout : !catCtx?.setTaskCats)) return {};
+    const id = `${kind}:${name}`;
+    return {
+      draggable: true,
+      onDragStart: (e) => { dragRef.current = { kind, name }; try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", name); } catch { /* 무시 */ } },
+      onDragEnd: () => { dragRef.current = null; setDropHint(null); },
+      onDragOver: (e) => {
+        const w = dropWhere(e, kind, name);
+        if (!w) { if (dropHint?.id === id) setDropHint(null); return; }
+        e.preventDefault();
+        if (dropHint?.id !== id || dropHint.where !== w) setDropHint({ id, where: w });
+      },
+      onDragLeave: () => { if (dropHint?.id === id) setDropHint(null); },
+      onDrop: (e) => { e.preventDefault(); applyDrop(kind, name, dropWhere(e, kind, name)); },
+    };
+  };
+  const hintStyle = (kind, name) => {
+    if (!dropHint || dropHint.id !== `${kind}:${name}`) return null;
+    const line = ACCENT(nl);
+    if (dropHint.where === "into") return { outline: `2px dashed ${line}`, outlineOffset: -2 };
+    return { boxShadow: `inset 0 ${dropHint.where === "before" ? 3 : -3}px 0 ${line}` };
+  };
+  const filterButton = (id, label, icon, indent = false, drag = null) => {
     const active = filter === id;
     return (
       <button key={id} className={hit} onClick={() => { changeFilter(id); setFGroup(null); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
+        {...(drag ? dragProps(drag.kind, drag.name) : {})}
+        title={drag && canDrag ? (drag.kind === "cat" ? "끌어서 순서 바꾸기 (달력 칩도 같은 순서)" : drag.out ? "끌어서 순서 바꾸기 · '태그' 제목 위에 놓으면 폴더에서 빼기" : "끌어서 순서 바꾸기 · 다른 태그 가운데에 놓으면 그 폴더 안으로") : undefined}
         style={wide
-          ? { display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "var(--dm-accent-soft, rgba(108,142,255,.18))" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
+          ? { ...(drag ? hintStyle(drag.kind, drag.name) : {}), display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "var(--dm-accent-soft, rgba(108,142,255,.18))" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
           : { flexShrink: 0, padding: z("5px 10px", "7px 12px"), borderRadius: z(14, 16), border: active ? `1.5px solid ${ACCENT(nl)}` : border, background: active ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: active ? ACCENT(nl) : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
         <span>{icon}</span> {label}
       </button>
@@ -374,8 +430,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // 새 디자인: 분류 이름과 같은 태그(#업무)는 위 "분류"에 이미 들어가므로 태그 목록에서 뺀다
   const shownTags = nl ? tags.filter(e => !(e.type === "tag" && cats.some(c => c.name === e.name))) : tags;
   const tagButtons = shownTags.length === 0 ? tagGuide : shownTags.map(e => (e.type === "group"
-    ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂"), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true))]
-    : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#")));
+    ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂", false, { kind: "tag", name: e.name }), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true, { kind: "tag", name: c.name, out: c.mapped }))]
+    : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#", false, { kind: "tag", name: e.name })));
   // 🎨 색상 — 포스트잇에서 색을 고른 메모가 있을 때만
   const colorButtons = Object.keys(STICKY_COLORS).filter(k => colors[k]).map(k => filterButton(`color:${k}`, `${STICKY_COLORS[k].name} (${colors[k]})`,
     <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: STICKY_COLORS[k].bg, border: `1px solid ${STICKY_COLORS[k].line}`, verticalAlign: "middle" }} />));
@@ -383,14 +439,37 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // 새 디자인 (2026-11-13 사용자 승인): 기간은 목록 위 칩 줄로 빼고(분류와 함께 고름), 🎨 색상 대신 일정 분류(업무·재무·직접 만든 것)
   const nlBase = baseFilters.filter(f => !isPeriodFilter(f.id));
   const catButtons = cats.map(c => filterButton(`cat:${c.id}`, `${c.name} (${catCounts[c.id] || 0})`,
-    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: c.color, verticalAlign: "middle" }} />));
+    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: c.color, verticalAlign: "middle" }} />, false, { kind: "cat", name: c.id }));
+  // "태그" 제목 줄 — 폴더에 넣은 태그를 여기에 놓으면 폴더에서 빼서 맨 위로
+  const tagHeading = (txt, style) => {
+    const mapped = (n) => tags.some(e => e.type === "group" && e.children.some(c => c.mapped && c.name === n));
+    const zone = canDrag && setTagLayout ? {
+      onDragOver: (e) => { if (dragRef.current?.kind === "tag" && mapped(dragRef.current.name)) { e.preventDefault(); if (dropHint?.id !== "tag-out") setDropHint({ id: "tag-out" }); } },
+      onDragLeave: () => { if (dropHint?.id === "tag-out") setDropHint(null); },
+      onDrop: (e) => {
+        e.preventDefault();
+        const d = dragRef.current;
+        dragRef.current = null; setDropHint(null);
+        if (!d || !mapped(d.name)) return;
+        const prev = tagLayout;
+        setTagLayout(takeOutTag(tagLayout, tags, d.name));
+        undo.offer(`#${d.name} 폴더에서 뺐어요`, () => setTagLayout(prev));
+      },
+    } : {};
+    const on = dropHint?.id === "tag-out";
+    return (
+      <div {...zone} style={{ ...style, ...(on ? { outline: `2px dashed ${ACCENT(nl)}`, outlineOffset: -2, borderRadius: 6 } : {}) }}>
+        {txt}{on && <span style={{ fontWeight: 600, marginLeft: 6, color: ACCENT(nl) }}>여기에 놓으면 폴더에서 빼요</span>}
+      </div>
+    );
+  };
   const groupLabel = (txt) => <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>{txt}</div>;
   const filters = nl ? (wide ? (
     <>
       {nlBase.map(f => filterButton(f.id, f.label, f.icon))}
       {cats.length > 0 && groupLabel("분류")}
       {catButtons}
-      {groupLabel("태그")}
+      {tagHeading("태그", { ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" })}
       {tagButtons}
     </>
   ) : (
@@ -409,7 +488,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       {baseFilters.map(f => filterButton(f.id, f.label, f.icon))}
       {colorButtons.length > 0 && <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>🎨 색상</div>}
       {colorButtons}
-      <div style={{ ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" }}>태그</div>
+      {tagHeading("태그", { ...(nl ? ink : muted), fontSize: z(11, 14), fontWeight: z(700, 900), padding: "12px 10px 4px" })}
       {tagButtons}
     </>
   ) : (

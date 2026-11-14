@@ -26,10 +26,27 @@ export const normalizeTaskCats = (x) => {
     .map((c) => ({ id: c.id, name: String(c.name).trim().slice(0, 8), color: CUSTOM_COLORS.includes(c.color) ? c.color : CUSTOM_COLORS[0] }))
     .slice(0, MAX_CUSTOM_CATS);
   const words = x?.words && typeof x.words === "object" && !Array.isArray(x.words) ? x.words : {};
-  return { custom, words };
+  // 순서 (2026-11-14 — 메모 관리자 PC에서 끌어서, 달력 칩도 같은 순서). 정한 적 없으면 칸을 두지 않는다(예전 저장 모양 그대로)
+  const order = Array.isArray(x?.order) ? [...new Set(x.order.filter((s) => typeof s === "string" && s))].slice(0, 20) : [];
+  return order.length ? { custom, words, order } : { custom, words };
 };
 
-export const allCats = (taskCats) => [...BUILTIN_CATS, ...normalizeTaskCats(taskCats).custom];
+export const allCats = (taskCats) => {
+  const cur = normalizeTaskCats(taskCats);
+  const list = [...BUILTIN_CATS, ...cur.custom];
+  if (!cur.order?.length) return list;
+  const rank = (c) => { const i = cur.order.indexOf(c.id); return i < 0 ? Infinity : i; };
+  return list.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map(({ c }) => c);
+};
+// 분류 끌어 옮기기 — drag를 target 앞(before)·뒤(after)로
+export function moveCat(taskCats, dragId, targetId, where) {
+  const cur = normalizeTaskCats(taskCats);
+  const ids = allCats(cur).map((c) => c.id).filter((id) => id !== dragId);
+  const i = ids.indexOf(targetId);
+  if (i < 0 || dragId === targetId || !allCats(cur).some((c) => c.id === dragId)) return cur;
+  ids.splice(where === "before" ? i : i + 1, 0, dragId);
+  return { ...cur, order: ids };
+}
 export const catById = (taskCats, id) => allCats(taskCats).find((c) => c.id === id) || null;
 
 // 제목 비교용 — 띄어쓰기·대소문자·앞의 시간 표시 무시

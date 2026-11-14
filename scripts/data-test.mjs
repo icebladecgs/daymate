@@ -1172,6 +1172,37 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   const pinItems = M.buildManagerItems(pinPlans);
   t('고정: 날짜 최신순이어도 고정한 메모가 맨 위', M.sortItems(pinItems, { key: 'date', dir: 'desc' }, today)[0].id === 'old');
   t('고정: 제목순이어도 맨 위', M.sortItems(pinItems, { key: 'title', dir: 'asc' }, today)[0].id === 'old');
+
+  // 🗂 태그 배치 — 끌어서 순서·폴더 (2026-11-14, 메모 글은 그대로)
+  const tagPlans = { '2026-11-14': { memos: [
+    { id: 'm1', text: '삼성 #주식' }, { id: 'm2', text: '애플 #주식' }, { id: 'm3', text: '#투자 공부' },
+    { id: 'm4', text: '#코인 비트' }, { id: 'm5', text: '#여행/제주 계획' }, { id: 'm6', text: '#운동' },
+  ] } };
+  const tagItems = M.buildManagerItems(tagPlans);
+  const shape = (tree) => tree.map(e => (e.type === 'group' ? `📂${e.name}(${e.n})[${e.children.map(c => `${c.name}${c.mapped ? '*' : ''}`).join(',')}]` : `${e.name}(${e.n})`)).join(' ');
+  const t0 = M.tagTree(tagItems);
+  t('태그 배치: 정한 적 없으면 예전 그대로(많이 쓴 순)', shape(t0) === '주식(2) 📂여행(1)[여행/제주] 운동(1) 코인(1) 투자(1)', shape(t0));
+  const l1 = M.dropTag(null, t0, '주식', '투자', 'into');
+  const t1 = M.tagTree(tagItems, l1);
+  t('태그 배치: 주식을 투자 가운데에 놓으면 📂 투자 폴더(투자 개수에 주식 메모도)', shape(t1).includes('📂투자(3)[주식*]') && !/(^| )주식\(/.test(shape(t1)), shape(t1));
+  t('태그 배치: 📂 투자를 고르면 #투자·#주식 메모가 다', ids(M.filterItems(tagItems, '@투자', '', today, null, 'all', l1)) === 'm1,m2,m3');
+  t('태그 배치: 메모 글은 그대로 (#주식만 고르면 주식 메모만)', ids(M.filterItems(tagItems, '#주식', '', today, null, 'all', l1)) === 'm1,m2');
+  const l2 = M.dropTag(l1, t1, '운동', '여행', 'before');
+  const t2 = M.tagTree(tagItems, l2);
+  t('태그 배치: 운동을 여행 앞으로', shape(t2).indexOf('운동') < shape(t2).indexOf('📂여행'), shape(t2));
+  const l3 = M.dropTag(l2, t2, '코인', '주식', 'after');
+  t('태그 배치: 폴더 안 줄 사이에 놓으면 그 폴더로', shape(M.tagTree(tagItems, l3)).includes('[주식*,코인*]'), shape(M.tagTree(tagItems, l3)));
+  const l4 = M.takeOutTag(l3, M.tagTree(tagItems, l3), '주식');
+  t('태그 배치: 폴더에서 빼면 맨 위로', shape(M.tagTree(tagItems, l4)).startsWith('주식(2)'), shape(M.tagTree(tagItems, l4)));
+  t('태그 배치: 글로 쓴 #여행/제주는 폴더 밖으로·다른 폴더로 못 옮김', !M.canDropTag(t2, '여행/제주', '운동', 'before') && !M.canDropTag(t2, '여행/제주', '투자', 'into'));
+  t('태그 배치: 묶음(폴더)은 다른 폴더에 못 넣음 (한 단계)', !M.canDropTag(t1, '투자', '운동', 'into') && !M.canDropTag(t2, '여행', '운동', 'into'));
+  t('태그 배치: 폴더 안 폴더 저장값은 폴더 쪽을 살림', JSON.stringify(M.normalizeTagLayout({ parents: { 주식: '투자', 투자: '돈', '여행/제주': '운동' } }).parents) === JSON.stringify({ 주식: '투자' }));
+  t('태그 배치: 이상한 저장값은 빈 배치', JSON.stringify(M.normalizeTagLayout('x')) === JSON.stringify({ order: [], parents: {} }));
+  // 분류 순서 — 달력 칩도 같은 allCats
+  const moved = C.moveCat(taskCats, 'c_fam', 'work', 'before');
+  t('분류 순서: 가족을 업무 앞으로 (달력 칩도 같은 순서)', C.allCats(moved).map(c => c.id).join() === 'c_fam,work,fin', C.allCats(moved).map(c => c.id).join());
+  t('분류 순서: 정한 적 없으면 예전 저장 모양(order 칸 없음)', !('order' in C.normalizeTaskCats(taskCats)));
+  t('분류 순서: 새로 만든 분류는 맨 뒤', C.allCats({ ...moved, custom: [...moved.custom, { id: 'c_new', name: '공부', color: '#8B5CF6' }] }).map(c => c.id).join() === 'c_fam,work,fin,c_new');
 }
 
 // ── 메모 입력란 업그레이드 (2026-11-13) — 키보드 띠 목록·#태그·이전 내용·틀·사진 글자 ──

@@ -84,43 +84,145 @@ export const BASE_FILTERS = [
 // 태그 필터 id — "#이름"(태그 하나), "@부모"(#부모/자식 카테고리 전체: #부모 자체와 #부모/… 모두)
 const parentOf = (t) => { const i = t.indexOf("/"); return i > 0 ? t.slice(0, i) : null; };
 const inGroup = (t, parent) => t === parent || t.startsWith(`${parent}/`);
-export const tagMatcher = (filter) => {
-  if (filter.startsWith("@")) { const p = filter.slice(1); return (it) => it.tags.some(t => inGroup(t, p)); }
+
+// ── 태그 배치 (2026-11-14 사용자 결정 — 메모 관리자 PC에서 끌어서 순서·폴더) ──
+// 계정 설정 memoTagLayout = { order: [이름…], parents: { 태그: 폴더 } }. 메모 글은 고치지 않는다("보기만 묶기").
+// order는 맨 위 줄(태그·📂 묶음)과 묶음 안 줄의 이름 순서(정한 적 없는 새 태그는 뒤에, 많이 쓴 순).
+// parents는 글로 쓴 #부모/자식과 같은 모양으로 보이게 하는 표 — 폴더는 한 단계(폴더 안 폴더는 무시).
+const MAX_LAYOUT = 500;
+export function normalizeTagLayout(x) {
+  const order = Array.isArray(x?.order) ? [...new Set(x.order.filter(s => typeof s === "string" && s))].slice(0, MAX_LAYOUT) : [];
+  const parents = {};
+  if (x?.parents && typeof x.parents === "object" && !Array.isArray(x.parents)) {
+    Object.entries(x.parents).slice(0, MAX_LAYOUT).forEach(([k, v]) => { if (k && typeof v === "string" && v && v !== k && !k.includes("/")) parents[k] = v; });
+  }
+  // 폴더가 된 태그는 다른 폴더에 못 들어간다(한 단계) — 폴더 쪽을 살린다
+  const folders = new Set(Object.values(parents));
+  Object.keys(parents).forEach(k => { if (folders.has(k)) delete parents[k]; });
+  return { order, parents };
+}
+
+export const tagMatcher = (filter, layout) => {
+  const parents = normalizeTagLayout(layout).parents;
+  if (filter.startsWith("@")) { const p = filter.slice(1); return (it) => it.tags.some(t => inGroup(t, p) || parents[t] === p); }
   if (filter.startsWith("#")) { const name = filter.slice(1); return (it) => it.tags.includes(name); }
   return null;
 };
 
 // 분류 목록의 태그 영역 (지식 화면의 "내가 만든 태그"·"카테고리별 모아보기"를 옮겨 옴)
 // #부모/자식 태그가 하나라도 있으면 부모를 카테고리로 묶고 자식을 아래에 둔다. 개수는 그 태그가 붙은 기록 수
-// 반환: [{ type: "group", name, n, children: [{ name, label, n }] } | { type: "tag", name, n }]
-export function tagTree(items) {
+// layout(태그 배치)이 있으면 폴더에 넣은 태그도 그 묶음 아래(mapped), 순서도 그대로
+// 반환: [{ type: "group", name, n, children: [{ name, label, n, mapped? }] } | { type: "tag", name, n }]
+export function tagTree(items, layout) {
+  const { order, parents } = normalizeTagLayout(layout);
   const live = items.filter(it => it.kind !== "trash");
   const count = new Map();
   live.forEach(it => it.tags.forEach(t => count.set(t, (count.get(t) || 0) + 1)));
-  const parents = new Set([...count.keys()].map(parentOf).filter(Boolean));
+  const slashParents = new Set([...count.keys()].map(parentOf).filter(Boolean));
   const groups = new Map();
   const entries = [];
-  count.forEach((n, name) => {
-    const p = parents.has(name) ? name : parentOf(name);
-    if (!p) { entries.push({ type: "tag", name, n }); return; }
+  const groupOf = (p) => {
     if (!groups.has(p)) {
-      const g = { type: "group", name: p, n: live.filter(it => it.tags.some(t => inGroup(t, p))).length, children: [] };
+      const g = { type: "group", name: p, n: 0, children: [] };
       groups.set(p, g);
       entries.push(g);
     }
-    if (name !== p) groups.get(p).children.push({ name, label: name.slice(p.length + 1), n });
+    return groups.get(p);
+  };
+  count.forEach((n, name) => {
+    const p = slashParents.has(name) ? name : parentOf(name);
+    if (p) { const g = groupOf(p); if (name !== p) g.children.push({ name, label: name.slice(p.length + 1), n }); return; }
+    if (parents[name]) return; // 폴더에 넣은 태그 — 아래에서
+    entries.push({ type: "tag", name, n });
   });
-  groups.forEach(g => g.children.sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, "ko")));
-  return entries.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "ko"));
+  // 폴더에 넣은 태그: 폴더 이름이 그냥 태그면 묶음으로 바꾼다, 메모가 없는 폴더 이름도 묶음으로
+  Object.entries(parents).forEach(([name, folder]) => {
+    if (!count.has(name)) return;
+    const i = entries.findIndex(e => e.type === "tag" && e.name === folder);
+    if (i >= 0) entries.splice(i, 1);
+    groupOf(folder).children.push({ name, label: name, n: count.get(name), mapped: true });
+  });
+  groups.forEach((g, p) => { g.n = live.filter(it => it.tags.some(t => inGroup(t, p) || parents[t] === p)).length; });
+  const rank = new Map(order.map((s, i) => [s, i]));
+  const byOrder = (key) => (a, b) => {
+    const ra = rank.has(a[key]) ? rank.get(a[key]) : Infinity;
+    const rb = rank.has(b[key]) ? rank.get(b[key]) : Infinity;
+    if (ra !== rb) return ra - rb;
+    return b.n - a.n || a[key].localeCompare(b[key], "ko");
+  };
+  groups.forEach(g => g.children.sort((a, b) => byOrder("name")(a, b)));
+  return entries.sort(byOrder("name"));
+}
+
+// 끌어 놓기 판단 — where: "before" | "after" | "into". 놓을 수 없으면 false
+// 규칙: 글로 쓴 #부모/자식 줄은 같은 묶음 안에서 순서만. 폴더에는 그냥 태그만 넣는다(묶음·폴더는 못 넣음).
+function tagNodes(tree) {
+  const m = new Map();
+  tree.forEach(e => {
+    m.set(e.name, { top: true, group: e.type === "group" });
+    if (e.type === "group") e.children.forEach(c => m.set(c.name, { top: false, parent: e.name, mapped: !!c.mapped }));
+  });
+  return m;
+}
+export function canDropTag(tree, drag, target, where) {
+  if (!drag || !target || drag === target) return false;
+  const nodes = tagNodes(tree);
+  const d = nodes.get(drag), t = nodes.get(target);
+  if (!d || !t) return false;
+  const natural = !d.top && !d.mapped; // 글로 쓴 #부모/자식
+  const plain = (d.top && !d.group) || d.mapped; // 폴더에 넣을 수 있는 태그
+  if (where === "into") return t.top && plain && d.parent !== target;
+  if (natural) return !t.top && t.parent === d.parent;
+  if (t.top) return true; // 맨 위 줄 사이로 (폴더에 있던 태그는 빠져나옴)
+  return plain; // 묶음 안 줄 사이로 = 그 폴더에 넣기
+}
+// 놓은 결과의 새 배치 (지금 보이는 순서를 모두 order에 적는다 — 그 뒤로는 끈 순서 그대로)
+export function dropTag(layout, tree, drag, target, where) {
+  if (!canDropTag(tree, drag, target, where)) return normalizeTagLayout(layout);
+  const cur = normalizeTagLayout(layout);
+  const nodes = tagNodes(tree);
+  const d = nodes.get(drag), t = nodes.get(target);
+  const parents = { ...cur.parents };
+  const full = tree.flatMap(e => (e.type === "group" ? [e.name, ...e.children.map(c => c.name)] : [e.name]));
+  let order = full.filter(n => n !== drag);
+  if (where === "into") {
+    parents[drag] = target;
+    delete parents[target];
+    const g = tree.find(e => e.name === target);
+    const last = g?.type === "group" && g.children.filter(c => c.name !== drag).length ? g.children.filter(c => c.name !== drag).slice(-1)[0].name : target;
+    order.splice(order.indexOf(last) + 1, 0, drag);
+  } else {
+    if (t.top) delete parents[drag];
+    else if (d.top || d.mapped) parents[drag] = t.parent;
+    // 맨 위 줄 사이에 놓을 때 "뒤"는 그 묶음의 자식들 다음
+    let anchor = target;
+    if (t.top && where === "after") {
+      const g = tree.find(e => e.name === target);
+      if (g?.type === "group") { const kids = g.children.filter(c => c.name !== drag); if (kids.length) anchor = kids[kids.length - 1].name; }
+    }
+    const i = order.indexOf(anchor);
+    order.splice(where === "before" ? order.indexOf(target) : i + 1, 0, drag);
+  }
+  // 폴더에 남은 원래 줄 순서를 지킨다: 묶음이 된 폴더가 원래 다른 이름 사이에 있으면 그대로
+  return normalizeTagLayout({ order: [...new Set([...order, ...cur.order.filter(n => !order.includes(n))])].slice(0, MAX_LAYOUT), parents });
+}
+// 폴더에서 빼기(맨 위 줄 맨 앞으로)
+export function takeOutTag(layout, tree, name) {
+  const cur = normalizeTagLayout(layout);
+  const parents = { ...cur.parents };
+  delete parents[name];
+  const full = tree.flatMap(e => (e.type === "group" ? [e.name, ...e.children.map(c => c.name)] : [e.name])).filter(n => n !== name);
+  return normalizeTagLayout({ order: [name, ...full], parents });
 }
 
 // 관련 태그 — 고른 태그(카테고리)가 나온 날에 함께 나온 다른 태그, 많이 겹친 순 (지식 화면의 "관련 키워드"와 같은 기준)
-export function relatedTags(items, filter, limit = 8) {
-  const match = tagMatcher(filter);
+export function relatedTags(items, filter, limit = 8, layout) {
+  const match = tagMatcher(filter, layout);
+  const lp = normalizeTagLayout(layout).parents;
   if (!match) return [];
   const live = items.filter(it => it.kind !== "trash");
   const days = new Set(live.filter(match).map(it => it.ds));
-  const own = filter.startsWith("@") ? (t) => inGroup(t, filter.slice(1)) : (t) => t === filter.slice(1);
+  const own = filter.startsWith("@") ? (t) => inGroup(t, filter.slice(1)) || lp[t] === filter.slice(1) : (t) => t === filter.slice(1);
   const overlap = new Map(); // 태그 -> 겹친 날짜들
   live.forEach(it => {
     if (!days.has(it.ds)) return;
@@ -166,7 +268,7 @@ export function itemCatId(it, cats, catOfTask) {
 }
 
 // stickyKeys: 데스크탑 앱에서 지금 포스트잇으로 띄워 둔 메모("날짜|id"). period: 기간(새 디자인 칩 줄, 기본 전체)
-export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null, period = "all") {
+export function filterItems(items, filter, query, today = toDateStr(), stickyKeys = null, period = "all", tagLayout = null) {
   const recent = (days) => {
     const from = addDays(today, -(days - 1));
     return (it) => it.ds >= from && it.ds <= today;
@@ -187,7 +289,7 @@ export function filterItems(items, filter, query, today = toDateStr(), stickyKey
     d30: recent(30),
     trash: () => true,
   };
-  const pick = byFilter[filter] || colorMatcher(filter) || catMatcher(filter) || tagMatcher(filter) || (() => true);
+  const pick = byFilter[filter] || colorMatcher(filter) || catMatcher(filter) || tagMatcher(filter, tagLayout) || (() => true);
   const byPeriod = period && period !== "all" && byFilter[period] ? byFilter[period] : () => true;
   const tokens = searchTokens(query);
   // 휴지통 항목은 휴지통 보기에서만, 다른 보기에서는 제외

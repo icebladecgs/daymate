@@ -7,6 +7,7 @@ import { store } from "./utils/storage.js";
 import { normalizeExam, studyXp, isDue as isWrongDue } from "./utils/exam.js";
 import { normalizeDdays } from "./utils/ddays.js";
 import { normalizeTaskCats, rememberCat } from "./utils/taskCategory.js";
+import { normalizeTagLayout } from "./utils/memoManager.js";
 import { normalizeSubs } from "./utils/subscriptions.js";
 import { normalizeDreams } from "./utils/dreams.js";
 import Dreams from "./screens/Dreams.jsx";
@@ -660,6 +661,8 @@ export default function App() {
     return reward;
   };
   const [hiddenTags, setHiddenTags] = useState(() => store.get("dm_hidden_tags", []));
+  // 메모 관리자 태그 배치 (2026-11-14) — 순서·폴더(메모 글은 그대로), utils/memoManager.js normalizeTagLayout
+  const [memoTagLayout, setMemoTagLayout] = useState(() => normalizeTagLayout(store.get("dm_memo_tag_layout", null)));
 
   // ── 내 사람들(인맥) ── 사람이 늘어도 로그인 시 읽는 단일 settings 문서가 커지지 않도록
   // 사람마다 개별 Firestore 문서로 저장한다(days와 동일한 패턴). 아래 auth 리스너에서 병합 로드.
@@ -1662,6 +1665,7 @@ export default function App() {
             else if (normalizeGear(store.get("dm_battle_gear", null)).items.length) saveSettings(firebaseUser.uid, { battleGear: normalizeGear(store.get("dm_battle_gear", null)) }).catch(() => {});
             if (s.battleNickname) { setBattleNickname(s.battleNickname); store.set("dm_battle_nickname", s.battleNickname); }
             if (s.hiddenTags) { setHiddenTags(s.hiddenTags); store.set("dm_hidden_tags", s.hiddenTags); }
+            if (s.memoTagLayout) { const v = normalizeTagLayout(s.memoTagLayout); setMemoTagLayout(v); store.set("dm_memo_tag_layout", v); }
             if (s.lifeGoals && Array.isArray(s.lifeGoals)) { setLifeGoalsState(s.lifeGoals.filter(Boolean)); store.set("dm_life_goals", s.lifeGoals.filter(Boolean)); }
             if (Array.isArray(s.lifeGoalActions)) { setLifeGoalActions(s.lifeGoalActions); store.set("dm_life_goal_actions", s.lifeGoalActions); }
             if (s.memoLock) { setMemoLockCfg(s.memoLock); store.set("dm_memo_lock", s.memoLock); }
@@ -2000,6 +2004,10 @@ export default function App() {
   useEffect(() => {
     if (authUser && syncReadyRef.current) updateRanking(authUser.uid, { titleId: rankTitleId }).catch(() => {});
   }, [rankTitleId, authUser]); // eslint-disable-line
+  useEffect(() => {
+    store.set("dm_memo_tag_layout", memoTagLayout);
+    if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { memoTagLayout }).catch(() => {});
+  }, [memoTagLayout, authUser]);
   useEffect(() => {
     store.set("dm_hidden_tags", hiddenTags);
     if (authUser && syncReadyRef.current) saveSettings(authUser.uid, { hiddenTags }).catch(() => {});
@@ -3028,6 +3036,7 @@ export default function App() {
           onUpdateDayData={setDayData}
           uid={authUser?.uid}
           catCtx={catCtx}
+          tagLayout={memoTagLayout} setTagLayout={setMemoTagLayout}
           onClose={() => history.back()}
           onOpenDate={(ds) => openDetail(ds)}
           onRequireLogin={() => googleSignIn().catch(() => {})}
