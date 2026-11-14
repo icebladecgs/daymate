@@ -15,6 +15,30 @@ import MemoSettings from "./MemoSettings.jsx";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
 import { ALARM_REPEATS, alarmLabel, nextOnceDate } from "../utils/alarms.js";
 import { recordMemoChanges } from "../utils/memoHistory.js";
+import { newDesignOn } from "../utils/todayLook.js";
+
+// 포스트잇 선 아이콘 (2026-11-14, 새 디자인만 — 메모 관리자와 같은 색 없는 선 모양). 예전 디자인은 글자·이모지 그대로
+const STICKY_PATHS = {
+  plus: <path d="M12 5v14M5 12h14" />,
+  pin: <><path d="M9 4h6l-1 6 3 3H7l3-3z" /><path d="M12 13v7" /></>,
+  more: <><circle cx="5" cy="12" r="1.3" fill="currentColor" /><circle cx="12" cy="12" r="1.3" fill="currentColor" /><circle cx="19" cy="12" r="1.3" fill="currentColor" /></>,
+  fold: <path d="M5 12h14" />,
+  unfold: <path d="M6 9l6 6 6-6" />,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  palette: <><path d="M12 3a9 9 0 100 18c1 0 1.6-.8 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a5 5 0 005-5c0-4-4-7.6-9-7.6z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10.5" cy="7" r="1" /><circle cx="15" cy="7.5" r="1" /></>,
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  sparkle: <><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" /></>,
+  copy: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 012-2h9" /></>,
+  print: <><path d="M7 9V4h10v5" /><rect x="4" y="9" width="16" height="8" rx="2" /><path d="M7 14h10v6H7z" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
+  alarm: <><circle cx="12" cy="13" r="7" /><path d="M12 10v3l2 2M5 4L3 6M19 4l2 2" /></>,
+  opacity: <><circle cx="12" cy="12" r="8" /><path d="M12 4v16" /><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none" opacity=".35" /></>,
+  trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>,
+  gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></>,
+};
+const SIcon = ({ name, size = 15, fill }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={fill || "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: "block", margin: "auto" }}>{STICKY_PATHS[name]}</svg>
+);
 
 // 데스크탑 앱의 바탕화면 포스트잇 창 (?view=sticky) — 메모잇의 간편 메모처럼 작은 노란 창.
 // 앱 전체를 띄우지 않고 이 PC 저장소(localStorage)의 오늘/해당 날짜 메모만 읽고 쓴다.
@@ -320,6 +344,8 @@ export default function StickyMemo() {
   }
 
   const firstLine = text.split("\n").map(l => l.trim()).find(Boolean) || "";
+  const nl = newDesignOn(); // 새 디자인이면 버튼을 선 아이콘으로
+  const ico = (name, old, extra) => (nl ? <SIcon name={name} {...extra} /> : old);
   return (
     <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: c.bg, color: "#000", fontFamily: "inherit", border: `1px solid ${c.line}` }}>
       {/* 제목줄: 끌어서 옮기기, 더블클릭으로 접기/펼치기. 접히면 창 전체(윈도우 최소 높이 39px)를 채움 */}
@@ -328,34 +354,36 @@ export default function StickyMemo() {
         <span style={{ flex: 1, minWidth: 0, fontSize: folded ? 12 : 11, fontWeight: folded ? 700 : 400, color: folded ? "#000" : c.sub, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
           {status || (folded && firstLine) || `${ds.slice(5).replace("-", "/")} ${memo.createdAt || ""}${memo.alarm?.time ? ` · ⏰ ${alarmLabel(memo.alarm, toDateStr())}` : ""}`}
         </span>
-        {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} style={iconBtn}>＋</button>}
-        {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>📌</button>}
+        {!folded && desktop() && <button onClick={() => desktop().newSticky()} title={withKey("새 메모", "new")} aria-label="새 메모" style={iconBtn}>{ico("plus", "＋")}</button>}
+        {!folded && desktop() && <button onClick={togglePin} title={withKey(pinned ? "항상 위 해제" : "항상 위에 고정", "pin")} aria-label="항상 위" style={{ ...iconBtn, opacity: pinned ? 1 : 0.4 }}>{ico("pin", "📌", pinned ? { fill: "currentColor" } : undefined)}</button>}
         {/* 색·즐겨찾기·복사·삭제는 ⋯ 메뉴로 — 제목줄 빈 자리(끌어서 옮기는 곳)를 넓게 남긴다 */}
-        {!folded && <button onClick={() => setShowMenu(v => !v)} title="더 보기 (색·즐겨찾기·복사·출력·삭제)" style={{ ...iconBtn, fontWeight: 900, background: showMenu ? c.line : "transparent" }}>⋯</button>}
+        {!folded && <button onClick={() => setShowMenu(v => !v)} title="더 보기 (색·즐겨찾기·복사·출력·삭제)" aria-label="더 보기" style={{ ...iconBtn, fontWeight: 900, background: showMenu ? c.line : "transparent" }}>{ico("more", "⋯")}</button>}
         {/* 접기/펼치기는 항상 닫기 바로 왼쪽 — 접은 자리에서 그대로 다시 펼 수 있게 */}
-        {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} style={iconBtn}>{folded ? "▾" : "−"}</button>}
-        <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} style={iconBtn}>✕</button>
+        {desktop()?.fold && <button onClick={toggleFold} title={folded ? withKey("펼치기", "fold") : withKey("접기", "fold") + " · 제목줄 더블클릭도 가능"} aria-label={folded ? "펼치기" : "접기"} style={iconBtn}>{folded ? ico("unfold", "▾") : ico("fold", "−")}</button>}
+        <button onClick={close} title={withKey("닫기", "close") + " · 메모는 남아요"} aria-label="닫기" style={iconBtn}>{ico("close", "✕")}</button>
       </div>
       {showMenu && !folded && (
         <>
           <div onClick={() => setShowMenu(false)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />
           <div role="menu" style={{ position: "absolute", top: 30, right: 4, zIndex: 10, background: "#fff", color: "#000", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,.25)", padding: 4, minWidth: 150, maxHeight: "calc(100vh - 36px)", overflowY: "auto", boxSizing: "border-box" }}>
             {[
-              ["🎨", "색 바꾸기", () => setShowColors(v => !v)],
-              [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred })],
-              ["✨", "AI 정리", tidy.open],
-              ["📋", withKey("전체 복사", "copy"), copyAll],
-              ["🖨", "출력", print],
-              ["🔍", "찾기 (Ctrl+F)", openFind],
-              ["⏰", memo.alarm?.time ? `알람 (${alarmLabel(memo.alarm, toDateStr())})` : "알람", () => setShowAlarm(v => !v)],
-              ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v)]] : []),
-              ["🗑", "삭제", () => setConfirmDel(true)],
-              ["⚙️", "메모 설정", () => setShowSettings(true)],
-            ].map(([icon, label, fn]) => (
+              ["🎨", "색 바꾸기", () => setShowColors(v => !v), "palette"],
+              [memo.starred ? "⭐" : "☆", memo.starred ? "즐겨찾기 해제" : "즐겨찾기", () => patch({ starred: !memo.starred }), "star"],
+              ["✨", "AI 정리", tidy.open, "sparkle"],
+              ["📋", withKey("전체 복사", "copy"), copyAll, "copy"],
+              ["🖨", "출력", print, "print"],
+              ["🔍", "찾기 (Ctrl+F)", openFind, "search"],
+              ["⏰", memo.alarm?.time ? `알람 (${alarmLabel(memo.alarm, toDateStr())})` : "알람", () => setShowAlarm(v => !v), "alarm"],
+              ...(desktop()?.setStickyOpacity ? [["🌫", `투명도 (${Math.round(opacity * 100)}%)`, () => setShowOpacity(v => !v), "opacity"]] : []),
+              ["🗑", "삭제", () => setConfirmDel(true), "trash"],
+              ["⚙️", "메모 설정", () => setShowSettings(true), "gear"],
+            ].map(([icon, label, fn, svg]) => (
               <button key={icon + label} role="menuitem" onClick={() => { setShowMenu(false); fn(); }}
                 style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "5px 10px", border: "none", background: "transparent", color: "#000", fontSize: 13, textAlign: "left", cursor: "pointer", borderRadius: 6, fontFamily: "inherit", whiteSpace: "nowrap" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "#f1f1f1"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                <span style={{ width: 18, textAlign: "center" }}>{icon}</span>{label}
+                <span style={{ width: 18, textAlign: "center", color: nl ? (svg === "trash" ? "#DC2626" : svg === "star" && memo.starred ? "#D97706" : "#444") : undefined }}>
+                  {nl ? <SIcon name={svg} size={16} fill={svg === "star" && memo.starred ? "currentColor" : undefined} /> : icon}
+                </span>{label}
               </button>
             ))}
             <div style={{ fontSize: 10, color: "#999", padding: "4px 10px 2px", borderTop: "1px solid #eee", marginTop: 2 }}>DayMate {APP_VERSION}</div>

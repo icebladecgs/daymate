@@ -325,3 +325,86 @@ export function sortItems(items, { key, dir }, today = toDateStr()) {
     return SORTERS.date(b).localeCompare(SORTERS.date(a)); // 같으면 최신 날짜 먼저
   });
 }
+
+// ── 태그 붙이기·이름 바꾸기 (2026-11-14 사용자 선택) — 메모 글을 실제로 고치는 기능 ──
+// 태그 모양은 #이름(·#부모/자식)과 [[키워드]] 두 가지(knowledge.js parseWikiLinks). 잠긴 메모·휴지통은 건드리지 않는다.
+export const TAG_NAME_RE = /^[\w가-힣]{2,20}(?:\/[\w가-힣]{2,20})*$/;
+export const cleanTagName = (s) => String(s || "").trim().replace(/^#+/, "").replace(/\s+/g, "");
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// 끝에 #태그 한 줄 붙이기 (이미 그 태그가 있으면 그대로) — 여러 개 고르기의 "태그 붙이기"와 같은 모양
+export function appendTag(text, tag) {
+  const t = String(text || "");
+  if (parseWikiLinks(t).includes(tag)) return t;
+  const base = t.replace(/\s+$/, "");
+  return base ? `${base}\n#${tag}` : `#${tag}`;
+}
+// 되돌리기 — 끝에 붙인 그 한 줄만 뗀다
+export function removeAppendedTag(text, tag) {
+  const t = String(text || "");
+  if (t === `#${tag}`) return "";
+  return t.endsWith(`\n#${tag}`) ? t.slice(0, -(`\n#${tag}`.length)) : t;
+}
+
+// #from → #to (#from/자식도 #to/자식으로), [[from]] → [[to]]. #from다른글자 는 안 바꾼다
+export function renameTagInText(text, from, to) {
+  const t = String(text || "");
+  if (!t || !from || from === to) return t;
+  return t
+    .replace(new RegExp(`#${escRe(from)}(?![\\w가-힣])`, "g"), () => `#${to}`)
+    .replace(new RegExp(`\\[\\[\\s*${escRe(from)}\\s*\\]\\]`, "g"), () => `[[${to}]]`);
+}
+const JOURNAL_FIELDS = ["body", "good", "regret", "tomorrow"];
+// 하루 기록에서 바꾸기 — { day, undo, n } (undo = 바뀐 칸의 원래 값, n = 바뀐 기록 수)
+export function renameTagInDay(day, from, to) {
+  if (!day) return { day, undo: null, n: 0 };
+  const undo = { memos: {}, tasks: {}, journal: null };
+  let n = 0;
+  const memos = Array.isArray(day.memos) ? day.memos.map(m => {
+    if (!m || m.locked) return m;
+    const next = renameTagInText(m.text, from, to);
+    if (next === (m.text || "")) return m;
+    undo.memos[m.id] = m.text || "";
+    n++;
+    return { ...m, text: next };
+  }) : day.memos;
+  const tasks = Array.isArray(day.tasks) ? day.tasks.map(tk => {
+    if (!tk) return tk;
+    const title = renameTagInText(tk.title, from, to);
+    const note = renameTagInText(tk.note, from, to);
+    if (title === (tk.title || "") && note === (tk.note || "")) return tk;
+    undo.tasks[tk.id] = { title: tk.title || "", note: tk.note || "" };
+    n++;
+    return { ...tk, title, ...(tk.note !== undefined || note ? { note } : {}) };
+  }) : day.tasks;
+  let journal = day.journal;
+  if (journal) {
+    const changed = {};
+    JOURNAL_FIELDS.forEach(f => { if (journal[f]) { const v = renameTagInText(journal[f], from, to); if (v !== journal[f]) changed[f] = v; } });
+    if (Object.keys(changed).length) {
+      undo.journal = Object.fromEntries(Object.keys(changed).map(f => [f, journal[f]]));
+      journal = { ...journal, ...changed };
+      n++;
+    }
+  }
+  if (!n) return { day, undo: null, n: 0 };
+  return { day: { ...day, memos, tasks, journal }, undo, n };
+}
+// 되돌리기 — 바꾼 칸만 원래 값으로
+export function undoTagDay(day, undo) {
+  if (!day || !undo) return day;
+  return {
+    ...day,
+    memos: Array.isArray(day.memos) ? day.memos.map(m => (m && undo.memos[m.id] !== undefined ? { ...m, text: undo.memos[m.id] } : m)) : day.memos,
+    tasks: Array.isArray(day.tasks) ? day.tasks.map(tk => (tk && undo.tasks[tk.id] ? { ...tk, ...undo.tasks[tk.id] } : tk)) : day.tasks,
+    journal: undo.journal ? { ...(day.journal || {}), ...undo.journal } : day.journal,
+  };
+}
+// 태그 배치(순서·폴더)도 새 이름으로 — 합쳐지면 겹친 이름은 하나만
+export function renameTagLayout(layout, from, to) {
+  const cur = normalizeTagLayout(layout);
+  const map = (n) => (n === from ? to : n.startsWith(`${from}/`) ? to + n.slice(from.length) : n);
+  const parents = {};
+  Object.entries(cur.parents).forEach(([k, v]) => { const nk = map(k), nv = map(v); if (nk !== nv) parents[nk] = nv; });
+  return normalizeTagLayout({ order: [...new Set(cur.order.map(map))], parents });
+}

@@ -5,7 +5,8 @@ import { compressImage, photoErrorMessage } from "../utils/image.js";
 
 // tile: 칸 크기(기본 72). openRef: 밖의 버튼이 사진 고르기를 열 수 있게 함수를 넣어 준다.
 // emptyAdd=false면 사진이 없을 때 ＋ 칸을 그리지 않는다 (메모 관리자 — 버튼 줄의 "사진"으로 연다, 2026-11-14)
-export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, onError, tile: TILE = 72, openRef, emptyAdd = true }) {
+// onReadText: 사진 아래 "글자" 버튼(사진 속 글자 읽기, 넘겨 준 화면에서만 — 메모 관리자 2026-11-14), readingIdx: 읽는 중인 사진
+export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, onError, tile: TILE = 72, openRef, emptyAdd = true, onReadText = null, readingIdx = null }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
   const inputRef = useRef(null);
@@ -66,6 +67,12 @@ export default function PhotoGallery({ uid, pathPrefix, photos = [], onChange, o
               lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
             }}
           >✕</button>
+          {onReadText && p.url && (
+            <button onClick={() => onReadText(p, idx)} disabled={readingIdx !== null} title="사진 속 글자 읽기 (AI) — 글자를 글 끝에 넣어요, 사진은 그대로"
+              style={{ display: 'block', width: TILE, height: 26, marginTop: 4, padding: 0, borderRadius: 6, border: '1px solid var(--dm-border)', background: 'var(--dm-input)', color: 'var(--dm-sub)', fontSize: 13, fontWeight: 700, cursor: readingIdx !== null ? 'default' : 'pointer', fontFamily: 'inherit', opacity: readingIdx !== null && readingIdx !== idx ? 0.5 : 1 }}>
+              {readingIdx === idx ? '읽는 중' : '글자'}
+            </button>
+          )}
         </div>
       ))}
 

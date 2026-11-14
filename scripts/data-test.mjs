@@ -1198,6 +1198,24 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('태그 배치: 묶음(폴더)은 다른 폴더에 못 넣음 (한 단계)', !M.canDropTag(t1, '투자', '운동', 'into') && !M.canDropTag(t2, '여행', '운동', 'into'));
   t('태그 배치: 폴더 안 폴더 저장값은 폴더 쪽을 살림', JSON.stringify(M.normalizeTagLayout({ parents: { 주식: '투자', 투자: '돈', '여행/제주': '운동' } }).parents) === JSON.stringify({ 주식: '투자' }));
   t('태그 배치: 이상한 저장값은 빈 배치', JSON.stringify(M.normalizeTagLayout('x')) === JSON.stringify({ order: [], parents: {} }));
+  // 🏷 태그 붙이기·이름 바꾸기 (2026-11-14)
+  t('태그 붙이기: 끝에 한 줄, 이미 있으면 그대로, 되돌리면 원래대로',
+    M.appendTag('삼성 메모  \n', '주식') === '삼성 메모\n#주식' && M.appendTag('#주식 삼성', '주식') === '#주식 삼성' && M.appendTag('', '주식') === '#주식'
+    && M.removeAppendedTag('삼성 메모\n#주식', '주식') === '삼성 메모' && M.removeAppendedTag('#주식', '주식') === '' && M.removeAppendedTag('#주식 삼성', '주식') === '#주식 삼성');
+  t('이름 바꾸기: #주식·[[주식]]·#주식/삼성은 바꾸고 #주식투자는 그대로',
+    M.renameTagInText('#주식 메모 [[주식]] #주식/삼성 #주식투자 #주식.', '주식', '투자') === '#투자 메모 [[투자]] #투자/삼성 #주식투자 #투자.', M.renameTagInText('#주식 메모 [[주식]] #주식/삼성 #주식투자 #주식.', '주식', '투자'));
+  t('이름 바꾸기: 자식만 (#여행/제주 → #여행/서귀포)', M.renameTagInText('#여행/제주 #여행', '여행/제주', '여행/서귀포') === '#여행/서귀포 #여행');
+  const rday = { memos: [{ id: 'a', text: '#주식 오늘' }, { id: 'b', text: '', locked: { iv: 'x', ct: 'y' } }, { id: 'c', text: '다른 글' }],
+    tasks: [{ id: 't', title: '#주식 매수', note: '' }], journal: { body: '[[주식]] 공부', good: '잘함' } };
+  const rr = M.renameTagInDay(rday, '주식', '투자');
+  t('이름 바꾸기: 하루 — 메모·할일·일기 3곳, 잠긴 메모·다른 글은 그대로', rr.n === 3 && rr.day.memos[0].text === '#투자 오늘' && rr.day.memos[1].locked && rr.day.memos[2] === rday.memos[2]
+    && rr.day.tasks[0].title === '#투자 매수' && rr.day.journal.body === '[[투자]] 공부' && rr.day.journal.good === '잘함', JSON.stringify(rr.day));
+  const ru = M.undoTagDay(rr.day, rr.undo);
+  t('이름 바꾸기: 되돌리면 바꾼 칸만 원래대로', ru.memos[0].text === '#주식 오늘' && ru.tasks[0].title === '#주식 매수' && ru.journal.body === '[[주식]] 공부' && ru.journal.good === '잘함');
+  t('이름 바꾸기: 없는 태그면 그대로(바뀐 것 0)', M.renameTagInDay(rday, '코인', '투자').n === 0);
+  const rl = M.renameTagLayout({ order: ['주식', '투자', '주식/삼성'], parents: { 코인: '주식', 주식: '돈' } }, '주식', '증권');
+  t('이름 바꾸기: 태그 배치도 새 이름으로', JSON.stringify(rl) === JSON.stringify({ order: ['증권', '투자', '증권/삼성'], parents: { 코인: '증권' } }), JSON.stringify(rl));
+  t('이름 바꾸기: 이름 규칙(2~20자, 띄어쓰기 없음)', M.TAG_NAME_RE.test(M.cleanTagName(' #투자 ')) && !M.TAG_NAME_RE.test('a') && !M.TAG_NAME_RE.test('투 자') && M.cleanTagName('##투 자') === '투자');
   // 분류 순서 — 달력 칩도 같은 allCats
   const moved = C.moveCat(taskCats, 'c_fam', 'work', 'before');
   t('분류 순서: 가족을 업무 앞으로 (달력 칩도 같은 순서)', C.allCats(moved).map(c => c.id).join() === 'c_fam,work,fin', C.allCats(moved).map(c => c.id).join());

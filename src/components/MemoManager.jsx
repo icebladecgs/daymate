@@ -6,11 +6,12 @@ import PhotoWall from "./PhotoWall.jsx";
 import { deletePhoto, uploadPhoto } from "../firebase.js";
 import { compressImage, photoErrorMessage } from "../utils/image.js";
 import { genMemoId, getMemoTimeStr, withMemoList } from "./MemoTimeline.jsx";
-import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, canDropTag, dropTag, takeOutTag, colorCounts, PERIOD_FILTERS, isPeriodFilter, itemCatId, highlightTerms, termRanges } from "../utils/memoManager.js";
+import { buildManagerItems, BASE_FILTERS, tagTree, relatedTags, filterItems, sortItems, canDropTag, dropTag, takeOutTag, appendTag, removeAppendedTag, renameTagInDay, undoTagDay, renameTagLayout, TAG_NAME_RE, cleanTagName, colorCounts, PERIOD_FILTERS, isPeriodFilter, itemCatId, highlightTerms, termRanges } from "../utils/memoManager.js";
 import { allCats, catOf, moveCat } from "../utils/taskCategory.js";
 import { isTouchScreen } from "../utils/fontScale.js";
 import { STICKY_COLORS } from "../utils/stickyColors.js";
-import { restoreMemoFromTrash } from "../utils/dayMerge.js";
+import { restoreMemoFromTrash, PHOTO_MEMO_LABEL } from "../utils/dayMerge.js";
+import { photoTextConsent, readPhotoText, appendPhotoText } from "../utils/photoText.js";
 import { pickTaskTitle, sendMemoToSomeday, sendMemoToToday, sentLabel } from "../utils/memoToTask.js";
 import LoginNotice from "./LoginNotice.jsx";
 import { canAutoFocus } from "../utils/device.js";
@@ -277,6 +278,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // ☑ 여러 개 한꺼번에 (2026-11-03) — 메모만 고를 수 있다(일정·일기·휴지통 제외). 지우기는 휴지통으로, 태그는 끝에 한 줄,
   // 날짜 옮기기는 새 날짜에 넣고 원래 날짜에서 뺀다(빼면 휴지통에 들어가는 사본은 바로 정리)
   const undo = useUndo();
+  // 메모 글을 밖에서 바꿀 때(끌어서 태그 붙이기·태그 이름 바꾸기, 2026-11-14): 편집 칸의 쓰던 글을 먼저 저장하고(paneFlushRef),
+  // 바꾼 뒤 편집 칸을 새로 연다(paneRev) — 안 그러면 편집 칸이 예전 글로 덮어쓴다
+  const paneFlushRef = useRef(null);
+  const [paneRev, setPaneRev] = useState(0);
+  const [renaming, setRenaming] = useState(null); // 태그 이름 바꾸기 { tag, value }
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const [bulkTag, setBulkTag] = useState("");
@@ -366,21 +372,55 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       undo.offer(where === "into" ? `#${d.name} → 📂 ${name} 폴더에 넣었어요` : "태그 순서를 바꿨어요", () => setTagLayout(prev));
     }
   };
-  const dragProps = (kind, name) => {
-    if (!canDrag || !name || (kind === "tag" ? !setTagLayout : !catCtx?.setTaskCats)) return {};
+  // 📝 목록의 메모를 태그·폴더·분류 위에 놓으면 그 #태그를 메모 끝에 붙인다 (2026-11-14, 여러 개 고르기 중이면 고른 메모 모두)
+  const tagMemos = (keys, tag) => {
+    const need = items.filter(it => keys.includes(it.key) && it.kind === "memo" && !it.locked && !it.tags.includes(tag));
+    if (!need.length) { setToast(`이미 #${tag}가 붙어 있어요`); return; }
+    paneFlushRef.current?.();
+    byDayOf(need).forEach((ids, ds) => onUpdateDayData(ds, prev => {
+      const next = updateMemoIn(prev, "", {});
+      return { ...next, memos: next.memos.map(m => (ids.includes(m.id) && !m.locked ? { ...m, text: appendTag(m.text, tag) } : m)) };
+    }));
+    setPaneRev(r => r + 1);
+    if (picking) stopPicking();
+    undo.offer(`메모 ${need.length}개에 #${tag}를 붙였어요`, () => {
+      paneFlushRef.current?.();
+      byDayOf(need).forEach((ids, ds) => onUpdateDayData(ds, prev => ({ ...prev, memos: (prev.memos || []).map(m => (ids.includes(m.id) ? { ...m, text: removeAppendedTag(m.text, tag) } : m)) })));
+      setPaneRev(r => r + 1);
+    });
+  };
+  const dragProps = (kind, name, tagName) => {
+    if (!canDrag || !name) return {};
     const id = `${kind}:${name}`;
+    const own = kind === "tag" ? !!setTagLayout : !!catCtx?.setTaskCats;
     return {
-      draggable: true,
-      onDragStart: (e) => { dragRef.current = { kind, name }; try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", name); } catch { /* 무시 */ } },
+      draggable: own,
+      onDragStart: (e) => { if (!own) return; dragRef.current = { kind, name }; try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", name); } catch { /* 무시 */ } },
       onDragEnd: () => { dragRef.current = null; setDropHint(null); },
       onDragOver: (e) => {
+        if (dragRef.current?.kind === "memo") {
+          if (!tagName) return;
+          e.preventDefault();
+          if (dropHint?.id !== id || dropHint.where !== "into") setDropHint({ id, where: "into" });
+          return;
+        }
+        if (!own) return;
         const w = dropWhere(e, kind, name);
         if (!w) { if (dropHint?.id === id) setDropHint(null); return; }
         e.preventDefault();
         if (dropHint?.id !== id || dropHint.where !== w) setDropHint({ id, where: w });
       },
       onDragLeave: () => { if (dropHint?.id === id) setDropHint(null); },
-      onDrop: (e) => { e.preventDefault(); applyDrop(kind, name, dropWhere(e, kind, name)); },
+      onDrop: (e) => {
+        e.preventDefault();
+        if (dragRef.current?.kind === "memo") {
+          const keys = dragRef.current.keys;
+          dragRef.current = null; setDropHint(null);
+          if (tagName) tagMemos(keys, tagName);
+          return;
+        }
+        applyDrop(kind, name, dropWhere(e, kind, name));
+      },
     };
   };
   const hintStyle = (kind, name) => {
@@ -393,7 +433,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     const active = filter === id;
     return (
       <button key={id} className={hit} onClick={() => { changeFilter(id); setFGroup(null); if (id.startsWith("#") || id.startsWith("@")) setTagsOpen(false); }}
-        {...(drag ? dragProps(drag.kind, drag.name) : {})}
+        {...(drag ? dragProps(drag.kind, drag.name, drag.tag) : {})}
         title={drag && canDrag ? (drag.kind === "cat" ? "끌어서 순서 바꾸기 (달력 칩도 같은 순서)" : drag.out ? "끌어서 순서 바꾸기 · '태그' 제목 위에 놓으면 폴더에서 빼기" : "끌어서 순서 바꾸기 · 다른 태그 가운데에 놓으면 그 폴더 안으로") : undefined}
         style={wide
           ? { ...(drag ? hintStyle(drag.kind, drag.name) : {}), display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: indent ? z("5px 10px 5px 28px", "7px 10px 7px 28px") : z("6px 10px", "8px 10px"), borderRadius: 6, border: "none", background: active ? "var(--dm-accent-soft, rgba(108,142,255,.18))" : "transparent", color: active ? ACCENT(nl) : "var(--dm-text)", fontWeight: active ? 800 : z(500, 600), fontSize: z(13, 15), cursor: "pointer", fontFamily: "inherit" }
@@ -430,8 +470,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // 새 디자인: 분류 이름과 같은 태그(#업무)는 위 "분류"에 이미 들어가므로 태그 목록에서 뺀다
   const shownTags = nl ? tags.filter(e => !(e.type === "tag" && cats.some(c => c.name === e.name))) : tags;
   const tagButtons = shownTags.length === 0 ? tagGuide : shownTags.map(e => (e.type === "group"
-    ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂", false, { kind: "tag", name: e.name }), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true, { kind: "tag", name: c.name, out: c.mapped }))]
-    : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#", false, { kind: "tag", name: e.name })));
+    ? [filterButton(`@${e.name}`, `${e.name} (${e.n})`, "📂", false, { kind: "tag", name: e.name, tag: e.name }), ...e.children.map(c => filterButton(`#${c.name}`, wide ? `${c.label} (${c.n})` : `${c.name} (${c.n})`, wide ? "" : "#", true, { kind: "tag", name: c.name, out: c.mapped, tag: c.name }))]
+    : filterButton(`#${e.name}`, `${e.name} (${e.n})`, "#", false, { kind: "tag", name: e.name, tag: e.name })));
   // 🎨 색상 — 포스트잇에서 색을 고른 메모가 있을 때만
   const colorButtons = Object.keys(STICKY_COLORS).filter(k => colors[k]).map(k => filterButton(`color:${k}`, `${STICKY_COLORS[k].name} (${colors[k]})`,
     <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", background: STICKY_COLORS[k].bg, border: `1px solid ${STICKY_COLORS[k].line}`, verticalAlign: "middle" }} />));
@@ -439,7 +479,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // 새 디자인 (2026-11-13 사용자 승인): 기간은 목록 위 칩 줄로 빼고(분류와 함께 고름), 🎨 색상 대신 일정 분류(업무·재무·직접 만든 것)
   const nlBase = baseFilters.filter(f => !isPeriodFilter(f.id));
   const catButtons = cats.map(c => filterButton(`cat:${c.id}`, `${c.name} (${catCounts[c.id] || 0})`,
-    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: c.color, verticalAlign: "middle" }} />, false, { kind: "cat", name: c.id }));
+    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: c.color, verticalAlign: "middle" }} />, false, { kind: "cat", name: c.id, tag: c.name }));
   // "태그" 제목 줄 — 폴더에 넣은 태그를 여기에 놓으면 폴더에서 빼서 맨 위로
   const tagHeading = (txt, style) => {
     const mapped = (n) => tags.some(e => e.type === "group" && e.children.some(c => c.mapped && c.name === n));
@@ -503,15 +543,55 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     </>
   );
   // 태그·카테고리를 고르면 목록 위에 관련 태그(같은 날 함께 나온 태그) 한 줄
-  const relatedRow = tagFilter && related.length > 0 && (
+  // ✏️ 태그 이름 바꾸기·합치기 (2026-11-14) — 그 태그가 붙은 메모·일정·일기 글을 모두 고친다(잠긴 메모·휴지통 제외), 5초 되돌리기
+  const curTag = tagFilter ? filter.slice(1) : "";
+  const doRename = () => {
+    const from = curTag, to = cleanTagName(renaming?.value);
+    if (!to || to === from) { setRenaming(null); return; }
+    if (!TAG_NAME_RE.test(to)) { setToast("태그 이름은 2~20자, 띄어쓰기 없이 한글·영문·숫자로 써 주세요"); return; }
+    if (tagNames.includes(to) && !window.confirm(`#${to} 태그가 이미 있어요. 두 태그를 합칠까요?\n(#${from}가 붙은 글이 모두 #${to}로 바뀌어요)`)) return;
+    paneFlushRef.current?.();
+    const undos = [];
+    let n = 0;
+    Object.entries(plans || {}).forEach(([ds, d]) => { const r = renameTagInDay(d, from, to); if (r.n) { undos.push({ ds, u: r.undo }); n += r.n; } });
+    const prevLayout = tagLayout;
+    const mark = filter[0];
+    undos.forEach(({ ds }) => onUpdateDayData(ds, prev => renameTagInDay(prev, from, to).day));
+    if (setTagLayout) setTagLayout(renameTagLayout(tagLayout, from, to));
+    setPaneRev(r => r + 1);
+    setRenaming(null);
+    changeFilter(`${mark}${to}`);
+    const hasLocked = items.some(it => it.locked);
+    undo.offer(`#${from} → #${to} 기록 ${n}개${hasLocked ? " (잠긴 메모는 그대로)" : ""}`, () => {
+      paneFlushRef.current?.();
+      undos.forEach(({ ds, u }) => onUpdateDayData(ds, prev => undoTagDay(prev, u)));
+      if (setTagLayout) setTagLayout(prevLayout);
+      setPaneRev(r => r + 1);
+      changeFilter(`${mark}${from}`);
+    });
+  };
+  const barPill = (on) => ({ flexShrink: 0, height: z(30, 34), padding: z("0 10px", "0 12px"), borderRadius: z(12, 14), border: on ? "none" : "1px solid var(--dm-border)", background: on ? ACCENT(nl) : "var(--dm-input)", color: on ? "#fff" : "var(--dm-sub)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" });
+  const isRenaming = renaming && renaming.tag === filter;
+  const relatedRow = tagFilter && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 12px", flexShrink: 0, borderBottom: border }}>
-      <span style={{ ...muted, fontSize: z(12, 14), fontWeight: 700, whiteSpace: "nowrap" }}>관련</span>
+      {isRenaming ? (<>
+        <span style={{ ...muted, fontSize: z(12, 14), fontWeight: 700, whiteSpace: "nowrap" }}>{filter.startsWith("@") ? "📂" : "#"}{curTag} →</span>
+        <input autoFocus value={renaming.value} maxLength={41} aria-label="새 태그 이름"
+          onChange={e => setRenaming({ tag: filter, value: e.target.value })}
+          onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) doRename(); if (e.key === "Escape") setRenaming(null); }}
+          style={{ flex: "1 1 120px", minWidth: 90, height: z(30, 34), padding: "0 10px", borderRadius: 8, border, background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(13, 15), fontFamily: "inherit", boxSizing: "border-box" }} />
+        <button onClick={doRename} style={barPill(true)}>바꾸기</button>
+        <button onClick={() => setRenaming(null)} style={barPill(false)}>취소</button>
+      </>) : (<>
+      <button onClick={() => setRenaming({ tag: filter, value: curTag })} title="이 태그가 붙은 메모·일정·일기 글을 모두 새 이름으로 바꿔요 (있는 이름이면 합쳐요, 잠긴 메모 제외)" style={barPill(false)}>✏️ 이름 바꾸기</button>
+      {related.length > 0 && <span style={{ ...muted, fontSize: z(12, 14), fontWeight: 700, whiteSpace: "nowrap", marginLeft: 4 }}>관련</span>}
       {related.map(r => (
         <button key={r.name} onClick={() => changeFilter(`#${r.name}`)}
           style={{ flexShrink: 0, padding: z("3px 9px", "5px 11px"), borderRadius: z(12, 14), border: "1px solid var(--dm-accent-line, rgba(108,142,255,.35))", background: "var(--dm-accent-soft, rgba(108,142,255,.08))", color: ACCENT(nl), fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
           #{r.name}
         </button>
       ))}
+      </>)}
     </div>
   );
 
@@ -643,7 +723,14 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
             const open = phone && active && !picking; // 휴대폰: 누른 줄 아래 미리보기
             return (
               <Fragment key={it.key}>
-              <tr ref={el => { rowRefs.current[it.key] = el; }} onClick={() => (picking ? pickable(it) && togglePick(it.key) : phone ? (active ? setSelectedKey(null) : (setPvMenu(false), select(it.key))) : select(it.key))}
+              <tr ref={el => { rowRefs.current[it.key] = el; }}
+                {...(canDrag && it.kind === "memo" && !it.locked ? {
+                  draggable: true,
+                  title: "왼쪽 태그·분류 위에 끌어 놓으면 그 #태그가 붙어요",
+                  onDragStart: (e) => { dragRef.current = { kind: "memo", keys: picking && picked.has(it.key) ? [...picked] : [it.key] }; try { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("text/plain", it.title); } catch { /* 무시 */ } },
+                  onDragEnd: () => { dragRef.current = null; setDropHint(null); },
+                } : {})}
+                onClick={() => (picking ? pickable(it) && togglePick(it.key) : phone ? (active ? setSelectedKey(null) : (setPvMenu(false), select(it.key))) : select(it.key))}
                 style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: open ? "none" : "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
@@ -753,7 +840,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const openTag = (name) => { setBig(false); setQuery(""); changeFilter(`#${name}`); if (!wide) setTagsOpen(false); };
   const isBig = big && !!selected;
   const detail = (
-    <DetailPane key={selected?.key || "none"} hlTerms={hlTerms} tagNames={tagNames} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
+    <DetailPane key={`${selected?.key || "none"}:${paneRev}`} registerFlush={(fn) => { paneFlushRef.current = fn; }} hlTerms={hlTerms} tagNames={tagNames} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
       phone={phone} big={phone ? true : isBig} onToggleBig={phone ? () => setMEdit(false) : () => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
@@ -857,7 +944,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ nl, wide, phone = false, hlTerms = null, tagNames = [], item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = null, tagNames = [], item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -887,6 +974,19 @@ function DetailPane({ nl, wide, phone = false, hlTerms = null, tagNames = [], it
   };
   const latest = useRef({ text, title, save });
   useEffect(() => { latest.current = { text, title, save }; });
+  useEffect(() => { registerFlush?.(() => { const l = latest.current; l.save(l.text, l.title); }); });
+  // 📝 사진 속 글자 읽기 (2026-11-14, 메모 탭과 같은 utils/photoText.js) — 누를 때만 AI로, 글자는 편집 칸 끝에. 사진은 그대로
+  const [ocrBusy, setOcrBusy] = useState(null);
+  const readPhoto = async (p, idx) => {
+    if (ocrBusy !== null || !p?.url || !photoTextConsent()) return;
+    setOcrBusy(idx);
+    try {
+      const read = await readPhotoText(p.url);
+      if (!read.trim()) onError?.("사진에서 읽을 글자를 못 찾았어요");
+      else { setText(prev => appendPhotoText(prev, read, PHOTO_MEMO_LABEL)); onError?.("📝 사진 글자를 글 끝에 넣었어요"); }
+    } catch (e) { onError?.(e.message || "사진 글자를 읽지 못했어요"); }
+    setOcrBusy(null);
+  };
   useEffect(() => {
     const h = setTimeout(() => save(text, title), 700);
     return () => clearTimeout(h);
@@ -1080,7 +1180,7 @@ function DetailPane({ nl, wide, phone = false, hlTerms = null, tagNames = [], it
         <div style={{ flexShrink: 0 }}>
           {uid ? (
             // 새 디자인: 작은 칸(44), 사진이 없으면 ＋ 칸 없이 버튼 줄의 "사진"으로 (2026-11-14 사용자 요청)
-            <PhotoGallery uid={uid} pathPrefix={`users/${uid}/memos`} photos={photos} onChange={setPhotos} onError={onError}
+            <PhotoGallery uid={uid} pathPrefix={`users/${uid}/memos`} photos={photos} onChange={setPhotos} onError={onError} onReadText={readPhoto} readingIdx={ocrBusy}
               {...(nl ? { tile: 44, emptyAdd: false, openRef: photoPickRef } : {})} />
           ) : photos.length > 0 && (
             <div style={{ display: "flex", gap: 6 }}>
