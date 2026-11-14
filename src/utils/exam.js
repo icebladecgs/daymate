@@ -71,3 +71,69 @@ export function reviewWrongNote(note, correct, todayDs) {
   return { step, due: addDays(todayDs, WRONG_INTERVALS[step]), done: false, reviews };
 }
 export const isDue = (note, todayDs) => !note.done && !!note.due && note.due <= todayDs;
+
+// ── 오답 노트 업그레이드 (2026-11-14, 콴다 참고 — AI 없이) ──
+// 문제 부분만 보이기: 사진 파일은 그대로 두고 보여 줄 칸만 저장한다 photo.crop = { x, y, w, h, ar }
+// x·y·w·h는 원본 대비 비율(0~1), ar = 잘린 칸의 가로÷세로(화면·출력에서 칸 모양을 먼저 잡기 위해)
+export function normalizeCrop(c) {
+  if (!c) return null;
+  const cl = (v) => Math.min(1, Math.max(0, Number(v) || 0));
+  const x = cl(c.x), y = cl(c.y);
+  const w = Math.min(cl(c.w), 1 - x), h = Math.min(cl(c.h), 1 - y);
+  if (w < 0.05 || h < 0.05) return null; // 너무 작으면 자르지 않음
+  if (x < 0.01 && y < 0.01 && w > 0.98 && h > 0.98) return null; // 거의 전체면 자르지 않음
+  const ar = Number(c.ar) > 0 ? Number(c.ar) : null;
+  if (!ar) return null;
+  const r = (v) => Math.round(v * 10000) / 10000;
+  return { x: r(x), y: r(y), w: r(w), h: r(h), ar: r(ar) };
+}
+// 잘린 칸 그리기: 칸은 aspect-ratio = ar, 사진은 칸 폭의 1/w배, 왼쪽·위로 밀어 둔다(%, 칸 기준)
+export function cropLayout(crop) {
+  const c = normalizeCrop(crop);
+  if (!c) return null;
+  return { ar: c.ar, width: 100 / c.w, left: -(c.x / c.w) * 100, top: -(c.y / c.h) * 100 };
+}
+
+// 시험처럼 다시 풀기 결과 [{ id, ok }] → 요약
+export function sessionSummary(results, notesAfter = []) {
+  const done = (results || []).filter(r => r && typeof r.ok === 'boolean');
+  const ok = done.filter(r => r.ok).length;
+  const ids = new Set(done.map(r => r.id));
+  return {
+    total: done.length, ok, wrong: done.length - ok,
+    rate: done.length ? Math.round((ok / done.length) * 100) : 0,
+    graduated: (notesAfter || []).filter(n => ids.has(n.id) && n.done).length,
+  };
+}
+
+// 통계: 과목별 졸업률 · 최근 7일 다시 푼 수 · 틀린 이유 · 자주 틀리는 단원
+export function wrongStats(notes, todayDs, subjects = EXAM_SUBJECTS) {
+  const list = (notes || []).filter(Boolean);
+  const weekFrom = addDays(todayDs, -6);
+  const bySubMap = {};
+  const reasons = {};
+  const units = {};
+  let weekCount = 0, weekOk = 0;
+  for (const n of list) {
+    const sub = n.sub || '기타';
+    const s = bySubMap[sub] || (bySubMap[sub] = { sub, total: 0, done: 0, due: 0 });
+    s.total++;
+    if (n.done) s.done++;
+    if (isDue(n, todayDs)) s.due++;
+    if (n.reason) reasons[n.reason] = (reasons[n.reason] || 0) + 1;
+    if (n.unit) { const k = `${sub} · ${n.unit}`; units[k] = (units[k] || 0) + 1; }
+    for (const r of n.reviews || []) if (r && r.ds >= weekFrom && r.ds <= todayDs) { weekCount++; if (r.ok) weekOk++; }
+  }
+  const order = [...subjects, ...Object.keys(bySubMap).filter(k => !subjects.includes(k))];
+  const bySub = order.filter(k => bySubMap[k]).map(k => ({ ...bySubMap[k], rate: Math.round((bySubMap[k].done / bySubMap[k].total) * 100) }));
+  const done = list.filter(n => n.done).length;
+  return {
+    total: list.length, done, active: list.length - done,
+    rate: list.length ? Math.round((done / list.length) * 100) : 0,
+    due: list.filter(n => isDue(n, todayDs)).length,
+    week: { count: weekCount, ok: weekOk, rate: weekCount ? Math.round((weekOk / weekCount) * 100) : 0 },
+    bySub,
+    reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]),
+    units: Object.entries(units).filter(([, v]) => v > 1).sort((a, b) => b[1] - a[1]).slice(0, 5),
+  };
+}

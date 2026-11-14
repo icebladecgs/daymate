@@ -512,6 +512,31 @@ t('반복: 보통 할일은 규칙 없음', recurringIdOf('t_123') === null && r
   t('오답: 네 번 연속 맞으면 졸업', n.done === true && n.due === null && !isDue(n, '2027-01-01') && n.reviews.length === 4);
 }
 
+// ── 오답 노트 업그레이드: 문제만 보이기 · 다시 풀기 결과 · 통계 (2026-11-14) ──
+{
+  const { normalizeCrop, cropLayout, sessionSummary, wrongStats } = await load('/src/utils/exam.js');
+  t('자르기: 거의 전체·너무 작음·비율 없음은 안 자름', normalizeCrop({ x: 0, y: 0, w: 1, h: 1, ar: 1 }) === null
+    && normalizeCrop({ x: 0.1, y: 0.1, w: 0.02, h: 0.5, ar: 1 }) === null && normalizeCrop({ x: 0.1, y: 0.1, w: 0.5, h: 0.5 }) === null);
+  t('자르기: 사진 밖으로 나간 칸은 안쪽으로', same(normalizeCrop({ x: 0.6, y: -0.2, w: 0.8, h: 0.5, ar: 2 }), { x: 0.6, y: 0, w: 0.4, h: 0.5, ar: 2 }));
+  const lay = cropLayout({ x: 0.25, y: 0.5, w: 0.5, h: 0.25, ar: 1.5 });
+  t('자르기: 칸 그리기(사진 2배, 왼쪽 -50%, 위 -200%)', lay && lay.width === 200 && lay.left === -50 && lay.top === -200 && lay.ar === 1.5, JSON.stringify(lay));
+  t('자르기: 안 자른 사진은 그대로', cropLayout(null) === null);
+  const sum = sessionSummary([{ id: 'a', ok: true }, { id: 'b', ok: false }, { id: 'c', ok: true }, { id: 'd' }], [{ id: 'a', done: true }, { id: 'c', done: false }, { id: 'z', done: true }]);
+  t('다시 풀기 결과: 푼 것만 세고 이번에 졸업한 것', same(sum, { total: 3, ok: 2, wrong: 1, rate: 67, graduated: 1 }), JSON.stringify(sum));
+  const today = '2026-11-14';
+  const notes = [
+    { id: '1', sub: '수학', unit: '극한', reason: '계산 실수', done: true, reviews: [{ ds: '2026-11-14', ok: true }, { ds: '2026-11-01', ok: true }] },
+    { id: '2', sub: '수학', unit: '극한', reason: '개념 부족', done: false, due: '2026-11-13', reviews: [{ ds: '2026-11-10', ok: false }] },
+    { id: '3', sub: '영어', reason: '계산 실수', done: false, due: '2026-11-20', reviews: [] },
+    { id: '4', sub: '한국사', unit: '조선', done: false, due: '2026-11-14' },
+  ];
+  const st = wrongStats(notes, today, ['국어', '수학', '영어']);
+  t('통계: 전체·졸업률·오늘 풀 것', st.total === 4 && st.done === 1 && st.rate === 25 && st.due === 2, JSON.stringify(st));
+  t('통계: 최근 7일 다시 푼 수(7일 넘은 건 뺌)', st.week.count === 2 && st.week.ok === 1 && st.week.rate === 50, JSON.stringify(st.week));
+  t('통계: 과목 순서(목록 밖 과목은 뒤)·과목별 졸업률', same(st.bySub.map(s => [s.sub, s.total, s.done, s.rate]), [['수학', 2, 1, 50], ['영어', 1, 0, 0], ['한국사', 1, 0, 0]]));
+  t('통계: 틀린 이유 많은 순·두 번 이상 틀린 단원만', st.reasons[0][0] === '계산 실수' && st.reasons[0][1] === 2 && same(st.units, [['수학 · 극한', 2]]));
+}
+
 // ── 다가오는 날·날씨 조언 ──
 {
   const people = [
