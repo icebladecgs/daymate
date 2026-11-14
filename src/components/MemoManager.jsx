@@ -269,9 +269,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const [bulkTag, setBulkTag] = useState("");
+  const [bulkTagOpen, setBulkTagOpen] = useState(false); // 새 디자인 고르기 줄: 🏷를 누를 때만 태그 입력칸
+  const [periodOpen, setPeriodOpen] = useState(false); // 휴대폰 📅 기간 펼침 (2026-11-14)
   const pickable = (it) => it.kind === "memo";
   const togglePick = (key) => setPicked(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
-  const stopPicking = () => { setPicking(false); setPicked(new Set()); setBulkTag(""); };
+  const stopPicking = () => { setPicking(false); setPicked(new Set()); setBulkTag(""); setBulkTagOpen(false); };
   const pickedItems = () => items.filter(it => picked.has(it.key) && pickable(it));
   const byDayOf = (list) => { const m = new Map(); list.forEach(it => m.set(it.ds, [...(m.get(it.ds) || []), it.id])); return m; };
   const bulkDelete = () => {
@@ -334,6 +336,14 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       </button>
     );
   };
+  // 휴대폰(새 디자인) 분류 줄의 글자 탭
+  const tabBtn = (key, active, onClick, label, count) => (
+    <button key={key} onClick={onClick} aria-pressed={active}
+      style={{ flexShrink: 0, height: 42, padding: "0 10px", border: "none", borderRadius: 0, background: "none", borderBottom: `2.5px solid ${active ? ACCENT(nl) : "transparent"}`,
+        color: active ? "var(--dm-text)" : "var(--dm-sub)", fontSize: 15, fontWeight: active ? 800 : 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+      {label}{count !== undefined && <span style={{ marginLeft: 4, fontSize: 13, fontWeight: 600, color: "var(--dm-muted)" }}>{count}</span>}
+    </button>
+  );
   // 태그 영역 — #부모/자식은 📂 카테고리로 묶는다(지식 화면에서 옮겨 옴). 좁은 화면에서는 "🏷 태그" 칩 하나로 접어 둔다
   const tagGuide = (
     <div style={{ ...muted, fontSize: z(12, 13), lineHeight: 1.6, padding: wide ? "2px 10px" : "2px 2px" }}>
@@ -363,14 +373,13 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       {tagButtons}
     </>
   ) : (
+    // 휴대폰: 상자 없는 글자 탭 — 고른 것만 진하게 + 파란 밑줄, 숫자는 괄호 없이 연하게 (2026-11-14 사용자 승인 A안)
     <>
-      {filterButton(BASE_FILTERS[0].id, BASE_FILTERS[0].label, BASE_FILTERS[0].icon)}
-      {catButtons}
-      <button className={hit} onClick={() => setTagsOpen(o => !o)}
-        style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 16, border: tagFilter ? `1.5px solid ${ACCENT(nl)}` : border, background: tagFilter || tagsOpen ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: tagFilter ? ACCENT(nl) : "var(--dm-sub)", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
-        {tagChipLabel} {tagsOpen ? "▴" : "▾"}
-      </button>
-      {nlBase.slice(1).map(f => filterButton(f.id, f.label, f.icon))}
+      {tabBtn(BASE_FILTERS[0].id, filter === BASE_FILTERS[0].id, () => changeFilter(BASE_FILTERS[0].id), BASE_FILTERS[0].label)}
+      {cats.map(c => tabBtn(`cat:${c.id}`, filter === `cat:${c.id}`, () => changeFilter(`cat:${c.id}`),
+        <><span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: c.color, marginRight: 6, verticalAlign: "middle", position: "relative", top: -1 }} />{c.name}</>, catCounts[c.id] || 0))}
+      {tabBtn("tags", !!tagFilter || tagsOpen, () => setTagsOpen(o => !o), <>{tagFilter ? tagChipLabel.replace("🏷 ", "") : "태그"} <span style={{ fontSize: 11 }}>{tagsOpen ? "▲" : "▼"}</span></>)}
+      {nlBase.slice(1).map(f => tabBtn(f.id, filter === f.id, () => changeFilter(f.id), f.label))}
     </>
   )) : wide ? (
     <>
@@ -411,7 +420,36 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   );
   const bulkBtn = { padding: z("4px 10px", "6px 12px"), borderRadius: 8, border, background: "var(--dm-input)", color: "var(--dm-text)", fontSize: z(12, 14), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 };
   // 새 디자인은 "여러 개 고르기"를 따로 한 줄로 두지 않는다 — PC는 기간 줄 오른쪽 끝, 휴대폰은 분류 줄 오른쪽 ☑ (2026-11-14). 고르는 중일 때만 이 줄
-  const pickBar = filter !== "trash" && (!nl || picking) && (
+  // 새 디자인 고르기 줄: 한 줄 — ✕ n개 선택 · 모두 … 🗑 🏷 📅 (태그 입력칸은 🏷를 누를 때만, 2026-11-14)
+  const pickIco = { flexShrink: 0, width: 42, height: 40, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 10, background: "none", cursor: "pointer", color: "var(--dm-sub)" };
+  const nlPickBar = nl && picking && filter !== "trash" && (
+    <div style={{ flexShrink: 0, borderBottom: border, padding: "2px 6px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <button onClick={stopPicking} aria-label="고르기 끝내기" title="취소" style={pickIco}><Ico name="close" size={21} /></button>
+        <span style={{ fontSize: 15, fontWeight: 800, ...ink, whiteSpace: "nowrap" }}>{picked.size}개 선택</span>
+        <button onClick={() => setPicked(new Set(list.filter(pickable).slice(0, limit).map(it => it.key)))}
+          style={{ marginLeft: 6, height: 40, padding: "0 10px", border: "none", background: "none", color: ACCENT(nl), fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>모두</button>
+        <span style={{ flex: 1 }} />
+        <button onClick={bulkDelete} disabled={!picked.size} aria-label="지우기" title="휴지통으로" style={{ ...pickIco, color: picked.size ? "#F87171" : "var(--dm-muted)" }}><Ico name="trash" size={21} /></button>
+        <button onClick={() => setBulkTagOpen(o => !o)} disabled={!picked.size} aria-label="태그 붙이기" title="태그 붙이기" aria-expanded={bulkTagOpen}
+          style={{ ...pickIco, color: bulkTagOpen ? ACCENT(nl) : picked.size ? "var(--dm-sub)" : "var(--dm-muted)" }}><Ico name="tag" size={21} /></button>
+        <label aria-label="날짜 옮기기" title="날짜 옮기기" style={{ ...pickIco, position: "relative", color: picked.size ? "var(--dm-sub)" : "var(--dm-muted)" }}>
+          <Ico name="date" size={21} />
+          <input type="date" onChange={e => bulkMove(e.target.value)} disabled={!picked.size} aria-label="옮길 날짜"
+            onClick={e => { try { e.currentTarget.showPicker(); } catch { /* 기본 동작 */ } }}
+            style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }} />
+        </label>
+      </div>
+      {bulkTagOpen && picked.size > 0 && (
+        <div style={{ display: "flex", gap: 6, padding: "4px 6px 8px" }}>
+          <input value={bulkTag} onChange={e => setBulkTag(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.nativeEvent.isComposing && bulkAddTag()} placeholder="붙일 태그" aria-label="붙일 태그" autoFocus
+            style={{ flex: 1, minWidth: 0, height: 40, padding: "0 12px", borderRadius: 10, border: "none", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 15, fontFamily: "inherit", outline: "none" }} />
+          <button onClick={bulkAddTag} disabled={!bulkTag.trim()} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "none", background: bulkTag.trim() ? ACCENT(nl) : "var(--dm-input)", color: bulkTag.trim() ? "#fff" : "var(--dm-muted)", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>붙이기</button>
+        </div>
+      )}
+    </div>
+  );
+  const pickBar = nl ? nlPickBar : filter !== "trash" && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
       {!picking ? (
         <button className={hit} onClick={() => setPicking(true)} style={bulkBtn}>☑ 여러 개 고르기</button>
@@ -510,18 +548,35 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const pickStart = !picking && filter !== "trash" && filter !== "photo";
   // 휴대폰(새 디자인): 기간은 칩 6개 대신 "전체 기간 ▾" 하나 — 분류 줄 맨 앞 (2026-11-14)
   const periodLabel = PERIOD_FILTERS.find(p => p.id === period)?.label || "기간";
+  // 휴대폰(새 디자인): 기간은 오른쪽 📅 — 누르면 아래로 펼침(예전 숨은 select는 휴대폰에서 안 열렸다), 고르면 파랗게 + 짧은 이름 (2026-11-14)
+  const periodOn = period !== PERIOD_FILTERS[0].id;
+  const iconBtn = { flexShrink: 0, height: 40, minWidth: 40, padding: "0 6px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, border: "none", borderRadius: 10, background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" };
   const periodSelect = nl && !wide && filter !== "trash" && (
-    <label className={hit} style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "7px 12px", borderRadius: 16, border: period !== PERIOD_FILTERS[0].id ? `1.5px solid ${ACCENT(nl)}` : border, background: period !== PERIOD_FILTERS[0].id ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "var(--dm-input)", color: period !== PERIOD_FILTERS[0].id ? ACCENT(nl) : "var(--dm-sub)", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>
-      {periodLabel} ▾
-      <select value={period} onChange={e => { setPeriod(e.target.value); setLimit(PAGE); }} aria-label="기간"
-        style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer", border: "none", padding: 0 }}>
-        {PERIOD_FILTERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-      </select>
-    </label>
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button onClick={() => setPeriodOpen(o => !o)} aria-label={`기간: ${periodLabel}`} aria-expanded={periodOpen} title="기간"
+        style={{ ...iconBtn, color: periodOn || periodOpen ? ACCENT(nl) : "var(--dm-sub)", background: periodOn ? "var(--dm-accent-soft, rgba(108,142,255,.15))" : "none" }}>
+        <Ico name="calendar" size={22} />{periodOn && periodLabel}
+      </button>
+      {periodOpen && (
+        <>
+          <div onClick={() => setPeriodOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div role="menu" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 41, minWidth: 150, padding: 6, borderRadius: 14, background: "var(--dm-card)", boxShadow: "0 10px 30px rgba(0,0,0,.35)", border }}>
+            {PERIOD_FILTERS.map(p => (
+              <button key={p.id} role="menuitemradio" aria-checked={period === p.id} onClick={() => { setPeriod(p.id); setLimit(PAGE); setPeriodOpen(false); }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 44, padding: "0 12px", borderRadius: 10, border: "none", background: period === p.id ? "var(--dm-accent-soft, rgba(108,142,255,.12))" : "none",
+                  color: period === p.id ? ACCENT(nl) : "var(--dm-text)", fontSize: 15, fontWeight: period === p.id ? 800 : 500, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                {p.label}{period === p.id && <span>✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
   const pickIconBtn = nl && !wide && pickStart && (
-    <button className={hit} onClick={() => setPicking(true)} aria-label="여러 개 고르기" title="여러 개 고르기"
-      style={{ flexShrink: 0, width: 40, height: 36, padding: 0, borderRadius: 10, border, background: "var(--dm-input)", color: "var(--dm-sub)", fontSize: 17, cursor: "pointer" }}>☑</button>
+    <button onClick={() => setPicking(true)} aria-label="여러 개 고르기" title="여러 개 고르기" style={{ ...iconBtn, color: "var(--dm-sub)" }}>
+      <Ico name="checks" size={22} />
+    </button>
   );
   const periodRow = nl && wide && filter !== "trash" && (
     <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
@@ -603,8 +658,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       ) : nl ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {!isBig && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", flexShrink: 0 }}>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, overflowX: "auto" }}>{periodSelect}{filters}</div>
+            // 글자 탭(옆으로 밀기, 끝은 흐리게) | 📅 기간 · ☑ 여러 개 고르기
+            <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "2px 8px 0 4px", flexShrink: 0, borderBottom: border }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", overflowX: "auto", scrollbarWidth: "none",
+                WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 28px), transparent)", maskImage: "linear-gradient(to right, #000 calc(100% - 28px), transparent)" }}>{filters}</div>
+              {periodSelect}
               {pickIconBtn}
             </div>
           )}
@@ -883,6 +941,10 @@ const ICONS = {
   today: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /><path d="M9 15l2 2 4-4" /></>,
   someday: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></>,
   done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
+  calendar: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /></>,
+  checks: <><rect x="3.5" y="3.5" width="17" height="17" rx="3.5" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  tag: <><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.1 6.1a1.5 1.5 0 0 1-2.1 0z" /><circle cx="8.3" cy="8.3" r="1.4" /></>,
   photo: <><rect x="3" y="5" width="18" height="15" rx="3" /><circle cx="9" cy="11" r="2" /><path d="M21 16l-5-5-8 9" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
