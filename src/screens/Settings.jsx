@@ -180,7 +180,7 @@ export default function Settings({ catCtx, workHours, setWorkHours, user, setUse
   recurringTasks, setRecurringTasks,
   diaryQuestions, setDiaryQuestions,
   birthDate, setBirthDate, birthTime, setBirthTime,
-  installPrompt, handleInstall, setShowInstallBanner, isIOS, isSamsung,
+  installPrompt, handleInstall, isIOS, isSamsung,
   myCode, usedInviteCodes, setUsedInviteCodes,
   gcalToken, gcalTokenExp, onGcalConnect, onGcalDisconnect, onGcalPull,
   isDark, setIsDark, fontScale, setFontScale,
@@ -1411,13 +1411,21 @@ export default function Settings({ catCtx, workHours, setWorkHours, user, setUse
 
       <div style={S.sectionTitle}><span style={S.sectionEmoji}>📲</span> 앱 설치</div>
       <div style={S.card}>
+        {/* 이미 설치한 앱으로 열었거나 데스크탑 앱이면 설치 버튼 대신 상태만 (2026-11-15 점검 — 예전엔 버튼이 보였고 누르면 My 탭 설치 배너가 다시 켜졌다) */}
+        {(window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches || window.daymateDesktop) ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: NL() ? 15 : 13, color: 'var(--dm-text)', lineHeight: 1.6 }}>
+            <span style={{ color: '#16A34A', fontSize: 18, fontWeight: 900 }}>✓</span>
+            <span>{window.daymateDesktop ? '데스크탑 앱으로 쓰고 있어요. 휴대폰은 휴대폰에서 이 메뉴를 열어 설치해요.' : '이미 홈 화면에 설치된 앱으로 쓰고 있어요.'}</span>
+          </div>
+        ) : (
         <button onClick={() => {
             if (installPrompt) { handleInstall(); }
-            else { store.set('dm_install_dismissed', false); setShowInstallBanner(true); setShowInstallGuide(v => !v); }
+            else setShowInstallGuide(v => !v);
           }}
           style={{ ...S.btn, background: "linear-gradient(135deg,var(--dm-accent, #4B6FFF),var(--dm-accent, #6C8EFF))", color: "#fff" }}>
           앱 설치 (휴대폰 바탕화면에 바로가기 만들기)
         </button>
+        )}
         {!installPrompt && showInstallGuide && (
           isIOS ? (
             <div style={{ marginTop: 12 }}>
