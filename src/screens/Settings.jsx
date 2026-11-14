@@ -29,7 +29,7 @@ import RecurringManager from "../components/RecurringManager.jsx";
 import { taskAlarmLead, setTaskAlarmLead } from "../utils/alarms.js";
 
 // 데스크탑 앱 설치 파일 주소·최신 버전은 utils/desktopRelease.js 한 곳에서 바꾼다
-import { DESKTOP_DOWNLOAD_URL } from "../utils/desktopRelease.js";
+import { DESKTOP_DOWNLOAD_URL, DESKTOP_LATEST, compareVersion } from "../utils/desktopRelease.js";
 import { ensurePushSubscription, pushSupported } from "../utils/pushSubscription.js";
 import { useBackClose } from "../utils/useBackClose.js";
 import { SETTINGS_PAGE_NAMES, searchSettings } from "../utils/settingsSearch.js";
@@ -1732,7 +1732,14 @@ export default function Settings({ catCtx, workHours, setWorkHours, user, setUse
         <div style={{ padding: '0 16px', marginBottom: 12 }}>
           {menuHits.length === 0 && <div style={{ fontSize: 15, color: 'var(--dm-muted)', textAlign: 'center', padding: '16px 0' }}>"{menuQuery.trim()}" 설정을 찾지 못했어요</div>}
           {menuHits.map(hit => (
-            <button key={`${hit.page}_${hit.label}`} onClick={() => { setMenuQuery(''); scrollToSection.current = hit.section || null; setSubPage(hit.page); }}
+            <button key={`${hit.page}_${hit.label}`} onClick={() => {
+              setMenuQuery('');
+              if (!hit.page) { // 첫 화면의 칸 (데스크탑 앱 등) — 검색 결과가 사라진 뒤 그 제목으로 내려간다
+                setTimeout(() => { const el = [...document.querySelectorAll('.dm-phone div')].find(d => !d.children.length && d.textContent.trim() === hit.section); el?.scrollIntoView({ block: 'center' }); }, 60);
+                return;
+              }
+              scrollToSection.current = hit.section || null; setSubPage(hit.page);
+            }}
               style={{ display: 'block', width: '100%', padding: '12px 14px', marginBottom: 8, borderRadius: 12, border: '1px solid var(--dm-border)', background: 'var(--dm-card)', textAlign: 'left', cursor: 'pointer', color: 'var(--dm-text)' }}>
               <div style={{ fontSize: 16, fontWeight: 800 }}>{hit.label}</div>
               <div style={{ fontSize: 14, color: 'var(--dm-muted)', marginTop: 2 }}>{SETTINGS_PAGE_NAMES[hit.page]}</div>
@@ -1849,13 +1856,36 @@ export default function Settings({ catCtx, workHours, setWorkHours, user, setUse
         </MenuGroup>
       ))}
 
+      {/* 데스크탑 앱 (2026-11-15 점검) — 휴대폰에서는 받기 대신 안내만, 데스크탑 앱 안에서는 설치됨·최신 여부,
+          설치 파일이 코드 서명이 없어 처음 설치 때 윈도우 경고가 뜬다는 안내 */}
       <MenuGroup label="데스크탑 앱">
-        <MenuRow
-          icon="💻"
-          title="Windows 앱 다운로드"
-          sub="단축키(Ctrl+Shift+M/C/S)로 메모·달력·검색을 빠르게 열 수 있어요"
-          onClick={() => window.open(DESKTOP_DOWNLOAD_URL, '_blank')}
-        />
+        {(() => {
+          const inDesktop = !!window.daymateDesktop;
+          const cur = deskVer || (inDesktop ? '1.3.0' : '');
+          const latest = inDesktop && compareVersion(cur, DESKTOP_LATEST) >= 0;
+          const sub = 'PC 바탕화면 포스트잇 메모 · 단축키 7개(새 메모 Ctrl+Shift+M 등) · 윈도우 시작 시 자동 실행 · 약 120MB';
+          const warn = (
+            <div style={{ fontSize: NL() ? 13 : 12, color: 'var(--dm-muted)', lineHeight: 1.6, padding: '8px 16px 12px', background: 'var(--dm-card)' }}>
+              처음 설치할 때 윈도우가 파란 <b>"Windows의 PC 보호"</b> 창을 띄우면 <b>추가 정보 → 실행</b>을 눌러 주세요. 개인이 만든 앱이라 뜨는 안내예요.
+            </div>
+          );
+          if (isTouchScreen() && !inDesktop) {
+            return <MenuRow icon="💻" title="Windows 앱 (PC용)" sub="PC에서 DayMate를 열고 설정 → 데스크탑 앱에서 받아 주세요" />;
+          }
+          if (inDesktop) {
+            return (<>
+              <MenuRow icon="💻" title={latest ? `설치됨 · ${cur} (최신)` : `새 버전 ${DESKTOP_LATEST} 받기`}
+                sub={latest ? sub : `지금 ${cur} · 받아서 설치하면 기록·설정은 그대로예요`}
+                right={latest ? <span style={{ color: '#16A34A', fontSize: 18, fontWeight: 900 }}>✓</span> : undefined}
+                onClick={latest ? undefined : () => { const d = window.daymateDesktop; if (d?.openExternal) d.openExternal(DESKTOP_DOWNLOAD_URL); else window.open(DESKTOP_DOWNLOAD_URL, '_blank'); }} />
+              {!latest && warn}
+            </>);
+          }
+          return (<>
+            <MenuRow icon="💻" title={`Windows 앱 다운로드 (${DESKTOP_LATEST})`} sub={sub} onClick={() => window.open(DESKTOP_DOWNLOAD_URL, '_blank')} />
+            {warn}
+          </>);
+        })()}
       </MenuGroup>
 
       <div style={{ padding: '16px 18px', textAlign: 'center', color: 'var(--dm-muted)', fontSize: NL() ? 14 : 12 }}>{verLine}</div>

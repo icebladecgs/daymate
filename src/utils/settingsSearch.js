@@ -9,9 +9,11 @@ export const SETTINGS_PAGE_NAMES = {
   integrations: "Google 연동",
   friends: "친구 & 공유",
   app: "앱 관리",
+  "": "설정 첫 화면", // page가 빈 글자 = 하위 화면 없이 첫 화면의 칸으로 내려감
 };
 
 export const ITEMS = [
+  { page: "", label: "데스크탑 앱 (Windows) 받기·버전", section: "데스크탑 앱", words: "PC 윈도우 설치 다운로드 포스트잇 바탕화면 exe 새 버전 업데이트" },
   { page: "profile", label: "이름", section: "이름", words: "닉네임 프로필" },
   { page: "profile", label: "생년월일시", section: "생년월일시", words: "운세 사주 생일 출생시간" },
   { page: "profile", label: "연간 목표", section: "연간 목표", words: "올해 목표" },
