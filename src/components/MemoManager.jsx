@@ -24,7 +24,7 @@ import Toast from "./Toast.jsx";
 import MemoView from "./MemoView.jsx";
 import { toggleCheckAt } from "../utils/memoView.js";
 import { openLinkOnCtrlClick } from "../utils/links.js";
-import { MemoLinks, DriveFileList } from "./DriveFiles.jsx";
+import { MemoLinks, DriveFileList, useDriveUpload } from "./DriveFiles.jsx";
 import LinkOverlay from "./LinkOverlay.jsx";
 import IndentBar from "./IndentBar.jsx";
 import { newDesignOn } from "../utils/todayLook.js";
@@ -973,6 +973,15 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
   const initial = item?.kind === "memo" ? item.text : item?.kind === "task" ? (task?.note || "") : (journal?.body || "");
   const [text, setText] = useState(initial);
+  // 📎 첨부 파일(구글 드라이브 "DayMate/첨부파일") — 보기(2026-11-15)·올리기(같은 날 사용자 요청, 메모 탭 "드라이브"와 같은 useDriveUpload)
+  // 훅이라 조기 return보다 위에 둔다
+  const files = item?.kind === "memo" ? ((day?.memos || []).find(m => m.id === item.id)?.files || []) : item?.kind === "task" ? (task?.files || []) : [];
+  const setFiles = (next) => {
+    if (!item) return;
+    if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { files: next }));
+    else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, files: next } : x)) }));
+  };
+  const drive = useDriveUpload({ files, onChange: setFiles, onError });
   const [title, setTitle] = useState(task?.title || "");
   const [viewer, setViewer] = useState(null);
   const [sentTask, setSentTask] = useState(false);
@@ -1075,12 +1084,6 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
       onError?.(photoErrorMessage(err));
     }
   };
-  // 📎 첨부 파일(구글 드라이브 링크, 메모 탭 "드라이브"로 붙인 것) — 메모 관리자에서도 보이게 (2026-11-15 사용자 요청). ✕는 목록에서만 빼기
-  const files = item.kind === "memo" ? (memo?.files || []) : item.kind === "task" ? (task?.files || []) : [];
-  const setFiles = (next) => {
-    if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { files: next }));
-    else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, files: next } : x)) }));
-  };
   const setPhotos = (next) => {
     if (item.kind === "memo") onUpdateDayData(item.ds, prev => updateMemoIn(prev, item.id, { photos: next }));
     else if (item.kind === "task") onUpdateDayData(item.ds, prev => ({ ...prev, tasks: (prev.tasks || []).map(x => (x.id === item.id ? { ...x, photos: next } : x)) }));
@@ -1136,7 +1139,8 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
       {nl ? <NlBar {...{ item, wide, phone, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, pickPhoto: uid && item.kind !== "journal" ? () => photoPickRef.current?.() : null, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
+        toggleStar, togglePin, toggleDone, taskDone: !!task?.done, pickPhoto: uid && item.kind !== "journal" ? () => photoPickRef.current?.() : null,
+        pickFile: uid && item.kind !== "journal" ? drive.pick : null, fileBusy: drive.busy ? drive.label : "", openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
         <span style={{ fontSize: z(12, 14), color: z("var(--dm-muted)", "var(--dm-sub)") }}>{formatKoreanDate(item.ds)}{item.time ? ` · ${item.time}` : ""}</span>
@@ -1171,6 +1175,7 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
         )}
         {onOpenDate && <button className={smallHit} onClick={() => onOpenDate(item.ds)} style={small}>날짜 열기 →</button>}
         {item.kind === "memo" && item.id !== "legacy" && <button className={smallHit} onClick={() => requestMemoLock(item.id, "lock")} style={small}>🔒 잠그기</button>}
+        {uid && item.kind !== "journal" && <button className={smallHit} onClick={drive.pick} disabled={drive.busy} style={small}>{drive.busy ? drive.label : "📎 파일"}</button>}
         {item.kind === "memo" && <button className={smallHit} onClick={() => onDeleteMemo(item)} style={{ ...small, color: "#F87171", borderColor: "rgba(248,113,113,.35)" }}>🗑 삭제</button>}
       </div>
       )}
@@ -1205,6 +1210,7 @@ function DetailPane({ registerFlush = null, nl, wide, phone = false, hlTerms = n
           {journal.tomorrow && <div>➡️ 내일: {journal.tomorrow}</div>}
         </div>
       )}
+      {drive.input}
       {files.length > 0 && <div style={{ flexShrink: 0 }}><DriveFileList files={files} onChange={setFiles} /></div>}
       {item.kind !== "journal" && (
         <div style={{ flexShrink: 0 }}>
@@ -1239,6 +1245,7 @@ const ICONS = {
   checks: <><rect x="3.5" y="3.5" width="17" height="17" rx="3.5" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   tag: <><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.1 6.1a1.5 1.5 0 0 1-2.1 0z" /><circle cx="8.3" cy="8.3" r="1.4" /></>,
+  file: <><path d="M20 11.5l-7.6 7.6a5 5 0 0 1-7.1-7.1l7.9-7.9a3.4 3.4 0 0 1 4.8 4.8l-7.9 7.9a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3" /></>,
   photo: <><rect x="3" y="5" width="18" height="15" rx="3" /><circle cx="9" cy="11" r="2" /><path d="M21 16l-5-5-8 9" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
@@ -1269,7 +1276,7 @@ const savedLabel = (dirty, updatedAt) => {
 };
 
 function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
-  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate, pickPhoto }) {
+  toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate, pickPhoto, pickFile, fileBusy }) {
   const accent = "var(--dm-accent, #5B7CFA)";
   const memo = item.kind === "memo";
   const [taskOpen, setTaskOpen] = useState(false); // "할일로" → 오늘로·언젠가로 고르기 (2026-11-14)
@@ -1309,6 +1316,7 @@ function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, ti
     memo && !viewMode && tool("task", "today", taskSent || "할일로", () => { setMoreOpen(false); setTaskOpen(o => !o); }, { on: !!taskSent || taskOpen, keepFocus: true, title: "커서가 있는 줄(또는 고른 글자)을 오늘 할일·언젠가할일로" }),
     item.kind === "task" && tool("done", "done", taskDone ? "완료됨" : "완료", toggleDone, { on: taskDone, color: "#22C55E" }),
     pickPhoto && tool("photo", "photo", "사진", pickPhoto, { title: "사진 추가 (캡처는 Ctrl+V로도 붙어요)" }),
+    pickFile && tool("file", "file", fileBusy ? "올리는 중" : "파일", pickFile, { on: !!fileBusy, title: fileBusy || "파일 올리기 — 내 구글 드라이브 \"DayMate/첨부파일\" 폴더에 저장하고 메모에 링크로 붙여요 (100MB까지)" }),
   ].filter(Boolean);
   const popStyle = { position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 41, minWidth: 200, padding: 6, borderRadius: 14,
     background: "var(--dm-card)", boxShadow: "0 10px 30px rgba(0,0,0,.35)", border: "1px solid var(--dm-border)" };
