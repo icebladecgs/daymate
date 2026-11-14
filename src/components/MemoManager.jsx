@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PhotoGallery from "./PhotoGallery.jsx";
 import PhotoViewer from "./PhotoViewer.jsx";
@@ -34,6 +34,7 @@ import TagSuggest from "./TagSuggest.jsx";
 import MemoHistorySheet from "./MemoHistorySheet.jsx";
 import TemplateRow from "./TemplateRow.jsx";
 import { addUserTemplate, getUserTemplates, setUserTemplates } from "../utils/memoTemplates.js";
+import { useBackClose } from "../utils/useBackClose.js";
 
 const KIND = {
   memo: { icon: "📝", label: "메모", color: "var(--dm-accent, #6C8EFF)" },
@@ -95,6 +96,10 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   // ⤢ 크게: 목록을 접고 편집 칸을 넓게 / 👁 보기: 읽기 좋게 그린 화면 (둘 다 기본 꺼짐 — 지금처럼 바로 고치는 방식이 기본)
   const [big, setBig] = useState(false);
   const [viewMode, setViewMode] = useState(false);
+  // 휴대폰(새 디자인): 목록이 화면 전체 → 줄을 누르면 그 자리에서 내용 미리보기 → [편집]을 누르면 편집 화면 전체 (2026-11-14 사용자 결정)
+  const [mEdit, setMEdit] = useState(false);
+  const [pvPhotos, setPvPhotos] = useState(null); // 미리보기 사진 크게 {photos, index}
+  const [pvMenu, setPvMenu] = useState(false); // 미리보기 ⋯
   const [wide, setWide] = useState(() => window.innerWidth >= 900);
   const hit = nl && !wide ? "dm-hit" : undefined; // 모양·배치는 그대로, 누르는 범위만 40px
   // 칸 크기 직접 바꾸기 (2026-11-13 사용자 요청, 새 디자인) — 왼쪽 분류 폭(PC)·목록/편집 높이 비율. 기기마다 dm_mm_split
@@ -195,6 +200,9 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const hlTerms = useMemo(() => (nl ? highlightTerms(query) : []), [nl, query]); // 찾은 단어 노란 표시 (새 디자인)
   const selected = items.find(it => it.key === selectedKey) || null;
   const selIndex = list.findIndex(it => it.key === selectedKey);
+  const phone = nl && !wide;
+  const phoneEdit = phone && mEdit && !!selected;
+  useBackClose(() => setMEdit(false), phoneEdit); // 휴대폰 뒤로가기 → 편집 화면에서 목록으로
 
   const rowRefs = useRef({});
   const select = (key) => {
@@ -235,6 +243,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     const key = `memo|${ds}|${id}`;
     newMemoRef.current = { key, ds, id };
     setSelectedKey(key);
+    setMEdit(true); // 휴대폰은 새 메모를 바로 편집 화면으로 (PC는 이 값을 안 씀)
   };
   // 휴지통: 되살리기(원래 날짜 메모로) · 영구 삭제(사진 파일도 정리) · 비우기
   const restoreTrash = (it) => {
@@ -471,6 +480,54 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
       )}
     </div>
   );
+  // 휴대폰 미리보기: 내용 8줄까지(넘으면 아래 흐리게) · 작은 사진 · [편집] 복사 ⋯ — 목록은 보기만, 고치기는 편집 화면에서 (CLAUDE.md 14.1)
+  const updateMemo = (it, patch) => onUpdateDayData(it.ds, prev => updateMemoIn(prev, it.id, patch));
+  const rowPreview = (it) => {
+    const body = it.kind === "task" ? (it.text || "") : it.kind === "memo" ? it.text.split("\n").slice(1).join("\n").replace(/^\s*\n/, "") || "" : it.text;
+    const shown = (it.kind === "memo" && !body.trim() ? "" : body).trim();
+    const long = shown.split("\n").length > 8 || shown.length > 360;
+    const pvBtn = { height: 40, padding: "0 14px", borderRadius: 10, border: "none", background: "var(--dm-input)", color: "var(--dm-text)", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
+    const copy = async () => { try { await navigator.clipboard.writeText(it.text || it.title); setToast("복사했어요"); } catch { setToast("복사하지 못했어요"); } };
+    const memoMenu = it.kind === "memo" && !it.locked ? [
+      { label: it.starred ? "☆ 즐겨찾기 해제" : "⭐ 즐겨찾기", run: () => updateMemo(it, { starred: !it.starred }) },
+      { label: it.pinned ? "📍 고정 풀기" : "📍 위에 고정", run: () => updateMemo(it, { pinned: it.pinned ? undefined : true }) },
+      { label: "🗑 삭제", run: () => deleteMemo(it), danger: true },
+    ] : [];
+    return (
+      <div onClick={e => e.stopPropagation()}>
+        {it.locked ? (
+          <div style={{ fontSize: 15, color: "var(--dm-sub)", padding: "4px 0 10px" }}>잠긴 메모예요. [편집]을 누르면 비밀번호를 물어요.</div>
+        ) : shown ? (
+          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 15, lineHeight: 1.6, color: "var(--dm-text)", padding: "2px 0 10px",
+            ...(long ? { maxHeight: 15 * 1.6 * 8, overflow: "hidden", WebkitMaskImage: "linear-gradient(#000 70%, transparent)", maskImage: "linear-gradient(#000 70%, transparent)" } : {}) }}>
+            {hlTerms.length ? markTerms(shown, hlTerms) : shown}
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, color: "var(--dm-muted)", padding: "2px 0 10px" }}>{it.kind === "task" ? "일정 메모가 없어요" : "제목 말고 다른 내용은 없어요"}</div>
+        )}
+        {it.photos.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingBottom: 10 }}>
+            {it.photos.map((p, i) => p?.url && <img key={p.path || i} src={p.url} alt="첨부 사진" onClick={() => setPvPhotos({ photos: it.photos, index: i })}
+              style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--dm-border)", cursor: "zoom-in" }} />)}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", position: "relative" }}>
+          <button onClick={() => setMEdit(true)} style={{ ...pvBtn, background: ACCENT(nl), color: "#fff", fontWeight: 800 }}>{it.kind === "trash" ? "열기" : "편집"}</button>
+          {!it.locked && it.kind !== "trash" && <button onClick={copy} style={pvBtn}>복사</button>}
+          {memoMenu.length > 0 && <button onClick={() => setPvMenu(o => !o)} aria-label="더보기" aria-expanded={pvMenu} style={{ ...pvBtn, padding: 0, width: 44 }}>⋯</button>}
+        </div>
+        {/* ⋯ → 아래 한 줄로 (목록 칸이 스크롤 상자라 떠 있는 메뉴는 잘린다) */}
+        {pvMenu && memoMenu.length > 0 && (
+          <div role="menu" style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 8 }}>
+            {memoMenu.map(m => (
+              <button key={m.label} role="menuitem" onClick={() => { setPvMenu(false); m.run(); }}
+                style={{ ...pvBtn, background: "none", border, color: m.danger ? "#F87171" : "var(--dm-text)", fontSize: 14 }}>{m.label}</button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   const table = (
     <div tabIndex={0} onKeyDown={onListKey} style={{ flex: 1, minHeight: 0, overflow: "auto", outline: "none" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -490,9 +547,11 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
           {list.slice(0, limit).map(it => {
             const active = it.key === selectedKey;
             const cell = z("6px 8px", "10px 8px");
+            const open = phone && active && !picking; // 휴대폰: 누른 줄 아래 미리보기
             return (
-              <tr key={it.key} ref={el => { rowRefs.current[it.key] = el; }} onClick={() => (picking ? pickable(it) && togglePick(it.key) : select(it.key))}
-                style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: "1px solid var(--dm-row)" }}>
+              <Fragment key={it.key}>
+              <tr ref={el => { rowRefs.current[it.key] = el; }} onClick={() => (picking ? pickable(it) && togglePick(it.key) : phone ? (active ? setSelectedKey(null) : (setPvMenu(false), select(it.key))) : select(it.key))}
+                style={{ cursor: picking && !pickable(it) ? "default" : "pointer", opacity: picking && !pickable(it) ? 0.4 : 1, background: (picking ? picked.has(it.key) : active) ? "var(--dm-accent-soft, rgba(108,142,255,.2))" : "transparent", borderBottom: open ? "none" : "1px solid var(--dm-row)" }}>
                 <td style={{ padding: cell, fontSize: z(13, 15) }} title={KIND[it.kind].label}>{picking ? (pickable(it) ? (picked.has(it.key) ? "☑" : "☐") : "") : KIND[it.kind].icon}</td>
                 <td style={{ padding: cell, fontSize: z(13, 16), fontWeight: z(400, 600), ...ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.done ? "line-through" : "none", opacity: it.done ? 0.6 : 1 }}>
                   {it.pinned && "📍 "}{it.starred && "⭐ "}{hlTerms.length ? markTerms(it.title, hlTerms) : it.title}
@@ -504,6 +563,8 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
                 {cols && <td style={{ padding: cell, fontSize: z(12, 13), color: ACCENT(nl), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.tags.map(t => `#${t}`).join(" ")}</td>}
                 <td style={{ padding: cell, fontSize: z(12, 13), ...(nl ? { color: "var(--dm-sub)" } : muted) }}>{it.photos.length || ""}</td>
               </tr>
+              {open && <tr style={{ background: "var(--dm-accent-soft, rgba(108,142,255,.2))", borderBottom: "1px solid var(--dm-row)" }}><td colSpan={4} style={{ padding: "0 12px 12px 12px" }}>{rowPreview(it)}</td></tr>}
+              </Fragment>
             );
           })}
         </tbody>
@@ -525,13 +586,13 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
     .sort((a, b) => b.ds.localeCompare(a.ds))), [filter, list]);
   const [wallViewer, setWallViewer] = useState(null); // 크게 보는 사진 번호
   const [wallPick, setWallPick] = useState(null); // 고른 사진 key
-  const pickPhoto = (p) => { setWallPick(p.key); select(p.itemKey); };
+  const pickPhoto = (p) => { setWallPick(p.key); select(p.itemKey); if (phone && wallViewer === null) setMEdit(true); };
   const openBig = () => setWallViewer(Math.max(0, photoWall.findIndex(p => p.key === wallPick)));
   const wall = (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {photoWall.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", flexShrink: 0, borderBottom: border }}>
-          <span style={{ flex: 1, fontSize: z(13, 14), ...muted }}>사진 {photoWall.length}장 · 누르면 아래에 그 기록이 열려요</span>
+          <span style={{ flex: 1, fontSize: z(13, 14), ...muted }}>사진 {photoWall.length}장 · 누르면 {phone ? "그 기록이" : "아래에 그 기록이"} 열려요</span>
           <button onClick={openBig} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--dm-accent, #5B7CFA)", background: "var(--dm-accent-soft, rgba(91,124,250,.12))", color: "var(--dm-accent, #5B7CFA)", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>⤢ 크게 보기</button>
         </div>
       )}
@@ -600,13 +661,13 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
   const isBig = big && !!selected;
   const detail = (
     <DetailPane key={selected?.key || "none"} hlTerms={hlTerms} tagNames={tagNames} item={selected} plans={plans} onUpdateDayData={onUpdateDayData} uid={uid} onError={setToast} onOpenDate={onOpenDate} onDeleteMemo={deleteMemo} onRestore={restoreTrash} onDeleteForever={deleteForever} nl={nl} wide={wide && paneW >= 760 /* 편집 칸이 좁으면 버튼을 두 줄로 */}
-      big={isBig} onToggleBig={() => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
+      phone={phone} big={phone ? true : isBig} onToggleBig={phone ? () => setMEdit(false) : () => setBig(b => !b)} viewMode={viewMode} onToggleView={() => setViewMode(v => !v)} onTag={openTag} />
   );
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "var(--dm-bg)", display: "flex", flexDirection: "column", fontFamily: "inherit", ...(zoom !== 1 ? { zoom } : {}) }}>
-      {/* 상단: 닫기 · 새 메모 · 검색 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: border, flexShrink: 0, flexWrap: wide ? "nowrap" : "wrap" }}>
+      {/* 상단: 닫기 · 새 메모 · 검색 (휴대폰 편집 화면에서는 숨김 — 뒤로가기·"목록"으로 돌아간다) */}
+      <div style={{ display: phoneEdit ? "none" : "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: border, flexShrink: 0, flexWrap: wide ? "nowrap" : "wrap" }}>
         <button className={hit} onClick={onClose} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border, background: "var(--dm-input)", ...ink, fontSize: z(13, 15), fontWeight: z(400, 700), cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>← 닫기</button>
         <div style={{ fontSize: z(15, 17), fontWeight: 900, ...ink, flexShrink: 0, marginRight: 6 }}>🗂 메모 관리자</div>
         <button className={hit} onClick={addMemo} style={{ padding: z("6px 12px", "8px 12px"), borderRadius: 8, border: "1px solid rgba(250,204,21,.6)", background: "rgba(250,204,21,.18)", ...ink, fontSize: z(13, 15), fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>＋ 새 메모</button>
@@ -630,7 +691,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
           )}
         </div>
       </div>
-      {!uid && onRequireLogin && <div style={{ paddingTop: 8 }}><LoginNotice onLogin={onRequireLogin} /></div>}
+      {!uid && onRequireLogin && !phoneEdit && <div style={{ paddingTop: 8 }}><LoginNotice onLogin={onRequireLogin} /></div>}
 
       {wide && nl ? (
         /* 새 디자인: 선을 끌어 칸 크기를 바꾼다 (두 번 누르면 원래대로) */
@@ -657,7 +718,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
         </div>
       ) : nl ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          {!isBig && (
+          {!phoneEdit && (
             // 글자 탭(옆으로 밀기, 끝은 흐리게) | 📅 기간 · ☑ 여러 개 고르기
             <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "2px 8px 0 4px", flexShrink: 0, borderBottom: border }}>
               <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", overflowX: "auto", scrollbarWidth: "none",
@@ -666,14 +727,18 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
               {pickIconBtn}
             </div>
           )}
-          {!isBig && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
-          <div ref={colRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", borderTop: isBig ? "none" : border }}>
-            {!isBig && <div style={{ flex: `0 0 ${listFrac * 100}%`, minHeight: 0, display: "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>}
-            {!isBig && <Splitter dir="y" label="목록·편집 칸 높이 바꾸기" onMove={dragList} onEnd={saveSplit} onReset={() => resetSplit(["hNarrow"])} />}
-            <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {!phoneEdit && tagsOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 12px 8px", maxHeight: z(132, 156), overflowY: "auto", flexShrink: 0 }}>{tagButtons}</div>}
+          {/* 목록은 편집 중에도 지우지 않고 숨긴다 — 돌아오면 보던 자리 그대로 */}
+          <div style={{ flex: 1, minHeight: 0, display: phoneEdit ? "none" : "flex", flexDirection: "column" }}>{relatedRow}{listArea}</div>
+          {phoneEdit && (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {/* 잠긴 메모·휴지통 화면엔 버튼 줄("목록")이 없어 돌아가기 줄을 따로 */}
+              {(selected.locked || selected.kind === "trash") && (
+                <button onClick={() => setMEdit(false)} style={{ alignSelf: "flex-start", height: 44, padding: "0 14px", border: "none", background: "none", color: "var(--dm-sub)", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>← 목록</button>
+              )}
               {detail}
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -686,6 +751,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
         </div>
       )}
       {showSettings && <MemoSettings onClose={() => setShowSettings(false)} />}
+      {pvPhotos && <PhotoViewer photos={pvPhotos.photos} index={pvPhotos.index} onClose={() => setPvPhotos(null)} />}
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       <UndoBar bar={undo.bar} onUndo={undo.run} zIndex={910} />
     </div>,
@@ -694,7 +760,7 @@ export default function MemoManager({ plans, onUpdateDayData, uid, catCtx = null
 }
 
 // 선택한 항목 바로 편집 — 글은 입력을 멈추면(0.7초) 저장하고, 다른 항목을 고르거나 닫을 때도 저장한다
-function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
+function DetailPane({ nl, wide, phone = false, hlTerms = null, tagNames = [], item, plans, onUpdateDayData, uid, onError, onOpenDate, onDeleteMemo, onRestore, onDeleteForever, big, onToggleBig, viewMode, onToggleView, onTag }) {
   const day = item ? plans[item.ds] : null;
   const task = item?.kind === "task" ? (day?.tasks || []).find(t => t.id === item.id) : null;
   const journal = item?.kind === "journal" ? (day?.journal || {}) : null;
@@ -843,7 +909,7 @@ function DetailPane({ nl, wide, hlTerms = null, tagNames = [], item, plans, onUp
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 14px", gap: 8 }}>
-      {nl ? <NlBar {...{ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
+      {nl ? <NlBar {...{ item, wide, phone, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
         toggleStar, togglePin, toggleDone, taskDone: !!task?.done, pickPhoto: uid && item.kind !== "journal" ? () => photoPickRef.current?.() : null, openHistory: () => setShowHist(true), saveTemplate: text.trim() ? saveTemplate : null, dirty: (item.kind === "memo" && tplRef.current !== null && text.trim() === tplRef.current.trim() ? "" : text) !== saved.current.text || title !== saved.current.title, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen }} /> : (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
         <span style={{ fontSize: z(12, 15), fontWeight: 800, color: KIND[item.kind].color }}>{KIND[item.kind].icon} {KIND[item.kind].label}</span>
@@ -941,6 +1007,7 @@ const ICONS = {
   today: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /><path d="M9 15l2 2 4-4" /></>,
   someday: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></>,
   done: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
+  back: <path d="M15 5l-7 7 7 7" />,
   calendar: <><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /></>,
   checks: <><rect x="3.5" y="3.5" width="17" height="17" rx="3.5" /><path d="M8 12.5l2.7 2.7L16 10" /></>,
   close: <path d="M6 6l12 12M18 6L6 18" />,
@@ -974,7 +1041,7 @@ const savedLabel = (dirty, updatedAt) => {
   return `저장됨 · ${d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`}`;
 };
 
-function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
+function NlBar({ item, wide, phone, big, viewMode, onToggleBig, onToggleView, tidy, copyText, printText, sendSomeday, sendToday, sentTask, sentToday,
   toggleStar, togglePin, toggleDone, taskDone, dirty, onOpenDate, onDeleteMemo, moreOpen, setMoreOpen, openHistory, saveTemplate, pickPhoto }) {
   const accent = "var(--dm-accent, #5B7CFA)";
   const memo = item.kind === "memo";
@@ -1066,7 +1133,9 @@ function NlBar({ item, wide, big, viewMode, onToggleBig, onToggleView, tidy, cop
           </button>
         )}
         <span style={{ flex: 1 }} />
-        {headBtn(big ? "shrink" : "expand", big ? "목록" : "크게", onToggleBig, big, big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기")}
+        {/* 휴대폰은 편집 화면이 따로라 "‹ 목록"(돌아가기) — 켜진 표시 없이 (2026-11-14) */}
+        {!phone ? headBtn(big ? "shrink" : "expand", big ? "목록" : "크게", onToggleBig, big, big ? "목록 다시 보기" : "목록을 접고 넓게 쓰기")
+          : headBtn("back", "목록", onToggleBig, false, "목록으로 돌아가기")}
         {headBtn(viewMode ? "pencil" : "eye", viewMode ? "편집" : "보기", onToggleView, viewMode, viewMode ? "바로 고치는 칸으로" : "제목·체크박스·링크를 읽기 좋게 (더블클릭하면 편집)")}
       </div>
       {/* 기능 줄 */}
